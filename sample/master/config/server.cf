@@ -1,0 +1,6 @@
+zcmd = ./server
+zlisten = 0:8891
+zproc_limit = 1
+
+#other config
+abc = it is good start

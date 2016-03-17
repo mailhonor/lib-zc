@@ -1,0 +1,16 @@
+all: libzc
+
+include makefile.inc
+
+CFLAGS= -Wall -I. -O2 -DZC_INUSE -g
+
+OBJS := $(SRC:.c=.r)
+$(OBJS): zc.h src/zc_inuse.h
+.c.r:
+	gcc -c $*.c $(CFLAGS)  -o $*.r
+
+libzc: libzc.a
+libzc.a: $(OBJS)
+	ar rv libzc.a $(OBJS)
+	ranlib libzc.a
+

@@ -1,0 +1,15 @@
+all: tlist
+.PHONY: tlist
+
+CFLAGS= -g -pg -Os -Wall -I. -I./test/ -DZC_DEBUG
+LIBS= -L. -lzc-debug -lpthread -lrt -ldb -lssl -lcrypto -lmysqlclient
+
+SRC=${shell cat tlist }
+OBJS := $(SRC:.c=)
+
+$(OBJS): libzc-debug.a test/test_lib.h
+
+.c:
+	gcc $*.c $(CFLAGS) $(LIBS) -o $*
+
+tlist:  $(OBJS)

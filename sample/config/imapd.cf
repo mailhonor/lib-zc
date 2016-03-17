@@ -1,0 +1,43 @@
+
+services = imapd, pop3d, lmtpd
+
+[imapd]
+	listen = 143
+	ssl_listen = 
+	pthread_count = 50 
+	append_pthread_count = 5
+	welcome_banner = honor ready 
+	welcome_banner2 = honor ready
+
+[pop3d]
+	listen = 110
+	ssl_listen =
+	pthread_count = 50
+
+[lmtpd]
+	pthread_count = 2
+	append_pthread_count = 1
+	filter = enable
+
+[mysql]
+	host = 127.0.0.1
+	port = 3306
+	user = root
+	pass = 
+	dbname = honor
+
+[filter]
+
+[auth]
+	lowwer upper none 
+	type = inner
+	sql = select mail from honor_user where mail=MAIL AND password=md5(PASSWORD) limit 1 \
+	### or 
+	# type = cyrus_sasl
+	# server = unix:/var/run/saslauthd/mux
+	# service = imap
+	### or
+	# type = pam
+	# service = imap
+
+

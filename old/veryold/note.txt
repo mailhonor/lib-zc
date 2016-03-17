@@ -1,0 +1,17 @@
+
+grep  -rh '^[a-zA-Z]' src/config/*.c |grep -v static|grep -v ';'|grep -v struct|gawk '{print $0";"}'
+
+
+
+memcache:inet:127.0.0.1:11211/
+memcache://unix/lunux/test/somepath/a.html
+memcache;
+inet:127.0.0.1:33;categoty=name
+memcache:inet:
+mysql://localhost:3306/
+
+pcre://llsmfox.comfdsfsdf
+
+socket://inet:127.0.0.1:33;a=b;c=d;linux=god;
+socket://good@unix:/opt/antipsam/listen.socket;
+mysql://inet:127.0.0.1;user:fff;pass:{!@#SADFSADF};connnet_id:ppafsafd;query:SELECT goto FROM alias WHERE name='%s' AND active='1' AND expired >= NOW()
