@@ -8,40 +8,44 @@
 
 #include "libzc.h"
 
-int main(int argc, char **argv)
+void dorun(char *fn)
 {
-    char *fn;
     zmmap_reader reader;
     char charset[128];
 
-    zvar_progname = argv[0];
-    if (argc != 2)
-    {
-        printf("USAGE: %s filename\n", zvar_progname);
-        exit(1);
-    }
-    fn = argv[1];
-
     if (zmmap_reader_init(&reader, fn) < 0)
     {
-        printf("open %s:%m", fn);
+        printf("%-30s: %m", fn);
         exit(1);
     }
 
-    if (zcharset_detect_chinese(reader.data, reader.len, charset) < 0)
+    if (zcharset_detect_cjk(reader.data, reader.len, charset) < 0)
     {
-        printf("detect error\n");
-    }
-    else if (!*charset)
-    {
-        printf("not found, ASCII? or none-chinese language\n");
+        printf("%-30s: not found, maybe ASCII\n", fn);
     }
     else
     {
-        printf("%s\n", charset);
+        printf("%-30s: %s\n", fn, charset);
     }
 
     zmmap_reader_fini(&reader);
+}
+
+int main(int argc, char **argv)
+{
+    int i;
+
+    zvar_progname = argv[0];
+    if (argc < 2)
+    {
+        printf("USAGE: %s filename1 [filename2 ...]\n", zvar_progname);
+        exit(1);
+    }
+
+    for (i = 1; i< argc; i++)
+    {
+        dorun(argv[i]);
+    }
 
     return 0;
 }

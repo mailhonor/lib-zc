@@ -1487,8 +1487,17 @@ struct zcharset_iconv_t
 void zcharset_iconv_init(zcharset_iconv_t * ic);
 void zcharset_iconv_fini(zcharset_iconv_t * ic);
 char *zcharset_correct_charset(char *charset, char *default_charset);
-int zcharset_detect_chinese(char *data, int len, char *charset_ret);
+int zcharset_detect(char *data, int len, char *charset_ret, char **charset_list);
 int zcharset_iconv(zcharset_iconv_t * ic);
+
+extern char *zvar_charset_chinese[];
+extern char *zvar_charset_japanese[];
+extern char *zvar_charset_korean[];
+extern char *zvar_charset_cjk[];
+#define zcharset_detect_chinese(d, l, ret) zcharset_detect(d, l, ret, zvar_charset_chinese)
+#define zcharset_detect_japanese(d, l, ret) zcharset_detect(d, l, ret, zvar_charset_japanese)
+#define zcharset_detect_korean(d, l, ret) zcharset_detect(d, l, ret, zvar_charset_korean)
+#define zcharset_detect_cjk(d, l, ret) zcharset_detect(d, l, ret, zvar_charset_cjk)
 
 /* ################################################################## */
 /* MAIL PARSER */
