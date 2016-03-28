@@ -22,7 +22,7 @@ int zmail_parser_iconv(zmail_parser_t * parser, char *from_charset, char *in, in
     {
         if (ZEMPTY(from_charset))
         {
-            if (zcharset_detect_chinese(in, in_len, f_charset) < 0)
+            if (zcharset_detect_cjk(in, in_len, f_charset) < 0)
             {
                 strcpy(f_charset, parser->default_src_charset);
             }
