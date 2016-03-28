@@ -182,6 +182,7 @@ int zcharset_detect(char *data, int len, char *charset_ret, char **charset_list)
             continue;
         }
         w_count = ___chinese_word_count(out_string, ret);
+        zdebug("fromcode: %s, word_count: %s", fromcode, w_count);
         if ((w_count > w_count_max))
         {
             w_count_max = w_count;
@@ -203,4 +204,4 @@ int zcharset_detect(char *data, int len, char *charset_ret, char **charset_list)
 char *zvar_charset_chinese[] = { "UTF-8", "GB18030", "BIG5", 0 };
 char *zvar_charset_japanese[] = { "UTF-8", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", 0 };
 char *zvar_charset_korean[] = { "UTF-8", "KS_C_5601", "KS_C_5861", 0 };
-char *zvar_charset_cjk[] = { "UTF-8", "GB18030", "BIG5", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", "KS_C_5601", "KS_C_5861", 0 };
+char *zvar_charset_cjk[] = { "UTF-8", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", "KS_C_5601", "KS_C_5861", "GB18030", "BIG5", 0 };
