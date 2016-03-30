@@ -10,6 +10,7 @@
 #define _GNU_SOURCE
 
 #include <errno.h>
+#include <iconv.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -17,7 +18,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <iconv.h>
 
 /* ################################################################## */
 typedef struct zring_t zring_t;
@@ -100,13 +100,6 @@ typedef void *(*zfunc_vp_vp_t) (void *);
 
 /* ################################################################## */
 /* LOG, 通用 */
-#define ZLOG_FATAL       1
-#define ZLOG_ERROR       2
-#define ZLOG_WARNING     3
-#define ZLOG_NOTICE      4
-#define ZLOG_INFO        5
-#define ZLOG_DEBUG       6
-#define ZLOG_VERBOSE     7
 extern int zvar_fatal_catch;
 extern int zvar_log_level;
 typedef int (*zlog_output_t) (int level, char *fmt, ...);
@@ -118,20 +111,22 @@ zlog_voutput_t zlog_set_voutput(zlog_voutput_t voutput_fn);
 int zlog_set_level(int level);
 int zlog_set_level_from_console(int level);
 int zlog_parse_level(char *levstr);
-#define zfatal(fmt, args...) \
-    zlog_fatal_output(ZLOG_FATAL, fmt, ##args)
-#define zerror(fmt, args...) \
-    ((ZLOG_ERROR<=zvar_log_level)?zlog_output(ZLOG_ERROR, fmt, ##args):(0))
-#define zwarning(fmt, args...) \
-    ((ZLOG_WARNING<=zvar_log_level)?zlog_output(ZLOG_WARNING, fmt, ##args):(0))
-#define znotice(fmt, args...) \
-    ((ZLOG_NOTICE<=zvar_log_level)?zlog_output(ZLOG_NOTICE, fmt, ##args):(0))
-#define zinfo(fmt, args...) \
-    {if(ZLOG_INFO<=zvar_log_level){zlog_output(ZLOG_INFO, fmt, ##args);}}
-#define zdebug(fmt, args...) \
-    ((ZLOG_DEBUG<=zvar_log_level)?zlog_output(ZLOG_DEBUG, fmt, ##args):(0))
-#define zverbose(fmt, args...) \
-    ((ZLOG_VERBOSE<=zvar_log_level)?zlog_output(ZLOG_VERBOSE, fmt, ##args):(0))
+
+#define ZLOG_FATAL       1
+#define ZLOG_ERROR       2
+#define ZLOG_WARNING     3
+#define ZLOG_NOTICE      4
+#define ZLOG_INFO        5
+#define ZLOG_DEBUG       6
+#define ZLOG_VERBOSE     7
+
+#define zfatal(fmt, args...) {zlog_fatal_output(ZLOG_FATAL, fmt, ##args);}
+#define zerror(fmt, args...) {if(ZLOG_ERROR<=zvar_log_level){zlog_output(ZLOG_ERROR, fmt, ##args);}}
+#define zwarning(fmt, args...) {if(ZLOG_WARNING<=zvar_log_level){zlog_output(ZLOG_WARNING, fmt, ##args);}}
+#define znotice(fmt, args...) {if(ZLOG_NOTICE<=zvar_log_level){zlog_output(ZLOG_NOTICE, fmt, ##args);}}
+#define zinfo(fmt, args...) {if(ZLOG_INFO<=zvar_log_level){zlog_output(ZLOG_INFO, fmt, ##args);}}
+#define zdebug(fmt, args...) {if(ZLOG_DEBUG<=zvar_log_level){zlog_output(ZLOG_DEBUG, fmt, ##args);}}
+#define zverbose(fmt, args...) {if(ZLOG_VERBOSE<=zvar_log_level){zlog_output(ZLOG_DEBUG, fmt, ##args);}}
 
 /* ################################################################## */
 /* malloc */
