@@ -128,11 +128,6 @@ static int unix_server_accept(zev_t * zev)
 
 void register_server(char *test_listen)
 {
-    if (!zmaster_server_service)
-    {
-        zfatal("no set zmaster_server_service");
-    }
-
     if (!test_mode)
     {
         ev_status = (zev_t *)zcalloc(1, sizeof(zev_t));
@@ -172,6 +167,12 @@ void register_server(char *test_listen)
     zclose_on_exec(zvar_master_server_listen_fd, 1);
 
     znonblocking(zvar_master_server_listen_fd, 1);
+
+    if (!zmaster_server_service)
+    {
+        return;
+    }
+
     ev_listen = (zev_t *) zcalloc(1, sizeof(zev_t));
     zev_init(ev_listen, zvar_evbase, zvar_master_server_listen_fd);
 
@@ -196,6 +197,7 @@ int zmaster_server_main(int argc, char **argv)
     reloading = 0;
     softstopping = 0;
     ev_status = 0;
+    ev_listen = 0;
     local_ev_close_do_once = 1;
     server_mutex = (pthread_mutex_t *)zcalloc(1, sizeof(pthread_mutex_t));
     pthread_mutex_init(server_mutex, 0);
