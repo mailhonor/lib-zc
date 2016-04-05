@@ -280,6 +280,7 @@ int zmaster_server_main(int argc, char **argv)
         if (softstopping)
         {
             local_ev_close();
+            break;
         }
     }
 

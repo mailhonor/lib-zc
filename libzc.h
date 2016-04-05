@@ -1026,8 +1026,8 @@ typedef int (*zalarm_cb_t) (zalarm_t *);
 struct zalarm_t
 {
     unsigned int in_time:1;
-    int enable_time:1;
-    int auto_release:1;
+    unsigned int enable_time:1;
+    unsigned int auto_release:1;
     long timeout;
     zalarm_cb_t callback;
     void *context;
