@@ -611,10 +611,12 @@ struct zchain_node_t
 #define ZCHAIN_PREV(n)   ((n)->prev)
 #define ZCHAIN_HEAD(c)   ((c)->head)
 #define ZCHAIN_TAIL(c)   ((c)->tail)
+#define ZCHAIN_LEN(c)    ((c)->len)
 #define zchain_next(n)   ((n)->next)
 #define zchain_prev(n)   ((n)->prev)
 #define zchain_head(c)   ((c)->head)
 #define zchain_tail(c)   ((c)->tail)
+#define zchain_len(c)    ((c)->len)
 zchain_t *zchain_create(void);
 void zchain_free(zchain_t * chain, void (*free_fn) (void *, void *), void *ctx);
 void zchain_free_STR(zchain_t * chain);

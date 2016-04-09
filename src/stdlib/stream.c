@@ -39,7 +39,7 @@ void zfset_ioctx(zstream_t * fp, void *io_ctx, zstream_read_t read_fn, zstream_w
 
 void zfset_timeout(zstream_t * fp, int timeout)
 {
-    fp->timeout = ztimeout_left(timeout);
+    fp->timeout = ztimeout_set(timeout);
 }
 
 /* ################################################################## */

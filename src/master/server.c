@@ -180,7 +180,7 @@ void register_server(char *test_listen)
     {
         zev_read(ev_listen, inet_server_accept);
     }
-    else if (zvar_master_server_listen_type == ZMASTER_LISTEN_INET)
+    else if (zvar_master_server_listen_type == ZMASTER_LISTEN_UNIX)
     {
         zev_read(ev_listen, unix_server_accept);
     }
