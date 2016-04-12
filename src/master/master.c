@@ -19,8 +19,8 @@
 
 /* FIXME FREE entry */
 
-#define zmaster_entry_info(m) zverbose("master entry: %s, limit:%d,count:%d, line:%d", \
-        m->cmd, m->proc_limit, m->proc_count, __LINE__)
+#define zmaster_entry_info(m) zverbose("master entry: %s, limit:%d, count:%d, listen_on:%d, line:%d", \
+        m->cmd, m->proc_limit, m->proc_count, m->listen_on, __LINE__)
 
 typedef struct zmaster_entry_t zmaster_entry_t;
 typedef struct zmaster_status_fd_t zmaster_status_fd_t;
@@ -152,6 +152,7 @@ static void zmaster_set_stop(void)
         zfree(men->cmd);
         ztimer_fini(&(men->wakeup_timer));
         zev_fini(&(men->listen_ev));
+        men->listen_on = 0;
         men->child_error = 0;
         ztimer_fini(&(men->child_error_timer));
     }
