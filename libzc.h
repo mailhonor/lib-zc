@@ -1192,6 +1192,8 @@ int zaio_write_cache_append(zaio_t * aio, void *buf, int len);
 int zaio_write_cache_append_sizedata(zaio_t * aio, int len, void *buf);
 int zaio_write_cache_flush(zaio_t * aio, zaio_cb_t callback);
 int zaio_write_cache_get_len(zaio_t * aio);
+int zaio_printf(zaio_t * aio, char *fmt, ...);
+int zaio_puts(zaio_t * aio, char *s);
 int zaio_sleep(zaio_t * aio, zaio_cb_t callback);
 int zaio_move(zaio_t * aio, zevbase_t * neb, zaio_cb_t attach_callback);
 #define zaio_set_context(aio, ctx)         ((aio)->context=(ctx))

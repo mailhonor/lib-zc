@@ -1130,6 +1130,27 @@ int zaio_write_cache_get_len(zaio_t * aio)
     return aio->write_cache.len;
 }
 
+int zaio_printf(zaio_t * aio, char *fmt, ...)
+{
+	va_list ap;
+	char buf[1024000];
+	int len;
+
+	va_start(ap, fmt);
+	len = zvsnprintf(buf, 1024000, fmt, ap);
+	va_end(ap);
+
+	zaio_write_cache_append(aio, buf, len);
+	return 0;
+}
+
+int zaio_puts(zaio_t * aio, char *s)
+{
+	zaio_write_cache_append(aio, s, strlen(s));
+
+	return 0;
+}
+
 int zaio_sleep(zaio_t * aio, zaio_cb_t callback)
 {
     aio->rw_type = ZAIO_CB_TYPE_SLEEP;
