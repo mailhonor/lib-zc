@@ -22,11 +22,17 @@ zmaster_server_cb_t zmaster_server_before_exit = 0;
 static int test_mode;
 static int softstopping;
 static int reloading;
-static int client_count;
 static pid_t parent_pid;
 static zev_t *ev_status;
 static zev_t *ev_listen;
-static pthread_mutex_t *server_mutex;
+static ztimer_t reload_timer;
+
+static int reload_to_softstop(ztimer_t *tm)
+{
+    zmaster_server_stop_notify();
+
+    return 0;
+}
 
 static int on_master_reload(zev_t * zev)
 {
@@ -35,22 +41,12 @@ static int on_master_reload(zev_t * zev)
     {
         zmaster_server_reload();
     }
-    return 0;
-}
+    else
+    {
+        ztimer_start(&reload_timer, reload_to_softstop, 10*1000);
+    }
 
-#define client_count_plus()     client_recount(1)
-#define client_count_minus()    client_recount(-1)
-static void client_recount(int pm)
-{
-    if (pthread_mutex_lock(server_mutex))
-    {
-        zfatal("mutex: %m");
-    }
-    client_count += pm;
-    if (pthread_mutex_unlock(server_mutex))
-    {
-        zfatal("mutex: %m");
-    }
+    return 0;
 }
 
 #define local_ev_close()    if(local_ev_close_do_once){local_ev_close_do_once=0;local_ev_close_do();}
@@ -96,7 +92,6 @@ static int inet_server_accept(zev_t * zev)
     }
     znonblocking(fd, 1);
 
-    client_count_plus();
     zmaster_server_service(fd);
 
     return 0;
@@ -120,7 +115,6 @@ static int unix_server_accept(zev_t * zev)
     }
     znonblocking(fd, 1);
 
-    client_count++;
     zmaster_server_service(fd);
 
     return 0;
@@ -168,6 +162,9 @@ void register_server(char *test_listen)
 
     znonblocking(zvar_master_server_listen_fd, 1);
 
+
+    ztimer_init(&reload_timer, zvar_evbase);
+
     if (!zmaster_server_service)
     {
         return;
@@ -193,14 +190,11 @@ int zmaster_server_main(int argc, char **argv)
 
     parent_pid = getppid();
     test_mode = 1;
-    client_count = 0;
     reloading = 0;
     softstopping = 0;
     ev_status = 0;
     ev_listen = 0;
     local_ev_close_do_once = 1;
-    server_mutex = (pthread_mutex_t *)zcalloc(1, sizeof(pthread_mutex_t));
-    pthread_mutex_init(server_mutex, 0);
     signal(SIGPIPE, SIG_IGN);
 
     if (!zvar_progname)
@@ -268,10 +262,6 @@ int zmaster_server_main(int argc, char **argv)
         if (reloading)
         {
             local_ev_close();
-            if(client_count < 1)
-            {
-                break;
-            }
             if (getppid() != parent_pid)
             {
                 break;
@@ -291,6 +281,8 @@ int zmaster_server_main(int argc, char **argv)
         zmaster_server_before_exit();
     }
 
+    ztimer_fini(&reload_timer);
+
     zevbase_free(zvar_evbase);
 
     return 0;
@@ -300,10 +292,4 @@ void zmaster_server_stop_notify(void)
 {
     softstopping = 1;
     zevbase_notify(zvar_evbase);
-}
-
-void zmaster_server_disconnect(int fd)
-{
-    client_count_minus();
-    close(fd);
 }

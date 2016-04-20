@@ -35,7 +35,7 @@ static int service_error(zaio_t * aio)
     zinfo("%d: error or idle too long", fd);
     zaio_fini(aio);
     zfree(aio);
-    zmaster_server_disconnect(fd);
+    close(fd);
 
     return -1;
 }
@@ -56,7 +56,7 @@ static int after_read(zaio_t * aio, char *rbuf)
     {
         zaio_fini(aio);
         zfree(aio);
-        zmaster_server_disconnect(fd);
+        close(fd);
         return 0;
     }
 
@@ -65,7 +65,6 @@ static int after_read(zaio_t * aio, char *rbuf)
         zaio_fini(aio);
         zfree(aio);
         close(fd);
-        zmaster_server_disconnect(fd);
         zmaster_server_stop_notify();
         return 0;
     }

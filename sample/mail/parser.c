@@ -153,18 +153,14 @@ int main(int argc, char **argv)
     eml_fn = argv[1];
     zmmap_reader_init(&reader, eml_fn);
 
-	int i;
-	for (i = 0; i< 10000;i++)
-	{
     parser = zmail_parser_create(reader.data, reader.len);
     zmail_parser_run(parser);
 
-   //zmail_parser_show(parser);
+    zmail_parser_show(parser);
 
-    //save_all_attachments(parser);
+    save_all_attachments(parser);
 
     zmail_parser_free(parser);
-	}
 
     zmmap_reader_fini(&reader);
 
