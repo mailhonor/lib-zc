@@ -25,7 +25,7 @@ static void exit_sleep(void)
     }
 }
 
-static int after_write(zaio_t * aio, char *wbuf);
+static int after_write(zaio_t * aio);
 static int service_error(zaio_t * aio)
 {
     int fd;
@@ -40,10 +40,10 @@ static int service_error(zaio_t * aio)
     return -1;
 }
 
-static int after_read(zaio_t * aio, char *rbuf)
+static int after_read(zaio_t * aio)
 {
     int ret, fd, len;
-    char *p;
+    char rbuf[11000], *p;
 
     ret = zaio_get_ret(aio);
     fd = zaio_get_fd(aio);
@@ -51,6 +51,7 @@ static int after_read(zaio_t * aio, char *rbuf)
     {
         return service_error(aio);
     }
+    zaio_fetch_rbuf(aio, rbuf, ret);
 
     if (ret > 3 && !strncmp(rbuf, "exit", 4))
     {
@@ -85,12 +86,12 @@ static int after_read(zaio_t * aio, char *rbuf)
     zaio_write_cache_append(aio, "your input:   ", 12);
     zaio_write_cache_append(aio, rbuf, len);
     zaio_write_cache_append(aio, "\n", 1);
-    zaio_write_cache_flush(aio, after_write);
+    zaio_write_cache_flush(aio, after_write, 10 *  1000);
 
     return 0;
 }
 
-static int after_write(zaio_t * aio, char *wbuf)
+static int after_write(zaio_t * aio)
 {
     int ret;
 
@@ -101,19 +102,8 @@ static int after_write(zaio_t * aio, char *wbuf)
         return service_error(aio);
     }
 
-    zaio_read_delimiter(aio, '\n', 1024, after_read);
+    zaio_read_delimiter(aio, '\n', 1024, after_read, 10 * 1000);
 
-    return 0;
-}
-
-static int attach_to_evbase(zaio_t * aio, char *unused)
-{
-    char buf[1024];
-    time_t t = time(0);
-
-    sprintf(buf, "welcome aio: %s\n", ctime(&t));
-    zaio_write_cache_append(aio, buf, strlen(buf));
-    zaio_write_cache_flush(aio, after_write);
     return 0;
 }
 
@@ -128,7 +118,13 @@ static void service(int fd)
 
     znonblocking(fd, 1);
     zaio_init(aio, zvar_evbase, fd);
-    zaio_attach(aio, attach_to_evbase);
+
+    char buf[1024];
+    time_t t = time(0);
+
+    sprintf(buf, "welcome aio: %s\n", ctime(&t));
+    zaio_write_cache_append(aio, buf, strlen(buf));
+    zaio_write_cache_flush(aio, after_write, 10 * 1000);
 }
 
 int main(int argc, char **argv)

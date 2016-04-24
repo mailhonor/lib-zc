@@ -10,24 +10,27 @@
 #include <time.h>
 
 
-static int after_write(zaio_t * aio, char *wbuf);
+static int after_write(zaio_t * aio);
 static int service_error(zaio_t * aio)
 {
+    printf("service_error\n");
     int fd;
 
     fd = zaio_get_fd(aio);
 
     zinfo("%d: error or idle too long", fd);
     zaio_fini(aio);
-    zfree(aio);
+    zaio_free(aio);
     close(fd);
 
     return -1;
 }
 
-static int after_read(zaio_t * aio, char *rbuf)
+static int after_read(zaio_t * aio)
 {
+    printf("after_read\n");
     int ret, fd, len;
+    char rbuf[102400];
     char *p;
 
     ret = zaio_get_ret(aio);
@@ -36,11 +39,12 @@ static int after_read(zaio_t * aio, char *rbuf)
     {
         return service_error(aio);
     }
+    zaio_fetch_rbuf(aio, rbuf, ret);
 
     if (ret > 3 && !strncmp(rbuf, "exit", 4))
     {
         zaio_fini(aio);
-        zfree(aio);
+        zaio_free(aio);
         close(fd);
         return 0;
     }
@@ -61,14 +65,15 @@ static int after_read(zaio_t * aio, char *rbuf)
     zaio_write_cache_append(aio, "your input:   ", 12);
     zaio_write_cache_append(aio, rbuf, len);
     zaio_write_cache_append(aio, "\n", 1);
-    zaio_write_cache_flush(aio, after_write);
+    zaio_write_cache_flush(aio, after_write, 1000);
 
     return 0;
 }
 
-static int after_write(zaio_t * aio, char *wbuf)
+static int after_write(zaio_t * aio)
 {
     int ret;
+    printf("before_write\n");
 
     ret = zaio_get_ret(aio);
 
@@ -77,42 +82,43 @@ static int after_write(zaio_t * aio, char *wbuf)
         return service_error(aio);
     }
 
-    zaio_read_delimiter(aio, '\n', 1024, after_read);
+    zaio_read_delimiter(aio, '\n', 1024, after_read, 10 * 1000);
 
     return 0;
 }
 
-static int attach_to_evbase(zaio_t * aio, char *unused)
+static void welcome(zaio_t * aio)
 {
-    char buf[1024];
     time_t t = time(0);
 
-    sprintf(buf, "welcome aio: %s\n", ctime(&t));
-    zaio_write_cache_append(aio, buf, strlen(buf));
-    zaio_write_cache_flush(aio, after_write);
-
-    return 0;
-}
+    zaio_printf(aio, "welcome aio: %s\n", ctime(&t));
+    zaio_write_cache_flush(aio, after_write, 1000);
+} 
 
 static int before_accept(zev_t * ev)
 {
-    int sock = zev_get_fd(ev);
-    int fd = zinet_accept(sock);
-    zaio_t *aio = zaio_create();
+    printf("before_accept\n");
+    int sock;
+    int fd;
+    zaio_t *aio;
 
+    sock = zev_get_fd(ev);
+    fd = zinet_accept(sock);
     if (fd < -1)
     {
         printf("accept fail\n");
         return 0;
     }
     znonblocking(fd, 1);
+    aio = zaio_create();
     zaio_init(aio, zvar_evbase, fd);
-    zaio_attach(aio, attach_to_evbase);
+
+    welcome(aio);
 
     return 0;
 }
 
-static int timer_cb(ztimer_t * zt)
+static int timer_cb(zevtimer_t * zt)
 {
     zinfo("now exit!");
     exit(1);
@@ -125,7 +131,7 @@ int main(int argc, char **argv)
     int port;
     int sock;
     zev_t *ev;
-    ztimer_t tm;
+    zevtimer_t tm;
 
     port = 8899;
     zvar_evbase = zevbase_create();
@@ -136,8 +142,8 @@ int main(int argc, char **argv)
     zev_init(ev, zvar_evbase, sock);
     zev_read(ev, before_accept);
 
-    ztimer_init(&tm, zvar_evbase);
-    ztimer_start(&tm, timer_cb, 200 * 1000);
+    zevtimer_init(&tm, zvar_evbase);
+    zevtimer_start(&tm, timer_cb, 200 * 1000);
 
     while (1)
     {

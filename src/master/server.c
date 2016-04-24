@@ -6,7 +6,6 @@
  * ================================
  */
 
-
 #include "libzc.h"
 #include <signal.h>
 #include <pthread.h>
@@ -25,9 +24,9 @@ static int reloading;
 static pid_t parent_pid;
 static zev_t *ev_status;
 static zev_t *ev_listen;
-static ztimer_t reload_timer;
+static zevtimer_t reload_timer;
 
-static int reload_to_softstop(ztimer_t *tm)
+static int reload_to_softstop(zevtimer_t *tm)
 {
     zmaster_server_stop_notify();
 
@@ -43,7 +42,7 @@ static int on_master_reload(zev_t * zev)
     }
     else
     {
-        ztimer_start(&reload_timer, reload_to_softstop, 10*1000);
+        zevtimer_start(&reload_timer, reload_to_softstop, 10*1000);
     }
 
     return 0;
@@ -55,7 +54,7 @@ static void local_ev_close_do()
 {
     if (ev_listen)
     {
-        zev_stop(ev_listen);
+        zev_unset(ev_listen);
         zev_fini(ev_listen);
         zfree(ev_listen);
         ev_listen = 0;
@@ -66,7 +65,7 @@ static void local_ev_close_do()
     if (ev_status)
     {
         /* The master would receive the signal of closing ZMASTER_SERVER_STATUS_FD. */
-        zev_stop(ev_status);
+        zev_unset(ev_status);
         zev_fini(ev_status);
         zfree(ev_status);
         ev_status = 0;
@@ -163,7 +162,7 @@ void register_server(char *test_listen)
     znonblocking(zvar_master_server_listen_fd, 1);
 
 
-    ztimer_init(&reload_timer, zvar_evbase);
+    zevtimer_init(&reload_timer, zvar_evbase);
 
     if (!zmaster_server_service)
     {
@@ -281,7 +280,7 @@ int zmaster_server_main(int argc, char **argv)
         zmaster_server_before_exit();
     }
 
-    ztimer_fini(&reload_timer);
+    zevtimer_fini(&reload_timer);
 
     zevbase_free(zvar_evbase);
 

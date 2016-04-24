@@ -53,7 +53,7 @@ typedef struct zstream_t zstream_t;
 typedef struct zalarm_t zalarm_t;
 typedef struct zev_t zev_t;
 typedef struct zaio_t zaio_t;
-typedef struct ztimer_t ztimer_t;
+typedef struct zevtimer_t zevtimer_t;
 typedef struct zevbase_t zevbase_t;
 typedef struct ziopipe_base_t ziopipe_base_t;
 typedef struct zmmap_reader zmmap_reader;
@@ -387,19 +387,19 @@ struct zarray_t
     int size;
     char **data;
 };
-#define ZARRAY_LEN(arr)		    ((arr)->len)
-#define ZARRAY_DATA(arr)		((arr)->data)
-#define zarray_len(arr)		    ((arr)->len)
-#define zarray_data(arr)		((arr)->data)
+#define ZARRAY_LEN(arr)            ((arr)->len)
+#define ZARRAY_DATA(arr)        ((arr)->data)
+#define zarray_len(arr)            ((arr)->len)
+#define zarray_data(arr)        ((arr)->data)
 zarray_t *zarray_create(int size);
 void zarray_free(zarray_t * arr, void (*free_fn) (void *, void *), void *ctx);
 void zarray_truncate(zarray_t * arr, int len, void (*free_fn) (void *, void *), void *ctx);
 void zarray_add(zarray_t * arr, void *ns);
-#define ZARRAY_WALK_BEGIN(arr, var_your_chp)	{\
-	int  zargv_tmpvar_i;\
-	for(zargv_tmpvar_i=0;zargv_tmpvar_i<(arr)->len;zargv_tmpvar_i++){\
-		var_your_chp = (typeof(var_your_chp))((arr)->data[zargv_tmpvar_i]);
-#define ZARRAY_WALK_END				}}
+#define ZARRAY_WALK_BEGIN(arr, var_your_chp)    {\
+    int  zargv_tmpvar_i;\
+    for(zargv_tmpvar_i=0;zargv_tmpvar_i<(arr)->len;zargv_tmpvar_i++){\
+        var_your_chp = (typeof(var_your_chp))((arr)->data[zargv_tmpvar_i]);
+#define ZARRAY_WALK_END                }}
 
 /* ################################################################## */
 /* HTABLE */
@@ -628,7 +628,7 @@ zchain_node_t *zchain_delete(zchain_t * chain, zchain_node_t * n, char **value);
 #define zchain_push(chain, value)           zchain_add_before(chain, value, 0)
 #define zchain_unshift(chain, value)        zchain_add_before(chain, value, (chain)->head)
 #define zchain_pop(chain, value)            zchain_delete(chain, (chain)->tail, value)
-#define zchain_shift(chain, value)          zchain_delete(chian, (chain)->head, value)
+#define zchain_shift(chain, value)          zchain_delete(chain, (chain)->head, value)
 
 #define ZCHAIN_WALK_BEGIN(chain, var_your_node)  {\
     var_your_node=(chain)->head;\
@@ -1091,14 +1091,14 @@ void zmcot_free_one(zmcot_t * cot, void *ptr);
 
 /* ################################################################## */
 /* EVENT AIO */
-#define ZEV_TYPE_EVENT 		0x1
-#define ZEV_TYPE_AIO			0x2
+#define ZEV_TYPE_EVENT         0x1
+#define ZEV_TYPE_AIO           0x2
 
 typedef int (*zev_cb_t) (zev_t *);
 struct zev_t
 {
     unsigned char aio_type:3;
-    unsigned char inner_callback:4;
+    unsigned char is_local:1;
     unsigned char events;
     unsigned char recv_events;
     int fd;
@@ -1111,6 +1111,7 @@ struct zev_t
 #define zev_get_events(ev)               ((ev)->recv_events)
 #define zev_set_context(ev, ctx)         ((ev)->context=(ctx))
 #define zev_get_context(ev)              ((ev)->context)
+#define zev_get_callback(ev)             ((ev)->callback)
 zev_t *zev_create(void);
 void zev_free(zev_t * ev);
 void zev_init(zev_t * ev, zevbase_t * eb, int fd);
@@ -1120,13 +1121,11 @@ int zev_set(zev_t * ev, int events, zev_cb_t callback);
 #define zev_write(ev, callback)          (zev_set(ev, ZEV_WRITE, callback))
 #define zev_rwable(ev, callback)         (zev_set(ev, ZEV_READ|ZEV_WRITE, callback)
 int zev_unset(zev_t * ev);
-int zev_attach(zev_t * ev, zev_cb_t callback);
-int zev_stop(zev_t * ev);
 
 /* AIO */
 typedef struct zaio_rwbuf_t zaio_rwbuf_t;
 typedef struct zaio_rwbuf_list_t zaio_rwbuf_list_t;
-#define ZAIO_RWBUF_SIZE			1024
+#define ZAIO_RWBUF_SIZE            1024
 struct zaio_rwbuf_t
 {
     zaio_rwbuf_t *next;
@@ -1140,7 +1139,7 @@ struct zaio_rwbuf_list_t
     zaio_rwbuf_t *tail;
     int len;
 };
-typedef int (*zaio_cb_t) (zaio_t *, char *);
+typedef int (*zaio_cb_t) (zaio_t *);
 typedef struct zaio_ssl_t zaio_ssl_t;
 struct zaio_ssl_t
 {
@@ -1158,7 +1157,10 @@ struct zaio_t
     unsigned char aio_type;
     unsigned char events;
     unsigned char recv_events;
+    unsigned char is_local:1;
     unsigned char in_loop:1;
+    unsigned char in_time:1;
+    unsigned char enable_time:1;
     unsigned char want_read:1;
     char rw_type;
     char delimiter;
@@ -1169,112 +1171,97 @@ struct zaio_t
     void *context;
     zaio_rwbuf_list_t read_cache;
     zaio_rwbuf_list_t write_cache;
+    long timeout;
+    zrbtree_node_t rbnode_time;
     zevbase_t *evbase;
     zaio_ssl_t *ssl;
+    zaio_t *queue_prev;
+    zaio_t *queue_next;
 };
 
 #define zaio_get_base(aio)          ((aio)->evbase)
 #define zaio_get_fd(aio)            ((aio)->fd)
 #define zaio_get_ret(aio)           ((aio)->ret)
-int zaio_attach(zaio_t * aio, zaio_cb_t callback);
-int zaio_stop(zaio_t * aio);
+#define zaio_get_callback(aio)      ((aio)->callback)
+#define zaio_set_context(aio, ctx)         ((aio)->context=(ctx))
+#define zaio_get_context(aio)              ((aio)->context)
 zaio_t *zaio_create(void);
 void zaio_free(zaio_t * aio);
 void zaio_init(zaio_t * aio, zevbase_t * eb, int fd);
 void zaio_fini(zaio_t * aio);
-void zaio_reset_base(zaio_t * aio, zevbase_t * eb_new);
-int zaio_read(zaio_t * aio, int max_len, zaio_cb_t callback);
-int zaio_read_n(zaio_t * aio, int strict_len, zaio_cb_t callback);
-int zaio_read_delimiter(zaio_t * aio, char delimiter, int max_len, zaio_cb_t callback);
-#define zaio_read_line(a,c,d) zaio_read_delimiter(a,'\n',c,d)
-int zaio_read_sizedata(zaio_t * aio, zaio_cb_t callback);
-int zaio_write_cache_append(zaio_t * aio, void *buf, int len);
-int zaio_write_cache_append_sizedata(zaio_t * aio, int len, void *buf);
-int zaio_write_cache_flush(zaio_t * aio, zaio_cb_t callback);
-int zaio_write_cache_get_len(zaio_t * aio);
+void zaio_set_local_mode(zaio_t *aio);
+int zaio_fetch_rbuf(zaio_t *aio, char *buf, int len);
+int zaio_read(zaio_t * aio, int max_len, zaio_cb_t callback, int timeout);
+int zaio_read_n(zaio_t * aio, int strict_len, zaio_cb_t callback, int timeout);
+int zaio_read_delimiter(zaio_t * aio, char delimiter, int max_len, zaio_cb_t callback, int timeout);
+#define zaio_read_line(a,c,d,e) zaio_read_delimiter(a,'\n',c,d,e)
 int zaio_printf(zaio_t * aio, char *fmt, ...);
 int zaio_puts(zaio_t * aio, char *s);
-int zaio_sleep(zaio_t * aio, zaio_cb_t callback);
-int zaio_move(zaio_t * aio, zevbase_t * neb, zaio_cb_t attach_callback);
-#define zaio_set_context(aio, ctx)         ((aio)->context=(ctx))
-#define zaio_get_context(aio)              ((aio)->context)
+int zaio_write_cache_append(zaio_t * aio, void *buf, int len);
+int zaio_write_cache_flush(zaio_t * aio, zaio_cb_t callback, int timeout);
+int zaio_write_cache_get_len(zaio_t * aio);
+int zaio_sleep(zaio_t * aio, zaio_cb_t callback, int timeout);
+int zaio_move(zaio_t * aio, zevbase_t * neb);
 
-int zaio_ssl_init(zaio_t * aio, zsslctx_t * ctx, zaio_cb_t callback);
+int zaio_ssl_init(zaio_t * aio, zsslctx_t * ctx, zaio_cb_t callback, int timeout);
 void zaio_ssl_fini(zaio_t * aio);
 int zaio_ssl_attach(zaio_t * aio, zaio_ssl_t * zssl);
 zaio_ssl_t *zaio_ssl_detach(zaio_t * aio);
 void *___zaio_ssl_detach_ssl(zaio_ssl_t * assl);    /* return SSL* */
 #define zaio_ssl_detach_ssl(assl)   ((SSL *)(___zaio_ssl_detach_ssl(assl)))
 
-/* onnect */
-int zev_inet_connect(zev_t * ev, char *dip, int port, zev_cb_t callback);
-int zev_unix_connect(zev_t * ev, char *path, zev_cb_t callback);
-
 /* TIMER */
-typedef int (*ztimer_cb_t) (ztimer_t *);
-struct ztimer_t
+typedef int (*zevtimer_cb_t) (zevtimer_t *);
+struct zevtimer_t
 {
     long timeout;
-    ztimer_cb_t callback;
+    zevtimer_cb_t callback;
     void *context;
     zrbtree_node_t rbnode_time;
-    unsigned short int in_time:1;
-    unsigned short int enable_time:1;
+    unsigned char in_time:1;
     zevbase_t *evbase;
 };
 
-#define ztimer_get_base(timer)          ((timer)->evbase)
-#define ztimer_set_context(timer, ctx)    ((timer)->context=(ctx))
-#define ztimer_get_context(timer)         ((timer)->context)
-ztimer_t *ztimer_create(void);
-void ztimer_free(ztimer_t * timer);
-void ztimer_init(ztimer_t * timer, zevbase_t * eb);
-void ztimer_fini(ztimer_t * timer);
-int ztimer_start(ztimer_t * timer, ztimer_cb_t callbac, int timeout);
-int ztimer_pause(ztimer_t * timer);
-int ztimer_continue(ztimer_t * timer);
-int ztimer_stop(ztimer_t * timer);
-int ztimer_attach(ztimer_t * timer, ztimer_cb_t callback);
-int ztimer_detach(ztimer_t * timer);
+#define zevtimer_get_base(timer)          ((timer)->evbase)
+#define zevtimer_set_context(timer, ctx)    ((timer)->context=(ctx))
+#define zevtimer_get_context(timer)         ((timer)->context)
+zevtimer_t *zevtimer_create(void);
+void zevtimer_free(zevtimer_t * timer);
+void zevtimer_init(zevtimer_t * timer, zevbase_t * eb);
+void zevtimer_fini(zevtimer_t * timer);
+int zevtimer_start(zevtimer_t * timer, zevtimer_cb_t callback, int timeout);
+int zevtimer_stop(zevtimer_t * timer);
 
 /* BASE */
 extern zevbase_t *zvar_evbase;
-typedef int (*zevbase_cb_t) (zevbase_t *, void *);
+typedef int (*zevbase_cb_t) (zevbase_t *);
 typedef int (*zevbase_loop_t) (zevbase_t *);
-typedef struct zevbase_queue_t zevbase_queue_t;
-struct zevbase_queue_t
-{
-    zevbase_cb_t callback;
-    void *context;
-    zevbase_queue_t *prev;
-    zevbase_queue_t *next;
-};
-
-int zevbase_queue_enter(zevbase_t * eb, zevbase_cb_t callback, void *context);
 
 struct zevbase_t
 {
     int epoll_fd;
-    int epoll_event_count;
     struct epoll_event *epoll_event_list;
     void *locker;
-    zrbtree_t timer_tree;
-    zmcot_t *aio_rwbuf_mpool;
+    zrbtree_t general_timer_tree;
+    zrbtree_t aio_timer_tree;
     zev_t eventfd_event;
-    zaio_t *magic_aio;
     void *context;
-    zevbase_queue_t *queue_head;
-    zevbase_queue_t *queue_tail;
     zevbase_loop_t loop_fn;
-    zmcot_t *queue_mpool;
+    zmcot_t *aio_rwbuf_mpool;
+
+    zaio_t *old_queue_head;
+    zaio_t *old_queue_tail;
+    zaio_t *now_queue_head;
+    zaio_t *now_queue_tail;
 };
 void zvar_evbase_init(void);
+int zevbase_notify(zevbase_t * eb);
+void zevbase_single_mode(void);
 zevbase_t *zevbase_create(void);
 void zevbase_free(zevbase_t * eb);
 int zevbase_dispatch(zevbase_t * eb, long delay);
 #define zevbase_set_context(eb, ctx)        ((eb)->context=(ctx))
 #define zevbase_get_context(eb)             ((eb)->context)
-int zevbase_notify(zevbase_t * eb);
 
 /* ################################################################## */
 /* iopipe */
@@ -1288,12 +1275,12 @@ void ziopipe_enter(ziopipe_base_t * iopb, int client_fd, void *client_ssl, int s
 
 /* ################################################################## */
 /* server master */
-#define ZMASTER_LISTEN_INET	        'i'
-#define ZMASTER_LISTEN_UNIX	        'u'
-#define ZMASTER_LISTEN_FIFO	        'f'
-#define ZMASTER_SERVER_STATUS_FD	3
-#define ZMASTER_MASTER_STATUS_FD	4
-#define ZMASTER_LISTEN_FD	        5
+#define ZMASTER_LISTEN_INET            'i'
+#define ZMASTER_LISTEN_UNIX            'u'
+#define ZMASTER_LISTEN_FIFO            'f'
+#define ZMASTER_SERVER_STATUS_FD    3
+#define ZMASTER_MASTER_STATUS_FD    4
+#define ZMASTER_LISTEN_FD            5
 
 extern int zvar_master_child_exception_check;
 int zmaster_main(int argc, char **argv);
@@ -1644,10 +1631,10 @@ int zmail_parser_decode_text_mime_body_to_df(zmail_parser_t * parser, zmail_mime
 int zmail_parser_decode_tnef(zmail_parser_t * parser, char *tnef_data, int tnef_len, zmail_mime_t ** mime_tree);
 
 #define ZMAIL_PARSER_MIME_WALK_BEGIN(mime_top, var_your_node) {\
-	zmail_mime_t *___Next_0611; \
-	for (var_your_node = (mime_top); var_your_node; var_your_node = ___Next_0611) { \
-		___Next_0611 = var_your_node->all_next;  {
-#define ZMAIL_PARSER_MIME_WALK_END				}}}
+    zmail_mime_t *___Next_0611; \
+    for (var_your_node = (mime_top); var_your_node; var_your_node = ___Next_0611) { \
+        ___Next_0611 = var_your_node->all_next;  {
+#define ZMAIL_PARSER_MIME_WALK_END                }}}
 
 /* for dev */
 int zmail_parser_mimetrim_dup(zmail_parser_t * parser, char *in_src, int in_len, char *out);

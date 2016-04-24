@@ -129,7 +129,7 @@ static int before_accept(zev_t * ev)
     return 0;
 }
 
-static int timer_cb(ztimer_t * zt)
+static int timer_cb(zevtimer_t * zt)
 {
     zinfo("now exit!");
     exit(1);
@@ -142,7 +142,7 @@ int main(int argc, char **argv)
     int port;
     int sock;
     zev_t *ev;
-    ztimer_t tm;
+    zevtimer_t tm;
 
     port = 8899;
     zvar_evbase = zevbase_create();
@@ -153,8 +153,8 @@ int main(int argc, char **argv)
     zev_init(ev, zvar_evbase, sock);
     zev_read(ev, before_accept);
 
-    ztimer_init(&tm, zvar_evbase);
-    ztimer_start(&tm, timer_cb, 200 * 1000);
+    zevtimer_init(&tm, zvar_evbase);
+    zevtimer_start(&tm, timer_cb, 200 * 1000);
 
     while (1)
     {

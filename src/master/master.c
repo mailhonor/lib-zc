@@ -6,7 +6,6 @@
  * ================================
  */
 
-
 #include "libzc.h"
 #include <sys/file.h>
 #include <sys/types.h>
@@ -34,13 +33,13 @@ struct zmaster_entry_t
     int wakeup;
     int wakeup_on;
     int wakeup_now;
-    ztimer_t wakeup_timer;
+    zevtimer_t wakeup_timer;
     int listen_fd;
     int listen_type;
     int listen_on;
     zev_t listen_ev;
     int child_error;
-    ztimer_t child_error_timer;
+    zevtimer_t child_error_timer;
 };
 
 struct zmaster_status_fd_t
@@ -80,10 +79,8 @@ static void zmaster_server_init(void)
     self_init = 1;
 
     /* EVENT */
-    if (!zvar_evbase)
-    {
-        zvar_evbase = zevbase_create();
-    }
+    zvar_evbase_init();
+    zevbase_single_mode();
 
     /* VAR */
     server_entry_list = zgrid_create();
@@ -150,11 +147,11 @@ static void zmaster_set_stop(void)
         men->stop = 1;
         zfree(men->config_path);
         zfree(men->cmd);
-        ztimer_fini(&(men->wakeup_timer));
+        zevtimer_fini(&(men->wakeup_timer));
         zev_fini(&(men->listen_ev));
         men->listen_on = 0;
         men->child_error = 0;
-        ztimer_fini(&(men->child_error_timer));
+        zevtimer_fini(&(men->child_error_timer));
     }
     ZGRID_WALK_END;
 }
@@ -202,11 +199,11 @@ static void zmaster_reload_one_config(char *pn)
     {
         men->wakeup = 0;
     }
-    ztimer_init(&(men->wakeup_timer), zvar_evbase);
-    ztimer_set_context(&(men->wakeup_timer), men);
+    zevtimer_init(&(men->wakeup_timer), zvar_evbase);
+    zevtimer_set_context(&(men->wakeup_timer), men);
     men->child_error = 0;
-    ztimer_init(&(men->child_error_timer), zvar_evbase);
-    ztimer_set_context(&(men->child_error_timer), men);
+    zevtimer_init(&(men->child_error_timer), zvar_evbase);
+    zevtimer_set_context(&(men->child_error_timer), men);
 
     zconfig_free(cf);
 }
@@ -313,23 +310,23 @@ static void zmaster_active_server(void)
     ZGRID_WALK_END;
 }
 
-static int zmaster_wakeup_idle(ztimer_t * tm)
+static int zmaster_wakeup_idle(zevtimer_t * tm)
 {
     zmaster_entry_t *men;
 
-    men = (zmaster_entry_t *) (ztimer_get_context(tm));
-    ztimer_stop(&(men->child_error_timer));
+    men = (zmaster_entry_t *) (zevtimer_get_context(tm));
+    zevtimer_stop(&(men->child_error_timer));
     men->child_error = 0;
     zmaster_listen_set(men);
 
     return 0;
 }
 
-static int zmaster_wakeup_child(ztimer_t * tm)
+static int zmaster_wakeup_child(zevtimer_t * tm)
 {
     zmaster_entry_t *men;
 
-    men = (zmaster_entry_t *) (ztimer_get_context(tm));
+    men = (zmaster_entry_t *) (zevtimer_get_context(tm));
     if (men->proc_count)
     {
         return 0;
@@ -347,12 +344,12 @@ static void zmaster_listen_set(zmaster_entry_t * men)
     {
         if (men->listen_on == 1)
         {
-            zev_stop(&(men->listen_ev));
+            zev_unset(&(men->listen_ev));
             men->listen_on = 0;
         }
         if (men->child_error)
         {
-            ztimer_start(&(men->child_error_timer), zmaster_wakeup_idle, 100);
+            zevtimer_start(&(men->child_error_timer), zmaster_wakeup_idle, 100);
         }
     }
     else if ((men->listen_on == 0) && (men->proc_count < men->proc_limit))
@@ -367,7 +364,7 @@ static void zmaster_listen_set(zmaster_entry_t * men)
         {
             if (men->wakeup_on)
             {
-                ztimer_stop(&(men->wakeup_timer));
+                zevtimer_stop(&(men->wakeup_timer));
                 men->wakeup_on = 0;
             }
         }
@@ -375,7 +372,7 @@ static void zmaster_listen_set(zmaster_entry_t * men)
         {
             if (!men->wakeup_on)
             {
-                ztimer_start(&(men->wakeup_timer), zmaster_wakeup_child, men->wakeup * 1000);
+                zevtimer_start(&(men->wakeup_timer), zmaster_wakeup_child, men->wakeup * 1000);
                 men->wakeup_on = 1;
             }
         }
@@ -601,4 +598,3 @@ int zmaster_main(int argc, char **argv)
 
     return 0;
 }
-

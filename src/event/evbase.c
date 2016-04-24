@@ -25,135 +25,23 @@
 #define ZAIO_CB_TYPE_SLEEP                  0X31U
 #define ZAIO_CB_TYPE_SSL_INIT               0X41U
 
-#define ZEV_INNER_CB_FN_CONNECT             0X01
+static int ___single_mode = 0;
 
-#define ZEVBASE_LOCK(eb)	pthread_mutex_lock((pthread_mutex_t *)((eb)->locker))
-#define ZEVBASE_UNLOCK(eb)	pthread_mutex_unlock((pthread_mutex_t *)((eb)->locker));
-
-/* ################################################################## */
-/* connect */
-
-static int inline zev_connect_cb(zev_t * zev)
-{
-    int sock;
-    int error;
-    socklen_t error_len;
-
-    sock = zev_get_fd(zev);
-
-    if (zev_get_events(zev) & ZEV_WRITE)
-    {
-        error = 0;
-        error_len = sizeof(error);
-        if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (char *)&error, &error_len) < 0)
-        {
-            zev->recv_events = ZEV_ERROR;
-        }
-        if (error)
-        {
-            errno = error;
-            zev->recv_events = ZEV_ERROR;
-        }
-    }
-    zev->callback(zev);
-
-    return 0;
-}
-
-static inline int ___zev_connect(zev_t * zev, struct sockaddr *sa, socklen_t len, zev_cb_t callback)
-{
-    int sock;
-
-    sock = zev_get_fd(zev);
-    if (connect(sock, sa, len))
-    {
-        zev->recv_events = ZEV_WRITE;
-        zev_attach(zev, callback);
-        return 0;
-    }
-
-    if (errno != EINPROGRESS)
-    {
-        zev->recv_events = ZEV_ERROR;
-        zev_attach(zev, callback);
-        return 0;
-    }
-
-    zev->inner_callback = ZEV_INNER_CB_FN_CONNECT;
-    zev_set(zev, ZEV_WRITE, callback);
-
-    return 0;
-
-}
-
-int zev_inet_connect(zev_t * zev, char *dip, int port, zev_cb_t callback)
-{
-    int sock;
-    struct sockaddr_in addr;
-    int on = 1;
-
-    sock = zev_get_fd(zev);
-    znonblocking(sock, 1);
-    (void)setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (char *)&on, sizeof(on));
-
-    memset(&addr, 0, sizeof(struct sockaddr_in));
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = inet_addr(dip);
-    ___zev_connect(zev, (struct sockaddr *)&addr, sizeof(struct sockaddr_in), callback);
-
-    return 0;
-}
-
-int zev_unix_connect(zev_t * zev, char *path, zev_cb_t callback)
-{
-    struct sockaddr_un addr;
-    int len = strlen(path);
-
-    memset((char *)&addr, 0, sizeof(addr));
-    addr.sun_family = AF_UNIX;
-    if (len < (int)sizeof(addr.sun_path))
-    {
-        memcpy(addr.sun_path, path, len + 1);
-    }
-    else
-    {
-        zev->recv_events = ZEV_ERROR;
-        zev_attach(zev, callback);
-        return 0;
-    }
-    ___zev_connect(zev, (struct sockaddr *)&addr, sizeof(struct sockaddr_un), callback);
-
-    return 0;
-}
+#define lock_evbase(eb)     { if(!___single_mode) { \
+    if(pthread_mutex_lock((pthread_mutex_t *)((eb)->locker))) {zfatal("pthread_mutex_lock:%m");}} }
+#define unlock_evbase(eb)   { if(!___single_mode) { \
+    if(pthread_mutex_unlock((pthread_mutex_t *)((eb)->locker))) {zfatal("pthread_mutex_unlock:%m");}} }
 
 /* ################################################################## */
 /* ev/event/trigger */
-
-int zev_attach(zev_t * ev, zev_cb_t callback)
-{
-    zevbase_t *eb = zev_get_base(ev);
-
-    ev->callback = callback;
-    zevbase_queue_enter(eb, (zevbase_cb_t) (-1), ev);
-
-    return 0;
-}
-
-int zev_stop(zev_t * ev)
-{
-    zev_set(ev, 0, 0);
-
-    return 0;
-}
 
 int zev_set(zev_t * ev, int events, zev_cb_t callback)
 {
     int fd, old_events, e_events;
     struct epoll_event epv;
-    zevbase_t *aio;
+    zevbase_t *eb;
 
-    aio = ev->evbase;
+    eb = ev->evbase;
     fd = zev_get_fd(ev);
     e_events = EPOLLHUP | EPOLLRDHUP | EPOLLERR;
 
@@ -165,11 +53,12 @@ int zev_set(zev_t * ev, int events, zev_cb_t callback)
         events = 0;
     }
 
+    lock_evbase(eb);
     if (events == 0)
     {
         if (old_events)
         {
-            if (epoll_ctl(aio->epoll_fd, EPOLL_CTL_DEL, fd, NULL) == -1)
+            if (epoll_ctl(eb->epoll_fd, EPOLL_CTL_DEL, fd, NULL) == -1)
             {
                 zfatal("zev_set: fd %d: DEL  error: %m", fd);
             }
@@ -191,11 +80,12 @@ int zev_set(zev_t * ev, int events, zev_cb_t callback)
         }
         epv.events = e_events;
         epv.data.ptr = ev;
-        if (epoll_ctl(aio->epoll_fd, (old_events ? EPOLL_CTL_MOD : EPOLL_CTL_ADD), fd, &epv) == -1)
+        if (epoll_ctl(eb->epoll_fd, (old_events ? EPOLL_CTL_MOD : EPOLL_CTL_ADD), fd, &epv) == -1)
         {
             zfatal("zev_set: fd %d: %s error: %m", fd, (old_events ? "MOD" : "ADD"));
         }
     }
+    unlock_evbase(eb);
 
     return 0;
 }
@@ -230,26 +120,15 @@ void zev_fini(zev_t * ev)
 
 static inline int zev_action(zev_t * ev)
 {
-    if (ev->inner_callback == 0)
+    zev_cb_t callback = ev->callback;
+
+    if (callback)
     {
-        if (ev->callback)
-        {
-            ev->callback(ev);
-        }
-        else
-        {
-            zev_set(ev, 0, 0);
-        }
-    }
-    else if (ev->inner_callback == ZEV_INNER_CB_FN_CONNECT)
-    {
-        ev->inner_callback = 0;
-        zev_connect_cb(ev);
+        (callback)(ev);
     }
     else
     {
-        ev->inner_callback = 0;
-        zev_set(ev, 0, 0);
+        zfatal("zev: not found callback");
     }
 
     return 0;
@@ -258,10 +137,89 @@ static inline int zev_action(zev_t * ev)
 /* ################################################################## */
 /* aio */
 
-static int ___zaio_read_n_TRUE(zaio_t * aio, int strict_len, zaio_cb_t callback);
-static int zaio_event_set(zaio_t * aio, int ev_type);
+#define epoll_event_count  4096
+static int ___zaio_read_n_TRUE(zaio_t * aio, int strict_len, zaio_cb_t callback, int timeout);
+static int zaio_event_set(zaio_t * aio, int ev_type, int timeout);
 static int ZAIO_P2_MAX = ZAIO_RWBUF_SIZE - 1;
 static void zaio_ready_do(zaio_t * aio);
+
+static int zaio_timer_cmp(zrbtree_node_t * n1, zrbtree_node_t * n2)
+{
+	zaio_t *e1, *e2;
+	int r;
+
+	e1 = ZCONTAINER_OF(n1, zaio_t, rbnode_time);
+	e2 = ZCONTAINER_OF(n2, zaio_t, rbnode_time);
+	r = e1->timeout - e2->timeout;
+	if (!r)
+    {
+		r = e1->fd - e2->fd;
+	}
+	if (r > 0)
+    {
+		return 1;
+	}
+    else if (r < 0)
+    {
+		return -1;
+	}
+	return 0;
+}
+
+static inline int zaio_timer_check(zevbase_t * eb)
+{
+	zaio_t *aio;
+	zaio_cb_t callback;
+	zrbtree_node_t *rn;
+	long delay;
+
+	if (!zrbtree_have_data(&(eb->aio_timer_tree)))
+    {
+		return delay;
+	}
+
+	while (1)
+    {
+        lock_evbase(eb);
+		rn = zrbtree_first(&(eb->aio_timer_tree));
+		if (!rn)
+        {
+            unlock_evbase(eb);
+            return 10 * 1000;
+		}
+		aio = ZCONTAINER_OF(rn, zaio_t, rbnode_time);
+		delay = ztimeout_left(aio->timeout);
+		if (delay > 0)
+        {
+            unlock_evbase(eb);
+            return delay;
+		}
+		callback = aio->callback;
+		aio->recv_events = 0;
+		aio->ret = -2;
+		if (aio->rw_type == ZAIO_CB_TYPE_SLEEP)
+        {
+			aio->ret = 1;
+		}
+        if (aio->in_time)
+        {
+            zrbtree_detach(&(eb->aio_timer_tree), rn);
+        }
+        aio->in_time = 0;
+        unlock_evbase(eb);
+
+		if (callback)
+        {
+			(callback) (aio);
+		}
+        else
+        {
+            zfatal("zaio: not found callback");
+		}
+	}
+
+    return 10 * 1000;
+}
 
 static inline void ___zaio_cache_shift(zaio_t * aio, zaio_rwbuf_list_t * ioc, void *data, int len)
 {
@@ -269,9 +227,7 @@ static inline void ___zaio_cache_shift(zaio_t * aio, zaio_rwbuf_list_t * ioc, vo
     char *buf = (char *)data;
     char *cdata;
     zaio_rwbuf_t *rwb;
-    zevbase_t *eb;
-
-    eb = zaio_get_base(aio);
+    zevbase_t *eb = zaio_get_base(aio);
 
     while (len > 0)
     {
@@ -296,7 +252,9 @@ static inline void ___zaio_cache_shift(zaio_t * aio, zaio_rwbuf_list_t * ioc, vo
         if (len >= rlen)
         {
             rwb = rwb->next;
-            zmcot_free_one((eb)->aio_rwbuf_mpool, ioc->head);
+            lock_evbase(eb);
+            zmcot_free_one(eb->aio_rwbuf_mpool, ioc->head);
+            unlock_evbase(eb);
             ioc->head = rwb;
             len -= rlen;
         }
@@ -334,9 +292,7 @@ static inline void ___zaio_cache_append(zaio_t * aio, zaio_rwbuf_list_t * ioc, v
     char *cdata;
     int i, p2;
     zaio_rwbuf_t *rwb;
-    zevbase_t *eb;
-
-    eb = zaio_get_base(aio);
+    zevbase_t *eb = zaio_get_base(aio);
 
     rwb = ioc->tail;
     p2 = 0;
@@ -350,7 +306,9 @@ static inline void ___zaio_cache_append(zaio_t * aio, zaio_rwbuf_list_t * ioc, v
     {
         if (!rwb || (p2 == ZAIO_P2_MAX))
         {
+            lock_evbase(eb);
             rwb = (zaio_rwbuf_t *) zmcot_alloc_one(eb->aio_rwbuf_mpool);
+            unlock_evbase(eb);
             rwb->next = 0;
             rwb->p1 = 0;
             rwb->p2 = 0;
@@ -492,7 +450,7 @@ static int zaio_try_ssl_accept(zaio_t * aio)
     return 1;
 }
 
-int zaio_ssl_init(zaio_t * aio, zsslctx_t * ctx, zaio_cb_t callback)
+int zaio_ssl_init(zaio_t * aio, zsslctx_t * ctx, zaio_cb_t callback, int timeout)
 {
     zaio_ssl_t *zssl;
     SSL *ssl;
@@ -521,11 +479,12 @@ int zaio_ssl_init(zaio_t * aio, zsslctx_t * ctx, zaio_cb_t callback)
 
     if (rlen > 0)
     {
+        zaio_event_set(aio, 2, timeout);
         zaio_ready_do(aio);
         return 0;
     }
 
-    zaio_event_set(aio, 1);
+    zaio_event_set(aio, 1, timeout);
 
     return 0;
 }
@@ -577,22 +536,26 @@ void *___zaio_ssl_detach_ssl(zaio_ssl_t * assl)
     return ssl;
 }
 
-int zaio_move(zaio_t * aio, zevbase_t * neb, zaio_cb_t attach_callback)
+int zaio_move(zaio_t * aio, zevbase_t * neb)
 {
     int fd;
     zaio_ssl_t *assl;
 
     fd = zaio_get_fd(aio);
-    zaio_event_set(aio, 0);
+    zaio_event_set(aio, 0, -2);
     assl = zaio_ssl_detach(aio);
 
-    /* FIXME readbuf,writebuf may be not blank */
     zaio_fini(aio);
 
     zaio_init(aio, neb, fd);
     zaio_ssl_attach(aio, assl);
 
-    zaio_attach(aio, attach_callback);
+    return 0;
+}
+
+int zaio_fetch_rbuf(zaio_t *aio, char *buf, int len)
+{
+    ___zaio_cache_shift(aio, &(aio->read_cache), buf, len);
 
     return 0;
 }
@@ -600,7 +563,6 @@ int zaio_move(zaio_t * aio, zevbase_t * neb, zaio_cb_t attach_callback)
 static void zaio_ready_do_once(zaio_t * aio)
 {
     zaio_cb_t callback;
-    char worker_buf[1100000];
     unsigned int rw_type;
     int ret = 0;
 
@@ -608,79 +570,41 @@ static void zaio_ready_do_once(zaio_t * aio)
     rw_type = aio->rw_type;
     ret = aio->ret;
 
+    if (!callback)
+    {
+        zfatal("zaio: not found callback");
+    }
+
     /* SSL connect/accept */
     if (rw_type == ZAIO_CB_TYPE_SSL_INIT)
     {
-        if (callback)
-        {
-            (callback) (aio, 0);
-        }
+        (callback) (aio);
         return;
     }
 
     /* SLEEP */
     if (rw_type == ZAIO_CB_TYPE_SLEEP)
     {
-        if (callback)
-        {
-            aio->ret = 1;
-            (callback) (aio, 0);
-        }
+        aio->ret = 1;
+        (callback) (aio);
         return;
     }
     /* WRITE */
     if ((rw_type & ZAIO_CB_WRITE))
     {
-        if (callback)
-        {
-            (callback) (aio, 0);
-        }
-        return;
-    }
-    /* READ */
-    if (ret < 1)
-    {
-        if (callback)
-        {
-            (callback) (aio, worker_buf);
-        }
+        (callback) (aio);
         return;
     }
 
-    ___zaio_cache_shift(aio, &(aio->read_cache), worker_buf, ret);
-    if (rw_type == ZAIO_CB_TYPE_READ_N && aio->delimiter == 'N')
+    /* READ */
+    if (ret < 1)
     {
-        int LLL = 0, i;
-        unsigned char *p = (unsigned char *)worker_buf;;
-        for (i = 0; i < 4; i++)
-        {
-            LLL = LLL * 256 + p[i];
-        }
-        aio->delimiter = '\0';
-        if (LLL > 1024 * 1024 || LLL < 0)
-        {
-            aio->ret = -1;
-            if (callback)
-            {
-                (callback) (aio, worker_buf);
-            }
-            return;
-        }
-        if (LLL == 0)
-        {
-            if (callback)
-            {
-                aio->ret = 0;
-                (callback) (aio, worker_buf);
-            }
-            return;
-        }
-        ___zaio_read_n_TRUE(aio, LLL, callback);
+        (callback) (aio);
+        return;
     }
-    else if (callback)
+    if (callback)
     {
-        worker_buf[ret] = 0;
-        (callback) (aio, worker_buf);
+        (callback) (aio);
     }
 }
 
@@ -688,20 +612,23 @@ static void zaio_ready_do(zaio_t * aio)
 {
     zevbase_t *eb = aio->evbase;
 
-    eb->magic_aio = 0;
     if (aio->in_loop)
     {
-        eb->magic_aio = aio;
+        lock_evbase(eb);
+        if (aio->in_loop)
+        {
+            ZMLINK_APPEND(eb->old_queue_head, eb->old_queue_tail, aio, queue_prev, queue_next);
+            aio->in_loop = 0;
+        }
+        unlock_evbase(eb);
+        if (! ___single_mode)
+        {
+            zevbase_notify(eb);
+        }
         return;
     }
     aio->in_loop = 1;
-    eb->magic_aio = aio;
-    while (eb->magic_aio)
-    {
-        eb->magic_aio = 0;
-        zaio_ready_do_once(aio);
-    }
-    aio->in_loop = 0;
+    zaio_ready_do_once(aio);
 }
 
 zaio_t *zaio_create(void)
@@ -724,7 +651,7 @@ void zaio_init(zaio_t * aio, zevbase_t * eb, int fd)
 
 void zaio_fini(zaio_t * aio)
 {
-    zaio_event_set(aio, 0);
+    zaio_event_set(aio, 0, 0);
 
     if (aio->read_cache.len > 0)
     {
@@ -740,135 +667,151 @@ void zaio_fini(zaio_t * aio)
     }
 }
 
-void zaio_reset_base(zaio_t * aio, zevbase_t * eb_new)
+void zaio_set_local_mode(zaio_t *aio)
 {
-    zaio_event_set(aio, 0);
-
-    if (aio->read_cache.len > 0)
-    {
-        ___zaio_cache_shift(aio, &(aio->read_cache), 0, aio->read_cache.len);
-    }
-    if (aio->write_cache.len > 0)
-    {
-        ___zaio_cache_shift(aio, &(aio->write_cache), 0, aio->write_cache.len);
-    }
-    aio->evbase = eb_new;
+    aio->is_local = 1;
 }
 
-static int zaio_event_set(zaio_t * aio, int ev_type)
+static int zaio_event_set(zaio_t * aio, int ev_type, int timeout)
 {
-    zevbase_t *eb;
+    zevbase_t *eb = zaio_get_base(aio);
     int fd, events, old_events, e_events;
     struct epoll_event evt;
+    zrbtree_t *timer_tree = &(eb->aio_timer_tree);
+    zrbtree_node_t *rn;
     int rw_type;
 
-    eb = aio->evbase;
-    fd = aio->fd;
-    rw_type = aio->rw_type;
-    events = 0;
+    lock_evbase(eb);
 
-    if (ev_type == 0)
+    /* timeout */
+	rn = &(aio->rbnode_time);
+	if (timeout > 0)
     {
-        /* clear event; */
-        goto evdo;
-    }
-    /* compute the events */
-    if (!(aio->ssl))
+        if (aio->in_time)
+        {
+            zrbtree_detach(timer_tree, rn);
+        }
+		aio->timeout = ztimeout_set(timeout);
+		zrbtree_attach(timer_tree, rn);
+        aio->in_time = 1;
+		aio->enable_time = 1;
+	}
+    else if (timeout == 0)
     {
-        if ((rw_type & ZAIO_CB_MAGIC) == ZAIO_CB_READ)
+        if (aio->in_time)
         {
-            events |= ZEV_READ;
+            zrbtree_detach(timer_tree, rn);
         }
-        if ((rw_type & ZAIO_CB_MAGIC) == ZAIO_CB_WRITE)
-        {
-            events |= ZEV_WRITE;
-        }
-        if (aio->write_cache.len > 0)
-        {
-            events |= ZEV_WRITE;
-        }
-    }
-    else
+        aio->in_time = 0;
+		aio->enable_time = 0;
+	}
+    else if (timeout == -1)
     {
-        if (aio->ssl->read_want_read || aio->ssl->write_want_read)
+        if (aio->enable_time)
         {
-            events |= ZEV_READ;
-        }
-        if (aio->ssl->read_want_write || aio->ssl->write_want_write)
-        {
-            events |= ZEV_WRITE;
-        }
-        if (aio->write_cache.len > 0)
-        {
-            if ((aio->ssl->write_want_read == 0) && (aio->ssl->write_want_write == 0))
+            if (aio->in_time == 0)
             {
-                aio->ssl->write_want_write = 1;
-                events |= ZEV_WRITE;
+                zrbtree_attach(timer_tree, rn);
+            }
+            aio->in_time = 1;
+        }
+	}
+    else /* if (timeout == -2) */ /* inner use */
+    {
+        if (aio->in_time)
+        {
+            zrbtree_detach(timer_tree, rn);
+        }
+        aio->in_time = 0;
+    }
+
+    /* event */
+    if (ev_type != 2)
+    {
+        fd = aio->fd;
+        rw_type = aio->rw_type;
+        events = 0;
+        if (ev_type == 1)
+        {
+            /* compute the events */
+            if (!(aio->ssl))
+            {
+                if ((rw_type & ZAIO_CB_MAGIC) == ZAIO_CB_READ)
+                {
+                    events |= ZEV_READ;
+                }
+                if ((rw_type & ZAIO_CB_MAGIC) == ZAIO_CB_WRITE)
+                {
+                    events |= ZEV_WRITE;
+                }
+                if (aio->write_cache.len > 0)
+                {
+                    events |= ZEV_WRITE;
+                }
+            }
+            else
+            {
+                if (aio->ssl->read_want_read || aio->ssl->write_want_read)
+                {
+                    events |= ZEV_READ;
+                }
+                if (aio->ssl->read_want_write || aio->ssl->write_want_write)
+                {
+                    events |= ZEV_WRITE;
+                }
+                if (aio->write_cache.len > 0)
+                {
+                    if ((aio->ssl->write_want_read == 0) && (aio->ssl->write_want_write == 0))
+                    {
+                        aio->ssl->write_want_write = 1;
+                        events |= ZEV_WRITE;
+                    }
+                }
+            }
+        }
+        e_events = EPOLLHUP | EPOLLRDHUP | EPOLLERR;
+        old_events = aio->events;
+        aio->events = events;
+
+        if (events == 0)
+        {
+            if (old_events)
+            {
+                if (epoll_ctl(eb->epoll_fd, EPOLL_CTL_DEL, fd, NULL) == -1)
+                {
+                    zfatal("zaio_event_set: fd %d: DEL  error: %m", fd);
+                }
+            }
+        }
+        else if (old_events != events)
+        {
+            if (events & ZEV_READ)
+            {
+                e_events |= EPOLLIN;
+            }
+            if (events & ZEV_WRITE)
+            {
+                e_events |= EPOLLOUT;
+            }
+            if (events & ZEV_PERSIST)
+            {
+                e_events |= EPOLLET;
+            }
+            evt.events = e_events;
+            evt.data.ptr = aio;
+            if (epoll_ctl(eb->epoll_fd, (old_events ? EPOLL_CTL_MOD : EPOLL_CTL_ADD), fd, &evt) == -1)
+            {
+                zfatal("zaio_event_set: fd %d: %s error: %m", fd, (old_events ? "MOD" : "ADD"));
             }
         }
     }
-    /* compute over */
 
-evdo:
-    e_events = EPOLLHUP | EPOLLRDHUP | EPOLLERR;
-    old_events = aio->events;
-    aio->events = events;
-
-    if (events == 0)
-    {
-        if (old_events)
-        {
-            if (epoll_ctl(eb->epoll_fd, EPOLL_CTL_DEL, fd, NULL) == -1)
-            {
-                zfatal("zaio_event_set: fd %d: DEL  error: %m", fd);
-            }
-        }
-    }
-    else if (old_events != events)
-    {
-        if (events & ZEV_READ)
-        {
-            e_events |= EPOLLIN;
-        }
-        if (events & ZEV_WRITE)
-        {
-            e_events |= EPOLLOUT;
-        }
-        if (events & ZEV_PERSIST)
-        {
-            e_events |= EPOLLET;
-        }
-        evt.events = e_events;
-        evt.data.ptr = aio;
-        if (epoll_ctl(eb->epoll_fd, (old_events ? EPOLL_CTL_MOD : EPOLL_CTL_ADD), fd, &evt) == -1)
-        {
-            zfatal("zaio_event_set: fd %d: %s error: %m", fd, (old_events ? "MOD" : "ADD"));
-        }
-    }
+    unlock_evbase(eb);
 
     return 0;
 }
 
-int zaio_attach(zaio_t * aio, zaio_cb_t callback)
-{
-    zevbase_t *eb;
-
-    aio->callback = callback;
-
-    eb = zaio_get_base(aio);
-    zevbase_queue_enter(eb, (zevbase_cb_t) (-2), aio);
-
-    return 0;
-}
-
-int zaio_stop(zaio_t * aio)
-{
-    zaio_event_set(aio, 0);
-
-    return 0;
-}
-
-int zaio_read(zaio_t * aio, int max_len, zaio_cb_t callback)
+int zaio_read(zaio_t * aio, int max_len, zaio_cb_t callback, int timeout)
 {
     int magic, rlen;
     char buf[10240];
@@ -880,6 +823,7 @@ int zaio_read(zaio_t * aio, int max_len, zaio_cb_t callback)
     if (max_len < 1)
     {
         aio->ret = 0;
+        zaio_event_set(aio, 2, timeout);
         zaio_ready_do(aio);
         return 0;
     }
@@ -902,6 +846,7 @@ int zaio_read(zaio_t * aio, int max_len, zaio_cb_t callback)
         if (magic > 0)
         {
             aio->ret = magic;
+            zaio_event_set(aio, 2, timeout);
             zaio_ready_do(aio);
             return 0;
         }
@@ -920,12 +865,12 @@ int zaio_read(zaio_t * aio, int max_len, zaio_cb_t callback)
         ___zaio_cache_append(aio, &(aio->read_cache), buf, rlen);
     }
 
-    zaio_event_set(aio, 1);
+    zaio_event_set(aio, 1, timeout);
 
     return 0;
 }
 
-static int ___zaio_read_n_TRUE(zaio_t * aio, int strict_len, zaio_cb_t callback)
+static int ___zaio_read_n_TRUE(zaio_t * aio, int strict_len, zaio_cb_t callback, int timeout)
 {
     int magic, rlen;
     char buf[10240];
@@ -937,6 +882,7 @@ static int ___zaio_read_n_TRUE(zaio_t * aio, int strict_len, zaio_cb_t callback)
     if (strict_len < 1)
     {
         aio->ret = 0;
+        zaio_event_set(aio, 2, timeout);
         zaio_ready_do(aio);
         return 0;
     }
@@ -954,6 +900,7 @@ static int ___zaio_read_n_TRUE(zaio_t * aio, int strict_len, zaio_cb_t callback)
         if (magic > 0)
         {
             aio->ret = magic;
+            zaio_event_set(aio, 2, timeout);
             zaio_ready_do(aio);
             return 0;
         }
@@ -972,15 +919,15 @@ static int ___zaio_read_n_TRUE(zaio_t * aio, int strict_len, zaio_cb_t callback)
         ___zaio_cache_append(aio, &(aio->read_cache), buf, rlen);
     }
 
-    zaio_event_set(aio, 1);
+    zaio_event_set(aio, 1, timeout);
 
     return 0;
 }
 
-int zaio_read_n(zaio_t * aio, int strict_len, zaio_cb_t callback)
+int zaio_read_n(zaio_t * aio, int strict_len, zaio_cb_t callback, int timeout)
 {
     aio->delimiter = '\0';
-    return ___zaio_read_n_TRUE(aio, strict_len, callback);
+    return ___zaio_read_n_TRUE(aio, strict_len, callback, timeout);
 }
 
 static inline int ___zaio_read_delimiter_check(zaio_t * aio, unsigned char delimiter, int max_len)
@@ -1017,7 +964,7 @@ static inline int ___zaio_read_delimiter_check(zaio_t * aio, unsigned char delim
 
 }
 
-int zaio_read_delimiter(zaio_t * aio, char delimiter, int max_len, zaio_cb_t callback)
+int zaio_read_delimiter(zaio_t * aio, char delimiter, int max_len, zaio_cb_t callback, int timeout)
 {
     int magic, rlen;
     char buf[10240];
@@ -1031,6 +978,7 @@ int zaio_read_delimiter(zaio_t * aio, char delimiter, int max_len, zaio_cb_t cal
     if (max_len < 1)
     {
         aio->ret = 0;
+        zaio_event_set(aio, 2, timeout);
         zaio_ready_do(aio);
         return 0;
     }
@@ -1040,6 +988,7 @@ int zaio_read_delimiter(zaio_t * aio, char delimiter, int max_len, zaio_cb_t cal
         if (magic > 0)
         {
             aio->ret = magic;
+            zaio_event_set(aio, 2, timeout);
             zaio_ready_do(aio);
             return 0;
         }
@@ -1078,15 +1027,9 @@ int zaio_read_delimiter(zaio_t * aio, char delimiter, int max_len, zaio_cb_t cal
         }
     }
 
-    zaio_event_set(aio, 1);
+    zaio_event_set(aio, 1, timeout);
 
     return 0;
-}
-
-int zaio_read_sizedata(zaio_t * aio, zaio_cb_t callback)
-{
-    aio->delimiter = 'N';
-    return ___zaio_read_n_TRUE(aio, 4, callback);
 }
 
 int zaio_write_cache_append(zaio_t * aio, void *buf, int len)
@@ -1098,36 +1041,6 @@ int zaio_write_cache_append(zaio_t * aio, void *buf, int len)
     ___zaio_cache_append(aio, &(aio->write_cache), buf, len);
 
     return len;
-}
-
-int zaio_write_cache_append_sizedata(zaio_t * aio, int len, void *buf)
-{
-    char p[8];
-
-    p[0] = (len >> 24) & 0xFF;
-    p[1] = (len >> 16) & 0xFF;
-    p[2] = (len >> 8) & 0xFF;
-    p[3] = (len) & 0xFF;
-    zaio_write_cache_append(aio, p, 4);
-    zaio_write_cache_append(aio, buf, len);
-
-    return 0;
-}
-
-int zaio_write_cache_flush(zaio_t * aio, zaio_cb_t callback)
-{
-    aio->ret = 1;
-    aio->rw_type = ZAIO_CB_TYPE_WRITE;
-    aio->callback = callback;
-
-    zaio_event_set(aio, 1);
-
-    return 0;
-}
-
-int zaio_write_cache_get_len(zaio_t * aio)
-{
-    return aio->write_cache.len;
 }
 
 int zaio_printf(zaio_t * aio, char *fmt, ...)
@@ -1151,12 +1064,27 @@ int zaio_puts(zaio_t * aio, char *s)
 	return 0;
 }
 
-int zaio_sleep(zaio_t * aio, zaio_cb_t callback)
+int zaio_write_cache_flush(zaio_t * aio, zaio_cb_t callback, int timeout)
+{
+    aio->ret = 1;
+    aio->rw_type = ZAIO_CB_TYPE_WRITE;
+    aio->callback = callback;
+
+    zaio_event_set(aio, 1, timeout);
+
+    return 0;
+}
+
+int zaio_write_cache_get_len(zaio_t * aio)
+{
+    return aio->write_cache.len;
+}
+
+int zaio_sleep(zaio_t * aio, zaio_cb_t callback, int timeout)
 {
     aio->rw_type = ZAIO_CB_TYPE_SLEEP;
     aio->callback = callback;
-
-    zaio_event_set(aio, 0);
+    zaio_event_set(aio, 0, timeout);
 
     return 0;
 }
@@ -1361,10 +1289,14 @@ transfer:
 
     if (transfer)
     {
-        zaio_event_set(aio, 1);
+        zaio_event_set(aio, 1, -2);
         return 1;
     }
 
+    if (aio->is_local == 0)
+    {
+        zaio_event_set(aio, 0, -2);
+    }
     zaio_ready_do(aio);
 
     return 0;
@@ -1373,13 +1305,13 @@ transfer:
 /* ################################################################## */
 /* timer */
 
-static int ztimer_cmp(zrbtree_node_t * n1, zrbtree_node_t * n2)
+static int zevtimer_cmp(zrbtree_node_t * n1, zrbtree_node_t * n2)
 {
-    ztimer_t *t1, *t2;
+    zevtimer_t *t1, *t2;
     long r;
 
-    t1 = ZCONTAINER_OF(n1, ztimer_t, rbnode_time);
-    t2 = ZCONTAINER_OF(n2, ztimer_t, rbnode_time);
+    t1 = ZCONTAINER_OF(n1, zevtimer_t, rbnode_time);
+    t2 = ZCONTAINER_OF(n2, zevtimer_t, rbnode_time);
 
     r = t1->timeout - t2->timeout;
 
@@ -1399,17 +1331,13 @@ static int ztimer_cmp(zrbtree_node_t * n1, zrbtree_node_t * n2)
     return 0;
 }
 
-static void ztimer_base_init(zrbtree_t * timer_tree)
+static int inline zevtimer_check(zevbase_t *eb)
 {
-    zrbtree_init(timer_tree, ztimer_cmp);
-}
-
-static int inline ztimer_check(zrbtree_t * timer_tree)
-{
-    ztimer_t *timer;
+    zevtimer_t *timer;
     zrbtree_node_t *rn;
-    long delay = 10 * 1000;
-    ztimer_cb_t callback;
+    long delay;
+    zevtimer_cb_t callback;
+    zrbtree_t * timer_tree = &(eb->general_timer_tree);
 
     if (!zrbtree_have_data(timer_tree))
     {
@@ -1417,149 +1345,100 @@ static int inline ztimer_check(zrbtree_t * timer_tree)
     }
     while (1)
     {
-        delay = 0;
         rn = zrbtree_first(timer_tree);
         if (!rn)
         {
-            break;
+            return 10 * 1000;
         }
-        timer = ZCONTAINER_OF(rn, ztimer_t, rbnode_time);
+        timer = ZCONTAINER_OF(rn, zevtimer_t, rbnode_time);
         delay = ztimeout_left(timer->timeout);
         if (delay > 0)
         {
-            break;
+            return delay;
         }
         callback = timer->callback;
         zrbtree_detach(timer_tree, &(timer->rbnode_time));
         timer->in_time = 0;
+
         if (callback)
         {
             callback(timer);
         }
     }
 
-    return delay;
+    return 10 * 1000;
 }
 
-ztimer_t *ztimer_create(void)
+zevtimer_t *zevtimer_create(void)
 {
-    return (ztimer_t *) zcalloc(1, sizeof(ztimer_t));
+    return (zevtimer_t *) zcalloc(1, sizeof(zevtimer_t));
 }
 
-void ztimer_free(ztimer_t * timer)
+void zevtimer_free(zevtimer_t * timer)
 {
     zfree(timer);
 }
 
-void ztimer_init(ztimer_t * timer, zevbase_t * eb)
+void zevtimer_init(zevtimer_t * timer, zevbase_t * eb)
 {
-    memset(timer, 0, sizeof(ztimer_t));
+    memset(timer, 0, sizeof(zevtimer_t));
     timer->evbase = eb;
 }
 
-void ztimer_fini(ztimer_t * timer)
+void zevtimer_fini(zevtimer_t * timer)
 {
-    ztimer_start(timer, 0, 0);
+    zevtimer_stop(timer);
 }
 
-int ztimer_start(ztimer_t * timer, ztimer_cb_t callback, int timeout)
+int zevtimer_start(zevtimer_t * timer, zevtimer_cb_t callback, int timeout)
 {
-    zrbtree_t *timer_tree;
+    zevbase_t *eb = timer->evbase;
+    zrbtree_t *timer_tree = &(eb->general_timer_tree);
+    zrbtree_node_t *rn = &(timer->rbnode_time);
 
-    timer_tree = &(timer->evbase->timer_tree);
-
-    if ((timer->in_time) && (timeout != -1))
-    {
-        zrbtree_detach(timer_tree, &(timer->rbnode_time));
-        timer->in_time = 0;
-    }
     if (timeout > 0)
     {
+        if (timer->in_time)
+        {
+            zrbtree_detach(timer_tree, rn);
+        }
         timer->callback = callback;
-        timer->enable_time = 1;
         timer->timeout = ztimeout_set(timeout);
-        zrbtree_attach(timer_tree, &(timer->rbnode_time));
+        zrbtree_attach(timer_tree, rn);
         timer->in_time = 1;
     }
-    else if (timeout == 0)
+    else
     {
-        timer->enable_time = 0;
-    }
-    else if (timeout == -1)
-    {
-        if ((timer->enable_time) && (!timer->in_time))
+        if (timer->in_time)
         {
-            zrbtree_attach(timer_tree, &(timer->rbnode_time));
+            zrbtree_detach(timer_tree, rn);
         }
+        timer->in_time = 0;
     }
 
     return 0;
 }
 
-int ztimer_pause(ztimer_t * timer)
+int zevtimer_stop(zevtimer_t * timer)
 {
-    return ztimer_start(timer, timer->callback, 0);
-}
-
-int ztimer_continue(ztimer_t * timer)
-{
-    return ztimer_start(timer, timer->callback, -1);
-}
-
-int ztimer_stop(ztimer_t * timer)
-{
-    return ztimer_start(timer, 0, 0);
-}
-
-int ztimer_attach(ztimer_t * timer, ztimer_cb_t callback)
-{
-    zevbase_t *eb;
-
-    timer->callback = callback;
-
-    eb = zaio_get_base(timer);
-    zevbase_queue_enter(eb, (zevbase_cb_t) (-3), timer);
-
-    return 0;
-}
-
-int ztimer_detach(ztimer_t * timer)
-{
-    ztimer_start(timer, 0, 0);
-    return 0;
+    return zevtimer_start(timer, 0, 0);
 }
 
 /* ################################################################## */
 /* evbase */
 
-zevbase_t *zvar_evbase = 0;
-void zvar_evbase_init(void)
-{
-    if (! zvar_evbase)
-    {
-        zvar_evbase = zevbase_create();
-    }
-}
-
-static int zevbase_notify_reader(zev_t * ev)
+static int zevbase_notify_reader(zev_t * eb)
 {
     uint64_t u;
-    int ret;
 
-    ret = read(zev_get_fd(ev), &u, sizeof(uint64_t));
-
-    return ret;
+    return read(zev_get_fd(eb), &u, sizeof(uint64_t));
 }
 
 int zevbase_notify(zevbase_t * eb)
 {
-    uint64_t u;
-    int ret;
+    uint64_t u = 1;
 
-    u = 1;
-    ret = write(eb->eventfd_event.fd, &u, sizeof(uint64_t));
-
-    return ret;
+    return write(eb->eventfd_event.fd, &u, sizeof(uint64_t));
 }
 
 zevbase_t *zevbase_create(void)
@@ -1572,16 +1451,15 @@ zevbase_t *zevbase_create(void)
     eb->locker = (char *)eb + sizeof(zevbase_t);
     pthread_mutex_init(eb->locker, 0);
 
-    ztimer_base_init(&(eb->timer_tree));
-
     eb->aio_rwbuf_mpool = zmcot_create(sizeof(zaio_rwbuf_t));
-    eb->queue_mpool = zmcot_create(sizeof(zevbase_queue_t));
+
+    zrbtree_init(&(eb->general_timer_tree), zevtimer_cmp);
+    zrbtree_init(&(eb->aio_timer_tree), zaio_timer_cmp);
 
     eb->epoll_fd = epoll_create(1024);
     zclose_on_exec(eb->epoll_fd, 1);
 
-    eb->epoll_event_count = 32;
-    eb->epoll_event_list = (struct epoll_event *)zmalloc(sizeof(struct epoll_event) * eb->epoll_event_count);
+    eb->epoll_event_list = (struct epoll_event *)zmalloc(sizeof(struct epoll_event) * epoll_event_count);
 
     eventfd_fd = eventfd(0, 0);
     zclose_on_exec(eventfd_fd, 1);
@@ -1593,65 +1471,38 @@ zevbase_t *zevbase_create(void)
     return eb;
 }
 
-static int inline zevbase_queue_checker(zevbase_t * eb)
+void zevbase_single_mode(void)
 {
-    zaio_t *aio;
-    zev_t *ev;
-    ztimer_t *timer;
+    ___single_mode = 1;
+}
 
-    zevbase_queue_t *node;
-    zevbase_cb_t callback;
-    void *context;
+static inline int  zevbase_queue_checker(zevbase_t *eb)
+{
+	zaio_t *aio;
 
-    while (eb->queue_head)
+    if (! eb->old_queue_head)
     {
-        ZEVBASE_LOCK(eb);
-        node = eb->queue_head;
-        if (!node)
-        {
-            ZEVBASE_UNLOCK(eb);
-            break;
-        }
-        ZMLINK_DETACH(eb->queue_head, eb->queue_tail, node, prev, next);
-        callback = node->callback;
-        context = node->context;
-        zmcot_free_one(eb->queue_mpool, node);
-        ZEVBASE_UNLOCK(eb);
-
-        if (callback)
-        {
-            if (callback == (zevbase_cb_t) (-1))
-            {
-                ev = (zev_t *) context;
-                ev->inner_callback = 0;
-                if (ev->callback)
-                {
-                    ev->callback(ev);
-                }
-            }
-            else if (callback == (zevbase_cb_t) (-2))
-            {
-                aio = (zaio_t *) context;
-                if (aio->callback)
-                {
-                    aio->ret = 0;
-                    aio->callback(aio, 0);
-                }
-            }
-            else if (callback == (zevbase_cb_t) (-3))
-            {
-                timer = (ztimer_t *) context;
-                if (timer->callback)
-                {
-                    timer->callback(timer);
-                }
-            }
-            else
-            {
-                callback(eb, context);
-            }
-        }
+        return 0;
     }
+    eb->now_queue_head = eb->old_queue_head;
+    eb->now_queue_tail = eb->old_queue_tail;
+    eb->old_queue_head = 0;
+    eb->old_queue_tail = 0;
+
+	while (1)
+    {
+        lock_evbase(eb);
+        aio = eb->now_queue_head;
+		if (! aio)
+        {
+            unlock_evbase(eb);
+            return 0;
+		}
+        ZMLINK_DETACH(eb->now_queue_head, eb->now_queue_tail, aio, queue_prev, queue_next);
+        unlock_evbase(eb);
+
+		zaio_ready_do(aio);
+	}
 
     return 0;
 }
@@ -1669,21 +1520,30 @@ int zevbase_dispatch(zevbase_t * eb, long delay)
         delay = 10 * 1000;
     }
 
-    if (zrbtree_have_data(&(eb->timer_tree)))
+    if (eb->old_queue_head)
     {
-        delay_tmp = ztimer_check(&(eb->timer_tree));
+        zevbase_queue_checker(eb);
+    }
+
+    if (zrbtree_have_data(&(eb->general_timer_tree)))
+    {
+        delay_tmp = zevtimer_check(eb);
         if (delay_tmp < delay)
         {
             delay = delay_tmp;
         }
     }
 
-    if (eb->queue_head)
+    if (zrbtree_have_data(&(eb->aio_timer_tree)))
     {
-        zevbase_queue_checker(eb);
+        delay_tmp = zaio_timer_check(eb);
+        if (delay_tmp < delay)
+        {
+            delay = delay_tmp;
+        }
     }
 
-    nfds = epoll_wait(eb->epoll_fd, eb->epoll_event_list, eb->epoll_event_count, delay);
+    nfds = epoll_wait(eb->epoll_fd, eb->epoll_event_list, epoll_event_count, delay);
     if (nfds == -1)
     {
         if (errno != EINTR)
@@ -1731,11 +1591,6 @@ int zevbase_dispatch(zevbase_t * eb, long delay)
             zaio_action(aio);
         }
     }
-    if (nfds == eb->epoll_event_count && nfds < 4096)
-    {
-        eb->epoll_event_count *= 2;
-        eb->epoll_event_list = (struct epoll_event *)zrealloc(eb->epoll_event_list, sizeof(struct epoll_event) * (eb->epoll_event_count));
-    }
 
     return 0;
 }
@@ -1747,24 +1602,17 @@ void zevbase_free(zevbase_t * eb)
     close(eb->epoll_fd);
     zfree(eb->epoll_event_list);
     zmcot_free(eb->aio_rwbuf_mpool);
-    zmcot_free(eb->queue_mpool);
-
+    pthread_mutex_destroy((pthread_mutex_t*)(eb->locker));
     zfree(eb);
 }
 
-int zevbase_queue_enter(zevbase_t * eb, zevbase_cb_t callback, void *context)
+/* ################################################################## */
+
+zevbase_t *zvar_evbase = 0;
+void zvar_evbase_init(void)
 {
-    zevbase_queue_t *qnode;
-
-    ZEVBASE_LOCK(eb);
-    qnode = (zevbase_queue_t *) zmcot_alloc_one(eb->queue_mpool);
-    qnode->callback = callback;
-    qnode->context = context;
-
-    ZMLINK_APPEND(eb->queue_head, eb->queue_tail, qnode, prev, next);
-    ZEVBASE_UNLOCK(eb);
-
-    zevbase_notify(eb);
-
-    return 0;
+    if (! zvar_evbase)
+    {
+        zvar_evbase = zevbase_create();
+    }
 }
