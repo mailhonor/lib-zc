@@ -133,10 +133,15 @@ int zcharset_detect(char *data, int len, char *charset_ret, char **charset_list)
         ic->in_len = len;
         ic->filter = out_string;
         ic->filter_type = out_len;
+        ic->omit_invalid_bytes = 3;
         ret = zcharset_iconv(ic);
         ZICONV_FREE(ic);
 
-        result_len_list[i] = ret;
+        if(ic->omit_invalid_bytes_count > 3)
+        {
+            ret = 0;
+        }
+        result_len_list[i] = 0;
         if (ret > max_len)
         {
             max_len = ret;

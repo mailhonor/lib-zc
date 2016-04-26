@@ -26,7 +26,7 @@ typedef struct zmaster_status_fd_t zmaster_status_fd_t;
 struct zmaster_entry_t
 {
     int stop;
-    char *config_path;
+    char *config_fn;
     char *cmd;
     int proc_limit;
     int proc_count;
@@ -145,7 +145,7 @@ static void zmaster_set_stop(void)
     {
         men = (zmaster_entry_t *)(zgrid_value(n));
         men->stop = 1;
-        zfree(men->config_path);
+        zfree(men->config_fn);
         zfree(men->cmd);
         zevtimer_fini(&(men->wakeup_timer));
         zev_fini(&(men->listen_ev));
@@ -156,12 +156,14 @@ static void zmaster_set_stop(void)
     ZGRID_WALK_END;
 }
 
-static void zmaster_reload_one_config(char *pn)
+static void zmaster_reload_one_config(char *fn)
 {
     zconfig_t *cf;
     char *cmd, *listen;
     zmaster_entry_t *men;
+    char pn[4100];
 
+    snprintf(pn, 4096, "%s/%s", config_dir, fn);
     cf = zconfig_create();
     zconfig_load(cf, pn);
 
@@ -186,7 +188,7 @@ static void zmaster_reload_one_config(char *pn)
         zgrid_add(server_entry_list, listen, men, 0);
     }
     men->stop = 0;
-    men->config_path = zstrdup(pn);
+    men->config_fn = zstrdup(fn);
     men->cmd = zstrdup(cmd);
     men->proc_limit = zconfig_get_int(cf, "zproc_limit", 0);
     if (men->proc_limit < 1)
@@ -212,12 +214,12 @@ static void zmaster_reload_config(void)
 {
     DIR *dir;
     struct dirent ent, *ent_list;
-    char pn[4096], *fn, *p;
+    char *fn, *p;
 
     dir = opendir(config_dir);
     if (!dir)
     {
-        zfatal("open %s(%m)", config_dir);
+        zfatal("open %s/(%m)", config_dir);
     }
 
     while ((!readdir_r(dir, &ent, &ent_list)) && (ent_list))
@@ -232,8 +234,11 @@ static void zmaster_reload_config(void)
         {
             continue;
         }
-        snprintf(pn, 4000, "%s/%s", config_dir, fn);
-        zmaster_reload_one_config(pn);
+        if (!strcasecmp(fn, "main.cf"))
+        {
+            continue;
+        }
+        zmaster_reload_one_config(fn);
     }
     closedir(dir);
 }
@@ -460,7 +465,7 @@ static int zmaster_start_child(zev_t * zev)
     else
     {
         zargv_t *exec_argv;
-        char buf[128];
+        char buf[4100];
 
         close(status_fd[1]);
         dup2(status_fd[0], ZMASTER_SERVER_STATUS_FD);
@@ -479,7 +484,12 @@ static int zmaster_start_child(zev_t * zev)
         zargv_add(exec_argv, "-M");
 
         zargv_add(exec_argv, "-c");
-        zargv_add(exec_argv, men->config_path);
+        snprintf(buf, 4096, "%s/main.cf", config_dir);
+        zargv_add(exec_argv, buf);
+
+        zargv_add(exec_argv, "-c");
+        snprintf(buf, 4096, "%s/%s", config_dir, men->config_fn);
+        zargv_add(exec_argv, buf);
 
         zargv_add(exec_argv, "-t");
         sprintf(buf, "%c", men->listen_type);
@@ -537,7 +547,7 @@ int zmaster_main(int argc, char **argv)
     int op;
 
     try_lock = 0;
-    config_dir = "config/";
+    config_dir = "config";
     lock_file = "master.pid";
 
     while ((op = getopt(argc, argv, "c:p:tdv")) > 0)
@@ -581,6 +591,19 @@ int zmaster_main(int argc, char **argv)
         exit(1);
     }
 
+    {
+        int len;
+        config_dir = zstrdup(config_dir);
+        len = strlen(config_dir);
+        if (len < 1)
+        {
+            zfatal("config dir is null");
+        }
+        if (config_dir[len-1] == '/')
+        {
+            config_dir[len-1] = 0;
+        }
+    }
     zmaster_server_init();
     zmaster_reload_service();
 
