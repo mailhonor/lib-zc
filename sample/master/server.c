@@ -12,7 +12,7 @@
 static int var_sleep;
 static void fn_before(void)
 {
-    var_sleep = zconfig_get_second(zvar_config, "sleep", 10);
+    var_sleep = zconfig_get_second(zvar_config, "sleep", 10, 0, 100);
     zinfo("before: %d", var_sleep);
 }
 

@@ -815,23 +815,26 @@ typedef struct
     char *name;
     int defval;
     int *target;
+    int max;
+    int min;
 } zconfig_int_table_t;
 typedef struct
 {
     char *name;
     long defval;
     long *target;
+    long max;
+    long min;
 } zconfig_long_table_t;
 #define zconfig_bool_table_t zconfig_int_table_t
 #define zconfig_second_table_t zconfig_long_table_t
 #define zconfig_size_table_t zconfig_long_table_t
 char *zconfig_get_str(zconfig_t * cf, char *name, char *def);
 int zconfig_get_bool(zconfig_t * cf, char *name, int def);
-int zconfig_get_int(zconfig_t * cf, char *name, int def);
-long zconfig_get_long(zconfig_t * cf, char *name, long def);
-long zconfig_get_second(zconfig_t * cf, char *name, long def);
-long zconfig_get_size(zconfig_t * cf, char *name, long def);
-void zconfig_get_str_table(zconfig_t * cf, zconfig_str_table_t * table);
+int zconfig_get_int(zconfig_t * cf, char *name, int def, int max, int min);
+long zconfig_get_long(zconfig_t * cf, char *name, long def, long max, long min);
+long zconfig_get_second(zconfig_t * cf, char *name, long def, long max, long min);
+long zconfig_get_size(zconfig_t * cf, char *name, long def, long max, long min);
 void zconfig_get_str_table(zconfig_t * cf, zconfig_str_table_t * table);
 void zconfig_get_int_table(zconfig_t * cf, zconfig_int_table_t * table);
 void zconfig_get_long_table(zconfig_t * cf, zconfig_long_table_t * table);

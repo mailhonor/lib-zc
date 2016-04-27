@@ -8,6 +8,7 @@
 
 #include "libzc.h"
 
+#define ___RANGE_VALUE(val, max, min) {if(val < min){val = min;}else if(val>max){val = max;}}
 char *zconfig_get_str(zconfig_t * cf, char *name, char *def)
 {
     char *value;
@@ -34,57 +35,62 @@ int zconfig_get_bool(zconfig_t * cf, char *name, int def)
     return zstr_to_bool(value, def);
 }
 
-int zconfig_get_int(zconfig_t * cf, char *name, int def)
+int zconfig_get_int(zconfig_t * cf, char *name, int def, int max, int min)
 {
     char *value;
 
     value = zconfig_get_str(cf, name, 0);
-    if (ZEMPTY(value))
+    if (! ZEMPTY(value))
     {
-        return def;
+        def = atoi(value);
     }
+    ___RANGE_VALUE(def, max, min);
 
-    return atoi(value);
+    return def;
 }
 
-long zconfig_get_long(zconfig_t * cf, char *name, long def)
+long zconfig_get_long(zconfig_t * cf, char *name, long def, long max, long min)
 {
     char *value;
 
     value = zconfig_get_str(cf, name, 0);
-    if (ZEMPTY(value))
+    if (! ZEMPTY(value))
     {
-        return def;
+        def = atoll(value);
     }
+    ___RANGE_VALUE(def, max, min);
 
-    return atoll(value);
+    return def;
 }
 
-long zconfig_get_second(zconfig_t * cf, char *name, long def)
+long zconfig_get_second(zconfig_t * cf, char *name, long def, long max, long min)
 {
     char *value;
 
     value = zconfig_get_str(cf, name, 0);
-    if (ZEMPTY(value))
+    if (! ZEMPTY(value))
     {
-        return def;
+        def = zstr_to_second(value);
     }
 
+    ___RANGE_VALUE(def, max, min);
 
-    return zstr_to_second(value);
+    return def;
 }
 
-long zconfig_get_size(zconfig_t * cf, char *name, long def)
+long zconfig_get_size(zconfig_t * cf, char *name, long def, long max, long min)
 {
     char *value;
 
     value = zconfig_get_str(cf, name, 0);
     if (ZEMPTY(value))
     {
-        return def;
+        def = zstr_to_size(value);
     }
 
-    return zstr_to_size(value);
+    ___RANGE_VALUE(def, max, min);
+
+    return def;
 }
 
 /* ################################################################## */
@@ -98,7 +104,15 @@ void zconfig_get_str_table(zconfig_t * cf, zconfig_str_table_t * table)
         {
             zfree(table->target[0]);
         }
-        table->target[0] = zstrdup(zconfig_get_str(cf, table->name, table->defval));
+        table->target[0] = zconfig_get_str(cf, table->name, table->defval);
+    }
+}
+
+void zconfig_get_bool_table(zconfig_t * cf, zconfig_bool_table_t * table)
+{
+    while (table->name)
+    {
+        table->target[0] = zconfig_get_bool(cf, table->name, table->defval);
     }
 }
 
@@ -107,12 +121,11 @@ void zconfig_get_str_table(zconfig_t * cf, zconfig_str_table_t * table)
     { \
         while (table->name) \
         { \
-            table->target[0] = zconfig_get_ ## ttype(cf, table->name, table->defval); \
+            table->target[0] = zconfig_get_ ## ttype(cf, table->name, table->defval, table->max, table->min); \
         } \
     }
 ___ZCONFIG_GET_TABLE(int);
 ___ZCONFIG_GET_TABLE(long);
-___ZCONFIG_GET_TABLE(bool);
 ___ZCONFIG_GET_TABLE(size);
 ___ZCONFIG_GET_TABLE(second);
 

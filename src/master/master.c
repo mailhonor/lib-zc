@@ -190,13 +190,13 @@ static void zmaster_reload_one_config(char *fn)
     men->stop = 0;
     men->config_fn = zstrdup(fn);
     men->cmd = zstrdup(cmd);
-    men->proc_limit = zconfig_get_int(cf, "zproc_limit", 0);
+    men->proc_limit = zconfig_get_int(cf, "zproc_limit", 0, 0, 10*1000);
     if (men->proc_limit < 1)
     {
         men->proc_limit = 1;
     }
     men->proc_count = 0;
-    men->wakeup = zconfig_get_int(cf, "zwakeup", 0);
+    men->wakeup = zconfig_get_int(cf, "zwakeup", 0, 0, 24 * 3600);
     if (men->wakeup < 0)
     {
         men->wakeup = 0;
