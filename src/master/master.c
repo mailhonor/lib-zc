@@ -50,6 +50,7 @@ struct zmaster_status_fd_t
 };
 
 int zvar_master_child_exception_check = 0;
+zmaster_load_config_fn_t zmaster_load_config_fn = 0;
 static int try_lock;
 static char *config_dir;
 static char *lock_file;
@@ -156,16 +157,11 @@ static void zmaster_set_stop(void)
     ZGRID_WALK_END;
 }
 
-static void zmaster_reload_one_config(char *fn)
+static void zmaster_reload_one_config(zconfig_t * cf)
 {
-    zconfig_t *cf;
     char *cmd, *listen;
     zmaster_entry_t *men;
-    char pn[4100];
-
-    snprintf(pn, 4096, "%s/%s", config_dir, fn);
-    cf = zconfig_create();
-    zconfig_load(cf, pn);
+    char *fn;
 
     cmd = zconfig_get_str(cf, "zcmd", "");
     if (!*cmd)
@@ -181,6 +177,8 @@ static void zmaster_reload_one_config(char *fn)
         return;
     }
 
+    fn = zconfig_get_str(cf, "z___Z_0428_fn", 0);
+
     if (!zgrid_lookup(server_entry_list, listen, (char **)&men))
     {
         men = zcalloc(1, sizeof(zmaster_entry_t));
@@ -188,7 +186,7 @@ static void zmaster_reload_one_config(char *fn)
         zgrid_add(server_entry_list, listen, men, 0);
     }
     men->stop = 0;
-    men->config_fn = zstrdup(fn);
+    men->config_fn = (fn?zstrdup(fn):0);
     men->cmd = zstrdup(cmd);
     men->proc_limit = zconfig_get_int(cf, "zproc_limit", 0, 0, 10*1000);
     if (men->proc_limit < 1)
@@ -210,11 +208,13 @@ static void zmaster_reload_one_config(char *fn)
     zconfig_free(cf);
 }
 
-static void zmaster_reload_config(void)
+static void zmaster_load_config_default(zarray_t *config_list)
 {
     DIR *dir;
     struct dirent ent, *ent_list;
     char *fn, *p;
+    char pn[4100];
+    zconfig_t *cf;
 
     dir = opendir(config_dir);
     if (!dir)
@@ -238,9 +238,36 @@ static void zmaster_reload_config(void)
         {
             continue;
         }
-        zmaster_reload_one_config(fn);
+
+        cf = zconfig_create();
+        snprintf(pn, 4096, "%s/%s", config_dir, fn);
+        zconfig_load(cf, pn);
+        zconfig_update(cf, "z___Z_0428_fn", fn);
+        zarray_add(config_list, cf);
     }
     closedir(dir);
+}
+
+static void zmaster_reload_config(void)
+{
+    zarray_t *config_list;
+    zconfig_t *cf;
+
+    config_list = zarray_create(100);
+    if (zmaster_load_config_fn)
+    {
+        zmaster_load_config_fn(config_list);
+    }
+    else
+    {
+        zmaster_load_config_default(config_list);
+    }
+    
+    ZARRAY_WALK_BEGIN(config_list, cf)
+    {
+        zmaster_reload_one_config(cf);
+    }
+    ZARRAY_WALK_END;
 }
 
 static void zmaster_release_unused_entry(void)
@@ -487,9 +514,12 @@ static int zmaster_start_child(zev_t * zev)
         snprintf(buf, 4096, "%s/main.cf", config_dir);
         zargv_add(exec_argv, buf);
 
-        zargv_add(exec_argv, "-c");
-        snprintf(buf, 4096, "%s/%s", config_dir, men->config_fn);
-        zargv_add(exec_argv, buf);
+        if (men->config_fn)
+        {
+            zargv_add(exec_argv, "-c");
+            snprintf(buf, 4096, "%s/%s", config_dir, men->config_fn);
+            zargv_add(exec_argv, buf);
+        }
 
         zargv_add(exec_argv, "-t");
         sprintf(buf, "%c", men->listen_type);

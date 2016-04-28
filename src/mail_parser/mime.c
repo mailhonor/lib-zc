@@ -58,6 +58,7 @@ static void mime_free_one(zmail_parser_t * parser, zmail_mime_t * mime)
     ___ha(name_rd);
     ___ha(filename_rd);
     ___ha(content_id);
+    ___ha(section);
 #undef ___ha
 
     /* header */

@@ -1285,6 +1285,8 @@ void ziopipe_enter(ziopipe_base_t * iopb, int client_fd, void *client_ssl, int s
 #define ZMASTER_MASTER_STATUS_FD    4
 #define ZMASTER_LISTEN_FD            5
 
+typedef int (*zmaster_load_config_fn_t) (zarray_t *config_list);
+extern zmaster_load_config_fn_t zmaster_load_config_fn;
 extern int zvar_master_child_exception_check;
 int zmaster_main(int argc, char **argv);
 
@@ -1535,6 +1537,8 @@ struct zmail_mime_t
     char *content_id;
     char *boundary;
     short int boundary_len;
+    /* mime proto, for imapd */
+    char *section;
     int header_offset;
     int header_len;
     int body_offset;
@@ -1661,6 +1665,9 @@ void zmail_parser_addr_free(zmail_parser_t * parser, zmail_addr_t * ma);
 void zmail_parser_free_mime(zmail_parser_t * parser, zmail_mime_t * mime);
 void zmail_parser_format_mime(zmail_parser_t * parser, zmail_mime_t * mime);
 int zmail_parser_mime_identify_type(zmail_parser_t * parser);
+
+/* for imap */
+int zmail_parser_mime_section(zmail_parser_t *parser);
 
 /* ################################################################## */
 /* MAIL TNEF PARSER */
