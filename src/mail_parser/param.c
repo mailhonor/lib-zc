@@ -118,7 +118,7 @@ static int find_next_kv(char *buf, int len, char **key, int *key_len, char **val
 int deal_kv_list(zmail_parser_t * parser, zmail_mime_t * cmime, char *buf, int len)
 {
     char *p, *key, *value, *nbuf;
-    int l, key_len, value_len, nlen;
+    int l, key_len, value_len, nlen = 0;
     int ret;
     char fns[10249];
     int fns_len = 0;
