@@ -36,8 +36,7 @@ void __zrbtree_erase_color(zrbtree_t * root, zrbtree_node_t * parent, void (*aug
 #define RB_CLEAR_NODE(node)  \
     ((node)->__zrbtree_parent_color = (unsigned long)(node))
 
-struct zrbtree_augment_callbacks
-{
+struct zrbtree_augment_callbacks {
     void (*propagate) (zrbtree_node_t * node, zrbtree_node_t * stop);
     void (*copy) (zrbtree_node_t * old, zrbtree_node_t * new);
     void (*rotate) (zrbtree_node_t * old, zrbtree_node_t * new);
@@ -105,14 +104,12 @@ static inline void zrbtree_set_parent_color(zrbtree_node_t * rb, zrbtree_node_t 
 
 static inline void __zrbtree_change_child(zrbtree_node_t * old, zrbtree_node_t * new, zrbtree_node_t * parent, zrbtree_t * root)
 {
-    if (parent)
-    {
+    if (parent) {
         if (parent->zrbtree_left == old)
             parent->zrbtree_left = new;
         else
             parent->zrbtree_right = new;
-    }
-    else
+    } else
         root->zrbtree_node = new;
 }
 
@@ -124,8 +121,7 @@ static __always_inline zrbtree_node_t *__zrbtree_erase_augmented(zrbtree_node_t 
     zrbtree_node_t *parent, *rebalance;
     unsigned long pc;
 
-    if (!tmp)
-    {
+    if (!tmp) {
         /*
          * Case 1: node to erase has no more than 1 child (easy!)
          *
@@ -136,30 +132,23 @@ static __always_inline zrbtree_node_t *__zrbtree_erase_augmented(zrbtree_node_t 
         pc = node->__zrbtree_parent_color;
         parent = __ZRBTREE_PARENT(pc);
         __zrbtree_change_child(node, child, parent, root);
-        if (child)
-        {
+        if (child) {
             child->__zrbtree_parent_color = pc;
             rebalance = NULL;
-        }
-        else
+        } else
             rebalance = __zrbtree_is_black(pc) ? parent : NULL;
         tmp = parent;
-    }
-    else if (!child)
-    {
+    } else if (!child) {
         /* Still case 1, but this time the child is node->zrbtree_left */
         tmp->__zrbtree_parent_color = pc = node->__zrbtree_parent_color;
         parent = __ZRBTREE_PARENT(pc);
         __zrbtree_change_child(node, tmp, parent, root);
         rebalance = NULL;
         tmp = parent;
-    }
-    else
-    {
+    } else {
         zrbtree_node_t *successor = child, *child2;
         tmp = child->zrbtree_left;
-        if (!tmp)
-        {
+        if (!tmp) {
             /*
              * Case 2: node's successor is its right child
              *
@@ -172,9 +161,7 @@ static __always_inline zrbtree_node_t *__zrbtree_erase_augmented(zrbtree_node_t 
             parent = successor;
             child2 = successor->zrbtree_right;
             augment->copy(node, successor);
-        }
-        else
-        {
+        } else {
             /*
              * Case 3: node's successor is leftmost under
              * node's right child subtree
@@ -189,8 +176,7 @@ static __always_inline zrbtree_node_t *__zrbtree_erase_augmented(zrbtree_node_t 
              *    \
              *    (c)
              */
-            do
-            {
+            do {
                 parent = successor;
                 successor = tmp;
                 tmp = tmp->zrbtree_left;
@@ -209,14 +195,11 @@ static __always_inline zrbtree_node_t *__zrbtree_erase_augmented(zrbtree_node_t 
         pc = node->__zrbtree_parent_color;
         tmp = __ZRBTREE_PARENT(pc);
         __zrbtree_change_child(node, successor, tmp, root);
-        if (child2)
-        {
+        if (child2) {
             successor->__zrbtree_parent_color = pc;
             zrbtree_set_parent_color(child2, parent, RB_BLACK);
             rebalance = NULL;
-        }
-        else
-        {
+        } else {
             unsigned long pc2 = successor->__zrbtree_parent_color;
             successor->__zrbtree_parent_color = pc;
             rebalance = __zrbtree_is_black(pc2) ? parent : NULL;
@@ -262,8 +245,7 @@ static __always_inline void __zrbtree_insert(zrbtree_node_t * node, zrbtree_t * 
 {
     zrbtree_node_t *parent = zrbtree_red_parent(node), *gparent, *tmp;
 
-    while (true)
-    {
+    while (true) {
         /*
          * Loop invariant: node is red
          *
@@ -271,21 +253,17 @@ static __always_inline void __zrbtree_insert(zrbtree_node_t * node, zrbtree_t * 
          * Otherwise, take some corrective action as we don't
          * want a red root or two consecutive red nodes.
          */
-        if (!parent)
-        {
+        if (!parent) {
             zrbtree_set_parent_color(node, NULL, RB_BLACK);
             break;
-        }
-        else if (zrbtree_is_black(parent))
+        } else if (zrbtree_is_black(parent))
             break;
 
         gparent = zrbtree_red_parent(parent);
 
         tmp = gparent->zrbtree_right;
-        if (parent != tmp)
-        {                       /* parent == gparent->zrbtree_left */
-            if (tmp && zrbtree_is_red(tmp))
-            {
+        if (parent != tmp) {    /* parent == gparent->zrbtree_left */
+            if (tmp && zrbtree_is_red(tmp)) {
                 /*
                  * Case 1 - color flips
                  *
@@ -308,8 +286,7 @@ static __always_inline void __zrbtree_insert(zrbtree_node_t * node, zrbtree_t * 
             }
 
             tmp = parent->zrbtree_right;
-            if (node == tmp)
-            {
+            if (node == tmp) {
                 /*
                  * Case 2 - left rotate at parent
                  *
@@ -348,12 +325,9 @@ static __always_inline void __zrbtree_insert(zrbtree_node_t * node, zrbtree_t * 
             __zrbtree_rotate_set_parents(gparent, parent, root, RB_RED);
             augment_rotate(gparent, parent);
             break;
-        }
-        else
-        {
+        } else {
             tmp = gparent->zrbtree_left;
-            if (tmp && zrbtree_is_red(tmp))
-            {
+            if (tmp && zrbtree_is_red(tmp)) {
                 /* Case 1 - color flips */
                 zrbtree_set_parent_color(tmp, gparent, RB_BLACK);
                 zrbtree_set_parent_color(parent, gparent, RB_BLACK);
@@ -364,8 +338,7 @@ static __always_inline void __zrbtree_insert(zrbtree_node_t * node, zrbtree_t * 
             }
 
             tmp = parent->zrbtree_left;
-            if (node == tmp)
-            {
+            if (node == tmp) {
                 /* Case 2 - right rotate at parent */
                 parent->zrbtree_left = tmp = node->zrbtree_right;
                 node->zrbtree_right = parent;
@@ -397,8 +370,7 @@ static __always_inline void ____zrbtree_erase_color(zrbtree_node_t * parent, zrb
 {
     zrbtree_node_t *node = NULL, *sibling, *tmp1, *tmp2;
 
-    while (true)
-    {
+    while (true) {
         /*
          * Loop invariants:
          * - node is black (or NULL on first iteration)
@@ -407,10 +379,8 @@ static __always_inline void ____zrbtree_erase_color(zrbtree_node_t * parent, zrb
          *   black node count that is 1 lower than other leaf paths.
          */
         sibling = parent->zrbtree_right;
-        if (node != sibling)
-        {                       /* node == parent->zrbtree_left */
-            if (zrbtree_is_red(sibling))
-            {
+        if (node != sibling) {  /* node == parent->zrbtree_left */
+            if (zrbtree_is_red(sibling)) {
                 /*
                  * Case 1 - left rotate at parent
                  *
@@ -428,11 +398,9 @@ static __always_inline void ____zrbtree_erase_color(zrbtree_node_t * parent, zrb
                 sibling = tmp1;
             }
             tmp1 = sibling->zrbtree_right;
-            if (!tmp1 || zrbtree_is_black(tmp1))
-            {
+            if (!tmp1 || zrbtree_is_black(tmp1)) {
                 tmp2 = sibling->zrbtree_left;
-                if (!tmp2 || zrbtree_is_black(tmp2))
-                {
+                if (!tmp2 || zrbtree_is_black(tmp2)) {
                     /*
                      * Case 2 - sibling color flip
                      * (p could be either color here)
@@ -451,8 +419,7 @@ static __always_inline void ____zrbtree_erase_color(zrbtree_node_t * parent, zrb
                     zrbtree_set_parent_color(sibling, parent, RB_RED);
                     if (zrbtree_is_red(parent))
                         zrbtree_set_black(parent);
-                    else
-                    {
+                    else {
                         node = parent;
                         parent = ZRBTREE_PARENT(node);
                         if (parent)
@@ -501,12 +468,9 @@ static __always_inline void ____zrbtree_erase_color(zrbtree_node_t * parent, zrb
             __zrbtree_rotate_set_parents(parent, sibling, root, RB_BLACK);
             augment_rotate(parent, sibling);
             break;
-        }
-        else
-        {
+        } else {
             sibling = parent->zrbtree_left;
-            if (zrbtree_is_red(sibling))
-            {
+            if (zrbtree_is_red(sibling)) {
                 /* Case 1 - right rotate at parent */
                 parent->zrbtree_left = tmp1 = sibling->zrbtree_right;
                 sibling->zrbtree_right = parent;
@@ -516,17 +480,14 @@ static __always_inline void ____zrbtree_erase_color(zrbtree_node_t * parent, zrb
                 sibling = tmp1;
             }
             tmp1 = sibling->zrbtree_left;
-            if (!tmp1 || zrbtree_is_black(tmp1))
-            {
+            if (!tmp1 || zrbtree_is_black(tmp1)) {
                 tmp2 = sibling->zrbtree_right;
-                if (!tmp2 || zrbtree_is_black(tmp2))
-                {
+                if (!tmp2 || zrbtree_is_black(tmp2)) {
                     /* Case 2 - sibling color flip */
                     zrbtree_set_parent_color(sibling, parent, RB_RED);
                     if (zrbtree_is_red(parent))
                         zrbtree_set_black(parent);
-                    else
-                    {
+                    else {
                         node = parent;
                         parent = ZRBTREE_PARENT(node);
                         if (parent)
@@ -649,8 +610,7 @@ zrbtree_node_t *zrbtree_next(zrbtree_node_t * node)
      * If we have a right-hand child, go down and then left as far
      * as we can.
      */
-    if (node->zrbtree_right)
-    {
+    if (node->zrbtree_right) {
         node = node->zrbtree_right;
         while (node->zrbtree_left)
             node = node->zrbtree_left;
@@ -681,8 +641,7 @@ zrbtree_node_t *zrbtree_prev(zrbtree_node_t * node)
      * If we have a left-hand child, go down and then right as far
      * as we can.
      */
-    if (node->zrbtree_left)
-    {
+    if (node->zrbtree_left) {
         node = node->zrbtree_left;
         while (node->zrbtree_right)
             node = node->zrbtree_right;
@@ -727,20 +686,14 @@ zrbtree_node_t *zrbtree_attach(zrbtree_t * tree, zrbtree_node_t * node)
     zrbtree_node_t **new = &(tree->zrbtree_node), *parent = 0;
     int cmp_result;
 
-    while (*new)
-    {
+    while (*new) {
         parent = *new;
         cmp_result = tree->cmp_fn(node, *new);
-        if (cmp_result < 0)
-        {
+        if (cmp_result < 0) {
             new = &((*new)->zrbtree_left);
-        }
-        else if (cmp_result > 0)
-        {
+        } else if (cmp_result > 0) {
             new = &((*new)->zrbtree_right);
-        }
-        else
-        {
+        } else {
             return (*new);
         }
     }
@@ -756,19 +709,13 @@ zrbtree_node_t *zrbtree_lookup(zrbtree_t * tree, zrbtree_node_t * vnode)
     int cmp_result;
 
     node = tree->zrbtree_node;
-    while (node)
-    {
+    while (node) {
         cmp_result = tree->cmp_fn(vnode, node);
-        if (cmp_result < 0)
-        {
+        if (cmp_result < 0) {
             node = node->zrbtree_left;
-        }
-        else if (cmp_result > 0)
-        {
+        } else if (cmp_result > 0) {
             node = node->zrbtree_right;
-        }
-        else
-        {
+        } else {
             return node;
         }
     }
@@ -781,8 +728,7 @@ zrbtree_node_t *zrbtree_remove(zrbtree_t * tree, zrbtree_node_t * vnode)
     zrbtree_node_t *node;
 
     node = zrbtree_lookup(tree, vnode);
-    if (node)
-    {
+    if (node) {
         zrbtree_erase(tree, node);
     }
 
@@ -796,20 +742,14 @@ zrbtree_node_t *zrbtree_near_prev(zrbtree_t * tree, zrbtree_node_t * vnode)
 
     ret_node = 0;
     node = tree->zrbtree_node;
-    while (node)
-    {
+    while (node) {
         cmp_result = tree->cmp_fn(vnode, node);
-        if (cmp_result < 0)
-        {
+        if (cmp_result < 0) {
             node = node->zrbtree_left;
-        }
-        else if (cmp_result > 0)
-        {
+        } else if (cmp_result > 0) {
             ret_node = node;
             node = node->zrbtree_right;
-        }
-        else
-        {
+        } else {
             return node;
             return zrbtree_prev(node);
         }
@@ -824,20 +764,14 @@ zrbtree_node_t *zrbtree_near_next(zrbtree_t * tree, zrbtree_node_t * vnode)
 
     ret_node = 0;
     node = tree->zrbtree_node;
-    while (node)
-    {
+    while (node) {
         cmp_result = tree->cmp_fn(vnode, node);
-        if (cmp_result > 0)
-        {
+        if (cmp_result > 0) {
             ret_node = node;
             node = node->zrbtree_right;
-        }
-        else if (cmp_result < 0)
-        {
+        } else if (cmp_result < 0) {
             node = node->zrbtree_left;
-        }
-        else
-        {
+        } else {
             return node;
             return zrbtree_next(node);
         }
@@ -847,8 +781,7 @@ zrbtree_node_t *zrbtree_near_next(zrbtree_t * tree, zrbtree_node_t * vnode)
 
 void zrbtree_walk(zrbtree_t * tree, void (*walk_fn) (zrbtree_node_t *, void *), void *ctx)
 {
-    typedef struct
-    {
+    typedef struct {
         zrbtree_node_t *node;
         unsigned char lrs;
     } _NL;
@@ -856,27 +789,22 @@ void zrbtree_walk(zrbtree_t * tree, void (*walk_fn) (zrbtree_node_t *, void *), 
     _NL list[64];
     int idx, lrs;
 
-    if (!walk_fn)
-    {
+    if (!walk_fn) {
         return;
     }
     idx = 0;
     node = tree->zrbtree_node;
     list[idx].node = node;
     list[idx].lrs = 0;
-    while (1)
-    {
+    while (1) {
         node = list[idx].node;
         lrs = list[idx].lrs;
-        if (!node || lrs == 2)
-        {
-            if (node)
-            {
+        if (!node || lrs == 2) {
+            if (node) {
                 (*walk_fn) (node, ctx);
             }
             idx--;
-            if (idx == -1)
-            {
+            if (idx == -1) {
                 break;
             }
             list[idx].lrs++;
@@ -892,12 +820,10 @@ void zrbtree_walk_forward(zrbtree_t * tree, void (*walk_fn) (zrbtree_node_t *, v
 {
     zrbtree_node_t *node, *next;
 
-    if (!walk_fn)
-    {
+    if (!walk_fn) {
         return;
     }
-    for (node = zrbtree_first(tree); node; node = next)
-    {
+    for (node = zrbtree_first(tree); node; node = next) {
         next = zrbtree_next(node);
         (*walk_fn) (node, ctx);
     }
@@ -907,12 +833,10 @@ void zrbtree_walk_back(zrbtree_t * tree, void (*walk_fn) (zrbtree_node_t *, void
 {
     zrbtree_node_t *node, *next;
 
-    if (!walk_fn)
-    {
+    if (!walk_fn) {
         return;
     }
-    for (node = zrbtree_last(tree); node; node = next)
-    {
+    for (node = zrbtree_last(tree); node; node = next) {
         next = zrbtree_prev(node);
         (*walk_fn) (node, ctx);
     }

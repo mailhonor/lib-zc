@@ -9,7 +9,6 @@
 #include "libzc.h"
 #include <time.h>
 
-
 static int after_write(zaio_t * aio);
 static int service_error(zaio_t * aio)
 {
@@ -35,14 +34,12 @@ static int after_read(zaio_t * aio)
 
     ret = zaio_get_ret(aio);
     fd = zaio_get_fd(aio);
-    if (ret < 1)
-    {
+    if (ret < 1) {
         return service_error(aio);
     }
     zaio_fetch_rbuf(aio, rbuf, ret);
 
-    if (ret > 3 && !strncmp(rbuf, "exit", 4))
-    {
+    if (ret > 3 && !strncmp(rbuf, "exit", 4)) {
         zaio_fini(aio);
         zaio_free(aio);
         close(fd);
@@ -51,13 +48,11 @@ static int after_read(zaio_t * aio)
 
     rbuf[ret] = 0;
     p = strchr(rbuf, '\r');
-    if (p)
-    {
+    if (p) {
         *p = 0;
     }
     p = strchr(rbuf, '\n');
-    if (p)
-    {
+    if (p) {
         *p = 0;
     }
     len = strlen(rbuf);
@@ -77,8 +72,7 @@ static int after_write(zaio_t * aio)
 
     ret = zaio_get_ret(aio);
 
-    if (ret < 1)
-    {
+    if (ret < 1) {
         return service_error(aio);
     }
 
@@ -93,7 +87,7 @@ static void welcome(zaio_t * aio)
 
     zaio_printf(aio, "welcome aio: %s\n", ctime(&t));
     zaio_write_cache_flush(aio, after_write, 1000);
-} 
+}
 
 static int before_accept(zev_t * ev)
 {
@@ -104,8 +98,7 @@ static int before_accept(zev_t * ev)
 
     sock = zev_get_fd(ev);
     fd = zinet_accept(sock);
-    if (fd < -1)
-    {
+    if (fd < -1) {
         printf("accept fail\n");
         return 0;
     }
@@ -145,8 +138,7 @@ int main(int argc, char **argv)
     zevtimer_init(&tm, zvar_evbase);
     zevtimer_start(&tm, timer_cb, 200 * 1000);
 
-    while (1)
-    {
+    while (1) {
         zevbase_dispatch(zvar_evbase, 0);
     }
 

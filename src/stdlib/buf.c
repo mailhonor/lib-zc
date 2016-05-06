@@ -13,8 +13,7 @@ zbuf_t *zbuf_create(int size)
     zbuf_t *bf;
 
     bf = (zbuf_t *) zcalloc(1, sizeof(zbuf_t));
-    if (size < 13)
-    {
+    if (size < 13) {
         size = 13;
     }
     bf->size = size;
@@ -36,12 +35,10 @@ int zbuf_need_space(zbuf_t * bf, int need)
 
     left = bf->size - bf->len;
     incr = need - left;
-    if (incr < 0)
-    {
+    if (incr < 0) {
         return left;
     }
-    if (incr < bf->size)
-    {
+    if (incr < bf->size) {
         incr = bf->size;
     }
     bf->size += incr;
@@ -51,8 +48,7 @@ int zbuf_need_space(zbuf_t * bf, int need)
 
 int zbuf_put_do(zbuf_t * bf, int ch)
 {
-    if (bf->len == bf->size)
-    {
+    if (bf->len == bf->size) {
         zbuf_need_space(bf, 1);
     }
     return ZBUF_PUT(bf, ch);
@@ -76,12 +72,10 @@ void zbuf_truncate(zbuf_t * bf, int new_len)
 int zbuf_strncpy(zbuf_t * bf, char *src, int len)
 {
     ZBUF_RESET(bf);
-    if (len < 1)
-    {
+    if (len < 1) {
         return ZBUF_LEN(bf);
     }
-    while (len-- && *src)
-    {
+    while (len-- && *src) {
         ZBUF_PUT(bf, *src);
         src++;
     }
@@ -93,8 +87,7 @@ int zbuf_strncpy(zbuf_t * bf, char *src, int len)
 int zbuf_strcpy(zbuf_t * bf, char *src)
 {
     ZBUF_RESET(bf);
-    while (*src)
-    {
+    while (*src) {
         ZBUF_PUT(bf, *src);
         src++;
     }
@@ -105,12 +98,10 @@ int zbuf_strcpy(zbuf_t * bf, char *src)
 
 int zbuf_strncat(zbuf_t * bf, char *src, int len)
 {
-    if (len < 1)
-    {
+    if (len < 1) {
         return ZBUF_LEN(bf);
     }
-    while (len-- && *src)
-    {
+    while (len-- && *src) {
         ZBUF_PUT(bf, *src);
         src++;
     }
@@ -121,8 +112,7 @@ int zbuf_strncat(zbuf_t * bf, char *src, int len)
 
 int zbuf_strcat(zbuf_t * bf, char *src)
 {
-    while (*src)
-    {
+    while (*src) {
         ZBUF_PUT(bf, *src);
         src++;
     }
@@ -135,20 +125,15 @@ int zbuf_memcpy(zbuf_t * bf, void *src_raw, int len)
 {
     char *src = (char *)src_raw;
     ZBUF_RESET(bf);
-    if (len < 1)
-    {
+    if (len < 1) {
         return ZBUF_LEN(bf);
     }
-    if (len > 1024)
-    {
+    if (len > 1024) {
         bf->len = len;
         zbuf_need_space(bf, len);
         memcpy(bf->data, src, len);
-    }
-    else
-    {
-        while (len--)
-        {
+    } else {
+        while (len--) {
             ZBUF_PUT(bf, *src);
             src++;
         }
@@ -161,20 +146,15 @@ int zbuf_memcpy(zbuf_t * bf, void *src_raw, int len)
 int zbuf_memcat(zbuf_t * bf, void *src_raw, int len)
 {
     char *src = (char *)src_raw;
-    if (len < 1)
-    {
+    if (len < 1) {
         return ZBUF_LEN(bf);
     }
-    if (len > 1024)
-    {
+    if (len > 1024) {
         bf->len += len;
         zbuf_need_space(bf, len);
         memcpy(bf->data + bf->len, src, len);
-    }
-    else
-    {
-        while (len--)
-        {
+    } else {
+        while (len--) {
             ZBUF_PUT(bf, *src);
             src++;
         }
@@ -217,11 +197,9 @@ int zbuf_vprintf(zbuf_t * bf, char *format, va_list ap)
     vsnprintf(buf, 1024000, format, ap);
     src = buf;
 
-    while (1)
-    {
+    while (1) {
         c = *src++;
-        if (!c)
-        {
+        if (!c) {
             break;
         }
         ZBUF_PUT(bf, c);
@@ -258,23 +236,19 @@ void zbuf_sizedata_escape(zbuf_t * bf, void *data, int len)
 {
     int ch, left = len;
 
-    if (len < 0)
-    {
+    if (len < 0) {
         return;
     }
-    do
-    {
+    do {
         ch = left & 0177;
         left >>= 7;
-        if (!left)
-        {
+        if (!left) {
             ch |= 0200;
         }
         ZBUF_PUT(bf, ch);
     }
     while (left);
-    if (len > 0)
-    {
+    if (len > 0) {
         zbuf_memcat(bf, data, len);
     }
 }
@@ -304,8 +278,7 @@ void zbuf_sizedata_escape_dict(zbuf_t * bf, zdict_t * zd)
     zdict_node_t *n;
     char *k, *v;
 
-    ZDICT_WALK_BEGIN(zd, n)
-    {
+    ZDICT_WALK_BEGIN(zd, n) {
         k = (char *)zdict_key(n);
         v = (char *)zdict_value(n);
         zbuf_sizedata_escape(bf, k, strlen(k));
@@ -319,8 +292,7 @@ void zbuf_sizedata_escape_pp(zbuf_t * bf, char **pp, int len)
     int i;
     char *p;
 
-    for (i = 0; i < len; i++)
-    {
+    for (i = 0; i < len; i++) {
         p = *pp++;
         zbuf_sizedata_escape(bf, p, p ? strlen(p) : 0);
     }

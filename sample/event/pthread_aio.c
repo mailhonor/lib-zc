@@ -11,9 +11,8 @@
 #include <pthread.h>
 
 typedef int (*send_cb_t) (zaio_t *);
-typedef struct 
-{
-    zaio_t * aio;
+typedef struct {
+    zaio_t *aio;
     send_cb_t callback;
 } send_obj_t;
 
@@ -22,7 +21,7 @@ static pthread_mutex_t locker = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 static int after_write(zaio_t * aio);
-static void send_aio_to_another_pthread(zaio_t *aio, send_cb_t callback);
+static void send_aio_to_another_pthread(zaio_t * aio, send_cb_t callback);
 
 static int service_error(zaio_t * aio)
 {
@@ -48,14 +47,12 @@ static int another_after_read(zaio_t * aio)
 
     ret = zaio_get_ret(aio);
     fd = zaio_get_fd(aio);
-    if (ret < 1)
-    {
+    if (ret < 1) {
         return service_error(aio);
     }
     zaio_fetch_rbuf(aio, rbuf, ret);
 
-    if (ret > 3 && !strncmp(rbuf, "exit", 4))
-    {
+    if (ret > 3 && !strncmp(rbuf, "exit", 4)) {
         zaio_fini(aio);
         zaio_free(aio);
         close(fd);
@@ -64,13 +61,11 @@ static int another_after_read(zaio_t * aio)
 
     rbuf[ret] = 0;
     p = strchr(rbuf, '\r');
-    if (p)
-    {
+    if (p) {
         *p = 0;
     }
     p = strchr(rbuf, '\n');
-    if (p)
-    {
+    if (p) {
         *p = 0;
     }
     len = strlen(rbuf);
@@ -90,7 +85,6 @@ static int after_read(zaio_t * aio)
     return 0;
 }
 
-
 static int another_after_write(zaio_t * aio)
 {
     int ret;
@@ -98,8 +92,7 @@ static int another_after_write(zaio_t * aio)
 
     ret = zaio_get_ret(aio);
 
-    if (ret < 1)
-    {
+    if (ret < 1) {
         return service_error(aio);
     }
 
@@ -121,12 +114,12 @@ static void another_welcome(zaio_t * aio)
 
     zaio_printf(aio, "welcome aio: %s\n", ctime(&t));
     zaio_write_cache_flush(aio, after_write, 10 * 1000);
-} 
+}
 
 static void welcome(zaio_t * aio)
 {
-    send_aio_to_another_pthread(aio, (send_cb_t)another_welcome);
-} 
+    send_aio_to_another_pthread(aio, (send_cb_t) another_welcome);
+}
 
 static int before_accept(zev_t * ev)
 {
@@ -137,8 +130,7 @@ static int before_accept(zev_t * ev)
 
     sock = zev_get_fd(ev);
     fd = zinet_accept(sock);
-    if (fd < -1)
-    {
+    if (fd < -1) {
         zinfo("accept fail");
         return 0;
     }
@@ -163,19 +155,17 @@ void *another_pthread_deal_aio(void *arg)
 {
     send_obj_t *obj;
 
-    while(1)
-    {
+    while (1) {
         pthread_mutex_lock(&locker);
-        while (! ZCHAIN_HEAD(aio_chain)) {
+        while (!ZCHAIN_HEAD(aio_chain)) {
             pthread_cond_wait(&cond, &locker);
         }
         obj = 0;
         zchain_shift(aio_chain, (char **)&obj);
         pthread_mutex_unlock(&locker);
-       
-        if (obj)
-        {
-            (obj->callback)(obj->aio);
+
+        if (obj) {
+            (obj->callback) (obj->aio);
             zfree(obj);
         }
     }
@@ -183,20 +173,18 @@ void *another_pthread_deal_aio(void *arg)
     return arg;
 }
 
-static void send_aio_to_another_pthread(zaio_t *aio, send_cb_t callback)
+static void send_aio_to_another_pthread(zaio_t * aio, send_cb_t callback)
 {
     long r;
     send_obj_t *obj;
 
     r = ztimeout_set(0);
-    if (r % 3 == 0)
-    {
+    if (r % 3 == 0) {
         callback(aio);
         return;
     }
 
-
-    obj = (send_obj_t *)zcalloc(1, sizeof(send_obj_t));
+    obj = (send_obj_t *) zcalloc(1, sizeof(send_obj_t));
     obj->aio = aio;
     obj->callback = callback;
 
@@ -213,13 +201,13 @@ static int ___log(int level, char *fmt, va_list ap)
     int len;
     pthread_t c_pth = pthread_self();
 
-    len = sprintf(log_buf, "%s[%d][%lu]: ", (pthread_equal(m_pth, c_pth)?"pth1":"pth2"), getpid(), pthread_self());
+    len = sprintf(log_buf, "%s[%d][%lu]: ", (pthread_equal(m_pth, c_pth) ? "pth1" : "pth2"), getpid(), pthread_self());
     len += zvsnprintf(log_buf + len, 102000 - len - 2, fmt, ap);
     log_buf[len] = '\n';
     log_buf[len + 1] = 0;
     fputs(log_buf, stderr);
 
-	return 0;
+    return 0;
 }
 
 int main(int argc, char **argv)
@@ -250,8 +238,7 @@ int main(int argc, char **argv)
     zevtimer_init(&tm, zvar_evbase);
     zevtimer_start(&tm, timer_cb, 200 * 1000);
 
-    while (1)
-    {
+    while (1) {
         zevbase_dispatch(zvar_evbase, 0);
     }
 

@@ -16,21 +16,16 @@ int zmail_parser_references_decode(zmail_parser_t * parser, char *refs, zmail_re
     fmid = 0;
     lmid = 0;
     zstrtok_init(&stok, refs);
-    while (zstrtok(&stok, "<> \t,\r\n"))
-    {
-        if (stok.len < 2)
-        {
+    while (zstrtok(&stok, "<> \t,\r\n")) {
+        if (stok.len < 2) {
             continue;
         }
         mid = (zmail_references_t *) zmpool_calloc(parser->mpool, 1, sizeof(zmail_references_t));
         mid->message_id = zmpool_memdup(parser->mpool, stok.str, stok.len);
-        if (!fmid)
-        {
+        if (!fmid) {
             fmid = mid;
             lmid = mid;
-        }
-        else
-        {
+        } else {
             lmid->next = mid;
             lmid = mid;
         }

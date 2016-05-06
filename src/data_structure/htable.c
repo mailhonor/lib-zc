@@ -36,10 +36,8 @@ static int zhtable_grow(zhtable_t * table)
 
     zhtable_size(table, 2 * old_size);
 
-    while (old_size-- > 0)
-    {
-        for (ht = *h++; ht; ht = next)
-        {
+    while (old_size-- > 0) {
+        for (ht = *h++; ht; ht = next) {
             next = ht->next;
             zhtable_link(table, ht);
         }
@@ -58,8 +56,7 @@ void zhtable_init(zhtable_t * table, int size, zhtable_cmp_t cmp_fn, zhtable_has
 
 zhtable_node_t *zhtable_attach(zhtable_t * table, zhtable_node_t * node)
 {
-    if (table->len >= table->size)
-    {
+    if (table->len >= table->size) {
         zhtable_grow(table);
     }
     zhtable_link(table, node);
@@ -70,10 +67,8 @@ zhtable_node_t *zhtable_attach(zhtable_t * table, zhtable_node_t * node)
 zhtable_node_t *zhtable_lookup(zhtable_t * table, zhtable_node_t * vnode)
 {
     zhtable_node_t *ht;
-    for (ht = table->data[table->hash_fn(vnode, table->size)]; ht; ht = ht->next)
-    {
-        if (!table->cmp_fn(vnode, ht))
-        {
+    for (ht = table->data[table->hash_fn(vnode, table->size)]; ht; ht = ht->next) {
+        if (!table->cmp_fn(vnode, ht)) {
             return (ht);
         }
     }
@@ -85,20 +80,14 @@ zhtable_node_t *zhtable_remove(zhtable_t * table, zhtable_node_t * vnode)
     zhtable_node_t *ht;
     zhtable_node_t **h = table->data + table->hash_fn(vnode, table->size);
 
-    for (ht = *h; ht; ht = ht->next)
-    {
-        if (table->cmp_fn(vnode, ht))
-        {
-            if (ht->next)
-            {
+    for (ht = *h; ht; ht = ht->next) {
+        if (table->cmp_fn(vnode, ht)) {
+            if (ht->next) {
                 ht->next->prev = ht->prev;
             }
-            if (ht->prev)
-            {
+            if (ht->prev) {
                 ht->prev->next = ht->next;
-            }
-            else
-            {
+            } else {
                 *h = ht->next;
             }
             table->len--;
@@ -125,13 +114,10 @@ void zhtable_fini(zhtable_t * table, void (*fini_fn) (zhtable_node_t *, void *),
     zhtable_node_t *next;
     zhtable_node_t **h = table->data;
 
-    while (i-- > 0)
-    {
-        for (ht = *h++; ht; ht = next)
-        {
+    while (i-- > 0) {
+        for (ht = *h++; ht; ht = next) {
             next = ht->next;
-            if (fini_fn)
-            {
+            if (fini_fn) {
                 (*fini_fn) (ht, ctx);
             }
         }
@@ -144,14 +130,11 @@ void zhtable_walk(zhtable_t * table, void (*walk_fn) (zhtable_node_t *, void *),
     unsigned i = table->size;
     zhtable_node_t **h = table->data;
     zhtable_node_t *ht;
-    if (!walk_fn)
-    {
+    if (!walk_fn) {
         return;
     }
-    while (i-- > 0)
-    {
-        for (ht = *h++; ht; ht = ht->next)
-        {
+    while (i-- > 0) {
+        for (ht = *h++; ht; ht = ht->next) {
             (*walk_fn) (ht, ctx);
         }
     }
@@ -163,8 +146,7 @@ zhtable_node_t **zhtable_list(zhtable_t * table, zhtable_node_t ** list)
     int count = 0;
     int i;
 
-    if (!list)
-    {
+    if (!list) {
         list = (zhtable_node_t **) zmalloc(sizeof(*list) * (table->len + 1));
     }
     for (i = 0; i < table->size; i++)

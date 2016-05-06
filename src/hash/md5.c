@@ -100,8 +100,7 @@ static void *body(zmd5_t * ctx, void *data, size_t size)
     c = ctx->c;
     d = ctx->d;
 
-    do
-    {
+    do {
         saved_a = a;
         saved_b = b;
         saved_c = c;
@@ -155,12 +154,10 @@ void zmd5_update(zmd5_t * ctx, void *data, int size)
 
     used = saved_lo & 0x3f;
 
-    if (used)
-    {
+    if (used) {
         free = 64 - used;
 
-        if (size < free)
-        {
+        if (size < free) {
             memcpy(&ctx->buffer[used], data, size);
             return;
         }
@@ -171,8 +168,7 @@ void zmd5_update(zmd5_t * ctx, void *data, int size)
         body(ctx, ctx->buffer, 64);
     }
 
-    if (size >= 64)
-    {
+    if (size >= 64) {
         data = body(ctx, data, size & ~(unsigned long)0x3f);
         size &= 0x3f;
     }
@@ -191,8 +187,7 @@ void zmd5_final(zmd5_t * ctx, void *result)
 
     free = 64 - used;
 
-    if (free < 8)
-    {
+    if (free < 8) {
         memset(&ctx->buffer[used], 0, free);
         body(ctx, ctx->buffer, 64);
         used = 0;

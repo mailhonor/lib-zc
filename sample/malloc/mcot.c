@@ -18,12 +18,10 @@ int main(int argc, char **argv)
 
     emp = zmcot_create(10);
     start = ztimeout_set(0);
-    for (i = 0; i < loop; i++)
-    {
+    for (i = 0; i < loop; i++) {
         ptr = zmcot_alloc_one(emp);
         ptr[1] = i;
-        if(i % 100 != 1)
-        {
+        if (i % 100 != 1) {
             zmcot_free_one(emp, ptr);
         }
     }

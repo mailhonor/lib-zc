@@ -17,14 +17,12 @@ static char *fmt_addr = "%-15s %c %s\n";
 
 static void addr_list_show(char *hid, zmail_addr_t * ma)
 {
-    if (!ma)
-    {
+    if (!ma) {
         printf(fmt_none, hid);
         return;
     }
 
-    for (; ma; ma = ma->next)
-    {
+    for (; ma; ma = ma->next) {
         printf(fmt_addr, hid, '/', ma->mail);
         printf(fmt_addr, "", '|', ma->name);
         printf(fmt_addr, "", '\\', ma->name_rd);
@@ -33,8 +31,7 @@ static void addr_list_show(char *hid, zmail_addr_t * ma)
 
 static void addr_show(char *hid, zmail_addr_t * ma)
 {
-    if (!ma)
-    {
+    if (!ma) {
         printf(fmt_none, hid);
         return;
     }
@@ -47,14 +44,12 @@ static void references_show(char *hid, zmail_references_t * references)
 {
     int i = 0;
 
-    if (!references)
-    {
+    if (!references) {
         printf(fmt_none, hid);
         return;
     }
 
-    for (; references; references = references->next)
-    {
+    for (; references; references = references->next) {
         i++;
         printf(fmt, i == 1 ? hid : "", references->message_id);
     }
@@ -65,8 +60,7 @@ static void all_mime_show(char *hid, zmail_mime_t * mime)
     zmail_mime_t *m;
     char buf[128];
 
-    ZMAIL_PARSER_MIME_WALK_BEGIN(mime, m)
-    {
+    ZMAIL_PARSER_MIME_WALK_BEGIN(mime, m) {
         printf(fmt_addr, hid, '/', m->type);
         printf(fmt_addr, "", '|', m->disposition);
         printf(fmt_addr, "", '|', m->name);
@@ -86,14 +80,12 @@ static void all_mime_show(char *hid, zmail_mime_t * mime)
 static void attachments_show(char *hid, zmail_mime_t ** mime, int count)
 {
     int i;
-    if (count == 0)
-    {
+    if (count == 0) {
         printf(fmt, hid, "not found");
         return;
     }
 
-    for (i = 0; i < count; i++)
-    {
+    for (i = 0; i < count; i++) {
         printf(fmt_ld, hid, (i + 1));
         printf(fmt_addr, "", '/', mime[i]->name);
         printf(fmt_addr, "", '|', mime[i]->name_rd);
@@ -110,14 +102,12 @@ static void text_show(zmail_parser_t * parser, char *hid, zmail_mime_t ** mime_l
     int len;
     zmail_mime_t *mime;
 
-    for (i = 0; i < count; i++)
-    {
+    for (i = 0; i < count; i++) {
         mime = mime_limit[i];
         printf(fmt, hid, mime->type);
         out = (char *)zmalloc(mime->body_len * 3 + 16);
         len = zmail_parser_decode_text_mime_body(parser, mime, out, mime->body_len * 3 + 16);
-        if (len < 0)
-        {
+        if (len < 0) {
             zfree(out);
             printf("found error\n");
             continue;
@@ -157,48 +147,38 @@ void zmail_parser_show(zmail_parser_t * parser)
 }
 
 /* ################################################################## */
-static void ___json_text_escape(char *str, int len, zbuf_t *result)
+static void ___json_text_escape(char *str, int len, zbuf_t * result)
 {
     int i;
     char ch;
 
-    if(len < 0)
-    {
-        if(!str)
-        {
+    if (len < 0) {
+        if (!str) {
             len = 0;
-        }
-        else
-        {
+        } else {
             len = strlen(str);
         }
     }
 
-    for(i=0;i<len;i++)
-    {
+    for (i = 0; i < len; i++) {
         ch = str[i];
-        if (ch == '\0')
-        {
+        if (ch == '\0') {
             zbuf_strcat(result, "\\0");
             continue;
         }
-        if (ch == '\\')
-        {
+        if (ch == '\\') {
             zbuf_strcat(result, "\\\\");
             continue;
         }
-        if (ch == '"')
-        {
+        if (ch == '"') {
             zbuf_strcat(result, "\\\"");
             continue;
         }
-        if (ch == '\r')
-        {
+        if (ch == '\r') {
             zbuf_strcat(result, "\\r");
             continue;
         }
-        if (ch == '\n')
-        {
+        if (ch == '\n') {
             zbuf_strcat(result, "\\n");
             continue;
         }
@@ -206,10 +186,9 @@ static void ___json_text_escape(char *str, int len, zbuf_t *result)
     }
 }
 
-static void ___json_add_kv(int first, char *key, char *value, zbuf_t *result)
+static void ___json_add_kv(int first, char *key, char *value, zbuf_t * result)
 {
-    if(!first)
-    {
+    if (!first) {
         zbuf_strcat(result, ",");
     }
     zbuf_strcat(result, "\"");
@@ -220,14 +199,12 @@ static void ___json_add_kv(int first, char *key, char *value, zbuf_t *result)
     zbuf_strcat(result, "\"");
 }
 
-static void ___json_add_addr(int first, char *key, zmail_addr_t *ma, zbuf_t *result)
+static void ___json_add_addr(int first, char *key, zmail_addr_t * ma, zbuf_t * result)
 {
-    if(!ma)
-    {
-        return ;
+    if (!ma) {
+        return;
     }
-    if(!first)
-    {
+    if (!first) {
         zbuf_strcat(result, ",");
     }
     zbuf_strcat(result, "\"");
@@ -240,26 +217,22 @@ static void ___json_add_addr(int first, char *key, zmail_addr_t *ma, zbuf_t *res
     zbuf_strcat(result, "}");
 }
 
-static void ___json_add_addr_list(int first, char *key, zmail_addr_t *ma, zbuf_t *result)
+static void ___json_add_addr_list(int first, char *key, zmail_addr_t * ma, zbuf_t * result)
 {
-    int f2=1;
+    int f2 = 1;
 
-    if(!ma)
-    {
-        return ;
+    if (!ma) {
+        return;
     }
-    if(!first)
-    {
+    if (!first) {
         zbuf_strcat(result, ",");
     }
     zbuf_strcat(result, "\"");
     zbuf_strcat(result, key);
     zbuf_strcat(result, "\"");
     zbuf_strcat(result, ":[");
-    for (; ma; ma = ma->next)
-    {
-        if(!f2)
-        {
+    for (; ma; ma = ma->next) {
+        if (!f2) {
             zbuf_strcat(result, ",");
         }
         f2 = 0;
@@ -272,16 +245,14 @@ static void ___json_add_addr_list(int first, char *key, zmail_addr_t *ma, zbuf_t
     zbuf_strcat(result, "]");
 }
 
-static void ___json_add_references(int first, char *key, zmail_references_t * references, zbuf_t *result)
+static void ___json_add_references(int first, char *key, zmail_references_t * references, zbuf_t * result)
 {
-    int f2=1;
+    int f2 = 1;
 
-    if(!references)
-    {
+    if (!references) {
         return;
     }
-    if(!first)
-    {
+    if (!first) {
         zbuf_strcat(result, ",");
     }
 
@@ -289,10 +260,8 @@ static void ___json_add_references(int first, char *key, zmail_references_t * re
     zbuf_strcat(result, key);
     zbuf_strcat(result, "\"");
     zbuf_strcat(result, ":[");
-    for (; references; references = references->next)
-    {
-        if(!f2)
-        {
+    for (; references; references = references->next) {
+        if (!f2) {
             zbuf_strcat(result, ",");
         }
         f2 = 0;
@@ -303,18 +272,16 @@ static void ___json_add_references(int first, char *key, zmail_references_t * re
     zbuf_strcat(result, "]");
 }
 
-static void ___json_add_mime(int first, char *key, zmail_mime_t * mime, zbuf_t *result)
+static void ___json_add_mime(int first, char *key, zmail_mime_t * mime, zbuf_t * result)
 {
-    int f2=1;
+    int f2 = 1;
     zmail_mime_t *m;
     char buf[128];
 
-    if(!mime)
-    {
+    if (!mime) {
         return;
     }
-    if(!first)
-    {
+    if (!first) {
         zbuf_strcat(result, ",");
     }
 
@@ -322,10 +289,8 @@ static void ___json_add_mime(int first, char *key, zmail_mime_t * mime, zbuf_t *
     zbuf_strcat(result, key);
     zbuf_strcat(result, "\"");
     zbuf_strcat(result, ":[");
-    ZMAIL_PARSER_MIME_WALK_BEGIN(mime, m)
-    {
-        if(!f2)
-        {
+    ZMAIL_PARSER_MIME_WALK_BEGIN(mime, m) {
+        if (!f2) {
             zbuf_strcat(result, ",");
         }
         f2 = 0;
@@ -348,7 +313,7 @@ static void ___json_add_mime(int first, char *key, zmail_mime_t * mime, zbuf_t *
     zbuf_strcat(result, "]");
 }
 
-static void ___json_add_text(zmail_parser_t *parser, int first, char *key, zmail_mime_t ** mime_limit, int count, zbuf_t *result)
+static void ___json_add_text(zmail_parser_t * parser, int first, char *key, zmail_mime_t ** mime_limit, int count, zbuf_t * result)
 {
     int i;
     char *out = 0;;
@@ -356,12 +321,10 @@ static void ___json_add_text(zmail_parser_t *parser, int first, char *key, zmail
     zmail_mime_t *mime;
     int f2 = 1;
 
-    if(!count)
-    {
+    if (!count) {
         return;
     }
-    if(!first)
-    {
+    if (!first) {
         zbuf_strcat(result, ",");
     }
 
@@ -369,17 +332,14 @@ static void ___json_add_text(zmail_parser_t *parser, int first, char *key, zmail
     zbuf_strcat(result, key);
     zbuf_strcat(result, "\"");
     zbuf_strcat(result, ":[");
-    for (i = 0; i < count; i++)
-    {
-        if(!f2)
-        {
+    for (i = 0; i < count; i++) {
+        if (!f2) {
             zbuf_strcat(result, ",");
         }
         mime = mime_limit[i];
         out = (char *)zmalloc(mime->body_len * 3 + 16);
         len = zmail_parser_decode_text_mime_body(parser, mime, out, mime->body_len * 3 + 16);
-        if (len < 0)
-        {
+        if (len < 0) {
             zfree(out);
             continue;
         }
@@ -394,7 +354,7 @@ static void ___json_add_text(zmail_parser_t *parser, int first, char *key, zmail
     zbuf_strcat(result, "]");
 }
 
-void zmail_parser_show_json(zmail_parser_t * parser, zbuf_t *result)
+void zmail_parser_show_json(zmail_parser_t * parser, zbuf_t * result)
 {
     zbuf_strcat(result, "{");
 

@@ -8,8 +8,7 @@
 
 /* system user from /etc/passwd*/
 typedef struct sysuser_t sysuser_t;
-struct sysuser_t
-{
+struct sysuser_t {
     char *login_name;
     char *passwd;
     char *user_id;
@@ -29,23 +28,18 @@ int sysuser_parseline(char *linebuf, zsdata_t * list)
 
     ps = linebuf;
     i = 0;
-    while (1)
-    {
+    while (1) {
         list[i].data = ps;
         p = strchr(ps, ':');
-        if (p)
-        {
+        if (p) {
             list[i].size = p - ps;
             ps = p + 1;
             i++;
-        }
-        else
-        {
+        } else {
             list[i].size = strlen(ps);
             break;
         }
-        if (i >= 7)
-        {
+        if (i >= 7) {
             zfatal("/etc/passwd line error: %s", linebuf);
         }
     }
@@ -63,11 +57,9 @@ void sysuser_load(void)
     int count = 0;
 
     fp = fopen("/etc/passwd", "r");
-    while (fgets(linebuf, 102400, fp))
-    {
+    while (fgets(linebuf, 102400, fp)) {
         user = ulist + count;
-        if (sysuser_parseline(linebuf, sdlist) != 7)
-        {
+        if (sysuser_parseline(linebuf, sdlist) != 7) {
             continue;
         }
 #define ___USDP(a)  {user->a=zstrndup(sdlist[i].data, sdlist[i].size);i++;}
@@ -91,8 +83,7 @@ void sysuser_unload(void)
 {
     int i;
 
-    for (i = 0; i < sysuser_count; i++)
-    {
+    for (i = 0; i < sysuser_count; i++) {
 #define ___FR(a)    {zfree(sysuser_list[i].a);}
         ___FR(login_name);
         ___FR(passwd);
@@ -102,8 +93,7 @@ void sysuser_unload(void)
         ___FR(home);
         ___FR(shell);
     }
-    if (sysuser_list)
-    {
+    if (sysuser_list) {
         zfree(sysuser_list);
     }
 }

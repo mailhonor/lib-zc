@@ -18,8 +18,7 @@ static void fn_before(void)
 
 static void exit_sleep(void)
 {
-    if(var_sleep > 0)
-    {
+    if (var_sleep > 0) {
         zinfo("sleep %ds before exit", var_sleep);
         zsleep(var_sleep);
     }
@@ -47,22 +46,19 @@ static int after_read(zaio_t * aio)
 
     ret = zaio_get_ret(aio);
     fd = zaio_get_fd(aio);
-    if (ret < 1)
-    {
+    if (ret < 1) {
         return service_error(aio);
     }
     zaio_fetch_rbuf(aio, rbuf, ret);
 
-    if (ret > 3 && !strncmp(rbuf, "exit", 4))
-    {
+    if (ret > 3 && !strncmp(rbuf, "exit", 4)) {
         zaio_fini(aio);
         zfree(aio);
         close(fd);
         return 0;
     }
 
-    if (ret > 3 && !strncmp(rbuf, "EXIT", 4))
-    {
+    if (ret > 3 && !strncmp(rbuf, "EXIT", 4)) {
         zaio_fini(aio);
         zfree(aio);
         close(fd);
@@ -72,13 +68,11 @@ static int after_read(zaio_t * aio)
 
     rbuf[ret] = 0;
     p = strchr(rbuf, '\r');
-    if (p)
-    {
+    if (p) {
         *p = 0;
     }
     p = strchr(rbuf, '\n');
-    if (p)
-    {
+    if (p) {
         *p = 0;
     }
     len = strlen(rbuf);
@@ -86,7 +80,7 @@ static int after_read(zaio_t * aio)
     zaio_write_cache_append(aio, "your input:   ", 12);
     zaio_write_cache_append(aio, rbuf, len);
     zaio_write_cache_append(aio, "\n", 1);
-    zaio_write_cache_flush(aio, after_write, 10 *  1000);
+    zaio_write_cache_flush(aio, after_write, 10 * 1000);
 
     return 0;
 }
@@ -97,8 +91,7 @@ static int after_write(zaio_t * aio)
 
     ret = zaio_get_ret(aio);
 
-    if (ret < 1)
-    {
+    if (ret < 1) {
         return service_error(aio);
     }
 

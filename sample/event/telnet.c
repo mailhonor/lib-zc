@@ -31,8 +31,7 @@ void after_close(void *ctxt)
 int do_parameter(int argc, char **argv)
 {
     char *n = argv[0];
-    if (!strcmp(n, "-ssl"))
-    {
+    if (!strcmp(n, "-ssl")) {
         use_ssl = 1;
         return 1;
     }
@@ -52,29 +51,25 @@ int main(int argc, char **argv)
 
     zparameter_run(argc - 1, argv + 1, do_parameter);
 
-    if (!dest)
-    {
+    if (!dest) {
         usage();
     }
 
     iopb = ziopipe_base_create();
 
     dest_fd = zconnect(dest, 10 * 1000);
-    if (dest_fd < 0)
-    {
+    if (dest_fd < 0) {
         printf("     fail\n");
         exit(0);
     }
     printf("     success\n");
 
     znonblocking(dest_fd, 1);
-    if (use_ssl)
-    {
+    if (use_ssl) {
         zssl_INIT(0);
         sslctx = zsslctx_client_create(0);
         ssl = zssl_create(sslctx, dest_fd);
-        if (zssl_connect(ssl, 1000) < 0)
-        {
+        if (zssl_connect(ssl, 1000) < 0) {
             printf("error: ssl connect\n");
         }
         openssl = zssl_detach_ssl(ssl);

@@ -44,14 +44,12 @@ void zmsleep(long delay)
     rem.tv_sec = delay / 1000;
     rem.tv_nsec = (delay % 1000) * 1000 * 1000;
 
-    while ((rem.tv_sec) || (rem.tv_nsec > 1000))
-    {
+    while ((rem.tv_sec) || (rem.tv_nsec > 1000)) {
         req.tv_sec = rem.tv_sec;
         req.tv_nsec = rem.tv_nsec;
         rem.tv_sec = 0;
         rem.tv_nsec = 0;
-        if ((nanosleep(&req, &rem) < 0) && (errno != EINTR))
-        {
+        if ((nanosleep(&req, &rem) < 0) && (errno != EINTR)) {
             zfatal("zmsleep: nanosleep: %m");
         }
     }

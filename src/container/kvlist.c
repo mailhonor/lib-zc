@@ -11,8 +11,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-struct zkvlist_t
-{
+struct zkvlist_t {
     char *path;
     zdict_t *dict;
     FILE *list_fp;
@@ -57,28 +56,24 @@ int zkvlist_begin(zkvlist_t * kv)
 {
     char pbuf[1024];
 
-    if (kv->locks)
-    {
+    if (kv->locks) {
         kv->locks++;
         return 0;
     }
 
     sprintf(pbuf, "%s.lock", kv->path);
     kv->lock_fd = open(pbuf, O_RDWR | O_CREAT, 0666);
-    if (kv->lock_fd == -1)
-    {
+    if (kv->lock_fd == -1) {
         return -1;
     }
-    if (zflock(kv->lock_fd, LOCK_EX))
-    {
+    if (zflock(kv->lock_fd, LOCK_EX)) {
         close(kv->lock_fd);
         kv->lock_fd = -1;
         return -1;
     }
 
     kv->list_fp = fopen(kv->path, "a+");
-    if (!kv->list_fp)
-    {
+    if (!kv->list_fp) {
         close(kv->lock_fd);
         kv->lock_fd = -1;
         return -1;
@@ -91,22 +86,18 @@ int zkvlist_begin(zkvlist_t * kv)
 
 int zkvlist_end(zkvlist_t * kv)
 {
-    if (!kv->locks)
-    {
+    if (!kv->locks) {
         return 0;
     }
     kv->locks--;
-    if (kv->locks)
-    {
+    if (kv->locks) {
         return 0;
     }
-    if (kv->list_fp)
-    {
+    if (kv->list_fp) {
         fclose(kv->list_fp);
         kv->list_fp = 0;
     }
-    if (kv->lock_fd != -1)
-    {
+    if (kv->lock_fd != -1) {
         zflock(kv->lock_fd, LOCK_UN);
         close(kv->lock_fd);
         kv->lock_fd = -1;
@@ -121,20 +112,16 @@ int zkvlist_changed(zkvlist_t * kv)
 {
     struct stat st;
 
-    if (stat(kv->path, &st) < 0)
-    {
+    if (stat(kv->path, &st) < 0) {
         return -1;
     }
-    if (st.st_ino != kv->ino)
-    {
+    if (st.st_ino != kv->ino) {
         return 1;
     }
-    if (st.st_mtime != (kv->mtime))
-    {
+    if (st.st_mtime != (kv->mtime)) {
         return 1;
     }
-    if (st.st_size != kv->size)
-    {
+    if (st.st_size != kv->size) {
         return 1;
     }
 
@@ -145,8 +132,7 @@ static int zkvlist_stat_update(zkvlist_t * kv)
 {
     struct stat st;
 
-    if (stat(kv->path, &st) < 0)
-    {
+    if (stat(kv->path, &st) < 0) {
         return -1;
     }
     st.st_ino = kv->ino;
@@ -160,34 +146,26 @@ int zkvlist_add(zkvlist_t * kv, char *key, char *value)
 {
     FILE *fp;
 
-    if ((!key) && (!value))
-    {
+    if ((!key) && (!value)) {
         return 0;
     }
 
-    if (zkvlist_begin(kv))
-    {
+    if (zkvlist_begin(kv)) {
         return -1;
     }
     fp = kv->list_fp;
     value = (value ? value : "");
-    if (key)
-    {
+    if (key) {
         fprintf(fp, "%s=%s\n", key, value);
-    }
-    else
-    {
+    } else {
         fprintf(fp, "%s=\n", value);
     }
 
     zkvlist_end(kv);
 
-    if (key)
-    {
+    if (key) {
         zdict_add(kv->dict, key, value);
-    }
-    else
-    {
+    } else {
         zdict_delete(kv->dict, value);
     }
 
@@ -201,8 +179,7 @@ int zkvlist_delete(zkvlist_t * kv, char *key)
 
 int zkvlist_lookup(zkvlist_t * kv, char *key, char **value)
 {
-    if (zdict_lookup(kv->dict, key, value))
-    {
+    if (zdict_lookup(kv->dict, key, value)) {
         return 1;
     }
 
@@ -218,54 +195,43 @@ int zkvlist_load(zkvlist_t * kv)
     zdict_t *dict;
     int line_count = 0;
 
-    if (zkvlist_begin(kv))
-    {
+    if (zkvlist_begin(kv)) {
         return -1;
     }
     fp = kv->list_fp;
     fseek(fp, 0, SEEK_SET);
 
     dict = zdict_create();
-    while ((fgets(lbuf, 102401, fp)))
-    {
+    while ((fgets(lbuf, 102401, fp))) {
         line_count++;
         llen = strlen(lbuf);
-        if (llen < 2)
-        {
+        if (llen < 2) {
             continue;
         }
-        if (lbuf[llen - 1] == '\n')
-        {
+        if (lbuf[llen - 1] == '\n') {
             llen--;
         }
-        if (lbuf[llen - 1] == '\r')
-        {
+        if (lbuf[llen - 1] == '\r') {
             llen--;
         }
         lbuf[llen] = 0;
-        if (llen < 2)
-        {
+        if (llen < 2) {
             continue;
         }
         name = lbuf;
         llen--;
-        if (*name == '=')
-        {
+        if (*name == '=') {
             continue;
         }
         ne = strchr(name, '=');
-        if (!ne)
-        {
+        if (!ne) {
             continue;
         }
         *ne = 0;
         value = ne + 1;
-        if (*value)
-        {
+        if (*value) {
             zdict_add(dict, name, value);
-        }
-        else
-        {
+        } else {
             zdict_delete(dict, name);
         }
     }
@@ -273,10 +239,8 @@ int zkvlist_load(zkvlist_t * kv)
     zdict_free(kv->dict);
     kv->dict = dict;
 
-    if (line_count > 1000)
-    {
-        if ((1.5 * dict->len) < line_count)
-        {
+    if (line_count > 1000) {
+        if ((1.5 * dict->len) < line_count) {
             zkvlist_arrangement(kv);
         }
     }
@@ -296,26 +260,22 @@ static int zkvlist_arrangement(zkvlist_t * kv)
 
     sprintf(pbuf, "%s_arr", kv->path);
     fp = fopen(pbuf, "w+");
-    if (!fp)
-    {
+    if (!fp) {
         return -1;
     }
-    for (n = zdict_first(dict); n; n = zdict_next(n))
-    {
+    for (n = zdict_first(dict); n; n = zdict_next(n)) {
         fprintf(fp, "%s=%s\n", n->key, (char *)(n->value));
     }
 
     fflush(fp);
     fclose(fp);
 
-    if (rename(pbuf, kv->path))
-    {
+    if (rename(pbuf, kv->path)) {
         return -1;
     }
 
     fp = fopen(pbuf, "a+");
-    if (!fp)
-    {
+    if (!fp) {
         return -1;
     }
 

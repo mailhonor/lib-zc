@@ -23,7 +23,7 @@ zidict_t *zidict_create(void)
     return zidict_create_mpool(0);
 }
 
-zidict_t *zidict_create_mpool(zmpool_t *mpool)
+zidict_t *zidict_create_mpool(zmpool_t * mpool)
 {
     zidict_t *mp;
 
@@ -39,11 +39,10 @@ void zidict_free(zidict_t * mp)
 {
     zidict_node_t *n;
 
-    while ((n = zidict_first(mp)))
-    {
+    while ((n = zidict_first(mp))) {
         zrbtree_detach(&(mp->rbtree), &(n->rbnode));
-         zmpool_free(mp->mpool, n->value);
-         zmpool_free(mp->mpool, n);
+        zmpool_free(mp->mpool, n->value);
+        zmpool_free(mp->mpool, n);
     }
     zmpool_free(mp->mpool, mp);
 }
@@ -56,19 +55,16 @@ zidict_node_t *zidict_add(zidict_t * mp, long key, char *value)
     mp_n.key = key;
     rb_np = zrbtree_attach(&(mp->rbtree), &(mp_n.rbnode));
 
-    if (rb_np != &(mp_n.rbnode))
-    {
+    if (rb_np != &(mp_n.rbnode)) {
         mp_np = ZCONTAINER_OF(rb_np, zidict_node_t, rbnode);
         zmpool_free(mp->mpool, mp_np->value);
         mp_np->value = zmpool_strdup(mp->mpool, value);
-    }
-    else
-    {
+    } else {
         mp_np = (zidict_node_t *) zmpool_malloc(mp->mpool, sizeof(zidict_node_t));
         mp_np->key = key;
         mp_np->value = zmpool_strdup(mp->mpool, value);
         zrbtree_replace_node(&(mp->rbtree), &(mp_n.rbnode), &(mp_np->rbnode));
-        mp->len ++;
+        mp->len++;
     }
 
     return mp_np;
@@ -79,17 +75,14 @@ zidict_node_t *zidict_lookup(zidict_t * mp, long key, char **value)
     zidict_node_t mp_n, *mp_np;
     zrbtree_node_t *rb_np;
 
-    if (value)
-    {
+    if (value) {
         *value = 0;
     }
     mp_n.key = key;
     rb_np = zrbtree_lookup(&(mp->rbtree), &(mp_n.rbnode));
-    if (rb_np)
-    {
+    if (rb_np) {
         mp_np = ZCONTAINER_OF(rb_np, zidict_node_t, rbnode);
-        if (value)
-        {
+        if (value) {
             *value = (char *)(mp_np->value);
         }
         return mp_np;
@@ -103,18 +96,15 @@ zidict_node_t *zidict_lookup_near_prev(zidict_t * mp, long key, char **value)
     zidict_node_t mp_n, *mp_np;
     zrbtree_node_t *rb_np;
 
-    if (value)
-    {
+    if (value) {
         *value = 0;
     }
 
     mp_n.key = key;
     rb_np = zrbtree_near_prev(&(mp->rbtree), &(mp_n.rbnode));
-    if (rb_np)
-    {
+    if (rb_np) {
         mp_np = ZCONTAINER_OF(rb_np, zidict_node_t, rbnode);
-        if (value)
-        {
+        if (value) {
             *value = (char *)(mp_np->value);
         }
         return mp_np;
@@ -128,18 +118,15 @@ zidict_node_t *zidict_lookup_near_next(zidict_t * mp, long key, char **value)
     zidict_node_t mp_n, *mp_np;
     zrbtree_node_t *rb_np;
 
-    if (value)
-    {
+    if (value) {
         *value = 0;
     }
 
     mp_n.key = key;
     rb_np = zrbtree_near_next(&(mp->rbtree), &(mp_n.rbnode));
-    if (rb_np)
-    {
+    if (rb_np) {
         mp_np = ZCONTAINER_OF(rb_np, zidict_node_t, rbnode);
-        if (value)
-        {
+        if (value) {
             *value = (char *)(mp_np->value);
         }
         return mp_np;
@@ -148,12 +135,12 @@ zidict_node_t *zidict_lookup_near_next(zidict_t * mp, long key, char **value)
     return 0;
 }
 
-void zidict_delete_node(zidict_t * mp, zidict_node_t *n)
+void zidict_delete_node(zidict_t * mp, zidict_node_t * n)
 {
     zrbtree_detach(&(mp->rbtree), &(n->rbnode));
     zmpool_free(mp->mpool, n->value);
     zmpool_free(mp->mpool, n);
-    mp->len --;
+    mp->len--;
 }
 
 void zidict_delete(zidict_t * mp, long key)
@@ -161,21 +148,19 @@ void zidict_delete(zidict_t * mp, long key)
     zidict_node_t *n;
 
     n = zidict_lookup(mp, key, 0);
-    if (!n)
-    {
+    if (!n) {
         return;
     }
     zrbtree_detach(&(mp->rbtree), &(n->rbnode));
     zmpool_free(mp->mpool, n->value);
     zmpool_free(mp->mpool, n);
-    mp->len --;
+    mp->len--;
 }
 
 zidict_node_t *zidict_first(zidict_t * mp)
 {
     zrbtree_node_t *rn = zrbtree_first(&(mp->rbtree));
-    if (rn)
-    {
+    if (rn) {
         return ZCONTAINER_OF(rn, zidict_node_t, rbnode);
     }
     return 0;
@@ -184,8 +169,7 @@ zidict_node_t *zidict_first(zidict_t * mp)
 zidict_node_t *zidict_last(zidict_t * mp)
 {
     zrbtree_node_t *rn = zrbtree_last(&(mp->rbtree));
-    if (rn)
-    {
+    if (rn) {
         return ZCONTAINER_OF(rn, zidict_node_t, rbnode);
     }
     return 0;
@@ -194,8 +178,7 @@ zidict_node_t *zidict_last(zidict_t * mp)
 zidict_node_t *zidict_prev(zidict_node_t * node)
 {
     zrbtree_node_t *rn = zrbtree_prev(&(node->rbnode));
-    if (rn)
-    {
+    if (rn) {
         return ZCONTAINER_OF(rn, zidict_node_t, rbnode);
     }
     return 0;
@@ -204,8 +187,7 @@ zidict_node_t *zidict_prev(zidict_node_t * node)
 zidict_node_t *zidict_next(zidict_node_t * node)
 {
     zrbtree_node_t *rn = zrbtree_next(&(node->rbnode));
-    if (rn)
-    {
+    if (rn) {
         return ZCONTAINER_OF(rn, zidict_node_t, rbnode);
     }
     return 0;
@@ -215,12 +197,10 @@ void zidict_walk(zidict_t * mp, void (*walk_fn) (zidict_node_t *, void *), void 
 {
     zidict_node_t *node;
 
-    if (!walk_fn)
-    {
+    if (!walk_fn) {
         return;
     }
-    ZIDICT_WALK_BEGIN(mp, node)
-    {
+    ZIDICT_WALK_BEGIN(mp, node) {
         walk_fn(node, ctx);
     }
     ZIDICT_WALK_END;
@@ -233,11 +213,9 @@ int zidict_keys(zidict_t * mp, long *key_list, int size)
     int i;
 
     i = 0;
-    ZRBTREE_WALK_BEGIN(&(mp->rbtree), rnode)
-    {
+    ZRBTREE_WALK_BEGIN(&(mp->rbtree), rnode) {
         node = ZCONTAINER_OF(rnode, zidict_node_t, rbnode);
-        if (i == size)
-        {
+        if (i == size) {
             goto end;
         }
         i++;
@@ -246,8 +224,7 @@ int zidict_keys(zidict_t * mp, long *key_list, int size)
     }
     ZRBTREE_WALK_END;
 
-end:
+  end:
 
     return i;
 }
-

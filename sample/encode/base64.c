@@ -22,13 +22,10 @@ void test()
     char *result;
     int result_len;
 
-    if (cmd == 'd')
-    {
+    if (cmd == 'd') {
         result = zmalloc(reader.len + 16);
         result_len = zbase64_decode(reader.data, reader.len, result, reader.len);
-    }
-    else
-    {
+    } else {
         int result_size = zbase64_encode_get_min_len(reader.len, 1);
         result = zmalloc(result_size);
         result_len = zbase64_encode(reader.data, reader.len, result, result_size, 1);
@@ -46,12 +43,9 @@ void test_zbuf()
 
     bf = zbuf_create(102400);
 
-    if (cmd == 'd')
-    {
+    if (cmd == 'd') {
         result_len = zbase64_decode_to_zbuf(reader.data, reader.len, bf);
-    }
-    else
-    {
+    } else {
         result_len = zbase64_encode_to_zbuf(reader.data, reader.len, bf, 1);
     }
 
@@ -67,12 +61,9 @@ void test_file()
     /* 这使用标注输出 */
     fp = stdout;
 
-    if (cmd == 'd')
-    {
+    if (cmd == 'd') {
         result_len = zbase64_decode_to_file(reader.data, reader.len, fp);
-    }
-    else
-    {
+    } else {
         result_len = zbase64_encode_to_file(reader.data, reader.len, fp, 1);
     }
 
@@ -85,27 +76,21 @@ int main(int argc, char **argv)
     int op;
 
     zvar_progname = argv[0];
-    while ((op = getopt(argc, argv, "d:e:")) > 0)
-    {
-        if (op == 'd')
-        {
+    while ((op = getopt(argc, argv, "d:e:")) > 0) {
+        if (op == 'd') {
             cmd = op;
             fn = optarg;
-        }
-        else if (op == 'e')
-        {
+        } else if (op == 'e') {
             cmd = op;
             fn = optarg;
         }
     }
 
-    if (!fn)
-    {
+    if (!fn) {
         usage();
     }
 
-    if (zmmap_reader_init(&reader, fn) < 0)
-    {
+    if (zmmap_reader_init(&reader, fn) < 0) {
         printf("error, read %s:%m", fn);
         exit(1);
     }

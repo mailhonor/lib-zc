@@ -83,8 +83,7 @@ unsigned int zcrc32(void *data, int size, unsigned int init_value)
 
     crc = init_value ^ 0xFFFFFFFF;
 
-    for (; len--; p++)
-    {
+    for (; len--; p++) {
         crc = ((crc >> 8) & 0x00FFFFFF) ^ crc32tab[(crc ^ (*p)) & 0xFF];
     }
 

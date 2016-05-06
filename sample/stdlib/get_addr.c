@@ -14,22 +14,19 @@ static void get_host_addr(char *host)
     int count, i;
 
     count = zgetaddr(host, addr_list, 128);
-    if (count == 0)
-    {
+    if (count == 0) {
         zinfo("%s'addr none", host);
         return;
     }
     zinfo("%s'addr list(%d):", host, count);
-    for (i = 0; i < count; i++)
-    {
+    for (i = 0; i < count; i++) {
         zinfo("        %s", addr_list[i].addr);
     }
 }
 
 int main(int argc, char **argv)
 {
-    if (argc < 2)
-    {
+    if (argc < 2) {
         zinfo("USAGE: %s host_or_domain\n", argv[0]);
         return 0;
     }

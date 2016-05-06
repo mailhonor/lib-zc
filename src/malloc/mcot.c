@@ -13,7 +13,7 @@ zmcot_t *zmcot_create(int element_size)
     int list[2];
     zmcot_t *cot;
 
-    cot = (zmcot_t *)zcalloc(1, sizeof(zmcot_t));
+    cot = (zmcot_t *) zcalloc(1, sizeof(zmcot_t));
 
     list[0] = element_size;
     list[1] = 0;

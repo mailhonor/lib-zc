@@ -10,15 +10,13 @@
 
 int main(int argc, char **argv)
 {
-    if (0)
-    {
+    if (0) {
         /* do something yourself */
     }
 
     zmaster_main(argc, argv);
 
-    if (0)
-    {
+    if (0) {
     }
 
     return 0;

@@ -20,11 +20,9 @@ void test_default_mpool()
     mp = zmpool_create_default_pool(0);
     ptr = 0;
     start = ztimeout_set(0);
-    for (i = 0; i < 1000000; i++)
-    {
+    for (i = 0; i < 1000000; i++) {
         ptr = zmpool_realloc(mp, ptr, (i + 1) % 4096);
-        if (i % 5 == 0)
-        {
+        if (i % 5 == 0) {
             zmpool_free(mp, ptr);
             ptr = 0;
         }
@@ -47,15 +45,12 @@ void test_grow_mpool()
 
     start = ztimeout_set(0);
 
-    for(j = 0; j< 10; j++)
-    {
+    for (j = 0; j < 10; j++) {
         mp = zmpool_create_grow_pool();
         ptr = 0;
-        for (i = 0; i < 100000; i++)
-        {
+        for (i = 0; i < 100000; i++) {
             ptr = zmpool_malloc(mp, (i + 1) % 4096);
-            if (i % 5 == 0)
-            {
+            if (i % 5 == 0) {
                 zmpool_free(mp, ptr);
             }
         }

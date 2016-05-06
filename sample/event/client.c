@@ -39,8 +39,7 @@ static int after_read(zaio_t * aio)
     char rbuf[102400];
 
     ret = zaio_get_ret(aio);
-    if (ret < 1)
-    {
+    if (ret < 1) {
         return service_error(aio);
     }
     zaio_fetch_rbuf(aio, rbuf, ret);
@@ -56,8 +55,7 @@ static int after_write(zaio_t * aio)
 
     ret = zaio_get_ret(aio);
 
-    if (ret < 1)
-    {
+    if (ret < 1) {
         return service_error(aio);
     }
 
@@ -66,24 +64,21 @@ static int after_write(zaio_t * aio)
     return 0;
 }
 
-
 int limit = 100;
 
-void * connect_action(void *arg)
+void *connect_action(void *arg)
 {
     int i;
     int port = 8899;
-    int err_times=0;
+    int err_times = 0;
 
     pthread_detach(pthread_self());
 
     sleep(3);
     printf("\n");
-    for(i = 0; i < limit; i++)
-    {
+    for (i = 0; i < limit; i++) {
         int fd = zinet_connect("127.0.0.1", port, 1000);
-        if (fd < 0)
-        {
+        if (fd < 0) {
             err_times++;
             continue;
         }
@@ -101,15 +96,11 @@ void * connect_action(void *arg)
 
 int main(int argc, char **argv)
 {
-    if (argc > 1)
-    {
+    if (argc > 1) {
         limit = atoi(argv[1]);
-        if (limit <1)
-        {
+        if (limit < 1) {
             limit = 1;
-        }
-        else if (limit > 10 * 10000)
-        {
+        } else if (limit > 10 * 10000) {
             limit = 10 * 10000;
         }
     }
@@ -118,8 +109,7 @@ int main(int argc, char **argv)
     pthread_t pth;
     pthread_create(&pth, 0, connect_action, 0);
 
-    while (1)
-    {
+    while (1) {
         zevbase_dispatch(zvar_evbase, 0);
     }
 

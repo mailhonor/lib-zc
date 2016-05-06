@@ -16,29 +16,22 @@ static int save_att_tnef(ztnef_parser_t * parser, ztnef_mime_t * mime, int i)
     char tmpname[256];
 
     sname = mime->filename_rd;
-    if (ZEMPTY(sname))
-    {
+    if (ZEMPTY(sname)) {
         sprintf(tmpname, "att_tnef_unknown_%d.dat", i);
-    }
-    else
-    {
+    } else {
         snprintf(tmpname, 255, "att_tnef_%s", sname);
         p = tmpname;
-        while (*p)
-        {
+        while (*p) {
             char ch = *p;
-            if ((ch == '?') || (ch == '<') || (ch == '>'))
-            {
+            if ((ch == '?') || (ch == '<') || (ch == '>')) {
                 *p++ = ' ';
                 continue;
             }
-            if ((ch == '"') || (ch == '\'') || (ch == '|'))
-            {
+            if ((ch == '"') || (ch == '\'') || (ch == '|')) {
                 *p++ = ' ';
                 continue;
             }
-            if ((ch == '/') || (ch == '\\') || (ch == '*'))
-            {
+            if ((ch == '/') || (ch == '\\') || (ch == '*')) {
                 *p++ = ' ';
                 continue;
             }
@@ -47,12 +40,9 @@ static int save_att_tnef(ztnef_parser_t * parser, ztnef_mime_t * mime, int i)
     }
     ret = ztnef_parser_get_mime_body(parser, mime, &p);
     printf("save tnef_attachment %s\n", tmpname);
-    if (ret < 0)
-    {
+    if (ret < 0) {
         printf("tnef_parser_get_mime_body: error\n");
-    }
-    else if (zfile_put_contents(tmpname, p, ret) < 0)
-    {
+    } else if (zfile_put_contents(tmpname, p, ret) < 0) {
         printf("tnef_parser_get_mime_body: save %m\n");
     }
 
@@ -65,33 +55,25 @@ static int save_att(zmail_parser_t * parser, zmail_mime_t * mime, int i)
     char tmpname[256];
 
     sname = mime->name_rd;
-    if (ZEMPTY(sname))
-    {
+    if (ZEMPTY(sname)) {
         sname = mime->filename_rd;
     }
-    if (ZEMPTY(sname))
-    {
+    if (ZEMPTY(sname)) {
         sprintf(tmpname, "att_unknown_%d.dat", i);
-    }
-    else
-    {
+    } else {
         snprintf(tmpname, 255, "att_%s", sname);
         p = tmpname;
-        while (*p)
-        {
+        while (*p) {
             char ch = *p;
-            if ((ch == '?') || (ch == '<') || (ch == '>'))
-            {
+            if ((ch == '?') || (ch == '<') || (ch == '>')) {
                 *p++ = ' ';
                 continue;
             }
-            if ((ch == '"') || (ch == '\'') || (ch == '|'))
-            {
+            if ((ch == '"') || (ch == '\'') || (ch == '|')) {
                 *p++ = ' ';
                 continue;
             }
-            if ((ch == '/') || (ch == '\\') || (ch == '*'))
-            {
+            if ((ch == '/') || (ch == '\\') || (ch == '*')) {
                 *p++ = ' ';
                 continue;
             }
@@ -104,27 +86,21 @@ static int save_att(zmail_parser_t * parser, zmail_mime_t * mime, int i)
     ret = zmail_parser_decode_mime_body(parser, mime, out, mime->body_len * 3 + 16);
 
     printf("save attachment %s\n", tmpname);
-    if (ret < 0)
-    {
+    if (ret < 0) {
         printf("mail_parser_decode_mime_body: error\n");
-    }
-    else if (zfile_put_contents(tmpname, out, ret) < 0)
-    {
+    } else if (zfile_put_contents(tmpname, out, ret) < 0) {
         printf("mail_parser_decode_mime_body: save %m\n");
     }
 
-    if (mime->is_tnef)
-    {
+    if (mime->is_tnef) {
         int j = 0;
         ztnef_parser_t *tnef_parser;
         tnef_parser = ztnef_parser_create(out, ret);
 
-        if (ztnef_parser_run(tnef_parser) < 0)
-        {
+        if (ztnef_parser_run(tnef_parser) < 0) {
             printf("can not decode tnef");
         }
-        for (j = 0; j < tnef_parser->attachment_mime_count; j++)
-        {
+        for (j = 0; j < tnef_parser->attachment_mime_count; j++) {
             save_att_tnef(tnef_parser, tnef_parser->attachment_mime_list[j], j + 1);
         }
         ztnef_parser_free(tnef_parser);
@@ -136,8 +112,7 @@ static int save_att(zmail_parser_t * parser, zmail_mime_t * mime, int i)
 static int save_all_attachments(zmail_parser_t * parser)
 {
     int i;
-    for (i = 0; i < parser->attachment_mime_count; i++)
-    {
+    for (i = 0; i < parser->attachment_mime_count; i++) {
         save_att(parser, parser->attachment_mime_list[i], i);
     }
 

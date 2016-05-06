@@ -22,18 +22,15 @@ int main(int argc, char **argv)
 
     zvar_progname = argv[0];
 
-    if (argc == 1)
-    {
+    if (argc == 1) {
         usage();
     }
     config = zconfig_create();
 
     /* load config */
-    for (i = 1; i < argc; i++)
-    {
+    for (i = 1; i < argc; i++) {
         fn = argv[i];
-        if (zconfig_load(config, fn) < 0)
-        {
+        if (zconfig_load(config, fn) < 0) {
             exit(-1);
         }
     }

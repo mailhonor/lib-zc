@@ -50,37 +50,31 @@ static int zfread_raw_data(zstream_t * fp)
     int ret;
     long time_left;
 
-    if (fp->read_buf_p2 > fp->read_buf_p1)
-    {
+    if (fp->read_buf_p2 > fp->read_buf_p1) {
         return fp->read_buf_p2 - fp->read_buf_p1;
     }
 
     ZFFLUSH(fp);
 
-    if (ZFERROR(fp))
-    {
+    if (ZFERROR(fp)) {
         return -1;
     }
-    if (ZFEOF(fp))
-    {
+    if (ZFEOF(fp)) {
         return 0;
     }
 
     time_left = ztimeout_left(fp->timeout);
-    if (time_left < 1)
-    {
+    if (time_left < 1) {
         fp->error = 1;
         return -1;
     }
     fp->read_buf_p1 = fp->read_buf_p2 = 0;
     ret = fp->read_fn(fp, fp->read_buf, ZFILE_RBUF_SIZE, time_left);
-    if (ret == 0)
-    {
+    if (ret == 0) {
         fp->eof = 1;
         return 0;
     }
-    if (ret < 0)
-    {
+    if (ret < 0) {
         fp->error = 1;
         return -1;
     }
@@ -91,15 +85,12 @@ static int zfread_raw_data(zstream_t * fp)
 
 int zfgetchar(zstream_t * fp)
 {
-    if (fp->read_buf_p2 <= fp->read_buf_p1)
-    {
-        if (zfread_raw_data(fp) < 0)
-        {
+    if (fp->read_buf_p2 <= fp->read_buf_p1) {
+        if (zfread_raw_data(fp) < 0) {
             return -1;
         }
     }
-    if (fp->read_buf_p2 <= fp->read_buf_p1)
-    {
+    if (fp->read_buf_p2 <= fp->read_buf_p1) {
         return -1;
     }
 
@@ -111,30 +102,24 @@ int zfread(zstream_t * fp, void *buf, int len)
     char *p, *p2;
     int i, ret, rlen;
 
-    if (fp->read_buf_p1 >= fp->read_buf_p2)
-    {
+    if (fp->read_buf_p1 >= fp->read_buf_p2) {
         ret = zfread_raw_data(fp);
-        if (ret < 0)
-        {
+        if (ret < 0) {
             return -1;
-        }
-        else if (ret == 0)
-        {
+        } else if (ret == 0) {
             return 0;
         }
     }
 
     rlen = fp->read_buf_p2 - fp->read_buf_p1;
-    if (len > rlen)
-    {
+    if (len > rlen) {
         len = rlen;
     }
 
     p = (char *)buf;
     p2 = fp->read_buf + fp->read_buf_p1;
     i = 0;
-    while (i++ < len)
-    {
+    while (i++ < len) {
         *p++ = *p2++;
     }
     fp->read_buf_p1 += len;
@@ -148,11 +133,9 @@ int zfread_n(zstream_t * fp, void *buf, int len)
     int i, ch;
 
     p = (char *)buf;
-    for (i = 0; i < len; i++)
-    {
+    for (i = 0; i < len; i++) {
         ch = ZFGETCHAR(fp);
-        if (ch < 0)
-        {
+        if (ch < 0) {
             return -1;
         }
         *p++ = ch;
@@ -168,16 +151,13 @@ int zfread_delimiter(zstream_t * fp, void *buf, int len, char delimiter)
 
     i = -1;
     p = (char *)buf;
-    for (i = 0; i < len; i++)
-    {
+    for (i = 0; i < len; i++) {
         ch = ZFGETCHAR(fp);
-        if (ch < 0)
-        {
+        if (ch < 0) {
             return -1;
         }
         *p++ = ch;
-        if (ch == (int)delimiter)
-        {
+        if (ch == (int)delimiter) {
             return (i + 1);
         }
     }
@@ -189,11 +169,9 @@ int zfgets_n(zstream_t * fp, zbuf_t * bf, int len)
 {
     int i, ch;
 
-    for (i = 0; i < len; i++)
-    {
+    for (i = 0; i < len; i++) {
         ch = ZFGETCHAR(fp);
-        if (ch < 0)
-        {
+        if (ch < 0) {
             return -1;
         }
         ZBUF_PUT(bf, ch);
@@ -207,17 +185,14 @@ int zfgets_delimiter(zstream_t * fp, zbuf_t * bf, char delimiter)
     int count, ch;
 
     count = 0;
-    while (1)
-    {
+    while (1) {
         ch = ZFGETCHAR(fp);
-        if (ch < 0)
-        {
+        if (ch < 0) {
             return -1;
         }
         ZBUF_PUT(bf, ch);
         count++;
-        if (ch == (int)delimiter)
-        {
+        if (ch == (int)delimiter) {
             return count;
         }
     }
@@ -236,25 +211,21 @@ int zfflush(zstream_t * fp)
     int data_len;
     int wlen;
 
-    if (fp->write_buf_len < 1)
-    {
+    if (fp->write_buf_len < 1) {
         return 0;
     }
 
     data = fp->write_buf;
     data_len = fp->write_buf_len;
     wlen = 0;
-    while (wlen < data_len)
-    {
+    while (wlen < data_len) {
         time_left = ztimeout_left(fp->timeout);
-        if (time_left < 1)
-        {
+        if (time_left < 1) {
             fp->error = 1;
             return -1;
         }
         ret = fp->write_fn(fp, data + wlen, data_len - wlen, time_left);
-        if (ret < 1)
-        {
+        if (ret < 1) {
             fp->error = 1;
             return -1;
         }
@@ -276,12 +247,10 @@ int zfwrite_n(zstream_t * fp, void *buf, int len)
     char *p;
 
     p = (char *)buf;
-    while ((len--) > 0)
-    {
+    while ((len--) > 0) {
         ch = *p;
         ZFPUTCHAR(fp, ch);
-        if (ZFEXCEPTION(fp))
-        {
+        if (ZFEXCEPTION(fp)) {
             return -1;
         }
         p++;
@@ -295,11 +264,9 @@ int zfputs(zstream_t * fp, char *s)
     int i, ch;
 
     i = 0;
-    while ((ch = (*s)))
-    {
+    while ((ch = (*s))) {
         ZFPUTCHAR(fp, ch);
-        if (ZFEXCEPTION(fp))
-        {
+        if (ZFEXCEPTION(fp)) {
             return -1;
         }
         i++;

@@ -46,23 +46,20 @@ static void test_mpool(void)
     int i;
 
     mpool = zmpool_create_default_pool(0);
-    for (i = 0;i < 1000;i++)
-    {
+    for (i = 0; i < 1000; i++) {
         ar = zargv_create_mpool(1, mpool);
         zargv_add(ar, "aaa");
         zargv_addn(ar, "bbb", 8);
         zargv_addn(ar, "ccccccc", 3);
         zargv_split_append(ar, "this is good", "iso");
         //zargv_show(ar);
-        if(i < 800)
-        {
+        if (i < 800) {
             zargv_free(ar);
         }
     }
 
     zmpool_free_pool(mpool);
 }
-
 
 int main(int argc, char **argv)
 {

@@ -26,14 +26,12 @@ int main(int argc, char **argv)
     int plen;
 
     zvar_progname = argv[0];
-    if (argc != 2)
-    {
+    if (argc != 2) {
         usage();
     }
     fn = argv[1];
 
-    if (zmmap_reader_init(&reader, fn) < 0)
-    {
+    if (zmmap_reader_init(&reader, fn) < 0) {
         printf("can not open %s: %m\n", fn);
         exit(1);
     }

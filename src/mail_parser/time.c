@@ -43,23 +43,18 @@ long zmail_parser_header_date_decode(zmail_parser_t * parser, char *str)
     ps = p;
     ___FIND_BLANK(p);
     ___ERR();
-    if (p - ps != 3)
-    {
+    if (p - ps != 3) {
         goto err;
     }
     *(p++) = 0;
     v = -1;
     p2 = p + 1;
     p3 = p + 2;
-    switch (*ps)
-    {
+    switch (*ps) {
     case 'a':
-        if (*p2 == 'p')
-        {
+        if (*p2 == 'p') {
             v = 3;
-        }
-        else
-        {
+        } else {
             v = 7;
         }
         break;
@@ -70,26 +65,18 @@ long zmail_parser_header_date_decode(zmail_parser_t * parser, char *str)
         v = 1;
         break;
     case 'j':
-        if (*p2 == 'a')
-        {
+        if (*p2 == 'a') {
             v = 0;
-        }
-        else if (*p3 == 'n')
-        {
+        } else if (*p3 == 'n') {
             v = 5;
-        }
-        else
-        {
+        } else {
             v = 6;
         }
         break;
     case 'm':
-        if (*p3 == 'r')
-        {
+        if (*p3 == 'r') {
             v = 2;
-        }
-        else
-        {
+        } else {
             v = 4;
         }
         break;
@@ -103,8 +90,7 @@ long zmail_parser_header_date_decode(zmail_parser_t * parser, char *str)
         v = 8;
         break;
     }
-    if (v == -1)
-    {
+    if (v == -1) {
         goto err;
     }
     tm.tm_mon = v;
@@ -114,8 +100,7 @@ long zmail_parser_header_date_decode(zmail_parser_t * parser, char *str)
     ps = p;
     ___FIND_BLANK(p);
     ___ERR();
-    if (p - ps != 4)
-    {
+    if (p - ps != 4) {
         goto err;
     }
     *(p++) = 0;
@@ -144,8 +129,7 @@ long zmail_parser_header_date_decode(zmail_parser_t * parser, char *str)
     ___IGNORE_BLANK(p);
     ___ERR();
     ps = p;
-    if (strlen(ps) < 5)
-    {
+    if (strlen(ps) < 5) {
         goto err;
     }
     sign = (ps[0] == '-') ? -1 : 1;
@@ -156,8 +140,7 @@ long zmail_parser_header_date_decode(zmail_parser_t * parser, char *str)
     offset *= 60;
 
     result = timegm(&tm);
-    if (result == -1)
-    {
+    if (result == -1) {
         goto err;
     }
     result = result - sign * offset;
@@ -168,6 +151,6 @@ long zmail_parser_header_date_decode(zmail_parser_t * parser, char *str)
 #undef ___FIND_DIGIT
 #undef ___ERR
 
-err:
+  err:
     return result;
 }

@@ -11,8 +11,7 @@
 #include <signal.h>
 
 typedef struct zalart_env_t zalart_env_t;
-struct zalart_env_t
-{
+struct zalart_env_t {
     int use_lock;
     int signal;
     pthread_mutex_t lock;
@@ -28,8 +27,7 @@ static void ___signal_action(int sig, siginfo_t * si, void *uc);
 
 static void ___env_create(void)
 {
-    if (___env)
-    {
+    if (___env) {
         return;
     }
     ___env = (zalart_env_t *) zcalloc(1, sizeof(zalart_env_t));
@@ -47,8 +45,7 @@ void zalarm_use_lock(void)
 void zalarm_set_sig(int sig)
 {
     ___env_create();
-    if (sig > 0)
-    {
+    if (sig > 0) {
         ___env->signal = sig;
     }
 }
@@ -65,8 +62,7 @@ void zalarm_env_init(void)
     sa.sa_sigaction = ___signal_action;
     sigemptyset(&sa.sa_mask);
     sigaddset(&sa.sa_mask, ___env->signal);
-    if (sigaction(___env->signal, &sa, NULL) == -1)
-    {
+    if (sigaction(___env->signal, &sa, NULL) == -1) {
         zfatal("zalarm sigaction: %m");
     }
 
@@ -82,8 +78,7 @@ void zalarm_env_fini(void)
     zrbtree_node_t *rn;
     struct itimerspec its;
 
-    if (___env->use_lock)
-    {
+    if (___env->use_lock) {
         pthread_mutex_lock(&(___env->lock));
     }
 
@@ -93,19 +88,16 @@ void zalarm_env_fini(void)
     its.it_interval.tv_nsec = 0;
     timer_settime(&(___env->timer), 0, &its, 0);
 
-    while (1)
-    {
+    while (1) {
         rn = zrbtree_first(&(___env->tree));
-        if (!rn)
-        {
+        if (!rn) {
             break;
         }
         alarm = ZCONTAINER_OF(rn, zalarm_t, rbnode_time);
         zrbtree_detach(&(___env->tree), &(alarm->rbnode_time));
     }
 
-    if (___env->use_lock)
-    {
+    if (___env->use_lock) {
         pthread_mutex_unlock(&(___env->lock));
     }
 
@@ -121,16 +113,12 @@ static int ___tree_cmp(zrbtree_node_t * n1, zrbtree_node_t * n2)
     t2 = ZCONTAINER_OF(n2, zalarm_t, rbnode_time);
 
     r = t1->timeout - t2->timeout;
-    if (!r)
-    {
+    if (!r) {
         r = (char *)(n1) - (char *)(n2);
     }
-    if (r > 0)
-    {
+    if (r > 0) {
         return 1;
-    }
-    else if (r < 0)
-    {
+    } else if (r < 0) {
         return -1;
     }
 
@@ -146,49 +134,40 @@ static void ___signal_action(int sig, siginfo_t * si, void *uc)
     zalarm_cb_t callback;
     int auto_release;
 
-    while (1)
-    {
+    while (1) {
         delay = 0;
         rn = 0;
-        if (___env->use_lock)
-        {
+        if (___env->use_lock) {
             pthread_mutex_lock(&(___env->lock));
         }
         rn = zrbtree_first(&(___env->tree));
-        if (!rn)
-        {
+        if (!rn) {
             break;
         }
         alarm = ZCONTAINER_OF(rn, zalarm_t, rbnode_time);
         delay = ztimeout_left(alarm->timeout);
-        if (delay > 0)
-        {
+        if (delay > 0) {
             break;
         }
         callback = alarm->callback;
         zrbtree_detach(&(___env->tree), &(alarm->rbnode_time));
         alarm->in_time = 0;
-        if (___env->use_lock)
-        {
+        if (___env->use_lock) {
             pthread_mutex_unlock(&(___env->lock));
         }
         auto_release = alarm->auto_release;
-        if (callback)
-        {
+        if (callback) {
             callback(alarm);
         }
-        if (auto_release)
-        {
+        if (auto_release) {
             zalarm_free(alarm);
         }
     }
-    if (___env->use_lock)
-    {
+    if (___env->use_lock) {
         pthread_mutex_unlock(&(___env->lock));
     }
 
-    if (rn)
-    {
+    if (rn) {
         alarm = ZCONTAINER_OF(rn, zalarm_t, rbnode_time);
         its.it_value.tv_sec = (long)(alarm->timeout / 1000);
         its.it_value.tv_nsec = (long)((alarm->timeout % 1000) * 1000);
@@ -229,8 +208,7 @@ void zalarm_set(zalarm_t * alarm, zalarm_cb_t callback, long timeout)
     zrbtree_node_t *rn;
     struct itimerspec its;
 
-    if (___env->use_lock)
-    {
+    if (___env->use_lock) {
         pthread_mutex_lock(&(___env->lock));
     }
 
@@ -240,33 +218,25 @@ void zalarm_set(zalarm_t * alarm, zalarm_cb_t callback, long timeout)
     its.it_interval.tv_nsec = 0;
     timer_settime(&(___env->timer), 0, &its, 0);
 
-    if ((alarm->in_time) && (timeout != -1))
-    {
+    if ((alarm->in_time) && (timeout != -1)) {
         zrbtree_detach(&(___env->tree), &(alarm->rbnode_time));
         alarm->in_time = 0;
     }
-    if (timeout > 0)
-    {
+    if (timeout > 0) {
         alarm->callback = callback;
         alarm->in_time = 1;
         alarm->enable_time = 1;
         alarm->timeout = ztimeout_set(timeout);
         zrbtree_attach(&(___env->tree), &(alarm->rbnode_time));
-    }
-    else if (timeout == 0)
-    {
+    } else if (timeout == 0) {
         alarm->enable_time = 0;
-    }
-    else if (timeout == -1)
-    {
-        if ((alarm->enable_time) && (!alarm->in_time))
-        {
+    } else if (timeout == -1) {
+        if ((alarm->enable_time) && (!alarm->in_time)) {
             zrbtree_attach(&(___env->tree), &(alarm->rbnode_time));
         }
     }
     rn = zrbtree_first(&(___env->tree));
-    if (rn)
-    {
+    if (rn) {
         alarm = ZCONTAINER_OF(rn, zalarm_t, rbnode_time);
         its.it_value.tv_sec = alarm->timeout / 1000;
         its.it_value.tv_nsec = (alarm->timeout % 1000) * 1000;
@@ -275,8 +245,7 @@ void zalarm_set(zalarm_t * alarm, zalarm_cb_t callback, long timeout)
         timer_settime(&(___env->timer), TIMER_ABSTIME, &its, 0);
     }
 
-    if (___env->use_lock)
-    {
+    if (___env->use_lock) {
         pthread_mutex_unlock(&(___env->lock));
     }
 }

@@ -17,17 +17,13 @@ void *zdichotomy_search(void *list, long element_size, int element_count, int (*
     position_left = 1;
     position_right = element_count;
 
-    while (1)
-    {
-        if (position_left > position_right)
-        {
+    while (1) {
+        if (position_left > position_right) {
             return 0;
         }
         node_left = (void *)(((char *)list) + (position_left - 1) * element_size);
-        if (position_left == position_right)
-        {
-            if (!cmp_fn(key, node_left))
-            {
+        if (position_left == position_right) {
+            if (!cmp_fn(key, node_left)) {
                 return node_left;
             }
             return 0;
@@ -37,16 +33,12 @@ void *zdichotomy_search(void *list, long element_size, int element_count, int (*
         node_center = (void *)(((char *)list) + (position_center - 1) * element_size);
 
         ret = cmp_fn(key, node_center);
-        if (ret == 0)
-        {
+        if (ret == 0) {
             return node_center;
         }
-        if (ret < 0)
-        {
+        if (ret < 0) {
             position_right = position_center - 1;
-        }
-        else
-        {
+        } else {
             position_left = position_center + 1;
         }
     }

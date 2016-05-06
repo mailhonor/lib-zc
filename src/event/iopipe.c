@@ -20,8 +20,7 @@ typedef struct ziopipe_t ziopipe_t;
 typedef struct ziopipe_part_t ziopipe_part_t;
 typedef struct ziopipe_linker_t ziopipe_linker_t;
 
-struct ziopipe_part_t
-{
+struct ziopipe_part_t {
     unsigned char is_client_or_server:1;
     unsigned char read_want_read:1;
     unsigned char read_want_write:1;
@@ -36,16 +35,14 @@ struct ziopipe_part_t
     void *ssl;                  /* SSL* */
 };
 
-struct ziopipe_t
-{
+struct ziopipe_t {
     ziopipe_part_t client;
     ziopipe_part_t server;
     ziopipe_after_close_fn_t after_close;
     void *context;
 };
 
-struct ziopipe_linker_t
-{
+struct ziopipe_linker_t {
     int cfd;
     int sfd;
     SSL *cssl;
@@ -56,8 +53,7 @@ struct ziopipe_linker_t
     void *context;
 };
 
-struct ziopipe_base_t
-{
+struct ziopipe_base_t {
     unsigned int break_flag:1;
     int epoll_fd;
     int epoll_event_count;
@@ -80,34 +76,25 @@ static void ziopipe_set_event(ziopipe_base_t * iopb, ziopipe_part_t * part, int 
 
     old_events = part->old_events;
     part->old_events = events;
-    if (events == 0)
-    {
-        if (old_events)
-        {
-            if (epoll_ctl(iopb->epoll_fd, EPOLL_CTL_DEL, fd, NULL) == -1)
-            {
+    if (events == 0) {
+        if (old_events) {
+            if (epoll_ctl(iopb->epoll_fd, EPOLL_CTL_DEL, fd, NULL) == -1) {
                 zfatal("ziopipe_set_event: fd %d: DEL  error: %m", fd);
             }
         }
-    }
-    else if (old_events != events)
-    {
-        if (events & ZEV_READ)
-        {
+    } else if (old_events != events) {
+        if (events & ZEV_READ) {
             e_events |= EPOLLIN;
         }
-        if (events & ZEV_WRITE)
-        {
+        if (events & ZEV_WRITE) {
             e_events |= EPOLLOUT;
         }
-        if (events & ZEV_PERSIST)
-        {
+        if (events & ZEV_PERSIST) {
             e_events |= EPOLLET;
         }
         evt.events = e_events;
         evt.data.ptr = part;
-        if (epoll_ctl(iopb->epoll_fd, (old_events ? EPOLL_CTL_MOD : EPOLL_CTL_ADD), fd, &evt) == -1)
-        {
+        if (epoll_ctl(iopb->epoll_fd, (old_events ? EPOLL_CTL_MOD : EPOLL_CTL_ADD), fd, &evt) == -1) {
             zfatal("ziopipe_set_event: fd %d: %s error: %m", fd, (old_events ? "MOD" : "ADD"));
         }
     }
@@ -121,19 +108,13 @@ static inline int try_ssl_write(ziopipe_part_t * part, void *buf, int len)
     part->write_want_read = 0;
 
     rlen = SSL_write(part->ssl, buf, len);
-    if (rlen < 1)
-    {
+    if (rlen < 1) {
         status = SSL_get_error(part->ssl, rlen);
-        if (status == SSL_ERROR_WANT_WRITE)
-        {
+        if (status == SSL_ERROR_WANT_WRITE) {
             part->write_want_write = 1;
-        }
-        else if (status == SSL_ERROR_WANT_READ)
-        {
+        } else if (status == SSL_ERROR_WANT_READ) {
             part->write_want_read = 1;
-        }
-        else
-        {
+        } else {
             part->ssl_error = 1;
         }
         return -1;
@@ -150,19 +131,13 @@ static inline int try_ssl_read(ziopipe_part_t * part, void *buf, int len)
     part->read_want_read = 0;
 
     rlen = SSL_read(part->ssl, buf, len);
-    if (rlen < 1)
-    {
+    if (rlen < 1) {
         status = SSL_get_error(part->ssl, rlen);
-        if (status == SSL_ERROR_WANT_WRITE)
-        {
+        if (status == SSL_ERROR_WANT_WRITE) {
             part->read_want_write = 1;
-        }
-        else if (status == SSL_ERROR_WANT_READ)
-        {
+        } else if (status == SSL_ERROR_WANT_READ) {
             part->read_want_read = 1;
-        }
-        else
-        {
+        } else {
             part->ssl_error = 1;
         }
         return -1;
@@ -219,12 +194,10 @@ int ziopipe_base_run(ziopipe_base_t * iopb)
 
     ___no_indent_while_beign;
 
-    while (iopb->set_list_head)
-    {
+    while (iopb->set_list_head) {
         ZIOPIPE_BASE_LOCK(iopb);
         linker = (ziopipe_linker_t *) (iopb->set_list_head);
-        if (!linker)
-        {
+        if (!linker) {
             ZIOPIPE_BASE_UNLOCK(iopb);
             break;
         }
@@ -253,12 +226,10 @@ int ziopipe_base_run(ziopipe_base_t * iopb)
         iop->server.fd = sfd;
         iop->server.ssl = sssl;
         iop->server.is_client_or_server = 1;
-        if (cssl)
-        {
+        if (cssl) {
             iop->client.read_want_read = 1;
         }
-        if (sssl)
-        {
+        if (sssl) {
             iop->server.read_want_read = 1;
         }
         iop->after_close = after_close;
@@ -268,27 +239,21 @@ int ziopipe_base_run(ziopipe_base_t * iopb)
     }
 
     nfds = epoll_wait(iopb->epoll_fd, iopb->epoll_event_list, iopb->epoll_event_count, 10000);
-    if (nfds == -1)
-    {
-        if (errno != EINTR)
-        {
+    if (nfds == -1) {
+        if (errno != EINTR) {
             zfatal("zbase_dispatch: epoll_wait: %m");
         }
         return -1;
     }
 
-    for (i = 0; i < nfds; i++)
-    {
+    for (i = 0; i < nfds; i++) {
         ev = iopb->epoll_event_list + i;
         events = ev->events;
         part = (ziopipe_part_t *) (ev->data.ptr);
         is_client_or_server = part->is_client_or_server;
-        if (!is_client_or_server)
-        {
+        if (!is_client_or_server) {
             iop = ZCONTAINER_OF(part, ziopipe_t, client);
-        }
-        else
-        {
+        } else {
             iop = ZCONTAINER_OF(part, ziopipe_t, server);
         }
 
@@ -296,69 +261,54 @@ int ziopipe_base_run(ziopipe_base_t * iopb)
         part_server = &(iop->server);
         part = part_server;
         part_a = part_client;
-        if (!is_client_or_server)
-        {
+        if (!is_client_or_server) {
             part = part_client;
             part_a = part_server;
         }
 
-        if (part_client->fd == efd)
-        {
+        if (part_client->fd == efd) {
             uint64_t u;
             if (read(efd, &u, sizeof(uint64_t))) ;
             continue;
         }
 
         e_err = 0;
-        if (events & EPOLLHUP)
-        {
+        if (events & EPOLLHUP) {
             e_err = 1;
         }
-        if (events & EPOLLRDHUP)
-        {
+        if (events & EPOLLRDHUP) {
             e_err = 1;
         }
-        if (events & EPOLLERR)
-        {
+        if (events & EPOLLERR) {
             e_err = 1;
         }
-        if (e_err)
-        {
+        if (e_err) {
             int len;
             len = part->rbuf_p2 > part->rbuf_p2;
-            if (len > 0)
-            {
-                if (part_a->ssl)
-                {
+            if (len > 0) {
+                if (part_a->ssl) {
                     try_ssl_write(part_a, part->rbuf + part->rbuf_p1, len);
-                }
-                else
-                {
+                } else {
                     if (write(part_a->fd, part->rbuf + part->rbuf_p1, len)) ;
                 }
             }
             ziopipe_set_event(iopb, part_client, 0);
             ziopipe_set_event(iopb, part_server, 0);
-            if (part_client->rbuf)
-            {
+            if (part_client->rbuf) {
                 zmcot_free_one(iopb->rbuf_mpool, part_client->rbuf);
             }
-            if (part_server->rbuf)
-            {
+            if (part_server->rbuf) {
                 zmcot_free_one(iopb->rbuf_mpool, part_server->rbuf);
             }
-            if (part->ssl)
-            {
+            if (part->ssl) {
                 SSL_free(part->ssl);
             }
-            if (part_a->ssl)
-            {
+            if (part_a->ssl) {
                 SSL_free(part_a->ssl);
             }
             close(part_client->fd);
             close(part_server->fd);
-            if (iop->after_close)
-            {
+            if (iop->after_close) {
                 iop->after_close(iop->context);
             }
             zmcot_free_one(iopb->iop_mpool, iop);
@@ -366,36 +316,27 @@ int ziopipe_base_run(ziopipe_base_t * iopb)
         }
         zev = 0;
 
-        if (events & EPOLLOUT)
-        {
+        if (events & EPOLLOUT) {
             zev |= ZEV_WRITE;
         }
-        if (events & EPOLLIN)
-        {
+        if (events & EPOLLIN) {
             zev |= ZEV_READ;
         }
 #define _debug_part(p)	printf("client_or_server: %ld, %d, %d, %d, %d\n", p->is_client_or_server, p->read_want_read, p->read_want_write, p->write_want_read, p->write_want_write)
 
 #define _ssl_w (((part->write_want_write) &&(zev & ZEV_WRITE))||((part->write_want_read) &&(zev & ZEV_READ)))
-        if (((part->ssl) && (_ssl_w)) || ((!(part->ssl)) && (zev & ZEV_WRITE)))
-        {
+        if (((part->ssl) && (_ssl_w)) || ((!(part->ssl)) && (zev & ZEV_WRITE))) {
             int len, wlen;
             len = part_a->rbuf_p2 - part_a->rbuf_p1;
-            if (len > 0)
-            {
-                if (part->ssl)
-                {
+            if (len > 0) {
+                if (part->ssl) {
                     wlen = try_ssl_write(part, part_a->rbuf + part_a->rbuf_p1, len);
-                }
-                else
-                {
+                } else {
                     wlen = (int)write(part->fd, part_a->rbuf + part_a->rbuf_p1, (size_t) len);
                 }
-                if (wlen > 0)
-                {
+                if (wlen > 0) {
                     part_a->rbuf_p1 += wlen;
-                    if (len == wlen)
-                    {
+                    if (len == wlen) {
                         part_a->rbuf_p1 = part_a->rbuf_p2 = 0;
                         zmcot_free_one(iopb->rbuf_mpool, part_a->rbuf);
                         part_a->rbuf = 0;
@@ -405,89 +346,64 @@ int ziopipe_base_run(ziopipe_base_t * iopb)
             }
         }
 #define _ssl_r (((part->read_want_write) &&(zev & ZEV_WRITE))||((part->read_want_read) &&(zev & ZEV_READ)))
-        if (((part->ssl) && (_ssl_r)) || ((!(part->ssl)) && (zev & ZEV_READ)))
-        {
+        if (((part->ssl) && (_ssl_r)) || ((!(part->ssl)) && (zev & ZEV_READ))) {
             int rlen;
-            if (part->rbuf_p2 - part->rbuf_p1 == 0)
-            {
+            if (part->rbuf_p2 - part->rbuf_p1 == 0) {
                 part->rbuf_p1 = part->rbuf_p2 = 0;
-                if (!(part->rbuf))
-                {
+                if (!(part->rbuf)) {
                     part->rbuf = (char *)zmcot_alloc_one(iopb->rbuf_mpool);
                 }
-                if (part->ssl)
-                {
+                if (part->ssl) {
                     rlen = try_ssl_read(part, part->rbuf, ZIOPIPE_RBUF_SIZE);
-                }
-                else
-                {
+                } else {
                     rlen = read(part->fd, part->rbuf, ZIOPIPE_RBUF_SIZE);
                 }
-                if (rlen > 0)
-                {
+                if (rlen > 0) {
                     part->rbuf_p2 = rlen;
                 }
             }
         }
 
         int eev = 0, eev_a = 0;
-        if (part->ssl)
-        {
-            if (part->read_want_read || part->write_want_read)
-            {
+        if (part->ssl) {
+            if (part->read_want_read || part->write_want_read) {
                 eev |= ZEV_READ;
             }
-            if (part->read_want_write || part->write_want_write)
-            {
+            if (part->read_want_write || part->write_want_write) {
                 eev |= ZEV_WRITE;
             }
-            if (part_a->rbuf_p2 - part_a->rbuf_p1 > 0)
-            {
-                if ((part->write_want_read == 0) && (part->write_want_write == 0))
-                {
+            if (part_a->rbuf_p2 - part_a->rbuf_p1 > 0) {
+                if ((part->write_want_read == 0) && (part->write_want_write == 0)) {
                     part->write_want_write = 1;
                     eev |= ZEV_WRITE;
                 }
             }
-        }
-        else
-        {
-            if (part_a->rbuf_p2 - part_a->rbuf_p1 > 0)
-            {
+        } else {
+            if (part_a->rbuf_p2 - part_a->rbuf_p1 > 0) {
                 eev |= ZEV_WRITE;
             }
         }
-        if (part_a->ssl)
-        {
-            if (part_a->read_want_read || part_a->write_want_read)
-            {
+        if (part_a->ssl) {
+            if (part_a->read_want_read || part_a->write_want_read) {
                 eev_a |= ZEV_READ;
             }
-            if (part_a->read_want_write || part_a->write_want_write)
-            {
+            if (part_a->read_want_write || part_a->write_want_write) {
                 eev_a |= ZEV_WRITE;
             }
-            if (part->rbuf_p2 - part->rbuf_p1 > 0)
-            {
-                if ((part_a->write_want_read == 0) && (part_a->write_want_write == 0))
-                {
+            if (part->rbuf_p2 - part->rbuf_p1 > 0) {
+                if ((part_a->write_want_read == 0) && (part_a->write_want_write == 0)) {
                     part_a->write_want_write = 1;
                     eev_a |= ZEV_WRITE;
                 }
             }
-        }
-        else
-        {
-            if (part->rbuf_p2 - part->rbuf_p1 > 0)
-            {
+        } else {
+            if (part->rbuf_p2 - part->rbuf_p1 > 0) {
                 eev_a |= ZEV_WRITE;
             }
         }
-        if (!eev && !eev_a)
-        {
+        if (!eev && !eev_a) {
             eev = ZEV_READ;
-            if (part->ssl)
-            {
+            if (part->ssl) {
                 part->read_want_read = 0;
                 part->read_want_write = 0;
                 part->write_want_read = 0;
@@ -495,8 +411,7 @@ int ziopipe_base_run(ziopipe_base_t * iopb)
                 part->read_want_read = 1;
             }
             eev_a = ZEV_READ;
-            if (part_a->ssl)
-            {
+            if (part_a->ssl) {
                 part_a->read_want_read = 0;
                 part_a->read_want_write = 0;
                 part_a->write_want_read = 0;
@@ -508,14 +423,12 @@ int ziopipe_base_run(ziopipe_base_t * iopb)
         ziopipe_set_event(iopb, part_a, eev_a);
 
     }
-    if (nfds == iopb->epoll_event_count && nfds < 4096)
-    {
+    if (nfds == iopb->epoll_event_count && nfds < 4096) {
         iopb->epoll_event_count *= 2;
         iopb->epoll_event_list = (struct epoll_event *)zrealloc(iopb->epoll_event_list, sizeof(struct epoll_event) * (iopb->epoll_event_count));
     }
 
-    if (iopb->break_flag)
-    {
+    if (iopb->break_flag) {
         return 0;
     }
 

@@ -12,21 +12,21 @@ int main(int argc, char **argv)
 {
     zmail_parser_t *parser;
     zmmap_reader reader;
-	char buf[1024];
-	char *p;
-	FILE *fp;
+    char buf[1024];
+    char *p;
+    FILE *fp;
     int count = 0;
 
     fprintf(stderr, "\n");
-	sprintf(buf, "find %s -type f", argv[1]);
-	fp = popen(buf, "r");
-	while (fgets(buf, 1000, fp)) {
-		p = strchr(buf, '\n');
-		if (p) {
-			*p = 0;
-		} else {
-			continue;
-		}
+    sprintf(buf, "find %s -type f", argv[1]);
+    fp = popen(buf, "r");
+    while (fgets(buf, 1000, fp)) {
+        p = strchr(buf, '\n');
+        if (p) {
+            *p = 0;
+        } else {
+            continue;
+        }
         fprintf(stderr, "\r%d", count++);
         printf("FN: %s\n", buf);
         zmmap_reader_init(&reader, buf);

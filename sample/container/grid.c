@@ -26,24 +26,19 @@ int main(int argc, char **argv)
     zinfo("load /etc/passwd");
     sysuser_load();
 
-    for (i = 0; i < sysuser_count; i++)
-    {
+    for (i = 0; i < sysuser_count; i++) {
         zgrid_add(myos, sysuser_list[i].login_name, sysuser_list + i, 0);
     }
 
     zgrid_node_t *sn;
-    if ((sn = zgrid_lookup_near_prev(myos, "paemon", (char **)&user)))
-    {
+    if ((sn = zgrid_lookup_near_prev(myos, "paemon", (char **)&user))) {
         zinfo("Found user %s, whose shell is %s", zgrid_key(sn), user->shell);
-    }
-    else
-    {
+    } else {
         zinfo("Dit not find the user daemon");
     }
 
     zinfo("test MACRO of walk");
-    ZGRID_WALK_BEGIN(myos, rn)
-    {
+    ZGRID_WALK_BEGIN(myos, rn) {
         zinfo("name: %s", zdict_key(rn));
     }
     ZGRID_WALK_END;

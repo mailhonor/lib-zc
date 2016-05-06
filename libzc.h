@@ -170,8 +170,7 @@ char *ztrim_right(char *str);
 char *ztrim(char *str);
 
 /* strtok */
-typedef struct
-{
+typedef struct {
     char *sstr;
     char *str;
     int len;
@@ -194,8 +193,7 @@ char *zmemcasestr(void *s, char *needle, int len);
 
 /* ################################################################## */
 /* SIZEDATA */
-struct zsdata_t
-{
+struct zsdata_t {
     int size;
     char *data;
 };
@@ -204,8 +202,7 @@ void zsdata_escape(zsdata_t * sd, zbuf_t * bf);
 
 /* ################################################################## */
 /* BUF */
-struct zbuf_t
-{
+struct zbuf_t {
     char *data;
     int len;
     int size;
@@ -273,8 +270,7 @@ void zbuf_sizedata_escape_pp(zbuf_t * bf, char **pp, int len);
 #define ZRING_WALK_BEGIN(head, var_your_node)         {\
     for (var_your_node = (head)->next; var_your_node != (head); var_your_node = var_your_node->next){
 #define ZRING_WALK_END                }}
-struct zring_t
-{
+struct zring_t {
     zring_t *prev;
     zring_t *next;
 };
@@ -315,13 +311,11 @@ void zring_detach(zring_t * entry);
 
 /* ################################################################## */
 /* LINK */
-struct zlink_t
-{
+struct zlink_t {
     zlink_node_t *head;
     zlink_node_t *tail;
 };
-struct zlink_node_t
-{
+struct zlink_node_t {
     zlink_node_t *prev;
     zlink_node_t *next;
 };
@@ -345,8 +339,7 @@ void zlink_walk(zlink_t * link, void (*walk_fn) (zlink_node_t *));
 
 /* ################################################################## */
 /* ARGV */
-struct zargv_t
-{
+struct zargv_t {
     int size;
     int argc;
     char **argv;
@@ -369,7 +362,7 @@ struct zargv_t
 #define zargv_argc(ar)          ((ar)->argc)
 #define zargv_argv(ar)          ((ar)->argv)
 #define zargv_data(ar)          ((ar)->argv)
-zargv_t *zargv_create_mpool(int size, zmpool_t *mpool);
+zargv_t *zargv_create_mpool(int size, zmpool_t * mpool);
 zargv_t *zargv_create(int size);
 void zargv_free(zargv_t * argvp);
 void zargv_add(zargv_t * argvp, char *ns);
@@ -381,8 +374,7 @@ void zargv_show(zargv_t * argvp);
 
 /* ################################################################## */
 /* ARRAY */
-struct zarray_t
-{
+struct zarray_t {
     int len;
     int size;
     char **data;
@@ -405,13 +397,11 @@ void zarray_add(zarray_t * arr, void *ns);
 /* HTABLE */
 typedef int (*zhtable_cmp_t) (zhtable_node_t * node1, zhtable_node_t * node2);
 typedef int (*zhtable_hash_t) (zhtable_node_t * node, int size);
-struct zhtable_node_t
-{
+struct zhtable_node_t {
     zhtable_node_t *next;
     zhtable_node_t *prev;
 };
-struct zhtable_t
-{
+struct zhtable_t {
     int size;
     int len;
     zhtable_node_t **data;
@@ -454,13 +444,11 @@ zhtable_node_t **zhtable_list(zhtable_t * table, zhtable_node_t ** list);
 /* ################################################################## */
 /* RBTREE */
 typedef int (*zrbtree_cmp_t) (zrbtree_node_t * node1, zrbtree_node_t * node2);
-struct zrbtree_t
-{
+struct zrbtree_t {
     zrbtree_node_t *zrbtree_node;
     zrbtree_cmp_t cmp_fn;
 };
-struct zrbtree_node_t
-{
+struct zrbtree_node_t {
     unsigned long __zrbtree_parent_color;
     zrbtree_node_t *zrbtree_right;
     zrbtree_node_t *zrbtree_left;
@@ -592,17 +580,14 @@ static inline void zrbtree_link_node(zrbtree_node_t * node, zrbtree_node_t * par
 /* dichotomy */
 void *zdichotomy_search(void *list, long element_size, int element_count, int (*cmp_fn) (void *, void *), void *key);
 
-
 /* ################################################################## */
 /* CHAIN */
-struct zchain_t
-{
+struct zchain_t {
     zchain_node_t *head;
     zchain_node_t *tail;
     int len;
 };
-struct zchain_node_t
-{
+struct zchain_node_t {
     zchain_node_t *prev;
     zchain_node_t *next;
     void *value;
@@ -637,20 +622,18 @@ zchain_node_t *zchain_delete(zchain_t * chain, zchain_node_t * n, char **value);
 
 /* ################################################################## */
 /* DICT */
-struct zdict_t
-{
+struct zdict_t {
     int len;
     zrbtree_t rbtree;
     zmpool_t *mpool;
 };
-struct zdict_node_t
-{
+struct zdict_node_t {
     char *key;
     char *value;
     zrbtree_node_t rbnode;
 };
 zdict_t *zdict_create(void);
-zdict_t *zdict_create_mpool(zmpool_t *mpool);
+zdict_t *zdict_create_mpool(zmpool_t * mpool);
 zdict_node_t *zdict_add(zdict_t * dict, char *key, char *value);
 zdict_node_t *zdict_lookup(zdict_t * dict, char *key, char **value);
 zdict_node_t *zdict_lookup_near_prev(zdict_t * dict, char *key, char **value);
@@ -674,20 +657,18 @@ int zdict_keys(zdict_t * dict, char **key_list, int size);
 
 /* ################################################################## */
 /* IDICT */
-struct zidict_t
-{
+struct zidict_t {
     int len;
     zrbtree_t rbtree;
     zmpool_t *mpool;
 };
-struct zidict_node_t
-{
+struct zidict_node_t {
     long key;
     void *value;
     zrbtree_node_t rbnode;
 };
 zidict_t *zidict_create(void);
-zidict_t *zidict_create_mpool(zmpool_t *mpool);
+zidict_t *zidict_create_mpool(zmpool_t * mpool);
 zidict_node_t *zidict_add(zidict_t * dict, long key, char *value);
 zidict_node_t *zidict_lookup(zidict_t * dict, long key, char **value);
 zidict_node_t *zidict_lookup_near_prev(zidict_t * dict, long key, char **value);
@@ -711,20 +692,18 @@ int zidict_keys(zidict_t * dict, long *key_list, int size);
 
 /* ################################################################## */
 /* GRID */
-struct zgrid_t
-{
+struct zgrid_t {
     int len;
     zrbtree_t rbtree;
     zmpool_t *mpool;
 };
-struct zgrid_node_t
-{
+struct zgrid_node_t {
     char *key;
     void *value;
     zrbtree_node_t rbnode;
 };
 zgrid_t *zgrid_create(void);
-zgrid_t *zgrid_create_mpool(zmpool_t *mpool);
+zgrid_t *zgrid_create_mpool(zmpool_t * mpool);
 zgrid_node_t *zgrid_add(zgrid_t * mp, char *key, void *value, char **old_value);
 zgrid_node_t *zgrid_lookup(zgrid_t * mp, char *key, char **value);
 zgrid_node_t *zgrid_lookup_near_prev(zgrid_t * mp, char *key, char **value);
@@ -748,20 +727,18 @@ int zgrid_keys(zgrid_t * mp, char **key_list, int size);
 
 /* ################################################################## */
 /* igrid */
-struct zigrid_t
-{
+struct zigrid_t {
     int len;
     zrbtree_t rbtree;
     zmpool_t *mpool;
 };
-struct zigrid_node_t
-{
+struct zigrid_node_t {
     long key;
     void *value;
     zrbtree_node_t rbnode;
 };
 zigrid_t *zigrid_create(void);
-zigrid_t *zigrid_create_mpool(zmpool_t *mpool);
+zigrid_t *zigrid_create_mpool(zmpool_t * mpool);
 zigrid_node_t *zigrid_add(zigrid_t * mp, long key, void *value, char **old_value);
 zigrid_node_t *zigrid_lookup(zigrid_t * mp, long key, char **value);
 zigrid_node_t *zigrid_lookup_near_prev(zigrid_t * mp, long key, char **value);
@@ -804,22 +781,19 @@ void zconfig_show(zconfig_t * cf);
 int zconfig_load(zconfig_t * cf, char *filename);
 
 /* config value */
-typedef struct
-{
+typedef struct {
     char *name;
     char *defval;
     char **target;
 } zconfig_str_table_t;
-typedef struct
-{
+typedef struct {
     char *name;
     int defval;
     int *target;
     int max;
     int min;
 } zconfig_int_table_t;
-typedef struct
-{
+typedef struct {
     char *name;
     long defval;
     long *target;
@@ -889,8 +863,7 @@ int zpeek(int fd);
 
 /* ################################################################## */
 /* simple dns utils */
-struct zaddr_t
-{
+struct zaddr_t {
     char addr[16];
 };
 int zgetlocaladdr(zaddr_t * addr_list, int max_count);
@@ -912,24 +885,23 @@ int zlisten(char *netpath, int backlog);
 
 /* ################################################################## */
 /* parameter deal */
+zargv_t *zvar_parameter_value_list;
 typedef int (*zparameter_fn_t) (int, char **);
-typedef struct
-{
+typedef struct {
     char *name;
     zparameter_fn_t func;
 } zparameter_pair_t;
 int zparameter_run(int argc, char **argv, zparameter_fn_t param_fn);
 int zparameter_run_dict(int argc, char **argv, zdict_t * param_fn_dict);
 int zparameter_run_list(int argc, char **argv, zparameter_pair_t * param_fn_list);
+int zparameter_run_test(int argc, char **argv);
 
 /* ################################################################## */
-struct zsslctx_t
-{
+struct zsslctx_t {
     void *ssl_ctx;              /* SSL_CTX* */
     int server_or_client;
 };
-struct zssl_t
-{
+struct zssl_t {
     void *ssl;                  /* SSL* */
     int fd;
     int server_or_client;
@@ -959,8 +931,7 @@ void zopenssl_free(void *ssl);  /* SSL * */
 
 typedef int (*zstream_read_t) (zstream_t *, void *, int, int);
 typedef int (*zstream_write_t) (zstream_t *, void *, int, int);
-struct zstream_t
-{
+struct zstream_t {
     int read_buf_p1;
     int read_buf_p2;
     int write_buf_len;
@@ -1028,8 +999,7 @@ int zfprintf(zstream_t * fp, char *format, ...);
 /* ################################################################## */
 /* alarm */
 typedef int (*zalarm_cb_t) (zalarm_t *);
-struct zalarm_t
-{
+struct zalarm_t {
     unsigned int in_time:1;
     unsigned int enable_time:1;
     unsigned int auto_release:1;
@@ -1055,8 +1025,7 @@ void zalarm(zalarm_cb_t callback, void *context, long timeout);
 
 /* ################################################################## */
 /* MPOOL */
-struct zmpool_t
-{
+struct zmpool_t {
     void *worker;
     void *(*malloc) (zmpool_t *, int);
     void *(*realloc) (zmpool_t *, void *, int);
@@ -1068,7 +1037,7 @@ struct zmpool_t
 zmpool_t *zmpool_create_default_pool(int *register_list);
 zmpool_t *zmpool_create_spring_pool(int element_size);
 zmpool_t *zmpool_create_grow_pool(void);
-void zmpool_free_pool(zmpool_t *mp);
+void zmpool_free_pool(zmpool_t * mp);
 
 void *zmpool_malloc(zmpool_t * mp, int len);
 void *zmpool_calloc(zmpool_t * mp, int nmemb, int size);
@@ -1081,8 +1050,7 @@ void zmpool_free(zmpool_t * mp, void *ptr);
 
 /* ################################################################## */
 /* MCOT */
-struct zmcot_t
-{
+struct zmcot_t {
     zmpool_t *mpool;
     int element_size;
 };
@@ -1091,15 +1059,13 @@ void zmcot_free(zmcot_t * cot);
 void *zmcot_alloc_one(zmcot_t * cot);
 void zmcot_free_one(zmcot_t * cot, void *ptr);
 
-
 /* ################################################################## */
 /* EVENT AIO */
 #define ZEV_TYPE_EVENT         0x1
 #define ZEV_TYPE_AIO           0x2
 
 typedef int (*zev_cb_t) (zev_t *);
-struct zev_t
-{
+struct zev_t {
     unsigned char aio_type:3;
     unsigned char is_local:1;
     unsigned char events;
@@ -1129,23 +1095,20 @@ int zev_unset(zev_t * ev);
 typedef struct zaio_rwbuf_t zaio_rwbuf_t;
 typedef struct zaio_rwbuf_list_t zaio_rwbuf_list_t;
 #define ZAIO_RWBUF_SIZE            1024
-struct zaio_rwbuf_t
-{
+struct zaio_rwbuf_t {
     zaio_rwbuf_t *next;
     unsigned int p1:16;
     unsigned int p2:16;
     char data[ZAIO_RWBUF_SIZE];
 };
-struct zaio_rwbuf_list_t
-{
+struct zaio_rwbuf_list_t {
     zaio_rwbuf_t *head;
     zaio_rwbuf_t *tail;
     int len;
 };
 typedef int (*zaio_cb_t) (zaio_t *);
 typedef struct zaio_ssl_t zaio_ssl_t;
-struct zaio_ssl_t
-{
+struct zaio_ssl_t {
     unsigned char server_or_client:1;
     unsigned char session_init:1;
     unsigned char read_want_read:1;
@@ -1155,8 +1118,7 @@ struct zaio_ssl_t
     unsigned char error:1;
     void *ssl;                  /* SSL* */
 };
-struct zaio_t
-{
+struct zaio_t {
     unsigned char aio_type;
     unsigned char events;
     unsigned char recv_events;
@@ -1192,8 +1154,8 @@ zaio_t *zaio_create(void);
 void zaio_free(zaio_t * aio);
 void zaio_init(zaio_t * aio, zevbase_t * eb, int fd);
 void zaio_fini(zaio_t * aio);
-void zaio_set_local_mode(zaio_t *aio);
-int zaio_fetch_rbuf(zaio_t *aio, char *buf, int len);
+void zaio_set_local_mode(zaio_t * aio);
+int zaio_fetch_rbuf(zaio_t * aio, char *buf, int len);
 int zaio_read(zaio_t * aio, int max_len, zaio_cb_t callback, int timeout);
 int zaio_read_n(zaio_t * aio, int strict_len, zaio_cb_t callback, int timeout);
 int zaio_read_delimiter(zaio_t * aio, char delimiter, int max_len, zaio_cb_t callback, int timeout);
@@ -1215,8 +1177,7 @@ void *___zaio_ssl_detach_ssl(zaio_ssl_t * assl);    /* return SSL* */
 
 /* TIMER */
 typedef int (*zevtimer_cb_t) (zevtimer_t *);
-struct zevtimer_t
-{
+struct zevtimer_t {
     long timeout;
     zevtimer_cb_t callback;
     void *context;
@@ -1240,8 +1201,7 @@ extern zevbase_t *zvar_evbase;
 typedef int (*zevbase_cb_t) (zevbase_t *);
 typedef int (*zevbase_loop_t) (zevbase_t *);
 
-struct zevbase_t
-{
+struct zevbase_t {
     int epoll_fd;
     struct epoll_event *epoll_event_list;
     void *locker;
@@ -1285,7 +1245,7 @@ void ziopipe_enter(ziopipe_base_t * iopb, int client_fd, void *client_ssl, int s
 #define ZMASTER_MASTER_STATUS_FD    4
 #define ZMASTER_LISTEN_FD            5
 
-typedef int (*zmaster_load_config_fn_t) (zarray_t *config_list);
+typedef int (*zmaster_load_config_fn_t) (zarray_t * config_list);
 extern zmaster_load_config_fn_t zmaster_load_config_fn;
 extern int zvar_master_child_exception_check;
 int zmaster_main(int argc, char **argv);
@@ -1360,8 +1320,7 @@ unsigned int zcrc32(void *data, int size, unsigned int init_value);
 unsigned long zcrc64(void *data, int size, unsigned long init_value);
 
 /* md5 */
-struct zmd5_t
-{
+struct zmd5_t {
     uint_fast32_t lo, hi;
     uint_fast32_t a, b, c, d;
     unsigned char buffer[64];
@@ -1373,20 +1332,16 @@ void zmd5_final(zmd5_t * ctx, void *result);    //result'size >= 16
 char *zmd5(void *data, int size, void *result);
 
 /* sha1 */
-struct zsha1_t
-{
-    union
-    {
+struct zsha1_t {
+    union {
         uint8_t b8[20];
         uint32_t b32[5];
     } h;
-    union
-    {
+    union {
         uint8_t b8[8];
         uint64_t b64[1];
     } c;
-    union
-    {
+    union {
         uint8_t b8[64];
         uint32_t b32[16];
     } m;
@@ -1405,8 +1360,7 @@ int zfile_get_contents(char *filename, void *data, int len);
 int zfile_get_contents_to_zbuf(char *filename, zbuf_t * bf);
 
 /* mmap reader */
-struct zmmap_reader
-{
+struct zmmap_reader {
     int fd;
     int len;
     char *data;
@@ -1448,8 +1402,7 @@ void zdata_filter_write(void *filter, int type, void *data, int len);
 /* ################################################################## */
 /* CHARSET */
 #define ZCHARSET_ICONV_ERROR_OPEN       (-2016)
-struct zcharset_iconv_t
-{
+struct zcharset_iconv_t {
     char *to_charset;
     char *from_charset;
     char *in_str;
@@ -1500,14 +1453,12 @@ extern char *zvar_charset_cjk[];
 #define ZMAIL_PARSER_MIME_TYPE_PLAIN            2
 #define ZMAIL_PARSER_MIME_TYPE_HTML             3
 
-struct zmail_references_t
-{
+struct zmail_references_t {
     char *message_id;
     zmail_references_t *next;
 };
 
-struct zmail_addr_t
-{
+struct zmail_addr_t {
     char *name;
     char *name_rd;
     char *mail;
@@ -1515,16 +1466,14 @@ struct zmail_addr_t
     zmail_addr_t *next;
 };
 
-struct zmail_header_line_t
-{
+struct zmail_header_line_t {
     char *name;
     char *line;
     int line_len;
     zmail_header_line_t *next;
 };
 
-struct zmail_mime_t
-{
+struct zmail_mime_t {
     char *type;
     char *encoding;
     char *charset;
@@ -1561,8 +1510,7 @@ struct zmail_mime_t
     void *user_context;
 };
 
-struct zmail_parser_t
-{
+struct zmail_parser_t {
     int header_len;
     char *subject;
     char *subject_rd;
@@ -1615,7 +1563,7 @@ int zmail_parser_set_default_charset(zmail_parser_t * paser, char *default_src_c
 int zmail_parser_set_mime_max_depth(zmail_parser_t * parser, int length);
 int zmail_parser_run(zmail_parser_t * paser);
 void zmail_parser_show(zmail_parser_t * parser);
-void zmail_parser_show_json(zmail_parser_t * parser, zbuf_t *result);
+void zmail_parser_show_json(zmail_parser_t * parser, zbuf_t * result);
 int zmail_parser_iconv(zmail_parser_t * parser, char *from_charset, char *in, int in_len, void *filter, int filter_type);
 int zmail_parser_decode_mime_body_to_df(zmail_parser_t * parser, zmail_mime_t * mime, void *filter, int filter_type);
 #define zmail_parser_decode_mime_body zmail_parser_decode_mime_body_to_df
@@ -1667,12 +1615,11 @@ void zmail_parser_format_mime(zmail_parser_t * parser, zmail_mime_t * mime);
 int zmail_parser_mime_identify_type(zmail_parser_t * parser);
 
 /* for imap */
-int zmail_parser_mime_section(zmail_parser_t *parser);
+int zmail_parser_mime_section(zmail_parser_t * parser);
 
 /* ################################################################## */
 /* MAIL TNEF PARSER */
-struct ztnef_mime_t
-{
+struct ztnef_mime_t {
     char *type;
     char *filename;
     char *filename_rd;
@@ -1690,8 +1637,7 @@ struct ztnef_mime_t
     void *user_context;
 };
 
-struct ztnef_parser_t
-{
+struct ztnef_parser_t {
     ztnef_mime_t **attachment_mime_list;
     short int attachment_mime_count;
 

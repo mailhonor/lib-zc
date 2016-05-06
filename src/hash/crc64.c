@@ -145,8 +145,7 @@ unsigned long zcrc64(void *data, int size, unsigned long init_value)
     };
     unsigned char *src_c = (unsigned char *)data;
 
-    for (i = 0; i < size; i++)
-    {
+    for (i = 0; i < size; i++) {
         crc = crc64_tab[(unsigned char)crc ^ (src_c[i])] ^ (crc >> 8);
     }
 

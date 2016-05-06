@@ -23,8 +23,7 @@ zlink_node_t *zlink_attach_before(zlink_t * link, zlink_node_t * node, zlink_nod
 
 zlink_node_t *zlink_detach(zlink_t * link, zlink_node_t * node)
 {
-    if (!node)
-    {
+    if (!node) {
         return 0;
     }
     ZMLINK_DETACH(link->head, link->tail, node, prev, next);
@@ -51,8 +50,7 @@ zlink_node_t *zlink_pop(zlink_t * link)
     zlink_node_t *node;
 
     node = link->tail;
-    if (node == 0)
-    {
+    if (node == 0) {
         return 0;
     }
     ZMLINK_DETACH(link->head, link->tail, node, prev, next);
@@ -65,8 +63,7 @@ zlink_node_t *zlink_shift(zlink_t * link)
     zlink_node_t *node;
 
     node = link->head;
-    if (node == 0)
-    {
+    if (node == 0) {
         return 0;
     }
     ZMLINK_DETACH(link->head, link->tail, node, prev, next);
@@ -79,11 +76,9 @@ void zlink_fini(zlink_t * link, void (*fini_fn) (zlink_node_t *))
     zlink_node_t *n, *next;
 
     n = link->head;
-    for (; n; n = next)
-    {
+    for (; n; n = next) {
         next = n->next;
-        if (fini_fn)
-        {
+        if (fini_fn) {
             (*fini_fn) (n);
         }
     }
@@ -94,11 +89,9 @@ void zlink_walk(zlink_t * link, void (*walk_fn) (zlink_node_t *))
     zlink_node_t *n, *next;
 
     n = link->head;
-    for (; n; n = next)
-    {
+    for (; n; n = next) {
         next = n->next;
-        if (walk_fn)
-        {
+        if (walk_fn) {
             (*walk_fn) (n);
         }
     }

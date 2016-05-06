@@ -21,8 +21,7 @@ int timer_cb(zevtimer_t * zt)
 int count = 0;
 int timer_cb2(zevtimer_t * zt)
 {
-    if (count++ > 2)
-    {
+    if (count++ > 2) {
         zevtimer_fini(zt);
         zevtimer_free(zt);
         return 0;
@@ -48,8 +47,7 @@ int main(int argc, char **argv)
     zevtimer_init(tmp, zvar_evbase);
     zevtimer_start(tmp, timer_cb2, 1 * 1000);
 
-    while (1)
-    {
+    while (1) {
         zevbase_dispatch(zvar_evbase, 0);
     }
 

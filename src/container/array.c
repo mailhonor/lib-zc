@@ -15,8 +15,7 @@ zarray_t *zarray_create(int size)
     zarray_t *arr;
 
     arr = (zarray_t *) zmalloc(sizeof(zarray_t));
-    if (size < 13)
-    {
+    if (size < 13) {
         size = 13;
     }
     arr->data = (char **)zmalloc((size + 1) * sizeof(char *));
@@ -30,10 +29,8 @@ void zarray_free(zarray_t * arr, void (*free_fn) (void *, void *), void *ctx)
 {
     char **cpp;
 
-    for (cpp = arr->data; cpp < arr->data + arr->len; cpp++)
-    {
-        if (*cpp && free_fn)
-        {
+    for (cpp = arr->data; cpp < arr->data + arr->len; cpp++) {
+        if (*cpp && free_fn) {
             free_fn(*cpp, ctx);
         }
     }
@@ -58,12 +55,9 @@ void zarray_truncate(zarray_t * arr, int len, void (*free_fn) (void *, void *), 
 {
     char **cpp;
 
-    if (len < arr->len)
-    {
-        for (cpp = arr->data + len; cpp < arr->data + arr->len; cpp++)
-        {
-            if (*cpp && free_fn)
-            {
+    if (len < arr->len) {
+        for (cpp = arr->data + len; cpp < arr->data + arr->len; cpp++) {
+            if (*cpp && free_fn) {
                 free_fn(*cpp, ctx);
             }
         }

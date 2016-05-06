@@ -9,8 +9,7 @@
 #include "libzc.h"
 
 typedef struct ___mime_list_t ___mime_list_t;
-struct ___mime_list_t
-{
+struct ___mime_list_t {
     ztnef_mime_t *head;
     ztnef_mime_t *tail;
 };
@@ -18,7 +17,7 @@ struct ___mime_list_t
 static int mime_list_add(ztnef_parser_t * parser, ___mime_list_t * mime_list)
 {
     ztnef_mime_t *mime = (ztnef_mime_t *) zmpool_calloc(parser->mpool, 1,
-                                                         sizeof(ztnef_mime_t));
+                                                        sizeof(ztnef_mime_t));
 
     ZMLINK_APPEND(mime_list->head, mime_list->tail, mime, all_last, all_next);
     return 0;
@@ -30,8 +29,7 @@ static int mime_list_pop(___mime_list_t * mime_list, ztnef_mime_t ** mime)
 
     ZMLINK_DETACH(mime_list->head, mime_list->tail, mime_list->tail, all_last, all_next);
 
-    if (*mime)
-    {
+    if (*mime) {
         return 1;
     }
     return 0;
@@ -101,8 +99,7 @@ static inline int tnef_geti8(ztnef_parser_t * parser)
     int v;
     unsigned char *p;
 
-    if (___LEFT(parser) < 1)
-    {
+    if (___LEFT(parser) < 1) {
         return -1;
     }
 
@@ -119,8 +116,7 @@ static inline int tnef_geti16(ztnef_parser_t * parser)
     int v;
     unsigned char *p;
 
-    if (___LEFT(parser) < 2)
-    {
+    if (___LEFT(parser) < 2) {
         return -1;
     }
 
@@ -137,8 +133,7 @@ static inline int tnef_geti32(ztnef_parser_t * parser)
     int v;
     unsigned char *p;
 
-    if (___LEFT(parser) < 4)
-    {
+    if (___LEFT(parser) < 4) {
         return -1;
     }
 
@@ -152,8 +147,7 @@ static inline int tnef_geti32(ztnef_parser_t * parser)
 
 static inline int tnef_getx(ztnef_parser_t * parser, int value_len, char **value)
 {
-    if (___LEFT(parser) < value_len)
-    {
+    if (___LEFT(parser) < value_len) {
         return -1;
     }
 
@@ -166,23 +160,19 @@ static inline int tnef_getx(ztnef_parser_t * parser, int value_len, char **value
 
 static int tnef_decode_fragment(ztnef_parser_t * parser, int *attribute, char **value, int *value_len)
 {
-    if ((*attribute = tnef_geti32(parser)) == -1)
-    {
+    if ((*attribute = tnef_geti32(parser)) == -1) {
         return -1;
     }
 
-    if ((*value_len = tnef_geti32(parser)) == -1)
-    {
+    if ((*value_len = tnef_geti32(parser)) == -1) {
         return -1;
     }
 
-    if (tnef_getx(parser, *value_len, value) == -1)
-    {
+    if (tnef_getx(parser, *value_len, value) == -1) {
         return -1;
     }
 
-    if (tnef_geti16(parser) == -1)
-    {
+    if (tnef_geti16(parser) == -1) {
         return -1;
     }
 
@@ -212,37 +202,31 @@ static int extract_gridi_attrs(ztnef_parser_t * parser, ___mime_list_t * mime_li
     cmime = mime_list->tail;
 
     /* number of attributes */
-    if (tnef_geti32(parser) == -1)
-    {
+    if (tnef_geti32(parser) == -1) {
         return -1;
     }
-    while (___LEFT(parser) > 0)
-    {
+    while (___LEFT(parser) > 0) {
         val = 0;
         val_len = 0;
         att_type = tnef_geti16(parser);
         att_name = tnef_geti16(parser);
-        switch (att_type)
-        {
+        switch (att_type) {
         case TNEF_GRIDI_SHORT:
-            if (tnef_getx(parser, 2, &val) == -1)
-            {
+            if (tnef_getx(parser, 2, &val) == -1) {
                 return -1;
             }
             break;
         case TNEF_GRIDI_INT:
         case TNEF_GRIDI_BOOLEAN:
         case TNEF_GRIDI_FLOAT:
-            if (tnef_getx(parser, 4, &val) == -1)
-            {
+            if (tnef_getx(parser, 4, &val) == -1) {
                 return -1;
             }
             break;
 
         case TNEF_GRIDI_DOUBLE:
         case TNEF_GRIDI_SYSTIME:
-            if (tnef_getx(parser, 8, &val) == -1)
-            {
+            if (tnef_getx(parser, 8, &val) == -1) {
                 return -1;
             }
             break;
@@ -253,20 +237,17 @@ static int extract_gridi_attrs(ztnef_parser_t * parser, ___mime_list_t * mime_li
         case TNEF_GRIDI_OBJECT:
             {
                 int num_vals = tnef_geti32(parser), i, length, buflen;
-                if (num_vals == -1)
-                {
+                if (num_vals == -1) {
                     return -1;
                 }
                 for (i = 0; i < num_vals; i++)  // usually just 1
                 {
                     length = tnef_geti32(parser);
-                    if (length == -1)
-                    {
+                    if (length == -1) {
                         return -1;
                     }
                     buflen = length + ((4 - (length % 4)) % 4); // pad to next 4 byte boundary
-                    if (tnef_getx(parser, buflen, &val) == -1)
-                    {
+                    if (tnef_getx(parser, buflen, &val) == -1) {
                         return -1;
                     }
                     val_len = length;
@@ -277,22 +258,18 @@ static int extract_gridi_attrs(ztnef_parser_t * parser, ___mime_list_t * mime_li
         default:
             break;
         }
-        switch (att_name)
-        {
-        case TNEF_GRIDI_ATTACH_LONG_FILENAME:   // used in preference to AFILENAME value
-            if (val && cmime)
-            {
-                if (cmime->filename)
-                {
+        switch (att_name) {
+        case TNEF_GRIDI_ATTACH_LONG_FILENAME:  // used in preference to AFILENAME value
+            if (val && cmime) {
+                if (cmime->filename) {
                     zmpool_free(parser->mpool, cmime->filename);
                 }
                 cmime->filename = zmpool_memdup(parser->mpool, val, val_len);
             }
             break;
 
-        case TNEF_GRIDI_ATTACH_MIME_TAG:    // Is this ever set, and what is format?
-            if (val && cmime && (!cmime->type))
-            {
+        case TNEF_GRIDI_ATTACH_MIME_TAG:   // Is this ever set, and what is format?
+            if (val && cmime && (!cmime->type)) {
                 cmime->type = zmpool_memdup(parser->mpool, val, val_len);
             }
             break;
@@ -302,15 +279,12 @@ static int extract_gridi_attrs(ztnef_parser_t * parser, ___mime_list_t * mime_li
             parser2.tnef_data = val;
             parser2.tnef_pos = val;
             parser2.tnef_size = val_len;
-            if (tnef_getx(&parser2, 16, &val) == -1)
-            {
+            if (tnef_getx(&parser2, 16, &val) == -1) {
                 return -1;
             }
             cmime = 0;
-            if (mime_list_pop(mime_list, &cmime))
-            {
-                if (cmime)
-                {
+            if (mime_list_pop(mime_list, &cmime)) {
+                if (cmime) {
                     free_one_mime(parser, cmime);
                 }
             }
@@ -320,14 +294,12 @@ static int extract_gridi_attrs(ztnef_parser_t * parser, ___mime_list_t * mime_li
             parser2.tnef_data = val;
             parser2.tnef_pos = val;
             parser2.tnef_size = val_len;
-            if (___mime_decode_tnef(&parser2, mime_list) == -1)
-            {
+            if (___mime_decode_tnef(&parser2, mime_list) == -1) {
                 return -1;
             }
             break;
         case TNEF_GRIDI_ATTACH_CID:
-            if (val && cmime && (!cmime->content_id))
-            {
+            if (val && cmime && (!cmime->content_id)) {
                 cmime->content_id = zmpool_memdup(parser->mpool, val, val_len);
             }
             break;
@@ -351,26 +323,22 @@ static int tnef_decode_attachment(ztnef_parser_t * parser, ___mime_list_t * mime
     ztnef_parser_t parser2;
 
     ret = tnef_decode_fragment(parser, &attribute, &val, &val_len);
-    if (ret < 0)
-    {
+    if (ret < 0) {
         return -1;
     }
 
     cmime = mime_list->tail;
-    switch (attribute)
-    {
+    switch (attribute) {
     case TNEF_ARENDDATA:
         mime_list_add(parser, mime_list);
         break;
     case TNEF_AFILENAME:
-        if (cmime && (!cmime->filename))
-        {
+        if (cmime && (!cmime->filename)) {
             cmime->filename = zmpool_memdup(parser->mpool, val, val_len);
         }
         break;
     case TNEF_ATTACHDATA:
-        if (cmime)
-        {
+        if (cmime) {
             cmime->body_len = val_len;
             cmime->body_offset = val - (parser->data_orignal);
         }
@@ -380,8 +348,7 @@ static int tnef_decode_attachment(ztnef_parser_t * parser, ___mime_list_t * mime
         parser2.tnef_data = val;
         parser2.tnef_pos = val;
         parser2.tnef_size = val_len;
-        if (extract_gridi_attrs(&parser2, mime_list) == -1)
-        {
+        if (extract_gridi_attrs(&parser2, mime_list) == -1) {
             return -1;
         }
         break;
@@ -398,30 +365,22 @@ static int ___mime_decode_tnef(ztnef_parser_t * parser, ___mime_list_t * mime_li
     int signature, type;
 
     signature = tnef_geti32(parser);
-    if (signature != TNEF_SIGNATURE)
-    {
+    if (signature != TNEF_SIGNATURE) {
         return -1;
     }
     tnef_geti16(parser);
 
-    while (___LEFT(parser))
-    {
+    while (___LEFT(parser)) {
         type = tnef_geti8(parser);
         ret = 0;
-        if (type == TNEF_LVL_MESSAGE)
-        {
+        if (type == TNEF_LVL_MESSAGE) {
             ret = tnef_decode_message(parser, mime_list);
-        }
-        else if (type == TNEF_LVL_ATTACHMENT)
-        {
+        } else if (type == TNEF_LVL_ATTACHMENT) {
             ret = tnef_decode_attachment(parser, mime_list);
-        }
-        else
-        {
+        } else {
             return -1;
         }
-        if (ret < 0)
-        {
+        if (ret < 0) {
             return -1;
         }
     }
@@ -467,17 +426,14 @@ int ztnef_parser_run(ztnef_parser_t * parser)
     mime_list.tail = 0;
 
     ret = ___mime_decode_tnef(parser, &mime_list);
-    if (ret < 0)
-    {
+    if (ret < 0) {
         return ret;
     }
 
     count = 0;
-    for (m = mime_list.head; m; m = m->all_next)
-    {
+    for (m = mime_list.head; m; m = m->all_next) {
         count++;
-        if ((m->filename) && (*(m->filename)))
-        {
+        if ((m->filename) && (*(m->filename))) {
             zmail_parser_header_value_decode_dup(&mail_parser, m->filename, strlen(m->filename), &(m->filename_rd));
         }
         /* format */
@@ -493,8 +449,7 @@ int ztnef_parser_run(ztnef_parser_t * parser)
     parser->attachment_mime_count = count;
     parser->attachment_mime_list = (ztnef_mime_t **) zcalloc(count + 1, sizeof(ztnef_mime_t *));
     count = 0;
-    for (m = mime_list.head; m; m = m->all_next)
-    {
+    for (m = mime_list.head; m; m = m->all_next) {
         parser->attachment_mime_list[count] = m;
         count++;
     }
@@ -504,12 +459,10 @@ int ztnef_parser_run(ztnef_parser_t * parser)
 
 int ztnef_parser_set_default_charset(ztnef_parser_t * parser, char *default_src_charset, char *default_dest_charset)
 {
-    if (!ZEMPTY(default_src_charset))
-    {
+    if (!ZEMPTY(default_src_charset)) {
         strncpy(parser->default_src_charset, default_src_charset, 31);
     }
-    if (!ZEMPTY(default_dest_charset))
-    {
+    if (!ZEMPTY(default_dest_charset)) {
         strncpy(parser->default_dest_charset, default_dest_charset, 31);
     }
 
@@ -524,16 +477,14 @@ ztnef_parser_t *ztnef_parser_create(char *mail_data, int mail_data_len)
 
 void ztnef_parser_free(ztnef_parser_t * parser)
 {
-    if (parser->mpool)
-    {
+    if (parser->mpool) {
         /* The free action is invalid when mpool is not null */
         return;
     }
 
     /* free mime */
     int i;
-    for (i = 0; i < parser->attachment_mime_count; i++)
-    {
+    for (i = 0; i < parser->attachment_mime_count; i++) {
         free_one_mime(parser, parser->attachment_mime_list[i]);
     }
     zmpool_free(parser->mpool, parser->attachment_mime_list);

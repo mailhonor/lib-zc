@@ -26,7 +26,7 @@ static zev_t *ev_status;
 static zev_t *ev_listen;
 static zevtimer_t reload_timer;
 
-static int reload_to_softstop(zevtimer_t *tm)
+static int reload_to_softstop(zevtimer_t * tm)
 {
     zmaster_server_stop_notify();
 
@@ -36,13 +36,10 @@ static int reload_to_softstop(zevtimer_t *tm)
 static int on_master_reload(zev_t * zev)
 {
     reloading = 1;
-    if (zmaster_server_reload)
-    {
+    if (zmaster_server_reload) {
         zmaster_server_reload();
-    }
-    else
-    {
-        zevtimer_start(&reload_timer, reload_to_softstop, 10*1000);
+    } else {
+        zevtimer_start(&reload_timer, reload_to_softstop, 10 * 1000);
     }
 
     return 0;
@@ -52,8 +49,7 @@ static int on_master_reload(zev_t * zev)
 static int local_ev_close_do_once;
 static void local_ev_close_do()
 {
-    if (ev_listen)
-    {
+    if (ev_listen) {
         zev_unset(ev_listen);
         zev_fini(ev_listen);
         zfree(ev_listen);
@@ -62,8 +58,7 @@ static void local_ev_close_do()
         zvar_master_server_listen_fd = -1;
     }
 
-    if (ev_status)
-    {
+    if (ev_status) {
         /* The master would receive the signal of closing ZMASTER_SERVER_STATUS_FD. */
         zev_unset(ev_status);
         zev_fini(ev_status);
@@ -73,6 +68,7 @@ static void local_ev_close_do()
         close(ZMASTER_MASTER_STATUS_FD);
     }
 }
+
 static int inet_server_accept(zev_t * zev)
 {
     int fd;
@@ -81,10 +77,8 @@ static int inet_server_accept(zev_t * zev)
     listen_fd = zev_get_fd(zev);
 
     fd = zinet_accept(listen_fd);
-    if (fd < 0)
-    {
-        if (errno != EAGAIN)
-        {
+    if (fd < 0) {
+        if (errno != EAGAIN) {
             zfatal("inet_server_accept: %m");
         }
         return -1;
@@ -104,10 +98,8 @@ static int unix_server_accept(zev_t * zev)
     listen_fd = zev_get_fd(zev);
 
     fd = zunix_accept(listen_fd);
-    if (fd < 0)
-    {
-        if (errno != EAGAIN)
-        {
+    if (fd < 0) {
+        if (errno != EAGAIN) {
             zfatal("unix_server_accept: %m");
         }
         return -1;
@@ -121,9 +113,8 @@ static int unix_server_accept(zev_t * zev)
 
 void register_server(char *test_listen)
 {
-    if (!test_mode)
-    {
-        ev_status = (zev_t *)zcalloc(1, sizeof(zev_t));
+    if (!test_mode) {
+        ev_status = (zev_t *) zcalloc(1, sizeof(zev_t));
         zclose_on_exec(ZMASTER_MASTER_STATUS_FD, 1);
         znonblocking(ZMASTER_MASTER_STATUS_FD, 1);
 
@@ -131,29 +122,21 @@ void register_server(char *test_listen)
         zev_read(ev_status, on_master_reload);
 
         zvar_master_server_listen_fd = ZMASTER_LISTEN_FD;
-    }
-    else
-    {
-        if (test_listen == 0)
-        {
+    } else {
+        if (test_listen == 0) {
             test_listen = zconfig_get_str(zvar_config, "zlisten", 0);
         }
-        if (ZEMPTY(test_listen))
-        {
+        if (ZEMPTY(test_listen)) {
             zfatal("no listen");
         }
-        if (strchr(test_listen, ':'))
-        {
+        if (strchr(test_listen, ':')) {
             zvar_master_server_listen_type = ZMASTER_LISTEN_INET;
-        }
-        else
-        {
+        } else {
             zvar_master_server_listen_type = ZMASTER_LISTEN_UNIX;
         }
         zvar_master_server_listen_fd = zlisten(test_listen, 10);
 
-        if (zvar_master_server_listen_fd < 0)
-        {
+        if (zvar_master_server_listen_fd < 0) {
             zfatal("open %s(%m)", test_listen);
         }
     }
@@ -161,23 +144,18 @@ void register_server(char *test_listen)
 
     znonblocking(zvar_master_server_listen_fd, 1);
 
-
     zevtimer_init(&reload_timer, zvar_evbase);
 
-    if (!zmaster_server_service)
-    {
+    if (!zmaster_server_service) {
         return;
     }
 
     ev_listen = (zev_t *) zcalloc(1, sizeof(zev_t));
     zev_init(ev_listen, zvar_evbase, zvar_master_server_listen_fd);
 
-    if (zvar_master_server_listen_type == ZMASTER_LISTEN_INET)
-    {
+    if (zvar_master_server_listen_type == ZMASTER_LISTEN_INET) {
         zev_read(ev_listen, inet_server_accept);
-    }
-    else if (zvar_master_server_listen_type == ZMASTER_LISTEN_UNIX)
-    {
+    } else if (zvar_master_server_listen_type == ZMASTER_LISTEN_UNIX) {
         zev_read(ev_listen, unix_server_accept);
     }
 }
@@ -196,18 +174,15 @@ int zmaster_server_main(int argc, char **argv)
     local_ev_close_do_once = 1;
     signal(SIGPIPE, SIG_IGN);
 
-    if (!zvar_progname)
-    {
+    if (!zvar_progname) {
         zvar_progname = argv[0];
     }
 
     zvar_config_init();
     zvar_evbase_init();
 
-    while ((op = getopt(argc, argv, "Ml:c:o:t:dv")) > 0)
-    {
-        switch (op)
-        {
+    while ((op = getopt(argc, argv, "Ml:c:o:t:dv")) > 0) {
+        switch (op) {
         case 'M':
             test_mode = 0;
             break;
@@ -222,8 +197,7 @@ int zmaster_server_main(int argc, char **argv)
                 char *key, *value;
                 key = zstrdup(optarg);
                 value = strchr(key, '=');
-                if (value)
-                {
+                if (value) {
                     *value++ = 0;
                 }
                 zconfig_add(zvar_config, key, value);
@@ -246,28 +220,22 @@ int zmaster_server_main(int argc, char **argv)
 
     register_server(test_listen);
 
-    if (zmaster_server_before_service)
-    {
+    if (zmaster_server_before_service) {
         zmaster_server_before_service();
     }
 
-    while (1)
-    {
+    while (1) {
         zevbase_dispatch(zvar_evbase, 0);
-        if (zmaster_server_loop)
-        {
+        if (zmaster_server_loop) {
             zmaster_server_loop();
         }
-        if (reloading)
-        {
+        if (reloading) {
             local_ev_close();
-            if (getppid() != parent_pid)
-            {
+            if (getppid() != parent_pid) {
                 break;
             }
         }
-        if (softstopping)
-        {
+        if (softstopping) {
             local_ev_close();
             break;
         }
@@ -275,8 +243,7 @@ int zmaster_server_main(int argc, char **argv)
 
     local_ev_close();
 
-    if (zmaster_server_before_exit)
-    {
+    if (zmaster_server_before_exit) {
         zmaster_server_before_exit();
     }
 

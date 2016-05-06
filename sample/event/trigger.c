@@ -18,15 +18,13 @@ static int server_error(zev_t * ev)
     fd = zev_get_fd(ev);
     fp = zev_get_context(ev);
 
-    if (events & ZEV_EXCEPTION)
-    {
+    if (events & ZEV_EXCEPTION) {
         zinfo("%d: error", fd);
     }
 
     zev_fini(ev);
     zfree(ev);
-    if (fp)
-    {
+    if (fp) {
         zfclose_FD(fp);
     }
     close(fd);
@@ -43,8 +41,7 @@ static int server_read(zev_t * ev)
     events = zev_get_events(ev);
     fd = zev_get_fd(ev);
 
-    if (events & ZEV_EXCEPTION)
-    {
+    if (events & ZEV_EXCEPTION) {
         server_error(ev);
         return 1;
     }
@@ -52,14 +49,12 @@ static int server_read(zev_t * ev)
     fp = (zstream_t *) zev_get_context(ev);
     ret = zfread_line(fp, buf, 1024);
 
-    if (ret < 0)
-    {
+    if (ret < 0) {
         server_error(ev);
         return -1;
     }
     buf[ret] = 0;
-    if (!strncmp(buf, "exit", 4))
-    {
+    if (!strncmp(buf, "exit", 4)) {
         zfclose_FD(fp);
         zev_fini(ev);
         zfree(ev);
@@ -68,20 +63,17 @@ static int server_read(zev_t * ev)
         return 0;
     }
     p = strchr(buf, '\r');
-    if (p)
-    {
+    if (p) {
         *p = 0;
     }
     p = strchr(buf, '\n');
-    if (p)
-    {
+    if (p) {
         *p = 0;
     }
 
     zfprintf(fp, "your input: %s\n", buf);
     ret = ZFFLUSH(fp);
-    if (ret < 0)
-    {
+    if (ret < 0) {
         server_error(ev);
         return -1;
     }
@@ -97,8 +89,7 @@ static int server_welcome(zev_t * ev)
     zstream_t *fp;
 
     events = zev_get_events(ev);
-    if (events & ZEV_EXCEPTION)
-    {
+    if (events & ZEV_EXCEPTION) {
         server_error(ev);
         return 1;
     }
@@ -107,8 +98,7 @@ static int server_welcome(zev_t * ev)
     time_t t = time(0);
     zfprintf(fp, "welcome ev: %s\n", ctime(&t));
     ret = ZFFLUSH(fp);
-    if (ret < 0)
-    {
+    if (ret < 0) {
         server_error(ev);
         return 1;
     }
@@ -156,8 +146,7 @@ int main(int argc, char **argv)
     zevtimer_init(&tm, zvar_evbase);
     zevtimer_start(&tm, timer_cb, 200 * 1000);
 
-    while (1)
-    {
+    while (1) {
         zevbase_dispatch(zvar_evbase, 0);
     }
 

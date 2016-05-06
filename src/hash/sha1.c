@@ -206,11 +206,9 @@ static void sha1_step(zsha1_t * ctxt)
     d = H(3);
     e = H(4);
 
-    for (t = 0; t < 20; t++)
-    {
+    for (t = 0; t < 20; t++) {
         s = t & 0x0f;
-        if (t >= 16)
-        {
+        if (t >= 16) {
             W(s) = S(1, W((s + 13) & 0x0f) ^ W((s + 8) & 0x0f) ^ W((s + 2) & 0x0f) ^ W(s));
         }
         tmp = S(5, a) + F0(b, c, d) + e + W(s) + K(t);
@@ -220,8 +218,7 @@ static void sha1_step(zsha1_t * ctxt)
         b = a;
         a = tmp;
     }
-    for (t = 20; t < 40; t++)
-    {
+    for (t = 20; t < 40; t++) {
         s = t & 0x0f;
         W(s) = S(1, W((s + 13) & 0x0f) ^ W((s + 8) & 0x0f) ^ W((s + 2) & 0x0f) ^ W(s));
         tmp = S(5, a) + F1(b, c, d) + e + W(s) + K(t);
@@ -231,8 +228,7 @@ static void sha1_step(zsha1_t * ctxt)
         b = a;
         a = tmp;
     }
-    for (t = 40; t < 60; t++)
-    {
+    for (t = 40; t < 60; t++) {
         s = t & 0x0f;
         W(s) = S(1, W((s + 13) & 0x0f) ^ W((s + 8) & 0x0f) ^ W((s + 2) & 0x0f) ^ W(s));
         tmp = S(5, a) + F2(b, c, d) + e + W(s) + K(t);
@@ -242,8 +238,7 @@ static void sha1_step(zsha1_t * ctxt)
         b = a;
         a = tmp;
     }
-    for (t = 60; t < 80; t++)
-    {
+    for (t = 60; t < 80; t++) {
         s = t & 0x0f;
         W(s) = S(1, W((s + 13) & 0x0f) ^ W((s + 8) & 0x0f) ^ W((s + 2) & 0x0f) ^ W(s));
         tmp = S(5, a) + F3(b, c, d) + e + W(s) + K(t);
@@ -284,8 +279,7 @@ void sha1_pad(zsha1_t * ctxt)
 
     padstart = COUNT % 64;
     padlen = 64 - padstart;
-    if (padlen < 8)
-    {
+    if (padlen < 8) {
         memset(&ctxt->m.b8[padstart], 0, padlen);
         COUNT += padlen;
         COUNT %= 64;
@@ -327,8 +321,7 @@ void zsha1_update(zsha1_t * ctxt, void *input, int len)
 
     off = 0;
 
-    while (off < len)
-    {
+    while (off < len) {
         gapstart = COUNT % 64;
         gaplen = 64 - gapstart;
 

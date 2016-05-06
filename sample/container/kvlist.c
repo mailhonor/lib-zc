@@ -36,8 +36,7 @@ static void cmd_list(zkvlist_t * kv, char *cmdline)
     zdict_node_t *n;
 
     dict = zkvlist_get_dict(kv);
-    for (n = zdict_first(dict); n; n = zdict_next(n))
-    {
+    for (n = zdict_first(dict); n; n = zdict_next(n)) {
         printf("%s = %s\n", n->key, (char *)(n->value));
     }
     printf("OK list\n");
@@ -49,23 +48,19 @@ static void ___parse_kv(char *line, char **key, char **value)
 
     k = 0;
     v = 0;
-    if (*line == ' ')
-    {
+    if (*line == ' ') {
         line++;
         k = line;
         p = strchr(line, '=');
-        if (p)
-        {
+        if (p) {
             *p = 0;
             v = p + 1;
         }
     }
-    if (key)
-    {
+    if (key) {
         *key = k;
     }
-    if (value)
-    {
+    if (value) {
         *value = v;
     }
 }
@@ -77,12 +72,10 @@ static void cmd_add(zkvlist_t * kv, char *cmdline)
     n = 0;
     v = 0;
     ___parse_kv(cmdline + 3, &n, &v);
-    if (n == 0 || *n == 0)
-    {
+    if (n == 0 || *n == 0) {
         return cmd_usage(kv);
     }
-    if (v == 0 || *v == 0)
-    {
+    if (v == 0 || *v == 0) {
         v = "";
     }
 
@@ -97,12 +90,10 @@ static void cmd_delete(zkvlist_t * kv, char *cmdline)
     n = 0;
     v = 0;
     ___parse_kv(cmdline + 6, &n, &v);
-    if (n == 0 || *n == 0)
-    {
+    if (n == 0 || *n == 0) {
         return cmd_usage(kv);
     }
-    if (v && *v)
-    {
+    if (v && *v) {
         return cmd_usage(kv);
     }
 
@@ -117,29 +108,18 @@ static void cmd_unknown(zkvlist_t * kv, char *cmdline)
 
 static int cmd_do(zkvlist_t * kv, char *cmdline)
 {
-    if (!strncasecmp(cmdline, "exit", 4))
-    {
+    if (!strncasecmp(cmdline, "exit", 4)) {
         cmd_exit(kv, cmdline);
         return 0;
-    }
-    else if (!strncasecmp(cmdline, "reload", 6))
-    {
+    } else if (!strncasecmp(cmdline, "reload", 6)) {
         cmd_reload(kv, cmdline);
-    }
-    else if (!strncasecmp(cmdline, "list", 4))
-    {
+    } else if (!strncasecmp(cmdline, "list", 4)) {
         cmd_list(kv, cmdline);
-    }
-    else if (!strncasecmp(cmdline, "add", 3))
-    {
+    } else if (!strncasecmp(cmdline, "add", 3)) {
         cmd_add(kv, cmdline);
-    }
-    else if (!strncasecmp(cmdline, "delete", 6))
-    {
+    } else if (!strncasecmp(cmdline, "delete", 6)) {
         cmd_delete(kv, cmdline);
-    }
-    else
-    {
+    } else {
         cmd_unknown(kv, cmdline);
     }
     return 1;
@@ -153,8 +133,7 @@ int main(int argc, char **argv)
     int len;
 
     zvar_progname = argv[0];
-    if (argc < 2)
-    {
+    if (argc < 2) {
         printf("USAGE: %s kvlist.d\n", zvar_progname);
         exit(1);
     }
@@ -162,21 +141,17 @@ int main(int argc, char **argv)
     kv = zkvlist_create(dn);
     zkvlist_load(kv);
 
-    while (fgets(buf, 102400, stdin))
-    {
+    while (fgets(buf, 102400, stdin)) {
         len = strlen(buf);
-        if ((len > 0) && (buf[len - 1] == '\n'))
-        {
+        if ((len > 0) && (buf[len - 1] == '\n')) {
             len--;
         }
-        if ((len > 0) && (buf[len - 1] == '\r'))
-        {
+        if ((len > 0) && (buf[len - 1] == '\r')) {
             len--;
         }
         buf[len] = 0;
 
-        if (cmd_do(kv, buf) == 0)
-        {
+        if (cmd_do(kv, buf) == 0) {
             break;
         }
     }

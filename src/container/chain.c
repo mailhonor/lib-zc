@@ -25,11 +25,9 @@ void zchain_free(zchain_t * zc, void (*free_fn) (void *, void *), void *ctx)
     zchain_node_t *n, *next;
 
     n = zc->head;
-    for (; n; n = next)
-    {
+    for (; n; n = next) {
         next = n->next;
-        if (free_fn)
-        {
+        if (free_fn) {
             (*free_fn) (n->value, ctx);
         }
         zfree(n);
@@ -43,11 +41,9 @@ void zchain_free_STR(zchain_t * zc)
     zchain_node_t *n, *next;
 
     n = zc->head;
-    for (; n; n = next)
-    {
+    for (; n; n = next) {
         next = n->next;
-        if (n->value)
-        {
+        if (n->value) {
             zfree(n->value);
         }
         zfree(n);
@@ -61,10 +57,8 @@ void zchain_walk(zchain_t * zc, void (*walk_fn) (zchain_node_t *, void *), void 
     zchain_node_t *n;
 
     n = zc->head;
-    for (; n; n = n->next)
-    {
-        if (walk_fn)
-        {
+    for (; n; n = n->next) {
+        if (walk_fn) {
             (*walk_fn) (n, ctx);
         }
     }
@@ -101,12 +95,10 @@ zchain_node_t *zchain_add_before(zchain_t * zc, void *value, zchain_node_t * bef
 
 zchain_node_t *zchain_delete(zchain_t * zc, zchain_node_t * n, char **value)
 {
-    if (n == 0)
-    {
+    if (n == 0) {
         return 0;
     }
-    if (value)
-    {
+    if (value) {
         *value = n->value;
     }
     zchain_detach(zc, n);

@@ -13,9 +13,8 @@ char *zconfig_get_str(zconfig_t * cf, char *name, char *def)
 {
     char *value;
 
-    zdict_lookup(cf, name , &value);
-    if (! ZEMPTY(value))
-    {
+    zdict_lookup(cf, name, &value);
+    if (!ZEMPTY(value)) {
         return value;
     }
 
@@ -27,8 +26,7 @@ int zconfig_get_bool(zconfig_t * cf, char *name, int def)
     char *value;
 
     value = zconfig_get_str(cf, name, 0);
-    if (ZEMPTY(value))
-    {
+    if (ZEMPTY(value)) {
         return def;
     }
 
@@ -40,8 +38,7 @@ int zconfig_get_int(zconfig_t * cf, char *name, int def, int max, int min)
     char *value;
 
     value = zconfig_get_str(cf, name, 0);
-    if (! ZEMPTY(value))
-    {
+    if (!ZEMPTY(value)) {
         def = atoi(value);
     }
     ___RANGE_VALUE(def, max, min);
@@ -54,8 +51,7 @@ long zconfig_get_long(zconfig_t * cf, char *name, long def, long max, long min)
     char *value;
 
     value = zconfig_get_str(cf, name, 0);
-    if (! ZEMPTY(value))
-    {
+    if (!ZEMPTY(value)) {
         def = atoll(value);
     }
     ___RANGE_VALUE(def, max, min);
@@ -68,8 +64,7 @@ long zconfig_get_second(zconfig_t * cf, char *name, long def, long max, long min
     char *value;
 
     value = zconfig_get_str(cf, name, 0);
-    if (! ZEMPTY(value))
-    {
+    if (!ZEMPTY(value)) {
         def = zstr_to_second(value);
     }
 
@@ -83,8 +78,7 @@ long zconfig_get_size(zconfig_t * cf, char *name, long def, long max, long min)
     char *value;
 
     value = zconfig_get_str(cf, name, 0);
-    if (ZEMPTY(value))
-    {
+    if (ZEMPTY(value)) {
         def = zstr_to_size(value);
     }
 
@@ -98,10 +92,8 @@ long zconfig_get_size(zconfig_t * cf, char *name, long def, long max, long min)
 
 void zconfig_get_str_table(zconfig_t * cf, zconfig_str_table_t * table)
 {
-    while (table->name)
-    {
-        if (table->target[0])
-        {
+    while (table->name) {
+        if (table->target[0]) {
             zfree(table->target[0]);
         }
         table->target[0] = zconfig_get_str(cf, table->name, table->defval);
@@ -110,8 +102,7 @@ void zconfig_get_str_table(zconfig_t * cf, zconfig_str_table_t * table)
 
 void zconfig_get_bool_table(zconfig_t * cf, zconfig_bool_table_t * table)
 {
-    while (table->name)
-    {
+    while (table->name) {
         table->target[0] = zconfig_get_bool(cf, table->name, table->defval);
     }
 }
@@ -128,4 +119,3 @@ ___ZCONFIG_GET_TABLE(int);
 ___ZCONFIG_GET_TABLE(long);
 ___ZCONFIG_GET_TABLE(size);
 ___ZCONFIG_GET_TABLE(second);
-

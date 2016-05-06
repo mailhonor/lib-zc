@@ -28,8 +28,7 @@ void test_password(void)
 
     chain = zchain_create();
     fp = fopen("/etc/passwd", "r");
-    while (fgets(linebuf, 102400, fp))
-    {
+    while (fgets(linebuf, 102400, fp)) {
         av = zargv_create(0);
         zargv_split_append(av, linebuf, ":");
         zchain_push(chain, av);
@@ -37,8 +36,7 @@ void test_password(void)
     zinfo("now test zchain_walk");
     zchain_walk(chain, walk_fn, 0);
     zinfo("now test ZCHAIN_WALK_BEGIN");
-    ZCHAIN_WALK_BEGIN(chain, n)
-    {
+    ZCHAIN_WALK_BEGIN(chain, n) {
         zinfo("%s", ((zargv_t *) (n->value))->argv[0]);
     }
     ZCHAIN_WALK_END;

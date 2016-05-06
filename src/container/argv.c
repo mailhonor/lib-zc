@@ -15,7 +15,7 @@ zargv_t *zargv_create(int size)
     return zargv_create_mpool(size, 0);
 }
 
-zargv_t *zargv_create_mpool(int size, zmpool_t *mpool)
+zargv_t *zargv_create_mpool(int size, zmpool_t * mpool)
 {
     zargv_t *argvp;
     int sane_size;
@@ -35,8 +35,7 @@ void zargv_free(zargv_t * argvp)
 {
     char **cpp;
 
-    for (cpp = argvp->argv; cpp < argvp->argv + argvp->argc; cpp++)
-    {
+    for (cpp = argvp->argv; cpp < argvp->argv + argvp->argc; cpp++) {
         zmpool_free(argvp->mpool, *cpp);
     }
     zmpool_free(argvp->mpool, argvp->argv);
@@ -52,13 +51,11 @@ static void zargv_extend(zargv_t * argvp)
     /* Within mpool mode, realloc maybe is invalid or not recommended */
     void *old;
     old = argvp->argv;
-    argvp->argv = (char **)zmpool_malloc(argvp->mpool,
-            (new_size + 1) * sizeof(char *));
+    argvp->argv = (char **)zmpool_malloc(argvp->mpool, (new_size + 1) * sizeof(char *));
     memcpy(argvp->argv, old, argvp->size * sizeof(char *));
     zmpool_free(argvp->mpool, old);
 #else
-    argvp->argv = (char **)zrealloc((char *)argvp->argv,
-            (new_size + 1) * sizeof(char *));
+    argvp->argv = (char **)zrealloc((char *)argvp->argv, (new_size + 1) * sizeof(char *));
 #endif
     argvp->size = new_size;
 }
@@ -83,8 +80,7 @@ void zargv_truncate(zargv_t * argvp, int len)
 {
     char **cpp;
 
-    if (len < argvp->argc)
-    {
+    if (len < argvp->argc) {
         for (cpp = argvp->argv + len; cpp < argvp->argv + argvp->argc; cpp++)
             zmpool_free(argvp->mpool, *cpp);
         argvp->argc = len;
@@ -112,8 +108,7 @@ void zargv_show(zargv_t * argvp)
 {
     char *p;
 
-    ZARGV_WALK_BEGIN(argvp, p)
-    {
+    ZARGV_WALK_BEGIN(argvp, p) {
         printf("%s\n", p);
     }
     ZARGV_WALK_END;

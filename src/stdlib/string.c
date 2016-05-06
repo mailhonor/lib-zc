@@ -88,8 +88,7 @@ char *ztolower(char *str)
 {
     char *scan = str;
 
-    while (*scan)
-    {
+    while (*scan) {
         *scan = ZCHAR_TOLOWER(*scan);
         scan++;
     }
@@ -101,8 +100,7 @@ char *ztoupper(char *str)
 {
     char *scan = str;
 
-    while (*scan)
-    {
+    while (*scan) {
         *scan = ZCHAR_TOUPPER(*scan);
         scan++;
     }
@@ -189,15 +187,13 @@ long zstr_to_second(char *s)
     char unit, junk;
     long intval;
 
-    switch (sscanf(s, "%ld%c%c", &intval, &unit, &junk))
-    {
+    switch (sscanf(s, "%ld%c%c", &intval, &unit, &junk)) {
     case 1:
         unit = 's';
     case 2:
         if (intval < 0)
             return 0;
-        switch (ZCHAR_TOLOWER(unit))
-        {
+        switch (ZCHAR_TOLOWER(unit)) {
         case 'w':
             return (intval * (7 * 24 * 3600));
         case 'd':
@@ -220,15 +216,13 @@ long zstr_to_size(char *s)
     char unit, junk;
     long intval;
 
-    switch (sscanf(s, "%ld%c%c", &intval, &unit, &junk))
-    {
+    switch (sscanf(s, "%ld%c%c", &intval, &unit, &junk)) {
     case 1:
         unit = 'b';
     case 2:
         if (intval < 0)
             return 0;
-        switch (ZCHAR_TOLOWER(unit))
-        {
+        switch (ZCHAR_TOLOWER(unit)) {
         case 'g':
             return (intval * (1024 * 1024 * 1024));
         case 'm':
@@ -255,8 +249,7 @@ int zsnprintf(char *str, int size, char *format, ...)
     va_start(ap, format);
     i = vsnprintf(str, size, format, ap);
     va_end(ap);
-    if (i >= size)
-    {
+    if (i >= size) {
         i = size - 1;
     }
 
@@ -268,8 +261,7 @@ int zvsnprintf(char *str, int size, char *format, va_list ap)
     int i;
 
     i = vsnprintf(str, size, format, ap);
-    if (i >= size)
-    {
+    if (i >= size) {
         i = size - 1;
     }
 
@@ -284,23 +276,18 @@ char *zmemstr(void *s, char *needle, int len)
     int nlen = strlen(needle);
     int i, j;
 
-    if (len < nlen)
-    {
+    if (len < nlen) {
         return 0;
     }
     len = len - nlen + 1;
 
-    for (i = 0; i < len; i++)
-    {
-        for (j = 0; j < nlen; j++)
-        {
-            if (needle[j] != src_c[i + j])
-            {
+    for (i = 0; i < len; i++) {
+        for (j = 0; j < nlen; j++) {
+            if (needle[j] != src_c[i + j]) {
                 break;
             }
         }
-        if (j == nlen)
-        {
+        if (j == nlen) {
             return src_c + i;
         }
     }
@@ -314,23 +301,18 @@ char *zmemcasestr(void *s, char *needle, int len)
     int nlen = strlen(needle);
     int i, j;
 
-    if (len < nlen)
-    {
+    if (len < nlen) {
         return 0;
     }
     len = len - nlen + 1;
 
-    for (i = 0; i < len; i++)
-    {
-        for (j = 0; j < nlen; j++)
-        {
-            if (zchar_toupper(needle[j]) != zchar_toupper(src_c[i + j]))
-            {
+    for (i = 0; i < len; i++) {
+        for (j = 0; j < nlen; j++) {
+            if (zchar_toupper(needle[j]) != zchar_toupper(src_c[i + j])) {
                 break;
             }
         }
-        if (j == nlen)
-        {
+        if (j == nlen) {
             return src_c + i;
         }
     }

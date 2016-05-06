@@ -21,13 +21,10 @@ int zread_wait(int fd, int timeout)
     pollfd.events = POLLIN;
     timeout = timeout * 1000;
 
-    for (;;)
-    {
-        switch (poll(&pollfd, 1, timeout))
-        {
+    for (;;) {
+        switch (poll(&pollfd, 1, timeout)) {
         case -1:
-            if (errno != EINTR)
-            {
+            if (errno != EINTR) {
                 return -1;
             }
             continue;
@@ -35,8 +32,7 @@ int zread_wait(int fd, int timeout)
             errno = ETIMEDOUT;
             return -1;
         default:
-            if (pollfd.revents & POLLNVAL)
-            {
+            if (pollfd.revents & POLLNVAL) {
                 return -1;
             }
             return 1;
@@ -54,21 +50,16 @@ int ztimed_read(int fd, void *buf, int len, int timeout)
 
     start_time = ztimeout_set(timeout);
 
-    for (;;)
-    {
+    for (;;) {
         left_time = ztimeout_left(start_time);
-        if (left_time < 1)
-        {
+        if (left_time < 1) {
             return -1;
         }
-        if ((ret = zread_wait(fd, left_time)) < 0)
-        {
+        if ((ret = zread_wait(fd, left_time)) < 0) {
             return (ret);
         }
-        if ((ret = read(fd, buf, (size_t) len)) < 0)
-        {
-            if (errno == EINTR)
-            {
+        if ((ret = read(fd, buf, (size_t) len)) < 0) {
+            if (errno == EINTR) {
                 continue;
             }
             return -1;
@@ -92,32 +83,23 @@ int ztimed_strict_read(int fd, void *buf, int len, int timeout)
 
     start_time = ztimeout_set(timeout);
 
-    while (left > 0)
-    {
+    while (left > 0) {
         left_time = ztimeout_left(start_time);
-        if (left_time < 1)
-        {
+        if (left_time < 1) {
             return -1;
         }
-        if ((ret = zread_wait(fd, left_time)) < 0)
-        {
+        if ((ret = zread_wait(fd, left_time)) < 0) {
             return -1;
         }
         ret = read(fd, ptr, (size_t) left);
-        if (ret < 0)
-        {
-            if (errno == EINTR)
-            {
+        if (ret < 0) {
+            if (errno == EINTR) {
                 continue;
             }
             return -1;
-        }
-        else if (ret == 0)
-        {
+        } else if (ret == 0) {
             return -1;
-        }
-        else
-        {
+        } else {
             left -= ret;
             ptr += ret;
         }
@@ -139,35 +121,25 @@ int ztimed_read_delimiter(int fd, void *buf, int len, int delimiter, int timeout
 
     start_time = ztimeout_set(timeout);
 
-    while (left > 0)
-    {
+    while (left > 0) {
         left_time = ztimeout_left(start_time);
-        if (left_time < 1)
-        {
+        if (left_time < 1) {
             return -1;
         }
-        if ((ret = zread_wait(fd, left_time)) < 0)
-        {
+        if ((ret = zread_wait(fd, left_time)) < 0) {
             return ret;
         }
         ret = read(fd, ptr, (size_t) left);
-        if (ret < 0)
-        {
-            if (errno == EINTR)
-            {
+        if (ret < 0) {
+            if (errno == EINTR) {
                 continue;
             }
             return -1;
-        }
-        else if (ret == 0)
-        {
+        } else if (ret == 0) {
             return -1;
-        }
-        else
-        {
+        } else {
             p = memchr(ptr, delimiter, ret);
-            if (p)
-            {
+            if (p) {
                 return (len - left + (p - ptr + 1));
             }
             left -= ret;
@@ -188,13 +160,10 @@ int zwrite_wait(int fd, int timeout)
     pollfd.events = POLLOUT;
     timeout = timeout * 1000;
 
-    for (;;)
-    {
-        switch (poll(&pollfd, 1, timeout))
-        {
+    for (;;) {
+        switch (poll(&pollfd, 1, timeout)) {
         case -1:
-            if (errno != EINTR)
-            {
+            if (errno != EINTR) {
                 return -1;
             }
             continue;
@@ -202,8 +171,7 @@ int zwrite_wait(int fd, int timeout)
             errno = ETIMEDOUT;
             return -1;
         default:
-            if (pollfd.revents & POLLNVAL)
-            {
+            if (pollfd.revents & POLLNVAL) {
                 return -1;
             }
             return 1;
@@ -221,21 +189,16 @@ int ztimed_write(int fd, void *buf, int len, int timeout)
 
     start_time = ztimeout_set(timeout);
 
-    for (;;)
-    {
+    for (;;) {
         left_time = ztimeout_left(start_time);
-        if (left_time < 1)
-        {
+        if (left_time < 1) {
             return -1;
         }
-        if ((ret = zwrite_wait(fd, left_time)) < 0)
-        {
+        if ((ret = zwrite_wait(fd, left_time)) < 0) {
             return -1;
         }
-        if ((ret = write(fd, buf, (size_t) len)) < 0)
-        {
-            if (errno == EINTR)
-            {
+        if ((ret = write(fd, buf, (size_t) len)) < 0) {
+            if (errno == EINTR) {
                 continue;
             }
             return -1;
@@ -259,32 +222,23 @@ int ztimed_strict_write(int fd, void *buf, int len, int timeout)
     left = len;
     ptr = buf;
 
-    while (left > 0)
-    {
+    while (left > 0) {
         left_time = ztimeout_left(start_time);
-        if (left_time < 1)
-        {
+        if (left_time < 1) {
             return -1;
         }
-        if ((ret = zwrite_wait(fd, left_time)) < 0)
-        {
+        if ((ret = zwrite_wait(fd, left_time)) < 0) {
             return -1;
         }
         ret = write(fd, ptr, (size_t) left);
-        if (ret < 0)
-        {
-            if (errno == EINTR)
-            {
+        if (ret < 0) {
+            if (errno == EINTR) {
                 continue;
             }
             return -1;
-        }
-        else if (ret == 0)
-        {
+        } else if (ret == 0) {
             return -1;
-        }
-        else
-        {
+        } else {
             left -= ret;
             ptr += ret;
         }
@@ -302,13 +256,10 @@ static int ___poll(int fd, int events, int flag)
 
     pollfd.fd = fd;
     pollfd.events = events;
-    for (;;)
-    {
-        switch (poll(&pollfd, 1, 0))
-        {
+    for (;;) {
+        switch (poll(&pollfd, 1, 0)) {
         case -1:
-            if (errno != EINTR)
-            {
+            if (errno != EINTR) {
                 return -1;
             }
             continue;
@@ -316,33 +267,26 @@ static int ___poll(int fd, int events, int flag)
             return (0);
         default:
             revs = pollfd.revents;
-            if (revs & POLLNVAL)
-            {
+            if (revs & POLLNVAL) {
                 return -1;
             }
-            if (flag && (revs & (POLLERR | POLLHUP | POLLRDHUP)))
-            {
+            if (flag && (revs & (POLLERR | POLLHUP | POLLRDHUP))) {
                 return -1;
             }
             myevs = 0;
-            if (revs & POLLIN)
-            {
+            if (revs & POLLIN) {
                 myevs |= ZEV_READ;
             }
-            if (revs & POLLOUT)
-            {
+            if (revs & POLLOUT) {
                 myevs |= ZEV_WRITE;
             }
-            if (revs & POLLERR)
-            {
+            if (revs & POLLERR) {
                 myevs |= ZEV_ERROR;
             }
-            if (revs & POLLHUP)
-            {
+            if (revs & POLLHUP) {
                 myevs |= ZEV_HUP;
             }
-            if (revs & POLLRDHUP)
-            {
+            if (revs & POLLRDHUP) {
                 myevs |= ZEV_RDHUP;
             }
             return revs;
@@ -381,13 +325,11 @@ int znonblocking(int fd, int on)
 {
     int flags;
 
-    if ((flags = fcntl(fd, F_GETFL, 0)) < 0)
-    {
+    if ((flags = fcntl(fd, F_GETFL, 0)) < 0) {
         return -1;
     }
 
-    if (fcntl(fd, F_SETFL, on ? flags | O_NONBLOCK : flags & ~O_NONBLOCK) < 0)
-    {
+    if (fcntl(fd, F_SETFL, on ? flags | O_NONBLOCK : flags & ~O_NONBLOCK) < 0) {
         return -1;
     }
 
@@ -398,13 +340,11 @@ int zclose_on_exec(int fd, int on)
 {
     int flags;
 
-    if ((flags = fcntl(fd, F_GETFD, 0)) < 0)
-    {
+    if ((flags = fcntl(fd, F_GETFD, 0)) < 0) {
         return -1;
     }
 
-    if (fcntl(fd, F_SETFD, on ? flags | FD_CLOEXEC : flags & ~FD_CLOEXEC) < 0)
-    {
+    if (fcntl(fd, F_SETFD, on ? flags | FD_CLOEXEC : flags & ~FD_CLOEXEC) < 0) {
         return -1;
     }
 

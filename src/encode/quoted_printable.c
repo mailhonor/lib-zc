@@ -26,32 +26,24 @@ int zquoted_printable_decode_2045_to_df(void *src, int src_size, void *filter, i
     unsigned char c0, c1, c2;
     ZDATA_FILTER_BUF(filter, filter_type);
 
-    while (1)
-    {
+    while (1) {
         ___get_next_ch(c0);
-        if (c0 != '=')
-        {
-            if (filter_type > 0)
-            {
-                if (len_result + 1 > filter_type)
-                {
+        if (c0 != '=') {
+            if (filter_type > 0) {
+                if (len_result + 1 > filter_type) {
                     break;
                 }
                 dest_result[len_result++] = c0;
-            }
-            else
-            {
+            } else {
                 ZDATA_FILTER_PUTC(filter, c0);
                 len_result++;
             }
             continue;
         }
         ___get_next_ch(c1);
-        if (c1 == '\r' || c1 == '\n')
-        {
+        if (c1 == '\r' || c1 == '\n') {
             ___get_next_ch(c2);
-            if (c2 != '\r' && c2 != '\n')
-            {
+            if (c2 != '\r' && c2 != '\n') {
                 src_pos--;
             }
             continue;
@@ -59,21 +51,17 @@ int zquoted_printable_decode_2045_to_df(void *src, int src_size, void *filter, i
         ___get_next_ch(c2);
         ___hex_val(c1);
         ___hex_val(c2);
-        if (filter_type > 0)
-        {
-            if (len_result + 1 > filter_type)
-            {
+        if (filter_type > 0) {
+            if (len_result + 1 > filter_type) {
                 break;
             }
             dest_result[len_result++] = ((c1 << 4) | c2);
-        }
-        else
-        {
+        } else {
             ZDATA_FILTER_PUTC(filter, ((c1 << 4) | c2));
             len_result++;
         }
     }
-over:
+  over:
     ZDATA_FILTER_FLUSH(filter);
 
     return len_result;
@@ -89,19 +77,13 @@ int zquoted_printable_decode_2047_to_df(void *src, int src_size, void *filter, i
     unsigned char addch;
     ZDATA_FILTER_BUF(filter, filter_type);
 
-    while (1)
-    {
+    while (1) {
         ___get_next_ch(c0);
-        if (c0 == '_')
-        {
+        if (c0 == '_') {
             addch = ' ';
-        }
-        else if (c0 != '=')
-        {
+        } else if (c0 != '=') {
             addch = c0;
-        }
-        else
-        {
+        } else {
             ___get_next_ch(c1);
             ___get_next_ch(c2);
             ___hex_val(c1);
@@ -109,22 +91,18 @@ int zquoted_printable_decode_2047_to_df(void *src, int src_size, void *filter, i
             addch = (c1 << 4 | c2);
         }
 
-        if (filter_type > 0)
-        {
-            if (len_result + 1 > filter_type)
-            {
+        if (filter_type > 0) {
+            if (len_result + 1 > filter_type) {
                 break;
             }
             dest_result[len_result++] = addch;
-        }
-        else
-        {
+        } else {
             ZDATA_FILTER_PUTC(filter, addch);
             len_result++;
         }
     }
 
-over:
+  over:
     ZDATA_FILTER_FLUSH(filter);
 
     return len_result;
@@ -136,13 +114,10 @@ int zquoted_printable_decode_validate(void *src, int src_size, int *valid_len)
     int i;
     unsigned char ch;
 
-    for (i = 0; i < src_size; i++)
-    {
+    for (i = 0; i < src_size; i++) {
         ch = src_c[i];
-        if ((ch < 33) || (ch > 126))
-        {
-            if (valid_len)
-            {
+        if ((ch < 33) || (ch > 126)) {
+            if (valid_len) {
                 *valid_len = i;
             }
             return -1;

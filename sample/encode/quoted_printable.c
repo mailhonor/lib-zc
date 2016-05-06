@@ -23,14 +23,12 @@ int main(int argc, char **argv)
 
     zvar_progname = argv[0];
 
-    if (argc < 2)
-    {
+    if (argc < 2) {
         usage();
     }
     fn = argv[1];
 
-    if (zmmap_reader_init(&reader, fn) < 0)
-    {
+    if (zmmap_reader_init(&reader, fn) < 0) {
         printf("error, read %s:%m", fn);
         exit(1);
     }

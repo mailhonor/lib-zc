@@ -19,44 +19,34 @@ static int parser_one(zmail_parser_t * parser, char **str, int *len, zmail_addr_
     int bf_idx = 0;
 #define  ___put(ch)  { if(bf_idx>10240) return -1;bf[bf_idx++] = (ch);}
 
-    if (plen <= 0)
-    {
+    if (plen <= 0) {
         return -1;
     }
-    for (i = 0; i < plen; i++)
-    {
+    for (i = 0; i < plen; i++) {
         c = *(pstr++);
-        if (last == '\\')
-        {
+        if (last == '\\') {
             ___put(c);
             last = '\0';
             continue;
         }
-        if (c == '\\')
-        {
+        if (c == '\\') {
             last = c;
             continue;
         }
-        if (c == '"')
-        {
-            if (inquote)
-            {
+        if (c == '"') {
+            if (inquote) {
                 inquote = 0;
                 ___put(c);
-            }
-            else
-            {
+            } else {
                 inquote = 1;
             }
             continue;
         }
-        if (inquote)
-        {
+        if (inquote) {
             ___put(c);
             continue;
         }
-        if (c == ',')
-        {
+        if (c == ',') {
             break;
         }
         ___put(c);
@@ -67,20 +57,16 @@ static int parser_one(zmail_parser_t * parser, char **str, int *len, zmail_addr_
     bf[bf_idx] = 0;
     pstr = bf;
     plen = bf_idx;
-    if (plen < 1)
-    {
+    if (plen < 1) {
         return -2;
     }
-    while (1)
-    {
+    while (1) {
         pstr = ztrim(pstr);
         plen = strlen(pstr);
-        if (plen < 1)
-        {
+        if (plen < 1) {
             return -2;
         }
-        if (pstr[plen - 1] == '>')
-        {
+        if (pstr[plen - 1] == '>') {
             pstr[plen - 1] = ' ';
             continue;
         }
@@ -88,23 +74,18 @@ static int parser_one(zmail_parser_t * parser, char **str, int *len, zmail_addr_
     }
     unsigned char ch;
     int findi = -1;
-    for (i = plen - 1; i >= 0; i--)
-    {
+    for (i = plen - 1; i >= 0; i--) {
         ch = pstr[i];
-        if ((ch == '<') || (ch == ' ') || (ch == '"') || (ch & 0X80))
-        {
+        if ((ch == '<') || (ch == ' ') || (ch == '"') || (ch & 0X80)) {
             pstr[i] = 0;
             findi = i;
             break;
         }
     }
-    if (findi > -1)
-    {
+    if (findi > -1) {
         name = ztrim(pstr);
         mail = ztrim(pstr + findi + 1);
-    }
-    else
-    {
+    } else {
         name = 0;
         mail = pstr;
     }
@@ -114,19 +95,14 @@ static int parser_one(zmail_parser_t * parser, char **str, int *len, zmail_addr_
     ma->mail = zmpool_strdup(imp, mail);
 
     pstr = name = ma->name;
-    while (name && *name)
-    {
-        if (*name != '"')
-        {
+    while (name && *name) {
+        if (*name != '"') {
             *pstr++ = *name++;
-        }
-        else
-        {
+        } else {
             name++;
         }
     }
-    if (pstr)
-    {
+    if (pstr) {
         *pstr = 0;
     }
 
@@ -143,24 +119,18 @@ int zmail_parser_addr_decode(zmail_parser_t * parser, char *str, int len, zmail_
 
     faddr = 0;
     laddr = 0;
-    while (1)
-    {
+    while (1) {
         ret = parser_one(parser, &str, &len, &naddr, bf);
-        if (ret == -1)
-        {
+        if (ret == -1) {
             break;
         }
-        if (ret == -2)
-        {
+        if (ret == -2) {
             continue;
         }
-        if (laddr)
-        {
+        if (laddr) {
             laddr->next = naddr;
             laddr = naddr;
-        }
-        else
-        {
+        } else {
             faddr = naddr;
             laddr = naddr;
         }
@@ -169,14 +139,11 @@ int zmail_parser_addr_decode(zmail_parser_t * parser, char *str, int len, zmail_
     *maddr = faddr;
 
     /* decode name which be limited within 4096 */
-    if (!zmail_parser_only_test_parse)
-    {
+    if (!zmail_parser_only_test_parse) {
         int name_len;
-        for (; faddr; faddr = faddr->next)
-        {
+        for (; faddr; faddr = faddr->next) {
             name_len = strlen(faddr->name);
-            if (name_len > 4096)
-            {
+            if (name_len > 4096) {
                 name_len = 4096;
             }
             zmail_parser_header_value_decode_dup(parser, faddr->name, name_len, &(faddr->name_rd));
@@ -190,8 +157,7 @@ void zmail_parser_addr_free(zmail_parser_t * parser, zmail_addr_t * ma)
 {
     zmail_addr_t *mn;
 #define ___mf(a)	{if(ma->a)zmpool_free(parser->mpool, ma->a);}
-    while (ma)
-    {
+    while (ma) {
         mn = ma->next;
         ___mf(name);
         ___mf(mail);

@@ -57,11 +57,9 @@ int zbase64_encode_to_df(void *src, int src_size, void *filter, int filter_type,
     int mime_count = 0;
     ZDATA_FILTER_BUF(filter, filter_type);
 
-    for (src_pos = 0; src_pos < src_size;)
-    {
+    for (src_pos = 0; src_pos < src_size;) {
         tmp[0] = b64enc[src_c[src_pos] >> 2];
-        switch (src_size - src_pos)
-        {
+        switch (src_size - src_pos) {
         case 1:
             tmp[1] = b64enc[(src_c[src_pos] & 0x03) << 4];
             tmp[2] = '=';
@@ -81,10 +79,8 @@ int zbase64_encode_to_df(void *src, int src_size, void *filter, int filter_type,
             src_pos += 3;
             break;
         }
-        if (filter_type > 0)
-        {
-            if (len_result + 4 > filter_type)
-            {
+        if (filter_type > 0) {
+            if (len_result + 4 > filter_type) {
                 break;
             }
             p_result = dest_result + len_result;
@@ -92,31 +88,23 @@ int zbase64_encode_to_df(void *src, int src_size, void *filter, int filter_type,
             p_result[1] = tmp[1];
             p_result[2] = tmp[2];
             p_result[3] = tmp[3];
-        }
-        else
-        {
+        } else {
             ZDATA_FILTER_PUTC(filter, tmp[0]);
             ZDATA_FILTER_PUTC(filter, tmp[1]);
             ZDATA_FILTER_PUTC(filter, tmp[2]);
             ZDATA_FILTER_PUTC(filter, tmp[3]);
         }
         len_result += 4;
-        if (mime_flag)
-        {
+        if (mime_flag) {
             mime_count++;
-            if (mime_count == 19)
-            {
-                if (filter_type > 0)
-                {
-                    if (len_result + 2 > filter_type)
-                    {
+            if (mime_count == 19) {
+                if (filter_type > 0) {
+                    if (len_result + 2 > filter_type) {
                         break;
                     }
                     dest_result[len_result] = '\r';
                     dest_result[len_result + 1] = '\n';
-                }
-                else
-                {
+                } else {
                     ZDATA_FILTER_PUTC(filter, '\r');
                     ZDATA_FILTER_PUTC(filter, '\n');
                 }
@@ -148,45 +136,36 @@ int zbase64_decode_to_df(void *src, int src_size, void *filter, int filter_type)
     break; \
 }
 
-    while (1)
-    {
+    while (1) {
         ___get_next_ch(c0);
         ___get_next_ch(c1);
         ___get_next_ch(c2);
         ___get_next_ch(c3);
 
         input[0] = b64dec[c0];
-        if (input[0] == 0xff)
-        {
+        if (input[0] == 0xff) {
             break;
         }
 
         input[1] = b64dec[c1];
-        if (input[1] == 0xff)
-        {
+        if (input[1] == 0xff) {
             //ret = -1;
             break;
         }
         output[0] = (input[0] << 2) | (input[1] >> 4);
 
         input[2] = b64dec[c2];
-        if (input[2] == 0xff)
-        {
-            if (c2 != '=' || c3 != '=')
-            {
+        if (input[2] == 0xff) {
+            if (c2 != '=' || c3 != '=') {
                 //ret = -1;
                 break;
             }
-            if (filter_type > 0)
-            {
-                if (len_result + 1 > filter_type)
-                {
+            if (filter_type > 0) {
+                if (len_result + 1 > filter_type) {
                     break;
                 }
                 dest_result[len_result++] = output[0];
-            }
-            else
-            {
+            } else {
                 ZDATA_FILTER_PUTC(filter, output[0]);
                 len_result++;
             }
@@ -196,24 +175,18 @@ int zbase64_decode_to_df(void *src, int src_size, void *filter, int filter_type)
 
         output[1] = (input[1] << 4) | (input[2] >> 2);
         input[3] = b64dec[c3];
-        if (input[3] == 0xff)
-        {
-            if (c3 != '=')
-            {
+        if (input[3] == 0xff) {
+            if (c3 != '=') {
                 //ret = -1;
                 break;
             }
-            if (filter_type > 0)
-            {
-                if (len_result + 2 > filter_type)
-                {
+            if (filter_type > 0) {
+                if (len_result + 2 > filter_type) {
                     break;
                 }
                 dest_result[len_result++] = output[0];
                 dest_result[len_result++] = output[1];
-            }
-            else
-            {
+            } else {
                 ZDATA_FILTER_PUTC(filter, output[0]);
                 ZDATA_FILTER_PUTC(filter, output[1]);
                 len_result += 2;
@@ -223,18 +196,14 @@ int zbase64_decode_to_df(void *src, int src_size, void *filter, int filter_type)
         }
 
         output[2] = ((input[2] << 6) & 0xc0) | input[3];
-        if (filter_type > 0)
-        {
-            if (len_result + 3 > filter_type)
-            {
+        if (filter_type > 0) {
+            if (len_result + 3 > filter_type) {
                 break;
             }
             dest_result[len_result++] = output[0];
             dest_result[len_result++] = output[1];
             dest_result[len_result++] = output[2];
-        }
-        else
-        {
+        } else {
             ZDATA_FILTER_PUTC(filter, output[0]);
             ZDATA_FILTER_PUTC(filter, output[1]);
             ZDATA_FILTER_PUTC(filter, output[2]);
@@ -242,7 +211,7 @@ int zbase64_decode_to_df(void *src, int src_size, void *filter, int filter_type)
         }
     }
 
-over:
+  over:
     ZDATA_FILTER_FLUSH(filter);
 
     return len_result;
@@ -253,12 +222,9 @@ int zbase64_decode_validate(void *src, int src_size, int *valid_len)
     unsigned char *src_c = (unsigned char *)src;
     int i;
 
-    for (i = 0; i < src_size; i++)
-    {
-        if (b64dec[src_c[i]] == 0xff)
-        {
-            if (valid_len)
-            {
+    for (i = 0; i < src_size; i++) {
+        if (b64dec[src_c[i]] == 0xff) {
+            if (valid_len) {
                 *valid_len = i;
             }
             return -1;
@@ -273,8 +239,7 @@ int zbase64_encode_get_min_len(int in_len, int mime_flag)
     int ret;
 
     ret = in_len * 4 / 3 + 4;
-    if (mime_flag)
-    {
+    if (mime_flag) {
         ret += ((in_len / (76 * 3 / 4)) + 1) * 2 + 2;
     }
     ret += 1;

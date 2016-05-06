@@ -25,8 +25,7 @@ zsslctx_t *zsslctx_server_create(int unused_flags)
     SSL_CTX *ctx = 0;
 
     ctx = SSL_CTX_new(SSLv23_server_method());
-    if (!ctx)
-    {
+    if (!ctx) {
         return 0;
     }
 
@@ -44,8 +43,7 @@ zsslctx_t *zsslctx_client_create(int unused_flags)
     SSL_CTX *ctx = 0;
 
     ctx = SSL_CTX_new(SSLv23_client_method());
-    if (!ctx)
-    {
+    if (!ctx) {
         return 0;
     }
 
@@ -60,16 +58,13 @@ zsslctx_t *zsslctx_client_create(int unused_flags)
 int zsslctx_set_cert(zsslctx_t * ssl_ctx, char *cert_file, char *key_file)
 {
     ERR_clear_error();
-    if ((!cert_file) || (SSL_CTX_use_certificate_chain_file(ssl_ctx->ssl_ctx, cert_file) <= 0))
-    {
+    if ((!cert_file) || (SSL_CTX_use_certificate_chain_file(ssl_ctx->ssl_ctx, cert_file) <= 0)) {
         return (-1);
     }
-    if ((!key_file) || (SSL_CTX_use_PrivateKey_file(ssl_ctx->ssl_ctx, key_file, SSL_FILETYPE_PEM) <= 0))
-    {
+    if ((!key_file) || (SSL_CTX_use_PrivateKey_file(ssl_ctx->ssl_ctx, key_file, SSL_FILETYPE_PEM) <= 0)) {
         return (-1);
     }
-    if (!SSL_CTX_check_private_key(ssl_ctx->ssl_ctx))
-    {
+    if (!SSL_CTX_check_private_key(ssl_ctx->ssl_ctx)) {
         return (-1);
     }
 
@@ -78,8 +73,7 @@ int zsslctx_set_cert(zsslctx_t * ssl_ctx, char *cert_file, char *key_file)
 
 void zsslctx_free(zsslctx_t * ctx)
 {
-    if (ctx->ssl_ctx)
-    {
+    if (ctx->ssl_ctx) {
         SSL_CTX_free(ctx->ssl_ctx);
     }
     zfree(ctx);
@@ -89,13 +83,11 @@ void zssl_get_error(unsigned long *ecode, char *buf, int buf_len)
 {
     unsigned long ec;
     ec = ERR_get_error();
-    if (ecode)
-    {
+    if (ecode) {
         *ecode = ec;
     }
 
-    if (buf)
-    {
+    if (buf) {
         ERR_error_string_n(ec, buf, buf_len);
     }
 }
@@ -129,8 +121,7 @@ void *zssl_detach_ssl(zssl_t * zssl)
 
 void zssl_free(zssl_t * ssl)
 {
-    if (ssl->ssl)
-    {
+    if (ssl->ssl) {
         SSL_shutdown(ssl->ssl);
         SSL_free(ssl->ssl);
     }
@@ -149,45 +140,32 @@ static inline int zssl_timed_do(zssl_t * zssl, int (*hsfunc) (SSL *), int (*rfun
 
     start_time = ztimeout_set(timeout);
 
-    for (;;)
-    {
-        if (hsfunc)
-        {
+    for (;;) {
+        if (hsfunc) {
             status = hsfunc(ssl);
-        }
-        else if (rfunc)
-        {
+        } else if (rfunc) {
             status = rfunc(ssl, buf, num);
-        }
-        else if (wfunc)
-        {
+        } else if (wfunc) {
             status = wfunc(ssl, buf, num);
-        }
-        else
-        {
+        } else {
             zfatal("zssl_timed_do: nothing to do here");
         }
         err = SSL_get_error(ssl, status);
 
-        switch (err)
-        {
+        switch (err) {
         case SSL_ERROR_WANT_WRITE:
-            if ((left_time = ztimeout_left(start_time)) < 1)
-            {
+            if ((left_time = ztimeout_left(start_time)) < 1) {
                 return -1;
             }
-            if ((ret = zwrite_wait(fd, left_time)) < 0)
-            {
+            if ((ret = zwrite_wait(fd, left_time)) < 0) {
                 return -1;
             }
             break;
         case SSL_ERROR_WANT_READ:
-            if ((left_time = ztimeout_left(start_time)) < 1)
-            {
+            if ((left_time = ztimeout_left(start_time)) < 1) {
                 return -1;
             }
-            if ((ret = zread_wait(fd, left_time)) < 0)
-            {
+            if ((ret = zread_wait(fd, left_time)) < 0) {
                 return (ret);
             }
             break;

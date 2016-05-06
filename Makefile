@@ -29,3 +29,8 @@ clean:
 
 CLEAN: clean
 	rm -r tags plist
+
+indent:
+	find src -name "*.[ch]" -exec Indent {} \;
+	find sample -name "*.[ch]" -exec Indent {} \;
+	Indent libzc.h

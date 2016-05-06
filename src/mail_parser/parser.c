@@ -30,8 +30,7 @@ static void set_mime_child_chain(zmail_mime_t * mime, zmail_mime_t ** last)
 {
     zmail_mime_t *m, *next;
 
-    for (m = mime->child; m; m = next)
-    {
+    for (m = mime->child; m; m = next) {
         (*last)->all_next = m;
         *last = m;
         next = m->next;
@@ -44,19 +43,14 @@ static void set_mime_chain(zmail_mime_t * mime)
 {
     zmail_mime_t *next, *last;
 
-    if (!mime)
-    {
+    if (!mime) {
         return;
     }
     last = 0;
-    for (; mime; mime = next)
-    {
-        if (last == 0)
-        {
+    for (; mime; mime = next) {
+        if (last == 0) {
             last = mime;
-        }
-        else
-        {
+        } else {
             last->all_next = mime;
             last = mime;
         }
@@ -100,12 +94,10 @@ int zmail_parser_run(zmail_parser_t * parser)
 
 int zmail_parser_set_default_charset(zmail_parser_t * parser, char *default_src_charset, char *default_dest_charset)
 {
-    if (!ZEMPTY(default_src_charset))
-    {
+    if (!ZEMPTY(default_src_charset)) {
         strncpy(parser->default_src_charset, default_src_charset, 31);
     }
-    if (!ZEMPTY(default_dest_charset))
-    {
+    if (!ZEMPTY(default_dest_charset)) {
         strncpy(parser->default_dest_charset, default_dest_charset, 31);
     }
 
@@ -149,8 +141,7 @@ void zmail_parser_free(zmail_parser_t * parser)
 
     /* references */
     zmail_references_t *refs, *refs_next;
-    for (refs = parser->references; refs; refs = refs_next)
-    {
+    for (refs = parser->references; refs; refs = refs_next) {
         refs_next = refs->next;
         zmpool_free(imp, refs->message_id);
         zmpool_free(imp, refs);
@@ -175,45 +166,31 @@ int zmail_parser_decode_mime_body_to_df(zmail_parser_t * parser, zmail_mime_t * 
     char *encoding = mime->encoding;
     int tlen;
 
-    if (!encoding || !*encoding)
-    {
+    if (!encoding || !*encoding) {
         bq = 0;
-    }
-    else if (!strcasecmp(encoding, "base64"))
-    {
+    } else if (!strcasecmp(encoding, "base64")) {
         bq = 'b';
-    }
-    else if (!strcasecmp(encoding, "quoted-printable"))
-    {
+    } else if (!strcasecmp(encoding, "quoted-printable")) {
         bq = 'q';
-    }
-    else
-    {
+    } else {
         bq = 0;
     }
 
-    if (!bq)
-    {
-        if (filter_type > 0)
-        {
-            tlen = (filter_type>in_len)?in_len:filter_type;
+    if (!bq) {
+        if (filter_type > 0) {
+            tlen = (filter_type > in_len) ? in_len : filter_type;
             memcpy(filter, in_src, tlen);
             ((char *)filter)[tlen] = 0;
             return tlen;
-        }
-        else
-        {
+        } else {
             zdata_filter_write(filter, filter_type, in_src, in_len);
             return in_len;
         }
     }
 
-    if (bq == 'b')
-    {
+    if (bq == 'b') {
         ret = zbase64_decode_to_df(in_src, in_len, filter, filter_type);
-    }
-    else
-    {
+    } else {
         ret = zqp_decode_2045_to_df(in_src, in_len, filter, filter_type);
     }
 
@@ -228,79 +205,56 @@ int zmail_parser_decode_text_mime_body_to_df(zmail_parser_t * parser, zmail_mime
     char *encoding = mime->encoding;
     char *buf3;
     int buf3_flag = 0, buf3_len;
-    char buf3_stack[1024*64 + 16];
+    char buf3_stack[1024 * 64 + 16];
     int tlen;
 
-    if (!encoding || !*encoding)
-    {
+    if (!encoding || !*encoding) {
         bq = 0;
-    }
-    else if (!strcasecmp(encoding, "base64"))
-    {
+    } else if (!strcasecmp(encoding, "base64")) {
         bq = 'b';
-    }
-    else if (!strcasecmp(encoding, "quoted-printable"))
-    {
+    } else if (!strcasecmp(encoding, "quoted-printable")) {
         bq = 'q';
-    }
-    else
-    {
+    } else {
         bq = 0;
     }
 
-    if (bq)
-    {
-        if (in_len > 1024 * 64)
-        {
+    if (bq) {
+        if (in_len > 1024 * 64) {
             buf3 = (char *)zmalloc(in_len + 16);
             buf3_flag = 1;
-        }
-        else
-        {
+        } else {
             buf3 = buf3_stack;
         }
-        if (bq == 'b')
-        {
+        if (bq == 'b') {
             buf3_len = zbase64_decode(in_src, in_len, buf3, in_len + 8);
-        }
-        else
-        {
+        } else {
             buf3_len = zqp_decode_2045(in_src, in_len, buf3, in_len + 8);
         }
         buf3[buf3_len] = 0;
-    }
-    else
-    {
+    } else {
         buf3 = in_src;
         buf3_len = in_len;
     }
 
     convert_len = zmail_parser_iconv(parser, mime->charset, buf3, buf3_len, filter, filter_type);
-    if (convert_len < 0)
-    {
-        if(filter_type > 0)
-        {
-            tlen = (filter_type>buf3_len)?buf3_len:filter_type;
+    if (convert_len < 0) {
+        if (filter_type > 0) {
+            tlen = (filter_type > buf3_len) ? buf3_len : filter_type;
             memcpy(filter, buf3, tlen);
             ((char *)filter)[tlen] = 0;
-        }
-        else
-        {
+        } else {
             tlen = buf3_len;
             zdata_filter_write(filter, filter_type, buf3, buf3_len);
         }
-        if (buf3_flag)
-        {
+        if (buf3_flag) {
             zfree(buf3);
         }
         return tlen;
     }
-    if (buf3_flag)
-    {
+    if (buf3_flag) {
         zfree(buf3);
     }
-    if (filter_type > 0)
-    {
+    if (filter_type > 0) {
         ((char *)filter)[convert_len] = 0;
     }
 

@@ -13,8 +13,7 @@
 #define ___MAX_2047_STRING_COUNT      127
 
 typedef struct zmail_header_line_token_t zmail_header_line_token_t;
-struct zmail_header_line_token_t
-{
+struct zmail_header_line_token_t {
     int encode;
     char charset[64];
     char *data;
@@ -29,37 +28,28 @@ static int header_line_split(char *in_src, int in_len, zmail_header_line_token_t
     int mt_count = 0;
     int tmp_len;
 
-    if (in_len < 1)
-    {
+    if (in_len < 1) {
         return (-1);
     }
 
     mt = mt_list;
     ps = in_src;
-    while (in_end - ps > 0)
-    {
+    while (in_end - ps > 0) {
         p = zmemstr(ps, "=?", in_end - ps);
         pf = ps;
         pf_e = p - 1;
-        while (p)
-        {
+        while (p) {
             pch = p + 2;
             p1 = zmemcasestr(pch, "?B?", in_end - pch);
             p2 = zmemcasestr(pch, "?Q?", in_end - pch);
-            if (p1 && p2)
-            {
+            if (p1 && p2) {
                 p3 = (p1 < p2 ? p1 : p2);
-            }
-            else if (p1 == 0)
-            {
+            } else if (p1 == 0) {
                 p3 = p2;
-            }
-            else
-            {
+            } else {
                 p3 = p1;
             }
-            if (!p3)
-            {
+            if (!p3) {
                 p = 0;
                 break;
             }
@@ -67,8 +57,7 @@ static int header_line_split(char *in_src, int in_len, zmail_header_line_token_t
             pen = p3 + 1;
             pdata = p3 + 3;
             p = zmemstr(pdata, "?=", in_end - pdata);
-            if (!p)
-            {
+            if (!p) {
                 break;
             }
             pdata_e = p - 1;
@@ -81,8 +70,7 @@ static int header_line_split(char *in_src, int in_len, zmail_header_line_token_t
 
             mt->encode = zchar_toupper(*pen);
             tmp_len = pch_e - pch + 1;
-            if (tmp_len > 63)
-            {
+            if (tmp_len > 63) {
                 tmp_len = 63;
             }
             strncpy(mt->charset, pch, tmp_len);
@@ -93,8 +81,7 @@ static int header_line_split(char *in_src, int in_len, zmail_header_line_token_t
             p = in_src;
             break;
         }
-        if (!p)
-        {
+        if (!p) {
             mt->encode = 0;
             mt->len = strlen(ps);
             mt->data = ps;
@@ -102,8 +89,7 @@ static int header_line_split(char *in_src, int in_len, zmail_header_line_token_t
             mt_count++;
             break;
         }
-        if (mt_count >= ___MAX_2047_STRING_COUNT)
-        {
+        if (mt_count >= ___MAX_2047_STRING_COUNT) {
             break;
         }
     }
@@ -125,12 +111,10 @@ int zmail_parser_header_value_decode(zmail_parser_t * parser, char *in_src, int 
     ZSTACK_BUF(bq_join, ZMAIL_HEADER_LINE_MAX_LENGTH * 3 + 16);
 
     *out = 0;
-    if (in_len < 1)
-    {
+    if (in_len < 1) {
         return 0;
     }
-    if (in_len > ZMAIL_HEADER_LINE_MAX_LENGTH)
-    {
+    if (in_len > ZMAIL_HEADER_LINE_MAX_LENGTH) {
         in_len = ZMAIL_HEADER_LINE_MAX_LENGTH;
     }
 
@@ -138,18 +122,14 @@ int zmail_parser_header_value_decode(zmail_parser_t * parser, char *in_src, int 
     memset(mt_list, 0, sizeof(mt_list));
     mt_count = header_line_split(in_src, in_len, mt_list);
 
-    for (i = 0; i < mt_count; i++)
-    {
+    for (i = 0; i < mt_count; i++) {
         mt = mt_list + i;
-        if (mt->len == 0)
-        {
+        if (mt->len == 0) {
             continue;
         }
-        if ((mt->encode != 'B') && (mt->encode != 'Q'))
-        {
+        if ((mt->encode != 'B') && (mt->encode != 'Q')) {
             convert_len = zmail_parser_iconv(parser, 0, mt->data, mt->len, out_string, ZMAIL_HEADER_LINE_MAX_LENGTH * 3);
-            if ((convert_len < 0) || (convert_len < 1))
-            {
+            if ((convert_len < 0) || (convert_len < 1)) {
                 continue;
             }
             zbuf_memcat(result, out_string, convert_len);
@@ -157,35 +137,28 @@ int zmail_parser_header_value_decode(zmail_parser_t * parser, char *in_src, int 
         }
         zbuf_memcpy(bq_join, mt->data, mt->len);
         mtn = mt + 1;
-        while (1)
-        {
-            if (i + 1 >= mt_count)
-            {
+        while (1) {
+            if (i + 1 >= mt_count) {
                 break;
             }
-            if (mtn->encode == 0)
-            {
+            if (mtn->encode == 0) {
                 int j;
                 char c;
-                for (j = 0; j < mtn->len; j++)
-                {
+                for (j = 0; j < mtn->len; j++) {
                     c = mtn->data[j];
-                    if (c == ' ')
-                    {
+                    if (c == ' ') {
                         continue;
                     }
                     break;
                 }
-                if (j == mtn->len)
-                {
+                if (j == mtn->len) {
                     i++;
                     mtn++;
                     continue;
                 }
                 break;
             }
-            if ((mt->encode == mtn->encode) && (*(mt->charset)) && (*(mtn->charset)) && (!strcasecmp(mt->charset, mtn->charset)))
-            {
+            if ((mt->encode == mtn->encode) && (*(mt->charset)) && (*(mtn->charset)) && (!strcasecmp(mt->charset, mtn->charset))) {
                 zbuf_memcat(bq_join, mtn->data, mtn->len);
                 i++;
                 mtn++;
@@ -197,37 +170,30 @@ int zmail_parser_header_value_decode(zmail_parser_t * parser, char *in_src, int 
         plen = ZBUF_LEN(bq_join);
         p[plen] = 0;
         ret = 0;
-        if (mt->encode == 'B')
-        {
+        if (mt->encode == 'B') {
             ret = zbase64_decode(p, plen, p, ZMAIL_HEADER_LINE_MAX_LENGTH);
-        }
-        else if (mt->encode == 'Q')
-        {
+        } else if (mt->encode == 'Q') {
             ret = zqp_decode_2047(p, plen, p, ZMAIL_HEADER_LINE_MAX_LENGTH);
         }
 
-        if (ret < 1)
-        {
+        if (ret < 1) {
             continue;
         }
         convert_len = 0;
         {
             /* rfc 2231 */
             char *p = strchr(mt->charset, '*');
-            if (p)
-            {
+            if (p) {
                 *p = 0;
             }
         }
         convert_len = zmail_parser_iconv(parser, mt->charset, p, ret, out_string, ZMAIL_HEADER_LINE_MAX_LENGTH * 3);
-        if ((convert_len < 0) || (convert_len < 1))
-        {
+        if ((convert_len < 0) || (convert_len < 1)) {
             continue;
         }
         zbuf_memcat(result, out_string, convert_len);
     }
-    for (i = 0; i < mt_count; i++)
-    {
+    for (i = 0; i < mt_count; i++) {
         mt = mt_list + i;
     }
 
@@ -244,15 +210,13 @@ int zmail_parser_header_value_decode_dup(zmail_parser_t * parser, char *in_src, 
     char *trim;
     int trim_len;
 
-    if (in_len > ZMAIL_HEADER_LINE_MAX_LENGTH)
-    {
+    if (in_len > ZMAIL_HEADER_LINE_MAX_LENGTH) {
         in_len = ZMAIL_HEADER_LINE_MAX_LENGTH;
     }
     out_len = zmail_parser_header_value_decode(parser, in_src, in_len, out);
 
     trim_len = zmail_parser_header_value_trim(parser, out, out_len, &trim);
-    if (trim_len < 1)
-    {
+    if (trim_len < 1) {
         *out_src = zmpool_malloc(parser->mpool, 0);
         return 0;
     }
@@ -265,8 +229,7 @@ int zmail_parser_header_value_decode_dup(zmail_parser_t * parser, char *in_src, 
 int zmail_parser_header_value_dup(zmail_parser_t * parser, char *in_src, int in_len, char **out_src)
 {
     in_len = zmail_parser_header_value_trim(parser, in_src, in_len, &in_src);
-    if (in_len < 1)
-    {
+    if (in_len < 1) {
         *out_src = zmpool_memdup(parser->mpool, "", 0);
         return 0;
     }
@@ -284,30 +247,24 @@ int zmail_parser_mimetrim_dup(zmail_parser_t * parser, char *in_src, int in_len,
     char ch;
     int i;
 
-    for (i = 0; i < in_len; i++)
-    {
+    for (i = 0; i < in_len; i++) {
         ch = in_src[i];
-        if ((ch == '\0') || (ch == '\r'))
-        {
+        if ((ch == '\0') || (ch == '\r')) {
             continue;
         }
-        if (ch != '\n')
-        {
+        if (ch != '\n') {
             *p++ = ch;
-            if (p - out > ZMAIL_HEADER_LINE_MAX_LENGTH)
-            {
+            if (p - out > ZMAIL_HEADER_LINE_MAX_LENGTH) {
                 break;
             }
             continue;
         }
         i++;
-        if (i == in_len)
-        {
+        if (i == in_len) {
             break;
         }
         ch = in_src[i];
-        if ((ch == ' ') || (ch == '\t'))
-        {
+        if ((ch == ' ') || (ch == '\t')) {
             continue;
         }
         i--;
@@ -326,32 +283,26 @@ int zmail_parser_header_value_trim(zmail_parser_t * parser, char *line, int len,
     int i;
     int ch;
 
-    for (i = 0; i < len; i++)
-    {
+    for (i = 0; i < len; i++) {
         ch = line[i];
-        if ((ch == ' ') || (ch == '\t') || (ch == '\r') || (ch == '\n'))
-        {
+        if ((ch == ' ') || (ch == '\t') || (ch == '\r') || (ch == '\n')) {
             continue;
         }
         break;
     }
-    if (i == len)
-    {
+    if (i == len) {
         return 0;
     }
     ps = line + i;
     len = pend - ps;
-    for (i = len - 1; i >= 0; i--)
-    {
+    for (i = len - 1; i >= 0; i--) {
         ch = ps[i];
-        if ((ch == ' ') || (ch == '\t') || (ch == '\r') || (ch == '\n'))
-        {
+        if ((ch == ' ') || (ch == '\t') || (ch == '\r') || (ch == '\n')) {
             continue;
         }
         break;
     }
-    if (i < 0)
-    {
+    if (i < 0) {
         return 0;
     }
 
@@ -368,33 +319,27 @@ int zmail_parser_header_signle_token_decode_dup(zmail_parser_t * parser, char *l
     int i;
     int ch;
 
-    for (i = 0; i < len; i++)
-    {
+    for (i = 0; i < len; i++) {
         ch = line[i];
-        if ((ch == ' ') || (ch == '\t') || (ch == '\r') || (ch == '\n') || (ch == '<'))
-        {
+        if ((ch == ' ') || (ch == '\t') || (ch == '\r') || (ch == '\n') || (ch == '<')) {
             continue;
         }
         break;
     }
-    if (i == len)
-    {
+    if (i == len) {
         *out_src = zmpool_memdup(parser->mpool, "", 0);
         return 0;
     }
     ps = line + i;
     len = pend - ps;
-    for (i = len - 1; i >= 0; i--)
-    {
+    for (i = len - 1; i >= 0; i--) {
         ch = ps[i];
-        if ((ch == ' ') || (ch == '\t') || (ch == '\r') || (ch == '\n') || (ch == '>'))
-        {
+        if ((ch == ' ') || (ch == '\t') || (ch == '\r') || (ch == '\n') || (ch == '>')) {
             continue;
         }
         break;
     }
-    if (i < 0)
-    {
+    if (i < 0) {
         *out_src = zmpool_memdup(parser->mpool, "", 0);
         return 0;
     }
@@ -411,12 +356,9 @@ int zmail_parser_save_header(zmail_parser_t * parser, zmail_mime_t * cmime, char
     char *p;
 
     header = zmpool_calloc(parser->mpool, 1, sizeof(zmail_header_line_t));
-    if (cmime->header_head == 0)
-    {
+    if (cmime->header_head == 0) {
         cmime->header_head = cmime->header_tail = header;
-    }
-    else
-    {
+    } else {
         cmime->header_tail->next = header;
         cmime->header_tail = header;
     }
@@ -424,12 +366,9 @@ int zmail_parser_save_header(zmail_parser_t * parser, zmail_mime_t * cmime, char
     header->line = zmpool_memdup(parser->mpool, line, len);
     header->line_len = len;
     p = (char *)memchr(line, ':', len);
-    if (!p)
-    {
+    if (!p) {
         header->name = zmpool_strdup(parser->mpool, "");
-    }
-    else
-    {
+    } else {
         header->name = zmpool_memdup(parser->mpool, line, p - line);
     }
 
@@ -439,92 +378,60 @@ int zmail_parser_save_header(zmail_parser_t * parser, zmail_mime_t * cmime, char
 int zmail_parser_mail_header_decode_by_line(zmail_parser_t * parser, char *line, int len)
 {
 #define ___move(n)  {line+=n;len-=n;}
-    if (___CASEEQ_LEN(line, "subject:", 8))
-    {
-        if (!parser->subject)
-        {
+    if (___CASEEQ_LEN(line, "subject:", 8)) {
+        if (!parser->subject) {
             ___move(8);
             int rlen = zmail_parser_header_value_dup(parser, line, len, &(parser->subject));
-            if ((rlen > 0) && (!zmail_parser_only_test_parse))
-            {
+            if ((rlen > 0) && (!zmail_parser_only_test_parse)) {
                 zmail_parser_header_value_decode_dup(parser, parser->subject, rlen, &(parser->subject_rd));
             }
         }
-    }
-    else if (___CASEEQ_LEN(line, "date:", 5))
-    {
-        if (!parser->date)
-        {
+    } else if (___CASEEQ_LEN(line, "date:", 5)) {
+        if (!parser->date) {
             ___move(5);
             zmail_parser_header_value_dup(parser, line, len, &(parser->date));
             parser->date_unix = zmail_parser_header_date_decode(parser, parser->date);
         }
-    }
-    else if (___CASEEQ_LEN(line, "from:", 5))
-    {
-        if (!parser->from)
-        {
+    } else if (___CASEEQ_LEN(line, "from:", 5)) {
+        if (!parser->from) {
             ___move(5);
             zmail_parser_addr_decode(parser, line, len, &(parser->from));
         }
-    }
-    else if (___CASEEQ_LEN(line, "to:", 3))
-    {
-        if (!parser->to)
-        {
+    } else if (___CASEEQ_LEN(line, "to:", 3)) {
+        if (!parser->to) {
             ___move(3);
             zmail_parser_addr_decode(parser, line, len, &(parser->to));
         }
-    }
-    else if (___CASEEQ_LEN(line, "cc:", 3))
-    {
-        if (!parser->cc)
-        {
+    } else if (___CASEEQ_LEN(line, "cc:", 3)) {
+        if (!parser->cc) {
             ___move(3);
             zmail_parser_addr_decode(parser, line, len, &(parser->cc));
         }
-    }
-    else if (___CASEEQ_LEN(line, "bcc:", 4))
-    {
-        if (!parser->bcc)
-        {
+    } else if (___CASEEQ_LEN(line, "bcc:", 4)) {
+        if (!parser->bcc) {
             ___move(4);
             zmail_parser_addr_decode(parser, line, len, &(parser->bcc));
         }
-    }
-    else if (___CASEEQ_LEN(line, "disposition-notification-to:", 28))
-    {
-        if (!parser->receipt)
-        {
+    } else if (___CASEEQ_LEN(line, "disposition-notification-to:", 28)) {
+        if (!parser->receipt) {
             ___move(28);
             zmail_parser_addr_decode(parser, line, len, &(parser->receipt));
         }
-    }
-    else if (___CASEEQ_LEN(line, "message-id:", 11))
-    {
-        if (!parser->message_id)
-        {
+    } else if (___CASEEQ_LEN(line, "message-id:", 11)) {
+        if (!parser->message_id) {
             ___move(11);
             zmail_parser_header_signle_token_decode_dup(parser, line, len, &(parser->message_id));
         }
-    }
-    else if (___CASEEQ_LEN(line, "references:", 11))
-    {
-        if (!zmail_parser_only_test_parse)
-        {
-            if (!parser->references)
-            {
+    } else if (___CASEEQ_LEN(line, "references:", 11)) {
+        if (!zmail_parser_only_test_parse) {
+            if (!parser->references) {
                 ___move(11);
                 zmail_parser_references_decode(parser, line, &(parser->references));
             }
         }
-    }
-    else if (___CASEEQ_LEN(line, "in-reply-to:", 12))
-    {
-        if (!zmail_parser_only_test_parse)
-        {
-            if (!parser->in_reply_to)
-            {
+    } else if (___CASEEQ_LEN(line, "in-reply-to:", 12)) {
+        if (!zmail_parser_only_test_parse) {
+            if (!parser->in_reply_to) {
                 ___move(12);
                 zmail_parser_header_value_dup(parser, line, len, &(parser->in_reply_to));
             }

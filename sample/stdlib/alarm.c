@@ -38,8 +38,7 @@ void test_normal(void)
     zalarm_t *alarm;
     int i;
 
-    for (i = 0; i < 3; i++)
-    {
+    for (i = 0; i < 3; i++) {
         alarm = zalarm_create();
         zalarm_set_context(alarm, ZINT_TO_VOID_PTR(i));
         zalarm_set(alarm, alarm_cb_normal, (i + 1) * 5 * 1000);
@@ -77,8 +76,7 @@ int main(int argc, char **argv)
     /* */
     zalarm(alarm_cb_direct, 0, 13 * 1000);
 
-    while (1)
-    {
+    while (1) {
         sleep(10);
     }
 

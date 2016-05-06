@@ -13,14 +13,12 @@ static int max_malloc_size = 1024 * 100;
 
 typedef struct zmem_grow_pool_t zmem_grow_pool_t;
 typedef struct zmem_grow_pool_one_t zmem_grow_pool_one_t;
-struct zmem_grow_pool_t
-{
+struct zmem_grow_pool_t {
     zarray_t *list;
     zarray_t *direct_list;
     zmem_grow_pool_one_t *current;
 };
-struct zmem_grow_pool_one_t
-{
+struct zmem_grow_pool_one_t {
     char *data;
     int used;
     int size;
@@ -29,46 +27,38 @@ struct zmem_grow_pool_one_t
 /* ################################################################## */
 static void *zmem_grow_pool_malloc(zmpool_t * mp, int len)
 {
-    zmem_grow_pool_t * worker = (zmem_grow_pool_t *)(mp->worker);
+    zmem_grow_pool_t *worker = (zmem_grow_pool_t *) (mp->worker);
     zmem_grow_pool_one_t *one;
     char *r;
 
-    if (!worker)
-    {
+    if (!worker) {
         return zmalloc(len);
     }
 
-    if (len < 1)
-    {
+    if (len < 1) {
         len = 1;
     }
 
-    if (len > max_malloc_size)
-    {
+    if (len > max_malloc_size) {
         r = (char *)zmalloc(len);
-        if (worker->direct_list == NULL)
-        {
+        if (worker->direct_list == NULL) {
             worker->direct_list = zarray_create(1);
         }
         zarray_add(worker->direct_list, r);
         return r;
     }
 
-    while (1)
-    {
+    while (1) {
         one = worker->current;
-        if (!one)
-        {
+        if (!one) {
             one = (zmem_grow_pool_one_t *) zmalloc(sizeof(zmem_grow_pool_one_t) + grow_buf_size + 1);
             one->data = (char *)one + sizeof(zmem_grow_pool_one_t);
             one->used = 0;
             one->size = grow_buf_size;
             worker->current = one;
         }
-        if (len > (one->size - one->used))
-        {
-            if (worker->list == NULL)
-            {
+        if (len > (one->size - one->used)) {
+            if (worker->list == NULL) {
                 worker->list = zarray_create(1);
             }
             zarray_add(worker->list, one);
@@ -87,26 +77,21 @@ static void *zmem_grow_pool_malloc(zmpool_t * mp, int len)
 
 static void *zmem_grow_pool_realloc(zmpool_t * mp, void *ptr, int len)
 {
-    zmem_grow_pool_t * worker = (zmem_grow_pool_t *)(mp->worker);
+    zmem_grow_pool_t *worker = (zmem_grow_pool_t *) (mp->worker);
     zmem_grow_pool_one_t *one, *two = 0;
     int i, olen;
     char *r;
 
     zfatal("grow type mem pool does not support realloc");
 
-    if(!ptr)
-    {
+    if (!ptr) {
         return zmem_grow_pool_malloc(mp, len);
     }
 
-    if (worker->list)
-    {
-        ZARRAY_WALK_BEGIN(worker->list, one)
-        {
-            if ((char *)ptr >= (char *)(one->data))
-            {
-                if((char *)ptr <= ((char *)(one->data) + grow_buf_size))
-                {
+    if (worker->list) {
+        ZARRAY_WALK_BEGIN(worker->list, one) {
+            if ((char *)ptr >= (char *)(one->data)) {
+                if ((char *)ptr <= ((char *)(one->data) + grow_buf_size)) {
                     two = one;
                     break;
                 }
@@ -115,31 +100,24 @@ static void *zmem_grow_pool_realloc(zmpool_t * mp, void *ptr, int len)
         ZARRAY_WALK_END;
     }
     one = worker->current;
-    if ((char *)ptr >= (char *)(one->data))
-    {
-        if((char *)ptr <= ((char *)(one->data) + grow_buf_size))
-        {
+    if ((char *)ptr >= (char *)(one->data)) {
+        if ((char *)ptr <= ((char *)(one->data) + grow_buf_size)) {
             two = one;
         }
     }
 
-    if (two)
-    {
+    if (two) {
         olen = (char *)(two->data) + grow_buf_size - (char *)ptr;
         r = zmem_grow_pool_malloc(mp, len);
-        if (olen >= len)
-        {
+        if (olen >= len) {
             olen = len;
         }
         memmove(r, ptr, olen);
         return r;
     }
-    if (worker->direct_list)
-    {
-        for(i = 0; i<worker->direct_list->len; i++)
-        {
-            if((char *)(worker->direct_list->data[i]) == (char *)ptr)
-            {
+    if (worker->direct_list) {
+        for (i = 0; i < worker->direct_list->len; i++) {
+            if ((char *)(worker->direct_list->data[i]) == (char *)ptr) {
                 r = zrealloc(ptr, len);
                 worker->direct_list->data[i] = r;
                 return r;
@@ -154,18 +132,14 @@ static void *zmem_grow_pool_realloc(zmpool_t * mp, void *ptr, int len)
 
 void zmem_grow_pool_free(zmpool_t * mp, void *ptr)
 {
-    zmem_grow_pool_t * worker = (zmem_grow_pool_t *)(mp->worker);
+    zmem_grow_pool_t *worker = (zmem_grow_pool_t *) (mp->worker);
     zmem_grow_pool_one_t *one;
     int i;
 
-    if (worker->list)
-    {
-        ZARRAY_WALK_BEGIN(worker->list, one)
-        {
-            if ((char *)ptr >= (char *)(one->data))
-            {
-                if((char *)ptr <= ((char *)(one->data) + grow_buf_size))
-                {
+    if (worker->list) {
+        ZARRAY_WALK_BEGIN(worker->list, one) {
+            if ((char *)ptr >= (char *)(one->data)) {
+                if ((char *)ptr <= ((char *)(one->data) + grow_buf_size)) {
                     return;
                 }
             }
@@ -173,20 +147,15 @@ void zmem_grow_pool_free(zmpool_t * mp, void *ptr)
         ZARRAY_WALK_END;
     }
     one = worker->current;
-    if ((char *)ptr >= (char *)(one->data))
-    {
-        if((char *)ptr <= ((char *)(one->data) + grow_buf_size))
-        {
+    if ((char *)ptr >= (char *)(one->data)) {
+        if ((char *)ptr <= ((char *)(one->data) + grow_buf_size)) {
             return;
         }
     }
 
-    if (worker->direct_list)
-    {
-        for(i = 0; i<worker->direct_list->len; i++)
-        {
-            if((char *)(worker->direct_list->data[i]) == (char *)ptr)
-            {
+    if (worker->direct_list) {
+        for (i = 0; i < worker->direct_list->len; i++) {
+            if ((char *)(worker->direct_list->data[i]) == (char *)ptr) {
                 zfree(ptr);
                 worker->direct_list->data[i] = 0;
                 return;
@@ -198,28 +167,23 @@ void zmem_grow_pool_free(zmpool_t * mp, void *ptr)
 /* ################################################################## */
 void zmem_grow_pool_free_pool(zmpool_t * mp)
 {
-    zmem_grow_pool_t * worker = (zmem_grow_pool_t *)(mp->worker);
+    zmem_grow_pool_t *worker = (zmem_grow_pool_t *) (mp->worker);
     zmem_grow_pool_one_t *one;
 
-    if (worker->current)
-    {
+    if (worker->current) {
         zfree(worker->current);
     }
 
-    if (worker->list)
-    {
-        ZARRAY_WALK_BEGIN(worker->list, one)
-        {
+    if (worker->list) {
+        ZARRAY_WALK_BEGIN(worker->list, one) {
             zfree(one);
         }
         ZARRAY_WALK_END;
         zarray_free(worker->list, 0, 0);
     }
 
-    if (worker->direct_list)
-    {
-        ZARRAY_WALK_BEGIN(worker->direct_list, one)
-        {
+    if (worker->direct_list) {
+        ZARRAY_WALK_BEGIN(worker->direct_list, one) {
             zfree(one);
         }
         ZARRAY_WALK_END;
@@ -231,19 +195,16 @@ void zmem_grow_pool_free_pool(zmpool_t * mp)
 
 void zmem_grow_pool_reset(zmpool_t * mp)
 {
-    zmem_grow_pool_t * worker = (zmem_grow_pool_t *)(mp->worker);
+    zmem_grow_pool_t *worker = (zmem_grow_pool_t *) (mp->worker);
     zmem_grow_pool_one_t *one;
 
-    if (worker->current)
-    {
+    if (worker->current) {
         zfree(worker->current);
     }
     worker->current = 0;
 
-    if (worker->list)
-    {
-        ZARRAY_WALK_BEGIN(worker->list, one)
-        {
+    if (worker->list) {
+        ZARRAY_WALK_BEGIN(worker->list, one) {
             zfree(one);
         }
         ZARRAY_WALK_END;
@@ -251,10 +212,8 @@ void zmem_grow_pool_reset(zmpool_t * mp)
     }
     worker->list = 0;
 
-    if (worker->direct_list)
-    {
-        ZARRAY_WALK_BEGIN(worker->direct_list, one)
-        {
+    if (worker->direct_list) {
+        ZARRAY_WALK_BEGIN(worker->direct_list, one) {
             zfree(one);
         }
         ZARRAY_WALK_END;
@@ -269,9 +228,8 @@ zmpool_t *zmpool_create_grow_pool(void)
     zmpool_t *mp;
     zmem_grow_pool_t *worker;
 
-    mp = (zmpool_t *) zmalloc(sizeof(zmpool_t) +
-            sizeof(zmem_grow_pool_t));
-    worker = (zmem_grow_pool_t *)((char *)mp + sizeof(zmpool_t));
+    mp = (zmpool_t *) zmalloc(sizeof(zmpool_t) + sizeof(zmem_grow_pool_t));
+    worker = (zmem_grow_pool_t *) ((char *)mp + sizeof(zmpool_t));
     mp->worker = worker;
     memset(worker, 0, sizeof(zmem_grow_pool_t));
 
@@ -283,4 +241,3 @@ zmpool_t *zmpool_create_grow_pool(void)
 
     return mp;
 }
-

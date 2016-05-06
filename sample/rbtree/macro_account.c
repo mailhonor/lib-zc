@@ -11,12 +11,10 @@
 
 typedef struct myos_t myos_t;
 typedef struct account_t account_t;
-struct myos_t
-{
+struct myos_t {
     zrbtree_t account_rbtree;
 };
-struct account_t
-{
+struct account_t {
     char *name;
     sysuser_t *attributes;
     zrbtree_node_t rbnode;
@@ -51,8 +49,7 @@ account_t *myos_add_account(myos_t * myos, char *name, void *attributes)
 
     ZRBTREE_ATTACH_PART2(&(myos->account_rbtree), rn, cmp_result, cmp_rn);
 
-    if (rn != cmp_rn)
-    {
+    if (rn != cmp_rn) {
         /*
          * Already exist.
          * rn is equal cmp_rn on the context.
@@ -77,13 +74,11 @@ account_t *myos_find_account(myos_t * myos, char *name, void **value)
     cmp_result = strcmp(name, cmp_n->name);
 
     ZRBTREE_LOOKUP_PART2(&(myos->account_rbtree), cmp_result, cmp_rn);
-    if (cmp_rn == 0)
-    {
+    if (cmp_rn == 0) {
         return 0;
     }
     cmp_n = ZCONTAINER_OF(cmp_rn, account_t, rbnode);
-    if (value)
-    {
+    if (value) {
         *value = (void *)(cmp_n->attributes);
     }
 
@@ -95,8 +90,7 @@ account_t *myos_delete_account(myos_t * myos, char *name, void **value)
     account_t *n;
 
     n = myos_find_account(myos, name, value);
-    if (!n)
-    {
+    if (!n) {
         return 0;
     }
     ZRBTREE_DETACH(&(myos->account_rbtree), &(n->rbnode));
@@ -110,8 +104,7 @@ void myos_free(myos_t * myos)
     zrbtree_node_t *rn;
     account_t *account;
 
-    while ((rn = zrbtree_first(&(myos->account_rbtree))))
-    {
+    while ((rn = zrbtree_first(&(myos->account_rbtree)))) {
         zrbtree_detach(&(myos->account_rbtree), rn);
         account = ZCONTAINER_OF(rn, account_t, rbnode);
         zfree(account->name);
@@ -138,23 +131,18 @@ int main(int argc, char **argv)
     zinfo("load /etc/passwd");
     sysuser_load();
 
-    for (i = 0; i < sysuser_count; i++)
-    {
+    for (i = 0; i < sysuser_count; i++) {
         myos_add_account(myos, sysuser_list[i].login_name, sysuser_list + i);
     }
 
-    if (myos_find_account(myos, "daemon", (void **)&user))
-    {
+    if (myos_find_account(myos, "daemon", (void **)&user)) {
         zinfo("Found user daemon, whose shell is %s", user->shell);
-    }
-    else
-    {
+    } else {
         zinfo("Dit not find the user daemon");
     }
 
     zinfo("test MACRO of walk");
-    ZRBTREE_WALK_FORWARD_BEGIN(&(myos->account_rbtree), rn)
-    {
+    ZRBTREE_WALK_FORWARD_BEGIN(&(myos->account_rbtree), rn) {
         account = ZCONTAINER_OF(rn, account_t, rbnode);
         zinfo("name: %s", account->name);
     }

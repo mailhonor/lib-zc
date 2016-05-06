@@ -31,8 +31,7 @@ int zlog_output_default(int level, char *fmt, ...)
 {
     va_list ap;
 
-    if (zlog_voutput)
-    {
+    if (zlog_voutput) {
         va_start(ap, fmt);
         zlog_voutput(level, fmt, ap);
         va_end(ap);
@@ -44,18 +43,15 @@ int zlog_fatal_output_default(int level, char *fmt, ...)
 {
     va_list ap;
 
-    if (fatal_times++ == 0)
-    {
-        if (zlog_voutput)
-        {
+    if (fatal_times++ == 0) {
+        if (zlog_voutput) {
             va_start(ap, fmt);
             zlog_voutput(level, fmt, ap);
             va_end(ap);
         }
     }
 
-    if (zvar_fatal_catch)
-    {
+    if (zvar_fatal_catch) {
         /* 段错误,方便 gdb 调试 */
         char *p = 0;
         *p = 0;
@@ -83,8 +79,7 @@ int zlog_set_level(int level)
     int last;
 
     last = zvar_log_level;
-    if (___zlog_set_level_console)
-    {
+    if (___zlog_set_level_console) {
         return last;
     }
     zvar_log_level = level;
@@ -112,10 +107,8 @@ int zlog_parse_level(char *levstr)
     char *ptr;
     int level_i;
 
-    for (level_i = 1, ptr = level_list[1]; (ptr = level_list[level_i], ptr); level_i++)
-    {
-        if (!strcasecmp(levstr, ptr))
-        {
+    for (level_i = 1, ptr = level_list[1]; (ptr = level_list[level_i], ptr); level_i++) {
+        if (!strcasecmp(levstr, ptr)) {
             return level_i;
         }
     }
