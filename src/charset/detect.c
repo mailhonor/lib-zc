@@ -29,7 +29,7 @@ static inline int utf8_len(char *buf, int len)
     return ret;
 }
 
-static inline int ___chinese_word_find(unsigned char *word, int ulen)
+static inline unsigned long ___chinese_word_score(unsigned char *word, int ulen)
 {
     int start = 0, middle, end;
     unsigned int mint, wint;
@@ -51,7 +51,7 @@ static inline int ___chinese_word_find(unsigned char *word, int ulen)
             return 0;
         }
         middle = (start + end) / 2;
-        wp = wlist + middle * 2;
+        wp = wlist + middle * 3;
         mint = ((wp[0] << 8) | (wp[1]));
 
         if (wint < mint) {
@@ -62,34 +62,42 @@ static inline int ___chinese_word_find(unsigned char *word, int ulen)
             start = middle + 1;
             continue;
         }
-        return 1;
+        return wp[2];
     }
 
     return 0;
 }
 
-static int ___chinese_word_count(char *str, int len)
+static double ___chinese_score(char *str, int len)
 {
-    int i = 0, ulen, count = 0;
+    int i = 0, ulen;
+    unsigned long score = 0;
+    unsigned long count = 0;;
 
     while (i + 1 < len) {
         ulen = utf8_len(str + i, len - i);
         if ((ulen == 2) || (ulen == 3)) {
-            count += ___chinese_word_find((unsigned char *)str + i, ulen);
+            score += ___chinese_word_score((unsigned char *)str + i, ulen);
+            count ++;
         }
         i += ulen;
     }
 
-    return count;
+    if (count == 0)
+    {
+        return 0;
+    }
+
+    return ((double)score/count);
 }
 
 int zcharset_detect(char *data, int len, char *charset_ret, char **charset_list)
 {
-    int ret;
-    char **csp, *cc, *fromcode;
+    int ret, i, max_i;
+    char **csp, *fromcode;
     char out_string[10250];
-    int out_len = 10230, w_count_max = 0, w_count;
-    int result_len_list[1024], list_len, max_len, max_i, max_eq_count, i;
+    int out_len = 10230, list_len;
+    double result_score_list[1024], max_score;
 
     list_len = 0;
     csp = charset_list;
@@ -100,9 +108,10 @@ int zcharset_detect(char *data, int len, char *charset_ret, char **charset_list)
         list_len = 1000;
     }
 
-    max_len = 0;
-    max_eq_count = 0;
+    max_score = 0;
+    max_i = -1;
     for (i = 0; i < list_len; i++) {
+        result_score_list[i] = 0;
         fromcode = charset_list[i];
 
         ZICONV_CREATE(ic);
@@ -116,59 +125,25 @@ int zcharset_detect(char *data, int len, char *charset_ret, char **charset_list)
         ret = zcharset_iconv(ic);
         ZICONV_FREE(ic);
 
-        if (ic->omit_invalid_bytes_count > 3) {
-            ret = 0;
+        if(ret < 0) {
+            continue;
         }
-        result_len_list[i] = 0;
-        if (ret > max_len) {
-            max_len = ret;
-            max_eq_count = 1;
+        if (ic->omit_invalid_bytes_count > 5) {
+            continue;
+        }
+        result_score_list[i] = ___chinese_score(out_string, ret);
+        if (max_score < result_score_list[i])
+        {
             max_i = i;
-        }
-        if (ret == max_len) {
-            max_eq_count++;
+            max_score = result_score_list[i];
         }
     }
 
-    if (max_len == 0) {
+    if (max_i == -1)
+    {
         return -1;
     }
-
-    if (max_eq_count == 1) {
-        strcpy(charset_ret, charset_list[max_i]);
-        return 0;
-    }
-
-    cc = 0;
-    for (i = 0; i < list_len; i++) {
-        if (result_len_list[i] != max_len) {
-            continue;
-        }
-        fromcode = charset_list[i];
-        ZICONV_CREATE(ic);
-        ic->from_charset = fromcode;
-        ic->to_charset = "UTF-8";
-        ic->in_str = (char *)data;
-        ic->in_len = len;
-        ic->filter = out_string;
-        ic->filter_type = out_len;
-        ret = zcharset_iconv(ic);
-        ZICONV_FREE(ic);
-        if (ret < 1) {
-            continue;
-        }
-        w_count = ___chinese_word_count(out_string, ret);
-        zdebug("fromcode: %s, word_count: %s", fromcode, w_count);
-        if ((w_count > w_count_max)) {
-            w_count_max = w_count;
-            cc = fromcode;
-        }
-    }
-    if (!cc) {
-        return -1;
-    }
-
-    strcpy(charset_ret, cc);
+    strcpy(charset_ret, charset_list[max_i]);
 
     return 0;
 }

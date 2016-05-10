@@ -29,17 +29,20 @@ void dorun(char *fn)
 
 int main(int argc, char **argv)
 {
-    int i;
+    char *fn;
 
     zvar_progname = argv[0];
     if (argc < 2) {
         printf("USAGE: %s filename1 [filename2 ...]\n", zvar_progname);
         exit(1);
     }
+    zparameter_run_test(argc - 1, argv + 1);
 
-    for (i = 1; i < argc; i++) {
-        dorun(argv[i]);
+    ZARGV_WALK_BEGIN(zvar_parameter_value_list, fn)
+    {
+        dorun(fn);
     }
+    ZARRAY_WALK_END;
 
     return 0;
 }
