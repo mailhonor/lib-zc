@@ -20,7 +20,7 @@ static int save_att_tnef(ztnef_parser_t * parser, ztnef_mime_t * mime, int i)
         sprintf(tmpname, "att/tnef_unknown_%d.dat", i);
     } else {
         snprintf(tmpname, 255, "att/tnef_%s", sname);
-        p = tmpname;
+        p = tmpname + 4;
         while (*p) {
             char ch = *p;
             if ((ch == '?') || (ch == '<') || (ch == '>')) {
@@ -62,7 +62,7 @@ static int save_att(zmail_parser_t * parser, zmail_mime_t * mime, int i)
         sprintf(tmpname, "att/unknown_%d.dat", i);
     } else {
         snprintf(tmpname, 255, "att/%s", sname);
-        p = tmpname;
+        p = tmpname + 4;
         while (*p) {
             char ch = *p;
             if ((ch == '?') || (ch == '<') || (ch == '>')) {

@@ -116,7 +116,7 @@ int zcharset_detect(char *data, int len, char *charset_ret, char **charset_list)
 
         ZICONV_CREATE(ic);
         ic->from_charset = fromcode;
-        ic->to_charset = fromcode;
+        ic->to_charset = "UTF-8";
         ic->in_str = (char *)data;
         ic->in_len = len;
         ic->filter = out_string;
@@ -137,6 +137,7 @@ int zcharset_detect(char *data, int len, char *charset_ret, char **charset_list)
             max_i = i;
             max_score = result_score_list[i];
         }
+        zverbose("%s, %f", fromcode, result_score_list[i]);
     }
 
     if (max_i == -1)
