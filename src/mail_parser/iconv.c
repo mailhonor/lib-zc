@@ -16,7 +16,6 @@ int zmail_parser_iconv(zmail_parser_t * parser, char *from_charset, char *in, in
 
     if (ZEMPTY(from_charset)) {
         times = 1;
-        /* FIXME */ return 0;
     }
     for (i = 0; i < times; i++) {
         if (ZEMPTY(from_charset)) {

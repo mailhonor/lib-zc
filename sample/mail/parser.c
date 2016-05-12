@@ -17,9 +17,9 @@ static int save_att_tnef(ztnef_parser_t * parser, ztnef_mime_t * mime, int i)
 
     sname = mime->filename_rd;
     if (ZEMPTY(sname)) {
-        sprintf(tmpname, "att_tnef_unknown_%d.dat", i);
+        sprintf(tmpname, "att/tnef_unknown_%d.dat", i);
     } else {
-        snprintf(tmpname, 255, "att_tnef_%s", sname);
+        snprintf(tmpname, 255, "att/tnef_%s", sname);
         p = tmpname;
         while (*p) {
             char ch = *p;
@@ -59,9 +59,9 @@ static int save_att(zmail_parser_t * parser, zmail_mime_t * mime, int i)
         sname = mime->filename_rd;
     }
     if (ZEMPTY(sname)) {
-        sprintf(tmpname, "att_unknown_%d.dat", i);
+        sprintf(tmpname, "att/unknown_%d.dat", i);
     } else {
-        snprintf(tmpname, 255, "att_%s", sname);
+        snprintf(tmpname, 255, "att/%s", sname);
         p = tmpname;
         while (*p) {
             char ch = *p;

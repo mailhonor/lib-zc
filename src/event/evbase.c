@@ -488,62 +488,35 @@ static void zaio_ready_do_once(zaio_t * aio)
 {
     zaio_cb_t callback;
     unsigned int rw_type;
-    int ret = 0;
 
     callback = aio->callback;
     rw_type = aio->rw_type;
-    ret = aio->ret;
 
     if (!callback) {
         zfatal("zaio: not found callback");
     }
 
-    /* SSL connect/accept */
-    if (rw_type == ZAIO_CB_TYPE_SSL_INIT) {
-        (callback) (aio);
-        return;
-    }
-
-    /* SLEEP */
     if (rw_type == ZAIO_CB_TYPE_SLEEP) {
         aio->ret = 1;
-        (callback) (aio);
-        return;
     }
-    /* WRITE */
-    if ((rw_type & ZAIO_CB_WRITE)) {
-        (callback) (aio);
-        return;
-    }
-
-    /* READ */
-    if (ret < 1) {
-        (callback) (aio);
-        return;
-    }
-    if (callback) {
-        (callback) (aio);
-    }
+    (callback) (aio);
 }
 
 static void zaio_ready_do(zaio_t * aio)
 {
     zevbase_t *eb = aio->evbase;
 
-    if (aio->in_loop) {
-        lock_evbase(eb);
-        if (aio->in_loop) {
-            ZMLINK_APPEND(eb->old_queue_head, eb->old_queue_tail, aio, queue_prev, queue_next);
-            aio->in_loop = 0;
-        }
-        unlock_evbase(eb);
-        if (!___single_mode) {
-            zevbase_notify(eb);
-        }
+    if (aio->run_by_evbase) {
+        aio->run_by_evbase = 0;
+        zaio_ready_do_once(aio);
         return;
     }
-    aio->in_loop = 1;
-    zaio_ready_do_once(aio);
+    lock_evbase(eb);
+    ZMLINK_APPEND(eb->old_queue_head, eb->old_queue_tail, aio, queue_prev, queue_next);
+    unlock_evbase(eb);
+    if (!___single_mode) {
+        zevbase_notify(eb);
+    }
 }
 
 zaio_t *zaio_create(void)
@@ -944,7 +917,6 @@ static inline int zaio_action_read_once(zaio_t * aio, int rw_type, char *buf)
     if (rlen < 1) {
         return -1;
     }
-    buf[rlen] = 0;
     ___zaio_cache_append(aio, &(aio->read_cache), buf, rlen);
 
     if (rw_type == ZAIO_CB_TYPE_READ) {
@@ -1096,6 +1068,7 @@ static inline int zaio_action(zaio_t * aio)
     if (aio->is_local == 0) {
         zaio_event_set(aio, 0, -2);
     }
+    aio->run_by_evbase = 1;
     zaio_ready_do(aio);
 
     return 0;
@@ -1283,6 +1256,7 @@ static inline int zevbase_queue_checker(zevbase_t * eb)
         ZMLINK_DETACH(eb->now_queue_head, eb->now_queue_tail, aio, queue_prev, queue_next);
         unlock_evbase(eb);
 
+        aio->run_by_evbase = 1;
         zaio_ready_do(aio);
     }
 

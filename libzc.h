@@ -1123,7 +1123,7 @@ struct zaio_t {
     unsigned char events;
     unsigned char recv_events;
     unsigned char is_local:1;
-    unsigned char in_loop:1;
+    unsigned char run_by_evbase:1;
     unsigned char in_time:1;
     unsigned char enable_time:1;
     unsigned char want_read:1;
