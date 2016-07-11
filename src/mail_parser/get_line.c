@@ -39,6 +39,24 @@ int zmail_parser_get_header_line(zmail_parser_t * parser, char **ptr)
     char *ps, *p;
     int len = 0;
 
+    if (pbegin > pend) {
+        len = 0;
+        goto over;
+    }
+    if (pbegin[0] == '\n')
+    {
+        len = 1;
+        goto over;
+    }
+    if (pend > pbegin)
+    {
+        if((pbegin[0] == '\r') &&(pbegin[1] == '\n'))
+        {
+            len = 2;
+            goto over;
+        }
+    }
+
     ps = pbegin;
     while (pend > ps) {
         p = memchr(ps, '\n', pend - ps);
@@ -47,7 +65,7 @@ int zmail_parser_get_header_line(zmail_parser_t * parser, char **ptr)
             len = pend - pbegin;
             break;
         }
-        if ((p[1] == ' ') || p[1] == '\t') {
+        if ((p[1] == ' ') || (p[1] == '\t')) {
             ps = p + 1;
             continue;
         }
@@ -55,6 +73,7 @@ int zmail_parser_get_header_line(zmail_parser_t * parser, char **ptr)
         break;
     }
 
+over:
     *ptr = pbegin;
 
     parser->mail_pos += len;

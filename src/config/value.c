@@ -8,7 +8,7 @@
 
 #include "libzc.h"
 
-#define ___RANGE_VALUE(val, max, min) {if(val < min){val = min;}else if(val>max){val = max;}}
+#define ___RANGE_VALUE(val, min, max) {if(val < min){val = min;}else if(val>max){val = max;}}
 char *zconfig_get_str(zconfig_t * cf, char *name, char *def)
 {
     char *value;
@@ -33,7 +33,7 @@ int zconfig_get_bool(zconfig_t * cf, char *name, int def)
     return zstr_to_bool(value, def);
 }
 
-int zconfig_get_int(zconfig_t * cf, char *name, int def, int max, int min)
+int zconfig_get_int(zconfig_t * cf, char *name, int def, int min, int max)
 {
     char *value;
 
@@ -41,12 +41,12 @@ int zconfig_get_int(zconfig_t * cf, char *name, int def, int max, int min)
     if (!ZEMPTY(value)) {
         def = atoi(value);
     }
-    ___RANGE_VALUE(def, max, min);
+    ___RANGE_VALUE(def, min, max);
 
     return def;
 }
 
-long zconfig_get_long(zconfig_t * cf, char *name, long def, long max, long min)
+long zconfig_get_long(zconfig_t * cf, char *name, long def, long min, long max)
 {
     char *value;
 
@@ -54,12 +54,12 @@ long zconfig_get_long(zconfig_t * cf, char *name, long def, long max, long min)
     if (!ZEMPTY(value)) {
         def = atoll(value);
     }
-    ___RANGE_VALUE(def, max, min);
+    ___RANGE_VALUE(def, min, max);
 
     return def;
 }
 
-long zconfig_get_second(zconfig_t * cf, char *name, long def, long max, long min)
+long zconfig_get_second(zconfig_t * cf, char *name, long def, long min, long max)
 {
     char *value;
 
@@ -68,12 +68,12 @@ long zconfig_get_second(zconfig_t * cf, char *name, long def, long max, long min
         def = zstr_to_second(value);
     }
 
-    ___RANGE_VALUE(def, max, min);
+    ___RANGE_VALUE(def, min, max);
 
     return def;
 }
 
-long zconfig_get_size(zconfig_t * cf, char *name, long def, long max, long min)
+long zconfig_get_size(zconfig_t * cf, char *name, long def, long min, long max)
 {
     char *value;
 
@@ -82,7 +82,7 @@ long zconfig_get_size(zconfig_t * cf, char *name, long def, long max, long min)
         def = zstr_to_size(value);
     }
 
-    ___RANGE_VALUE(def, max, min);
+    ___RANGE_VALUE(def, min, max);
 
     return def;
 }
@@ -112,7 +112,7 @@ void zconfig_get_bool_table(zconfig_t * cf, zconfig_bool_table_t * table)
     { \
         while (table->name) \
         { \
-            table->target[0] = zconfig_get_ ## ttype(cf, table->name, table->defval, table->max, table->min); \
+            table->target[0] = zconfig_get_ ## ttype(cf, table->name, table->defval, table->min, table->max); \
         } \
     }
 ___ZCONFIG_GET_TABLE(int);

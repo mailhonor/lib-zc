@@ -157,13 +157,11 @@ static void zmaster_reload_one_config(zconfig_t * cf)
 
     cmd = zconfig_get_str(cf, "zcmd", "");
     if (!*cmd) {
-        zconfig_free(cf);
         return;
     }
 
     listen = zconfig_get_str(cf, "zlisten", "");
     if (!*listen) {
-        zconfig_free(cf);
         return;
     }
 
@@ -191,11 +189,9 @@ static void zmaster_reload_one_config(zconfig_t * cf)
     men->child_error = 0;
     zevtimer_init(&(men->child_error_timer), zvar_evbase);
     zevtimer_set_context(&(men->child_error_timer), men);
-
-    zconfig_free(cf);
 }
 
-static void zmaster_load_config_default(zarray_t * config_list)
+void zmaster_load_config_default(zarray_t * config_list)
 {
     DIR *dir;
     struct dirent ent, *ent_list;
@@ -236,6 +232,7 @@ static void zmaster_reload_config(void)
     zconfig_t *cf;
 
     config_list = zarray_create(100);
+
     if (zmaster_load_config_fn) {
         zmaster_load_config_fn(config_list);
     } else {
@@ -244,8 +241,11 @@ static void zmaster_reload_config(void)
 
     ZARRAY_WALK_BEGIN(config_list, cf) {
         zmaster_reload_one_config(cf);
+        zconfig_free(cf);
     }
     ZARRAY_WALK_END;
+
+    zarray_free(config_list, 0, 0);
 }
 
 static void zmaster_release_unused_entry(void)

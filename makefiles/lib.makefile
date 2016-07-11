@@ -4,7 +4,7 @@ include OBJS_DEST/depend
 
 CC=gcc
 
-CFLAGS= -ggdb -Wall -I./ -O3
+CFLAGS= -Wall -I./ -O3
 
 SRCS=${shell find src -type f -name "*.c"}
 

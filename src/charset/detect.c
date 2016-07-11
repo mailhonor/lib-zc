@@ -88,6 +88,7 @@ static double ___chinese_score(char *str, int len)
         return 0;
     }
 
+    zverbose("``````````````````````%ld, %d", score, count);
     return ((double)score/count);
 }
 
@@ -97,6 +98,7 @@ int zcharset_detect(char *data, int len, char *charset_ret, char **charset_list)
     char **csp, *fromcode;
     char out_string[10250];
     int out_len = 10230, list_len;
+    int omit_invalid_bytes_count;
     double result_score_list[1024], max_score;
 
     list_len = 0;
@@ -121,14 +123,15 @@ int zcharset_detect(char *data, int len, char *charset_ret, char **charset_list)
         ic->in_len = len;
         ic->filter = out_string;
         ic->filter_type = out_len;
-        ic->omit_invalid_bytes = 3;
+        ic->omit_invalid_bytes = 99999;
         ret = zcharset_iconv(ic);
+        omit_invalid_bytes_count = ic->omit_invalid_bytes_count;
         ZICONV_FREE(ic);
 
         if(ret < 0) {
             continue;
         }
-        if (ic->omit_invalid_bytes_count > 5) {
+        if (omit_invalid_bytes_count > 5) {
             continue;
         }
         result_score_list[i] = ___chinese_score(out_string, ret);
@@ -154,4 +157,4 @@ int zcharset_detect(char *data, int len, char *charset_ret, char **charset_list)
 char *zvar_charset_chinese[] = { "UTF-8", "GB18030", "BIG5", 0 };
 char *zvar_charset_japanese[] = { "UTF-8", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", 0 };
 char *zvar_charset_korean[] = { "UTF-8", "KS_C_5601", "KS_C_5861", 0 };
-char *zvar_charset_cjk[] = { "UTF-8", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", "KS_C_5601", "KS_C_5861", "GB18030", "BIG5", 0 };
+char *zvar_charset_cjk[] = { "UTF-8", "GB18030", "BIG5", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", "KS_C_5601", "KS_C_5861", 0 };

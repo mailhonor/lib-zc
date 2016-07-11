@@ -184,7 +184,12 @@ static int deal_multpart(zmail_parser_t * parser, zmail_mime_t * pmime, zmail_mi
     char *line;
 
     blen = cmime->boundary_len;
-    while ((len = ___zmail_parser_get_body_line(parser, &line)) > 0) {
+    while (1) {
+        //int offset_bak = ___mftell(parser);
+        len = ___zmail_parser_get_body_line(parser, &line);
+        if (len < 1) {
+            break;
+        }
         have = 1;
 
         if (!cmime->boundary) {
@@ -196,6 +201,7 @@ static int deal_multpart(zmail_parser_t * parser, zmail_mime_t * pmime, zmail_mi
         if (!___CASEEQ_LEN(line, cmime->boundary, blen)) {
             continue;
         }
+        //cmime->body_offset = offset_bak;
         while (1) {
             int used = 0;
             nmime = (zmail_mime_t *) zmpool_calloc(parser->mpool, 1, sizeof(zmail_mime_t));
@@ -232,6 +238,7 @@ static int deal_multpart(zmail_parser_t * parser, zmail_mime_t * pmime, zmail_mi
     }
 
     blen = pmime->boundary_len;
+    len = 0;
     while ((len = ___zmail_parser_get_body_line(parser, &line)) > 0) {
         if (!pmime->boundary) {
             continue;
@@ -248,6 +255,11 @@ static int deal_multpart(zmail_parser_t * parser, zmail_mime_t * pmime, zmail_mi
         }
         break;
     }
+    cmime->body_len = ___mftell(parser) - cmime->body_offset - len;
+    if (cmime->body_len < 0) {
+        cmime->body_len = 0;
+    }
+
     return (ret);
 }
 
@@ -317,6 +329,7 @@ int zmail_parser_decode_mime(zmail_parser_t * parser, zmail_mime_t * pmime, zmai
         len = zmail_parser_mimetrim_dup(parser, line, hlen, buf);
         if (len < 1) {
             cmime->header_len = ___mftell(parser) - cmime->header_offset;
+#if 1
             idx = cmime->header_offset + cmime->header_len;
             if ((cmime->header_len > 0) && (parser->mail_data[idx - 1] == '\n')) {
                 idx--;
@@ -325,6 +338,7 @@ int zmail_parser_decode_mime(zmail_parser_t * parser, zmail_mime_t * pmime, zmai
             if ((cmime->header_len > 0) && (parser->mail_data[idx - 1] == '\r')) {
                 cmime->header_len--;
             }
+#endif
             if (!pmime) {
                 parser->header_len = cmime->header_len;
             }
@@ -349,8 +363,9 @@ int zmail_parser_decode_mime(zmail_parser_t * parser, zmail_mime_t * pmime, zmai
                 zmail_parser_header_signle_token_decode_dup(parser, buf + 11, len - 11, &(cmime->content_id));
             }
         }
-        if (ret == 5)
+        if (ret == 5) {
             return 5;
+        }
     }
 
     /* deal mail body */

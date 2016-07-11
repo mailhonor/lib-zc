@@ -790,25 +790,25 @@ typedef struct {
     char *name;
     int defval;
     int *target;
-    int max;
     int min;
+    int max;
 } zconfig_int_table_t;
 typedef struct {
     char *name;
     long defval;
     long *target;
-    long max;
     long min;
+    long max;
 } zconfig_long_table_t;
 #define zconfig_bool_table_t zconfig_int_table_t
 #define zconfig_second_table_t zconfig_long_table_t
 #define zconfig_size_table_t zconfig_long_table_t
 char *zconfig_get_str(zconfig_t * cf, char *name, char *def);
 int zconfig_get_bool(zconfig_t * cf, char *name, int def);
-int zconfig_get_int(zconfig_t * cf, char *name, int def, int max, int min);
-long zconfig_get_long(zconfig_t * cf, char *name, long def, long max, long min);
-long zconfig_get_second(zconfig_t * cf, char *name, long def, long max, long min);
-long zconfig_get_size(zconfig_t * cf, char *name, long def, long max, long min);
+int zconfig_get_int(zconfig_t * cf, char *name, int def, int min, int max);
+long zconfig_get_long(zconfig_t * cf, char *name, long def, long min, long max);
+long zconfig_get_second(zconfig_t * cf, char *name, long def, long min, long max);
+long zconfig_get_size(zconfig_t * cf, char *name, long def, long min, long max);
 void zconfig_get_str_table(zconfig_t * cf, zconfig_str_table_t * table);
 void zconfig_get_int_table(zconfig_t * cf, zconfig_int_table_t * table);
 void zconfig_get_long_table(zconfig_t * cf, zconfig_long_table_t * table);
@@ -1094,7 +1094,7 @@ int zev_unset(zev_t * ev);
 /* AIO */
 typedef struct zaio_rwbuf_t zaio_rwbuf_t;
 typedef struct zaio_rwbuf_list_t zaio_rwbuf_list_t;
-#define ZAIO_RWBUF_SIZE            1024
+#define ZAIO_RWBUF_SIZE            10240
 struct zaio_rwbuf_t {
     zaio_rwbuf_t *next;
     unsigned int p1:16;
@@ -1119,15 +1119,14 @@ struct zaio_ssl_t {
     void *ssl;                  /* SSL* */
 };
 struct zaio_t {
-    unsigned char aio_type;
-    unsigned char events;
-    unsigned char recv_events;
+    unsigned char aio_type:3;
     unsigned char is_local:1;
-    unsigned char run_by_evbase:1;
     unsigned char in_time:1;
     unsigned char enable_time:1;
     unsigned char want_read:1;
-    char rw_type;
+    unsigned char events;
+    unsigned char recv_events;
+    unsigned char rw_type;
     char delimiter;
     int fd;
     int read_magic_len;
@@ -1166,7 +1165,6 @@ int zaio_write_cache_append(zaio_t * aio, void *buf, int len);
 int zaio_write_cache_flush(zaio_t * aio, zaio_cb_t callback, int timeout);
 int zaio_write_cache_get_len(zaio_t * aio);
 int zaio_sleep(zaio_t * aio, zaio_cb_t callback, int timeout);
-int zaio_move(zaio_t * aio, zevbase_t * neb);
 
 int zaio_ssl_init(zaio_t * aio, zsslctx_t * ctx, zaio_cb_t callback, int timeout);
 void zaio_ssl_fini(zaio_t * aio);
@@ -1212,10 +1210,8 @@ struct zevbase_t {
     zevbase_loop_t loop_fn;
     zmcot_t *aio_rwbuf_mpool;
 
-    zaio_t *old_queue_head;
-    zaio_t *old_queue_tail;
-    zaio_t *now_queue_head;
-    zaio_t *now_queue_tail;
+    zaio_t *queue_head;
+    zaio_t *queue_tail;
 };
 void zvar_evbase_init(void);
 int zevbase_notify(zevbase_t * eb);
@@ -1248,6 +1244,7 @@ void ziopipe_enter(ziopipe_base_t * iopb, int client_fd, void *client_ssl, int s
 typedef int (*zmaster_load_config_fn_t) (zarray_t * config_list);
 extern zmaster_load_config_fn_t zmaster_load_config_fn;
 extern int zvar_master_child_exception_check;
+void zmaster_load_config_default(zarray_t * config_list);
 int zmaster_main(int argc, char **argv);
 
 typedef void (*zmaster_server_service_t) (int fd);

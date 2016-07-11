@@ -214,7 +214,7 @@ int zbuf_sprintf(zbuf_t * bf, char *format, ...)
     va_list ap;
 
     va_start(ap, format);
-    zbuf_vsprintf(bf, format, ap);
+    zbuf_vprintf(bf, format, ap);
     va_end(ap);
     ZBUF_TERMINATE(bf);
 
