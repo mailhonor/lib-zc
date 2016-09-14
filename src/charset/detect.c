@@ -13,7 +13,6 @@ int zcharset_detect(char *data, int len, char *charset_ret, char **charset_list)
     return -1;
 }
 
-
 /* ################################################################## */
 
 char *zvar_charset_chinese[] = { "UTF-8", "GB18030", "BIG5", 0 };
