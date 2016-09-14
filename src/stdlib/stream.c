@@ -238,6 +238,7 @@ int zfflush(zstream_t * fp)
 
 void zfputchar(zstream_t * fp, int ch)
 {
+    ZFFLUSH(fp);
     ZFPUTCHAR(fp, ch);
 }
 
@@ -245,9 +246,11 @@ int zfwrite_n(zstream_t * fp, void *buf, int len)
 {
     int ch;
     char *p;
+    int wlen;
 
+    wlen = len;
     p = (char *)buf;
-    while ((len--) > 0) {
+    while ((wlen--) > 0) {
         ch = *p;
         ZFPUTCHAR(fp, ch);
         if (ZFEXCEPTION(fp)) {
@@ -264,7 +267,7 @@ int zfputs(zstream_t * fp, char *s)
     int i, ch;
 
     i = 0;
-    while ((ch = (*s))) {
+    while ((ch = (*s++))) {
         ZFPUTCHAR(fp, ch);
         if (ZFEXCEPTION(fp)) {
             return -1;

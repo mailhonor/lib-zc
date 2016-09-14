@@ -1,2 +1,2 @@
 include ../../makefiles/sample.makefile
-LIBS=
+LIBS= -static -lm -lrt -lssl -lcrypto -lpam -lpthread -ldl

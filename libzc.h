@@ -9,8 +9,10 @@
 #define ___ZINCLUDE_STDLIB_
 #define _GNU_SOURCE
 
+#include <ctype.h>
 #include <errno.h>
 #include <iconv.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -46,6 +48,8 @@ typedef struct zigrid_t zigrid_t;
 typedef struct zigrid_node_t zigrid_node_t;
 #define zconfig_t zdict_t
 typedef struct zkvlist_t zkvlist_t;
+typedef struct zmap_t zmap_t;
+typedef struct zmap_node_t zmap_node_t;
 typedef struct zaddr_t zaddr_t;
 typedef struct zsslctx_t zsslctx_t;
 typedef struct zssl_t zssl_t;
@@ -87,6 +91,9 @@ typedef struct ztnef_mime_t ztnef_mime_t;
 #define ZTYPE_BUF       0x1
 #define ZTYPE_ZBUF      0x2
 #define ZTYPE_FILE      0x3
+
+#define zpthread_lock(l)        {if(pthread_mutex_lock(l)){zfatal("mutex:%m");}}
+#define zpthread_unlock(l)      {if(pthread_mutex_unlock(l)){zfatal("mutex:%m");}}
 
 /* ################################################################## */
 extern char *zvar_progname;
@@ -191,6 +198,10 @@ int zvsnprintf(char *str, int size, char *format, va_list ap);
 char *zmemstr(void *s, char *needle, int len);
 char *zmemcasestr(void *s, char *needle, int len);
 
+/* strncpy, strncat */
+char *zstrncpy(char *dest, char *src, int len);
+char *zstrncat(char *dest, char *src, int len);
+
 /* ################################################################## */
 /* SIZEDATA */
 struct zsdata_t {
@@ -204,13 +215,14 @@ void zsdata_escape(zsdata_t * sd, zbuf_t * bf);
 /* BUF */
 struct zbuf_t {
     char *data;
-    int len;
-    int size;
+    int len:31;
+    int size:31;
+    unsigned int stack_mode;
 };
 #define ZBUF_DATA(b)    ((b)->data)
 #define ZBUF_LEN(b)     ((b)->len)
 #define ZBUF_PUT(b, c)  \
-    (((b)->len<(b)->size)?((int)((b)->data[(b)->len++]=(c))):(zbuf_put_do((b), (c))))
+    (((b)->len<(b)->size)?((int)((b)->data[(b)->len++]=(c))):(((b)->stack_mode?0:zbuf_put_do((b), (c)))))
 #define ZBUF_RESET(b)    ((b)->len=0)
 #define ZBUF_TERMINATE(b)    ((b)->data[(b)->len]=0)
 #define ZBUF_TRUNCATE(b, n)    ((((b)->len>n)&&(n>0))?((b)->len=n):0)
@@ -257,7 +269,8 @@ void zbuf_sizedata_escape_pp(zbuf_t * bf, char **pp, int len);
     name = &name ## _ZSTACT_BUF_; \
     char name ## _databuf_STACK [_size+1]; \
     name->size = _size; name->len = 0; \
-    name->data = name ## _databuf_STACK;
+    name->data = name ## _databuf_STACK; \
+    name->stack_mode = 1;
 
 #define ZSTACK_BUF_FROM(name, _data, _size)    \
     zbuf_t name ## _ZSTACT_BUF_, *name; \
@@ -830,6 +843,30 @@ int zkvlist_load(zkvlist_t * kv);
 zdict_t *zkvlist_get_dict(zkvlist_t * kv);
 
 /* ################################################################## */
+
+struct zmap_node_t {
+	int (*query) (zmap_node_t * node, char *query, zbuf_t *result, int timeout);
+	int (*close) (zmap_node_t * node);
+    char *title;
+    int used;
+};
+
+struct zmap_t {
+   zmap_node_t **node_list;
+   int node_len;
+};
+
+extern int zvar_map_pthread_mode;
+extern zgrid_t *zvar_map_node_list;
+int zmap_main(int argc, char **argv);
+zmap_t *zmap_create(char *map_string, int flags_unused);
+int zmap_close(zmap_t * zm);
+int zmap_query(zmap_t * zm, char *query, zbuf_t *result, int timeout);
+#define zmap_get_error(zm)      ((zm)->error_info)
+int zmap_read_line(zstream_t *fp, char *buf, int len, int *reach_end);
+int zmap_title_split(char *opstr, char **list);
+
+/* ################################################################## */
 /* IO or FD's stat */
 #define ZEV_NONE              0x00
 #define ZEV_READ              0x01
@@ -851,7 +888,6 @@ int zwriteable(int fd);
 int zread_wait(int fd, int timeout);
 int ztimed_read(int fd, void *buf, int len, int timeout);
 int ztimed_strict_read(int fd, void *buf, int len, int timeout);
-int ztimed_read_delimiter(int fd, void *buf, int len, int delimiter, int timeout);
 int zwrite_wait(int fd, int timeout);
 int ztimed_write(int fd, void *buf, int len, int timeout);
 int ztimed_strict_write(int fd, void *buf, int len, int timeout);
@@ -885,7 +921,6 @@ int zlisten(char *netpath, int backlog);
 
 /* ################################################################## */
 /* parameter deal */
-zargv_t *zvar_parameter_value_list;
 typedef int (*zparameter_fn_t) (int, char **);
 typedef struct {
     char *name;
@@ -963,6 +998,7 @@ struct zstream_t {
 #define zfeof(fp)            ((fp)->eof)
 #define zfexception(fp)      ((fp)->eof || (fp)->error)
 #define zfctx(fp)            ((fp)->io_ctx)
+#define zfileno(fp)          (ZVOID_PTR_TO_INT((fp)->ctx))
 
 zstream_t *zstream_create(int unused);
 void *zstream_free(zstream_t * fp);
@@ -1058,6 +1094,7 @@ zmcot_t *zmcot_create(int element_size);
 void zmcot_free(zmcot_t * cot);
 void *zmcot_alloc_one(zmcot_t * cot);
 void zmcot_free_one(zmcot_t * cot, void *ptr);
+
 
 /* ################################################################## */
 /* EVENT AIO */
@@ -1155,6 +1192,7 @@ void zaio_init(zaio_t * aio, zevbase_t * eb, int fd);
 void zaio_fini(zaio_t * aio);
 void zaio_set_local_mode(zaio_t * aio);
 int zaio_fetch_rbuf(zaio_t * aio, char *buf, int len);
+int zaio_attach(zaio_t * aio, zaio_cb_t callback);
 int zaio_read(zaio_t * aio, int max_len, zaio_cb_t callback, int timeout);
 int zaio_read_n(zaio_t * aio, int strict_len, zaio_cb_t callback, int timeout);
 int zaio_read_delimiter(zaio_t * aio, char delimiter, int max_len, zaio_cb_t callback, int timeout);
@@ -1212,6 +1250,9 @@ struct zevbase_t {
 
     zaio_t *queue_head;
     zaio_t *queue_tail;
+
+    zaio_t *extern_queue_head;
+    zaio_t *extern_queue_tail;
 };
 void zvar_evbase_init(void);
 int zevbase_notify(zevbase_t * eb);
@@ -1445,10 +1486,10 @@ extern char *zvar_charset_cjk[];
 
 #define ZMAIL_HEADER_LINE_MAX_LENGTH            10240
 
-#define ZMAIL_PARSER_MIME_TYPE_MULTIPART        0
-#define ZMAIL_PARSER_MIME_TYPE_ATTACHMENT       1
-#define ZMAIL_PARSER_MIME_TYPE_PLAIN            2
-#define ZMAIL_PARSER_MIME_TYPE_HTML             3
+#define ZMAIL_PARSER_MIME_TYPE_MULTIPART        1
+#define ZMAIL_PARSER_MIME_TYPE_ATTACHMENT       2
+#define ZMAIL_PARSER_MIME_TYPE_PLAIN            3
+#define ZMAIL_PARSER_MIME_TYPE_HTML             4
 
 struct zmail_references_t {
     char *message_id;
@@ -1654,6 +1695,13 @@ ztnef_parser_t *ztnef_parser_create_mpool(zmpool_t * imp, char *tnef_data, int t
 int ztnef_parser_run(ztnef_parser_t * parser);
 int ztnef_parser_set_default_charset(ztnef_parser_t * parser, char *default_src_charset, char *default_dest_charset);
 int ztnef_parser_get_mime_body(ztnef_parser_t * parser, ztnef_mime_t * mime, char **out_ptr);
+
+/* ################################################################## */
+/* util */
+int zquery_line(char *connection, char *query, char *result, int timeout);
+
+int zlicense_mac_check(char *salt, char *license);
+void zlicense_mac_build(char *salt, char *_mac, char *rbuf);
 
 #ifdef LIBZC_MALLOC_NAMESAPCE
 #undef zmalloc

@@ -27,6 +27,23 @@ void dorun(char *fn)
     zmmap_reader_fini(&reader);
 }
 
+
+zargv_t * file_list;
+
+int do_arg(int argc, char **argv)
+{
+    char *optname;
+
+    optname = argv[0];
+
+    if(optname[0] != '-') {
+        zargv_add(file_list, optname);
+        return 1;
+    }
+
+    return zparameter_run_test(argc, argv);
+}
+
 int main(int argc, char **argv)
 {
     char *fn;
@@ -36,9 +53,10 @@ int main(int argc, char **argv)
         printf("USAGE: %s filename1 [filename2 ...]\n", zvar_progname);
         exit(1);
     }
-    zparameter_run_test(argc - 1, argv + 1);
+    file_list = zargv_create(1);
+    zparameter_run(argc - 1, argv + 1, do_arg);
 
-    ZARGV_WALK_BEGIN(zvar_parameter_value_list, fn)
+    ZARGV_WALK_BEGIN(file_list, fn)
     {
         dorun(fn);
     }

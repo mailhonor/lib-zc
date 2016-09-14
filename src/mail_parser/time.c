@@ -25,7 +25,7 @@ long zmail_parser_header_date_decode(zmail_parser_t * parser, char *str)
     long result = -1;
 
     memset(&tm, 0, sizeof(struct tm));
-    strncpy(str_copy, str, 127);
+    zstrncpy(str_copy, str, 127);
     ztolower(str_copy);
     p = str_copy;
 

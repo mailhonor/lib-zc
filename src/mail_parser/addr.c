@@ -93,6 +93,7 @@ static int parser_one(zmail_parser_t * parser, char **str, int *len, zmail_addr_
     ma = (zmail_addr_t *) zmpool_calloc(imp, 1, sizeof(zmail_addr_t));
     ma->name = zmpool_strdup(imp, name);
     ma->mail = zmpool_strdup(imp, mail);
+    ztolower(ma->mail);
 
     pstr = name = ma->name;
     while (name && *name) {

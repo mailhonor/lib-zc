@@ -123,7 +123,7 @@ int zbase64_decode_to_df(void *src, int src_size, void *filter, int filter_type)
     unsigned char *src_c = src;
     int src_pos = 0;
     unsigned char input[4], output[3];
-    //int ret = 1;
+    int ret = -1;
     unsigned char *dest_result = (unsigned char *)filter;
     int len_result = 0;
     unsigned char c0, c1, c2, c3;
@@ -136,7 +136,9 @@ int zbase64_decode_to_df(void *src, int src_size, void *filter, int filter_type)
     break; \
 }
 
+retry:
     while (1) {
+        ret = -1;
         ___get_next_ch(c0);
         ___get_next_ch(c1);
         ___get_next_ch(c2);
@@ -149,7 +151,6 @@ int zbase64_decode_to_df(void *src, int src_size, void *filter, int filter_type)
 
         input[1] = b64dec[c1];
         if (input[1] == 0xff) {
-            //ret = -1;
             break;
         }
         output[0] = (input[0] << 2) | (input[1] >> 4);
@@ -157,7 +158,6 @@ int zbase64_decode_to_df(void *src, int src_size, void *filter, int filter_type)
         input[2] = b64dec[c2];
         if (input[2] == 0xff) {
             if (c2 != '=' || c3 != '=') {
-                //ret = -1;
                 break;
             }
             if (filter_type > 0) {
@@ -169,7 +169,7 @@ int zbase64_decode_to_df(void *src, int src_size, void *filter, int filter_type)
                 ZDATA_FILTER_PUTC(filter, output[0]);
                 len_result++;
             }
-            //ret = 0;
+            ret = 1;
             break;
         }
 
@@ -177,7 +177,6 @@ int zbase64_decode_to_df(void *src, int src_size, void *filter, int filter_type)
         input[3] = b64dec[c3];
         if (input[3] == 0xff) {
             if (c3 != '=') {
-                //ret = -1;
                 break;
             }
             if (filter_type > 0) {
@@ -191,7 +190,7 @@ int zbase64_decode_to_df(void *src, int src_size, void *filter, int filter_type)
                 ZDATA_FILTER_PUTC(filter, output[1]);
                 len_result += 2;
             }
-            //ret = 0;
+            ret = 1;
             break;
         }
 
@@ -209,6 +208,9 @@ int zbase64_decode_to_df(void *src, int src_size, void *filter, int filter_type)
             ZDATA_FILTER_PUTC(filter, output[2]);
             len_result += 3;
         }
+    }
+    if (ret == 1) {
+        goto retry;
     }
 
   over:

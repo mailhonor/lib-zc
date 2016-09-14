@@ -319,3 +319,27 @@ char *zmemcasestr(void *s, char *needle, int len)
 
     return 0;
 }
+
+/* ################################################################## */
+/* strncpy, strncat */
+
+char *zstrncpy(char *dest, char *src, int len)
+{
+    strncpy(dest, src, len);
+    len = strlen(dest);
+    dest[len] = 0;
+
+    return dest;
+}
+
+char *zstrncat(char *dest, char *src, int len)
+{
+    int llen;
+
+    llen = strlen(dest);
+    strncpy(dest + llen, src, len);
+    len = strlen(dest + llen);
+    dest[llen + len] = 0;
+
+    return dest;
+}

@@ -138,7 +138,7 @@ int zmail_parser_mime_identify_type(zmail_parser_t * parser)
 
         ZMAIL_PARSER_MIME_WALK_BEGIN(mime, m) {
             type = ___mime_identify_type(m);
-            mime->mime_type = type;
+            m->mime_type = type;
             if ((type == ZMAIL_PARSER_MIME_TYPE_PLAIN) || (type == ZMAIL_PARSER_MIME_TYPE_HTML)) {
                 if (text_len < 1000) {
                     text_mime[text_len++] = m;

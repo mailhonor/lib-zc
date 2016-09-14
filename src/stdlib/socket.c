@@ -226,6 +226,7 @@ static int ___timed_connect(int sock, struct sockaddr *sa, int len, int timeout)
     socklen_t error_len;
 
     if (timeout > 0) {
+        znonblocking(sock, 1);
         if (___sane_connect(sock, sa, len) == 0)
             return (0);
         if (errno != EINPROGRESS)
@@ -242,9 +243,15 @@ static int ___timed_connect(int sock, struct sockaddr *sa, int len, int timeout)
             return (-1);
         }
     } else {
+#if 0
         if (___sane_connect(sock, sa, len) < 0 && errno != EINPROGRESS) {
             return (-1);
         }
+#endif
+        if (___sane_connect(sock, sa, len) < 0) {
+            return (-1);
+        }
+        znonblocking(sock, 1);
     }
 
     return (0);
@@ -270,8 +277,6 @@ int zunix_connect(char *addr, int timeout)
         return (-1);
     }
 
-    znonblocking(sock, 1);
-
     if (___timed_connect(sock, (struct sockaddr *)&sun, sizeof(sun), timeout) < 0) {
         errno2 = errno;
         close(sock);
@@ -296,8 +301,6 @@ int zinet_connect(char *dip, int port, int timeout)
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = inet_addr(dip);
-
-    znonblocking(sock, 1);
 
     if (___timed_connect(sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_in), timeout) < 0) {
         errno2 = errno;

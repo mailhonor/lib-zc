@@ -19,7 +19,6 @@ int zread_wait(int fd, int timeout)
 
     pollfd.fd = fd;
     pollfd.events = POLLIN;
-    timeout = timeout * 1000;
 
     for (;;) {
         switch (poll(&pollfd, 1, timeout)) {
@@ -108,48 +107,6 @@ int ztimed_strict_read(int fd, void *buf, int len, int timeout)
     return len;
 }
 
-int ztimed_read_delimiter(int fd, void *buf, int len, int delimiter, int timeout)
-{
-    int ret;
-    int left;
-    char *ptr, *p;
-    long start_time;
-    long left_time;
-
-    left = len;
-    ptr = buf;
-
-    start_time = ztimeout_set(timeout);
-
-    while (left > 0) {
-        left_time = ztimeout_left(start_time);
-        if (left_time < 1) {
-            return -1;
-        }
-        if ((ret = zread_wait(fd, left_time)) < 0) {
-            return ret;
-        }
-        ret = read(fd, ptr, (size_t) left);
-        if (ret < 0) {
-            if (errno == EINTR) {
-                continue;
-            }
-            return -1;
-        } else if (ret == 0) {
-            return -1;
-        } else {
-            p = memchr(ptr, delimiter, ret);
-            if (p) {
-                return (len - left + (p - ptr + 1));
-            }
-            left -= ret;
-            ptr += ret;
-        }
-    }
-
-    return len;
-}
-
 /* ################################################################## */
 /* write */
 int zwrite_wait(int fd, int timeout)
@@ -158,7 +115,6 @@ int zwrite_wait(int fd, int timeout)
 
     pollfd.fd = fd;
     pollfd.events = POLLOUT;
-    timeout = timeout * 1000;
 
     for (;;) {
         switch (poll(&pollfd, 1, timeout)) {

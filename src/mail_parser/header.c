@@ -73,7 +73,7 @@ static int header_line_split(char *in_src, int in_len, zmail_header_line_token_t
             if (tmp_len > 63) {
                 tmp_len = 63;
             }
-            strncpy(mt->charset, pch, tmp_len);
+            zstrncpy(mt->charset, pch, tmp_len);
             mt->data = pdata;
             mt->len = pdata_e - pdata + 1;
             mt++;
