@@ -920,15 +920,9 @@ int zconnect(char *netpath, int timeout);
 int zlisten(char *netpath, int backlog);
 
 /* ################################################################## */
-/* parameter deal */
+/* parameter */
 typedef int (*zparameter_fn_t) (int, char **);
-typedef struct {
-    char *name;
-    zparameter_fn_t func;
-} zparameter_pair_t;
 int zparameter_run(int argc, char **argv, zparameter_fn_t param_fn);
-int zparameter_run_dict(int argc, char **argv, zdict_t * param_fn_dict);
-int zparameter_run_list(int argc, char **argv, zparameter_pair_t * param_fn_list);
 int zparameter_run_test(int argc, char **argv);
 
 /* ################################################################## */
