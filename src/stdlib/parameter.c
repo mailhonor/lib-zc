@@ -16,7 +16,7 @@ int zparameter_run(int argc, char **argv, zparameter_fn_t param_fn)
     for (i = 0; i < argc;) {
         ret = param_fn(argc - i, argv + i);
         if (ret < 1) {
-            printf("error: parameter %s unknown or missing optval\n", argv[i]);
+            printf("ERR parameter %s unknown or missing optval, -h for help\n", argv[i]);
             exit(1);
         }
         i += ret;
@@ -46,7 +46,7 @@ int zparameter_run_test(int argc, char **argv)
     }
 
     if (argc < 2) {
-        printf("error: parameter %s missing optval\n", optname);
+        printf("ERR parameter %s missing optval, -h for help\n", optname);
         exit(1);
     }
     optval = argv[1];
