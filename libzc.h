@@ -217,7 +217,7 @@ struct zbuf_t {
     char *data;
     int len:31;
     int size:31;
-    unsigned int stack_mode;
+    unsigned int stack_mode:1;
 };
 #define ZBUF_DATA(b)    ((b)->data)
 #define ZBUF_LEN(b)     ((b)->len)

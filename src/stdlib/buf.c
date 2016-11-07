@@ -150,9 +150,9 @@ int zbuf_memcat(zbuf_t * bf, void *src_raw, int len)
         return ZBUF_LEN(bf);
     }
     if (len > 1024) {
-        bf->len += len;
         zbuf_need_space(bf, len);
         memcpy(bf->data + bf->len, src, len);
+        bf->len += len;
     } else {
         while (len--) {
             ZBUF_PUT(bf, *src);
