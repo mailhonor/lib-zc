@@ -8,7 +8,7 @@
 
 #include "libzc.h"
 
-zmmap_reader reader;
+zmmap_reader_t reader;
 int cmd = 0;
 
 void usage(void)

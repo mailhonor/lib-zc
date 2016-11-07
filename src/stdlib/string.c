@@ -325,8 +325,16 @@ char *zmemcasestr(void *s, char *needle, int len)
 
 char *zstrncpy(char *dest, char *src, int len)
 {
-    strncpy(dest, src, len);
-    len = strlen(dest);
+    int llen;
+
+    llen = strlen(src);
+    if (llen < len) {
+        len = llen;
+    }
+    if (len > 0) {
+        memcpy(dest, src, len);
+    }
+
     dest[len] = 0;
 
     return dest;
@@ -334,12 +342,18 @@ char *zstrncpy(char *dest, char *src, int len)
 
 char *zstrncat(char *dest, char *src, int len)
 {
-    int llen;
+    int llen, rlen;
 
     llen = strlen(dest);
-    strncpy(dest + llen, src, len);
-    len = strlen(dest + llen);
-    dest[llen + len] = 0;
+    rlen = strlen(src);
+    if (rlen < len) {
+        len = rlen;
+    }
+    if (len > 0) {
+        memcpy(dest+llen, src, len);
+    }
+
+    dest[llen+len] = 0;
 
     return dest;
 }

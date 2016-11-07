@@ -60,7 +60,7 @@ typedef struct zaio_t zaio_t;
 typedef struct zevtimer_t zevtimer_t;
 typedef struct zevbase_t zevbase_t;
 typedef struct ziopipe_base_t ziopipe_base_t;
-typedef struct zmmap_reader zmmap_reader;
+typedef struct zmmap_reader_t zmmap_reader_t;
 typedef struct zmd5_t zmd5_t;
 typedef struct zsha1_t zsha1_t;
 typedef struct zcharset_iconv_t zcharset_iconv_t;
@@ -845,15 +845,15 @@ zdict_t *zkvlist_get_dict(zkvlist_t * kv);
 /* ################################################################## */
 
 struct zmap_node_t {
-	int (*query) (zmap_node_t * node, char *query, zbuf_t *result, int timeout);
-	int (*close) (zmap_node_t * node);
+    int (*query) (zmap_node_t * node, char *query, zbuf_t * result, int timeout);
+    int (*close) (zmap_node_t * node);
     char *title;
     int used;
 };
 
 struct zmap_t {
-   zmap_node_t **node_list;
-   int node_len;
+    zmap_node_t **node_list;
+    int node_len;
 };
 
 extern int zvar_map_pthread_mode;
@@ -861,10 +861,14 @@ extern zgrid_t *zvar_map_node_list;
 int zmap_main(int argc, char **argv);
 zmap_t *zmap_create(char *map_string, int flags_unused);
 int zmap_close(zmap_t * zm);
-int zmap_query(zmap_t * zm, char *query, zbuf_t *result, int timeout);
+int zmap_query(zmap_t * zm, char *query, zbuf_t * result, int timeout);
 #define zmap_get_error(zm)      ((zm)->error_info)
-int zmap_read_line(zstream_t *fp, char *buf, int len, int *reach_end);
+int zmap_read_line(zstream_t * fp, char *buf, int len, int *reach_end);
 int zmap_title_split(char *opstr, char **list);
+
+/* ################################################################## */
+/* SYSTEM */
+int zchroot_user(char *root_dir, char *user_name);
 
 /* ################################################################## */
 /* IO or FD's stat */
@@ -1088,7 +1092,6 @@ zmcot_t *zmcot_create(int element_size);
 void zmcot_free(zmcot_t * cot);
 void *zmcot_alloc_one(zmcot_t * cot);
 void zmcot_free_one(zmcot_t * cot, void *ptr);
-
 
 /* ################################################################## */
 /* EVENT AIO */
@@ -1392,13 +1395,13 @@ int zfile_get_contents(char *filename, void *data, int len);
 int zfile_get_contents_to_zbuf(char *filename, zbuf_t * bf);
 
 /* mmap reader */
-struct zmmap_reader {
+struct zmmap_reader_t {
     int fd;
     int len;
     char *data;
 };
-int zmmap_reader_init(zmmap_reader * reader, char *filename);
-int zmmap_reader_fini(zmmap_reader * reader);
+int zmmap_reader_init(zmmap_reader_t * reader, char *filename);
+int zmmap_reader_fini(zmmap_reader_t * reader);
 
 /* ################################################################## */
 /* general data stream macro */
@@ -1474,6 +1477,27 @@ extern char *zvar_charset_cjk[];
 #define zcharset_detect_japanese(d, l, ret) zcharset_detect(d, l, ret, zvar_charset_japanese)
 #define zcharset_detect_korean(d, l, ret) zcharset_detect(d, l, ret, zvar_charset_korean)
 #define zcharset_detect_cjk(d, l, ret) zcharset_detect(d, l, ret, zvar_charset_cjk)
+
+#ifdef LIBZC_USE_LIBICONV
+typeof(iconv) libiconv;
+typeof(iconv_open) libiconv_open;
+typeof(iconv_close) libiconv_close;
+
+iconv_t iconv_open(const char *tocode, const char *fromcode)
+{
+    return libiconv_open(tocode, fromcode);
+}
+
+size_t iconv(iconv_t cd, char * *inbuf, size_t * inbytesleft, char * *outbuf, size_t * outbytesleft)
+{
+    return libiconv(cd, inbuf, inbytesleft, outbuf, outbytesleft);
+}
+
+int iconv_close(iconv_t cd)
+{
+    return libiconv_close(cd);
+}
+#endif
 
 /* ################################################################## */
 /* MAIL PARSER */

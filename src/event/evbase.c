@@ -9,7 +9,6 @@
 #include "libzc.h"
 #include <arpa/inet.h>
 #include <openssl/ssl.h>
-#include <pthread.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #include <sys/un.h>
@@ -654,15 +653,18 @@ int zaio_attach(zaio_t * aio, zaio_cb_t callback)
 
     aio->callback = callback;
 
-    if(pthread_mutex_lock((pthread_mutex_t *)((eb)->locker))) {zfatal("pthread_mutex_lock:%m");}
+    if (pthread_mutex_lock((pthread_mutex_t *) ((eb)->locker))) {
+        zfatal("pthread_mutex_lock:%m");
+    }
     ZMLINK_APPEND(eb->extern_queue_head, eb->extern_queue_tail, aio, queue_prev, queue_next);
-    if(pthread_mutex_unlock((pthread_mutex_t *)((eb)->locker))) {zfatal("pthread_mutex_unlock:%m");}
+    if (pthread_mutex_unlock((pthread_mutex_t *) ((eb)->locker))) {
+        zfatal("pthread_mutex_unlock:%m");
+    }
 
     zevbase_notify(eb);
 
     return 0;
 }
-
 
 static inline int zaio_read___innner(zaio_t * aio, int max_len, zaio_cb_t callback, int timeout)
 {
@@ -719,7 +721,6 @@ int zaio_read(zaio_t * aio, int max_len, zaio_cb_t callback, int timeout)
     aio->callback = callback;
     aio->read_magic_len = max_len;
     aio->ret = timeout;
-
 
     lock_evbase(eb);
     ZMLINK_APPEND(eb->queue_head, eb->queue_tail, aio, queue_prev, queue_next);
@@ -1330,17 +1331,23 @@ static inline int zevbase_extern_queue_checker(zevbase_t * eb)
     }
 
     while (1) {
-        if(pthread_mutex_lock((pthread_mutex_t *)((eb)->locker))) {zfatal("pthread_mutex_lock:%m");}
+        if (pthread_mutex_lock((pthread_mutex_t *) ((eb)->locker))) {
+            zfatal("pthread_mutex_lock:%m");
+        }
         aio = eb->extern_queue_head;
         if (!aio) {
-            if(pthread_mutex_unlock((pthread_mutex_t *)((eb)->locker))) {zfatal("pthread_mutex_unlock:%m");}
+            if (pthread_mutex_unlock((pthread_mutex_t *) ((eb)->locker))) {
+                zfatal("pthread_mutex_unlock:%m");
+            }
             return 0;
         }
         ZMLINK_DETACH(eb->extern_queue_head, eb->extern_queue_tail, aio, queue_prev, queue_next);
-        if(pthread_mutex_unlock((pthread_mutex_t *)((eb)->locker))) {zfatal("pthread_mutex_unlock:%m");}
+        if (pthread_mutex_unlock((pthread_mutex_t *) ((eb)->locker))) {
+            zfatal("pthread_mutex_unlock:%m");
+        }
 
         if (aio->callback) {
-            (aio->callback)(aio);
+            (aio->callback) (aio);
         }
     }
 
@@ -1368,7 +1375,7 @@ static inline int zevbase_queue_checker(zevbase_t * eb)
 
         rw_type = aio->rw_type;
 
-        if(rw_type == ZAIO_CB_TYPE_READ) {
+        if (rw_type == ZAIO_CB_TYPE_READ) {
             zaio_read___innner(aio, aio->read_magic_len, aio->callback, aio->ret);
         } else if (rw_type == ZAIO_CB_TYPE_READ_N) {
             zaio_read_n___inner(aio, aio->read_magic_len, aio->callback, aio->ret);
@@ -1380,7 +1387,7 @@ static inline int zevbase_queue_checker(zevbase_t * eb)
             zaio_sleep___inner(aio, aio->callback, aio->ret);
         } else if (rw_type == ZAIO_CB_TYPE_SSL_INIT) {
             zaio_ssl_init___inner(aio, aio->callback, aio->ret);
-        } else  {
+        } else {
             zfatal("zevbase: unknown cb");
         }
     }

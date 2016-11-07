@@ -8,7 +8,6 @@
 
 #include "libzc.h"
 #include <signal.h>
-#include <pthread.h>
 
 int zvar_master_server_listen_fd;
 int zvar_master_server_listen_type;
@@ -218,7 +217,18 @@ int zmaster_server_main(int argc, char **argv)
         }
     }
 
+    zlog_set_level(zlog_parse_level(zconfig_get_str(zvar_config, "zlog_level", "info")));
+
     register_server(test_listen);
+
+    {
+        char *run_user = zconfig_get_str(zvar_config, "zrun_user", 0);
+        if (!ZEMPTY(run_user)) {
+            if (zchroot_user(0, run_user) < 0) {
+                zfatal("change user %s(%m)", run_user);
+            }
+        }
+    }
 
     if (zmaster_server_before_service) {
         zmaster_server_before_service();

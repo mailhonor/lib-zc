@@ -136,7 +136,7 @@ int zbase64_decode_to_df(void *src, int src_size, void *filter, int filter_type)
     break; \
 }
 
-retry:
+  retry:
     while (1) {
         ret = -1;
         ___get_next_ch(c0);

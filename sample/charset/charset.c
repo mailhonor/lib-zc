@@ -10,7 +10,7 @@
 
 void dorun(char *fn)
 {
-    zmmap_reader reader;
+    zmmap_reader_t reader;
     char charset[128];
 
     if (zmmap_reader_init(&reader, fn) < 0) {
@@ -27,8 +27,7 @@ void dorun(char *fn)
     zmmap_reader_fini(&reader);
 }
 
-
-zargv_t * file_list;
+zargv_t *file_list;
 
 int do_arg(int argc, char **argv)
 {
@@ -36,7 +35,7 @@ int do_arg(int argc, char **argv)
 
     optname = argv[0];
 
-    if(optname[0] != '-') {
+    if (optname[0] != '-') {
         zargv_add(file_list, optname);
         return 1;
     }
@@ -56,8 +55,7 @@ int main(int argc, char **argv)
     file_list = zargv_create(1);
     zparameter_run(argc - 1, argv + 1, do_arg);
 
-    ZARGV_WALK_BEGIN(file_list, fn)
-    {
+    ZARGV_WALK_BEGIN(file_list, fn) {
         dorun(fn);
     }
     ZARRAY_WALK_END;

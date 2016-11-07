@@ -11,7 +11,7 @@
 int main(int argc, char **argv)
 {
     zmail_parser_t *parser;
-    zmmap_reader reader;
+    zmmap_reader_t reader;
     char buf[1024];
     char *p;
     FILE *fp;

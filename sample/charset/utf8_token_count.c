@@ -29,7 +29,7 @@ static inline int utf8_len(char *buf, int len)
 
 int main(int argc, char **argv)
 {
-    zmmap_reader freader;
+    zmmap_reader_t freader;
     int count_list[1024000];
     int count_i = 0;
     int i;
@@ -63,13 +63,11 @@ int main(int argc, char **argv)
     ZGRID_WALK_BEGIN(ws, node) {
         int count = *((int *)zgrid_value(node));
         int i = 1;
-        while (i-1 < count)
-        {
+        while (i - 1 < count) {
             i = i * 2;
         }
-        if (i > 128)
-        {
-            i=128;
+        if (i > 128) {
+            i = 128;
         }
 
         printf("%s%c", zgrid_key(node), i);

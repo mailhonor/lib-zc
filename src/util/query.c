@@ -8,7 +8,6 @@
 
 #include "libzc.h"
 
-
 int zquery_line(char *connection, char *query, char *result, int timeout)
 {
     int fd;
@@ -40,11 +39,11 @@ int zquery_line(char *connection, char *query, char *result, int timeout)
         close(fd);
         return -1;
     }
-    if ((len>0) && (result[len-1] == '\n')) {
-        len --;
+    if ((len > 0) && (result[len - 1] == '\n')) {
+        len--;
     }
-    if ((len>0) && (result[len-1] == '\r')) {
-        len --;
+    if ((len > 0) && (result[len - 1] == '\r')) {
+        len--;
     }
     result[len] = 0;
 

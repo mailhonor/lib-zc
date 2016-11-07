@@ -2,22 +2,22 @@
  * ================================
  * eli960@163.com
  * http://www.mailhonor.com/
- * 2016-09-05
+ * 2016-09-14
  * ================================
  */
 
 #include "libzc.h"
 
-char *query = 0;
-char *map_string = 0;
+static char *query = 0;
+static char *map_string = 0;
 
-void USAGE(void)
+static void USAGE(void)
 {
     printf("USAGE: %s -q query -m map_string\n", zvar_progname);
     exit(1);
 }
 
-void do_search(void)
+static void do_search(void)
 {
     zmap_t *map;
     zbuf_t *result;
@@ -30,18 +30,16 @@ void do_search(void)
     result = zbuf_create(1000);
 
     ret = zmap_query(map, query, result, 10 * 1000);
-    if (ret == -2) {
-        printf("timeout\n");
-    } else if (ret == -1) {
-        printf("error: %s\n", ZBUF_DATA(result));
+    if (ret < 0) {
+        printf("ERR %s\n", ZBUF_DATA(result));
     } else if (ret == 0) {
-        printf("no result\n");
+        printf("NO\n");
     } else {
-        printf("result: %s\n", ZBUF_DATA(result));
+        printf("OK %s\n", ZBUF_DATA(result));
     }
 }
 
-int do_arg(int argc, char **argv)
+static int do_arg(int argc, char **argv)
 {
     char *optname;
 
@@ -66,13 +64,16 @@ int do_arg(int argc, char **argv)
     return zparameter_run_test(argc, argv);
 }
 
-int main(int argc, char **argv)
+int zmap_main(int argc, char **argv)
 {
     zvar_progname = argv[0];
     if (argc < 2) {
         USAGE();
     }
-    zparameter_run(argc - 1, argv + 1, do_arg);
+    if (zparameter_run(argc - 1, argv + 1, do_arg) < 0) {
+        printf("ERR parameter error, -h for help\r\n");
+        exit(1);
+    }
 
     do_search();
 

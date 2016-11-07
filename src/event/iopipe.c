@@ -9,7 +9,6 @@
 #include "libzc.h"
 #include <openssl/ssl.h>
 #include <sys/epoll.h>
-#include <pthread.h>
 #include <sys/eventfd.h>
 
 #define ZIOPIPE_RBUF_SIZE		4096

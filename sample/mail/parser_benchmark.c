@@ -53,7 +53,7 @@ int main(int argc, char **argv)
     zmail_parser_t *parser;
     char *eml_fn;
     int times, i;
-    zmmap_reader reader;
+    zmmap_reader_t reader;
     char *eml_data;
     long t;
     int size;

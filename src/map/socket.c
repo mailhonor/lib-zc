@@ -17,23 +17,23 @@ struct zmap_socket_t {
     zstream_t *fp;
 };
 
-static int _close(zmap_node_t *node)
+static int _close(zmap_node_t * node)
 {
     zmap_socket_t *mnode;
 
-    node->used --;
+    node->used--;
     if (node->used > 0) {
         return 0;
     }
-    
+
     zgrid_delete(zvar_map_node_list, node->title, 0);
 
-    mnode = (zmap_socket_t *)((char *)node + sizeof(zmap_node_t));
+    mnode = (zmap_socket_t *) ((char *)node + sizeof(zmap_node_t));
 
-    if(mnode->fp) {
+    if (mnode->fp) {
         zfclose_FD(mnode->fp);
     }
-    if(mnode->fd != -1) {
+    if (mnode->fd != -1) {
         close(mnode->fd);
     }
     zfree(mnode->url);
@@ -44,12 +44,12 @@ static int _close(zmap_node_t *node)
     return 0;
 }
 
-static int ___close(zmap_node_t *node)
+static int ___close(zmap_node_t * node)
 {
     zmap_socket_t *mnode;
-   
-    mnode = (zmap_socket_t *)((char *)node + sizeof(zmap_node_t));
-    if(mnode->fp) {
+
+    mnode = (zmap_socket_t *) ((char *)node + sizeof(zmap_node_t));
+    if (mnode->fp) {
         zfclose_FD(mnode->fp);
         mnode->fp = 0;
     }
@@ -61,11 +61,11 @@ static int ___close(zmap_node_t *node)
     return 0;
 }
 
-static int ___connect(zmap_node_t *node, int timeout)
+static int ___connect(zmap_node_t * node, int timeout)
 {
     zmap_socket_t *mnode;
-   
-    mnode = (zmap_socket_t *)((char *)node + sizeof(zmap_node_t));
+
+    mnode = (zmap_socket_t *) ((char *)node + sizeof(zmap_node_t));
     if (mnode->fp) {
         return 0;
     }
@@ -82,57 +82,57 @@ static int ___connect(zmap_node_t *node, int timeout)
     return 0;
 }
 
-static int ___query(zmap_node_t * node, char *query, zbuf_t *result, int timeout)
+static int ___query(zmap_node_t * node, char *query, zbuf_t * result, int timeout)
 {
     int i, ret, rend, len;
     long dtime = ztimeout_set(timeout);
     char buf[102400 + 10];
     zmap_socket_t *mnode;
-   
-    mnode = (zmap_socket_t *)((char *)node + sizeof(zmap_node_t));
 
-	for (i = 0; i < 2; i++) {
+    mnode = (zmap_socket_t *) ((char *)node + sizeof(zmap_node_t));
+
+    for (i = 0; i < 2; i++) {
         zbuf_reset(result);
-		if (i) {
-			___close(node);
-		}
+        if (i) {
+            ___close(node);
+        }
         ret = ___connect(node, ztimeout_left(dtime));
-		if (ret < 0) {
+        if (ret < 0) {
             zbuf_sprintf(result, "zmap_query: %s : connection error", node->title);
             return ret;
-		}
+        }
         zfset_timeout(mnode->fp, ztimeout_left(dtime));
-		sprintf(buf, "%s %s\r\n", mnode->module, query);
+        sprintf(buf, "%s %s\r\n", mnode->module, query);
         if ((zfwrite_n(mnode->fp, buf, strlen(buf)) < 0) || (ZFFLUSH(mnode->fp) < 0)) {
             zbuf_sprintf(result, "zmap_query: %s : write error", node->title);
             continue;
         }
 
         ret = zmap_read_line(mnode->fp, buf, 102400, &rend);
-		if ((ret < 3) || ((buf[0]!='5')&&(ret<4))) {
+        if ((ret < 3) || ((buf[0] != '5') && (ret < 4))) {
             zbuf_sprintf(result, "zmap_query: %s : read error", node->title);
-			continue;
-		}
+            continue;
+        }
         if (buf[0] == '5') {
             return 0;
         }
 
         if (buf[0] == '4') {
             zbuf_sprintf(result, "zmap_query: %s : read error, from server: %s", node->title, buf + 4);
-			continue;
+            continue;
         }
         if (buf[0] != '2') {
             zbuf_sprintf(result, "zmap_query: %s : read error: protocal: %s", buf);
-			continue;
+            continue;
         }
 
         if (!strncmp(buf, "200", 3)) {
-            zbuf_memcpy(result, buf+4, ret - 4);
+            zbuf_memcpy(result, buf + 4, ret - 4);
             zbuf_terminate(result);
             return 1;
         }
         if (!strncmp(buf, "210", 3)) {
-            len  = atoi(buf + 4);
+            len = atoi(buf + 4);
             if (len > 102400) {
                 zbuf_sprintf(result, "zmap_query: %s : read error, line too long: %d", node->title, len);
                 continue;
@@ -156,17 +156,17 @@ static int ___query(zmap_node_t * node, char *query, zbuf_t *result, int timeout
 
         zbuf_sprintf(result, "zmap_query: %s : read error: protocal: %s", buf);
         continue;
-	}
+    }
 
     return -1;
 }
 
-static int _query(zmap_node_t * node, char *query, zbuf_t *result, int timeout)
+static int _query(zmap_node_t * node, char *query, zbuf_t * result, int timeout)
 {
     zmap_socket_t *mnode;
     int ret;
 
-    mnode = (zmap_socket_t *)((char *)node + sizeof(zmap_node_t));
+    mnode = (zmap_socket_t *) ((char *)node + sizeof(zmap_node_t));
 
     if (zvar_map_pthread_mode) {
         zpthread_lock(&(mnode->locker));
@@ -183,7 +183,7 @@ zmap_node_t *zmap_node_create_socket(char *title, int flags)
 {
     zmap_node_t *rnode;
     zmap_socket_t *mnode;
-    char *args[10] = {"", "", ""};
+    char *args[10] = { "", "", "" };
     char opstr[1024];
 
     if (zgrid_lookup(zvar_map_node_list, title, (char **)&rnode)) {
@@ -191,14 +191,14 @@ zmap_node_t *zmap_node_create_socket(char *title, int flags)
         return rnode;
     }
 
-    rnode = (zmap_node_t *)zcalloc(1, sizeof(zmap_node_t) + sizeof(zmap_socket_t));
+    rnode = (zmap_node_t *) zcalloc(1, sizeof(zmap_node_t) + sizeof(zmap_socket_t));
     zgrid_add(zvar_map_node_list, title, rnode, 0);
     rnode->close = _close;
     rnode->query = _query;
     rnode->used = 1;
     rnode->title = zstrdup(title);
-    
-    mnode = (zmap_socket_t *)((char *)rnode + sizeof(zmap_node_t));
+
+    mnode = (zmap_socket_t *) ((char *)rnode + sizeof(zmap_node_t));
     mnode->fd = -1;
     mnode->fp = 0;
     pthread_mutex_init(&(mnode->locker), 0);

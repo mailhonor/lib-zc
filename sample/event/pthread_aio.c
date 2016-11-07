@@ -8,7 +8,6 @@
 
 #include "libzc.h"
 #include <time.h>
-#include <pthread.h>
 
 typedef int (*send_cb_t) (zaio_t *);
 typedef struct {

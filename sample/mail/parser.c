@@ -123,7 +123,7 @@ int main(int argc, char **argv)
 {
     zmail_parser_t *parser;
     char *eml_fn;
-    zmmap_reader reader;
+    zmmap_reader_t reader;
 
     eml_fn = argv[1];
     zmmap_reader_init(&reader, eml_fn);

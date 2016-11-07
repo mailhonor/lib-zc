@@ -17,7 +17,7 @@ void usage()
 int main(int argc, char **argv)
 {
     char *fn;
-    zmmap_reader reader;
+    zmmap_reader_t reader;
     char result_md5[16 + 1];
     char result_sha1[20 + 1];
     unsigned int result_crc32;

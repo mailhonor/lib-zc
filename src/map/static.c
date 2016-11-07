@@ -8,7 +8,7 @@
 
 #include "libzc.h"
 
-static int _close(zmap_node_t *node)
+static int _close(zmap_node_t * node)
 {
     zfree(node->title);
     zfree(node);
@@ -16,7 +16,7 @@ static int _close(zmap_node_t *node)
     return 0;
 }
 
-static int _query(zmap_node_t * node, char *query, zbuf_t *result, int timeout)
+static int _query(zmap_node_t * node, char *query, zbuf_t * result, int timeout)
 {
     zbuf_strcpy(result, (char *)(node->title));
     return 1;

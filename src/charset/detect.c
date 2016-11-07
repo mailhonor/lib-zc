@@ -78,18 +78,17 @@ static double ___chinese_score(char *str, int len, int omit_invalid_bytes_count)
         ulen = utf8_len(str + i, len - i);
         if ((ulen == 2) || (ulen == 3)) {
             score += ___chinese_word_score((unsigned char *)str + i, ulen);
-            count ++;
+            count++;
         }
         i += ulen;
     }
 
-    if (count == 0)
-    {
+    if (count == 0) {
         return 0;
     }
 
     zverbose("``````````````````````%ld, %d, %d", score, count, omit_invalid_bytes_count);
-    return ((double)score/(count+omit_invalid_bytes_count));
+    return ((double)score / (count + omit_invalid_bytes_count));
 }
 
 int zcharset_detect(char *data, int len, char *charset_ret, char **charset_list)
@@ -128,23 +127,21 @@ int zcharset_detect(char *data, int len, char *charset_ret, char **charset_list)
         omit_invalid_bytes_count = ic->omit_invalid_bytes_count;
         ZICONV_FREE(ic);
 
-        if(ret < 0) {
+        if (ret < 0) {
             continue;
         }
         if (omit_invalid_bytes_count > 5) {
             //continue;
         }
         result_score_list[i] = ___chinese_score(out_string, ret, omit_invalid_bytes_count);
-        if (max_score < result_score_list[i])
-        {
+        if (max_score < result_score_list[i]) {
             max_i = i;
             max_score = result_score_list[i];
         }
         zverbose("%s, %f", fromcode, result_score_list[i]);
     }
 
-    if (max_i == -1)
-    {
+    if (max_i == -1) {
         return -1;
     }
     strcpy(charset_ret, charset_list[max_i]);

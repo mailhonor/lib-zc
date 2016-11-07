@@ -8,7 +8,6 @@
 
 #include "libzc.h"
 #include <time.h>
-#include <pthread.h>
 
 static int after_write(zaio_t * aio);
 static int service_error(zaio_t * aio)

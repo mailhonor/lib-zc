@@ -13,7 +13,7 @@ int main(int argc, char **argv)
 {
     zmail_parser_t *parser;
     char *eml_fn;
-    zmmap_reader reader;
+    zmmap_reader_t reader;
     zbuf_t *result;
 
     result = zbuf_create(1024000);

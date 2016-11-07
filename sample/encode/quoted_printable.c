@@ -17,7 +17,7 @@ void usage(void)
 int main(int argc, char **argv)
 {
     char *fn = 0;
-    zmmap_reader reader;
+    zmmap_reader_t reader;
     char *result;
     int result_len;
 

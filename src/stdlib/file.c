@@ -63,7 +63,7 @@ int zfile_put_contents(char *filename, void *data, int len)
 
 int zfile_get_contents(char *filename, void *data, int len)
 {
-    zmmap_reader reader;
+    zmmap_reader_t reader;
 
     if (zmmap_reader_init(&reader, filename) < 0) {
         return -1;
@@ -79,7 +79,7 @@ int zfile_get_contents(char *filename, void *data, int len)
 
 int zfile_get_contents_to_zbuf(char *filename, zbuf_t * bf)
 {
-    zmmap_reader reader;
+    zmmap_reader_t reader;
 
     if (zmmap_reader_init(&reader, filename) < 0) {
         return -1;
@@ -92,7 +92,7 @@ int zfile_get_contents_to_zbuf(char *filename, zbuf_t * bf)
 
 /* ################################################################## */
 /* mmap ptr */
-int zmmap_reader_init(zmmap_reader * reader, char *filename)
+int zmmap_reader_init(zmmap_reader_t * reader, char *filename)
 {
     int fd;
     int size;
@@ -133,7 +133,7 @@ int zmmap_reader_init(zmmap_reader * reader, char *filename)
     return 0;
 }
 
-int zmmap_reader_fini(zmmap_reader * reader)
+int zmmap_reader_fini(zmmap_reader_t * reader)
 {
     munmap(reader->data, reader->len);
     close(reader->fd);

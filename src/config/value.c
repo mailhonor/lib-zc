@@ -78,7 +78,7 @@ long zconfig_get_size(zconfig_t * cf, char *name, long def, long min, long max)
     char *value;
 
     value = zconfig_get_str(cf, name, 0);
-    if (ZEMPTY(value)) {
+    if (!ZEMPTY(value)) {
         def = zstr_to_size(value);
     }
 
