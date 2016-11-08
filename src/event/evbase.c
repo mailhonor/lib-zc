@@ -422,7 +422,7 @@ int zaio_ssl_init(zaio_t * aio, zsslctx_t * ctx, zaio_cb_t callback, int timeout
     lock_evbase(eb);
     ZMLINK_APPEND(eb->queue_head, eb->queue_tail, aio, queue_prev, queue_next);
     unlock_evbase(eb);
-    if (!eb->locker_context) {
+    if (eb->locker_context) {
         zevbase_notify(eb);
     }
 
@@ -717,7 +717,7 @@ int zaio_read(zaio_t * aio, int max_len, zaio_cb_t callback, int timeout)
     lock_evbase(eb);
     ZMLINK_APPEND(eb->queue_head, eb->queue_tail, aio, queue_prev, queue_next);
     unlock_evbase(eb);
-    if (!eb->locker_context) {
+    if (eb->locker_context) {
         zevbase_notify(eb);
     }
 
@@ -781,7 +781,7 @@ int zaio_read_n(zaio_t * aio, int strict_len, zaio_cb_t callback, int timeout)
     lock_evbase(eb);
     ZMLINK_APPEND(eb->queue_head, eb->queue_tail, aio, queue_prev, queue_next);
     unlock_evbase(eb);
-    if (!eb->locker_context) {
+    if (eb->locker_context) {
         zevbase_notify(eb);
     }
 
@@ -884,7 +884,7 @@ int zaio_read_delimiter(zaio_t * aio, char delimiter, int max_len, zaio_cb_t cal
     lock_evbase(eb);
     ZMLINK_APPEND(eb->queue_head, eb->queue_tail, aio, queue_prev, queue_next);
     unlock_evbase(eb);
-    if (!eb->locker_context) {
+    if (eb->locker_context) {
         zevbase_notify(eb);
     }
 
@@ -944,7 +944,7 @@ int zaio_write_cache_flush(zaio_t * aio, zaio_cb_t callback, int timeout)
     lock_evbase(eb);
     ZMLINK_APPEND(eb->queue_head, eb->queue_tail, aio, queue_prev, queue_next);
     unlock_evbase(eb);
-    if (!eb->locker_context) {
+    if (eb->locker_context) {
         zevbase_notify(eb);
     }
 
@@ -976,7 +976,7 @@ int zaio_sleep(zaio_t * aio, zaio_cb_t callback, int timeout)
     lock_evbase(eb);
     ZMLINK_APPEND(eb->queue_head, eb->queue_tail, aio, queue_prev, queue_next);
     unlock_evbase(eb);
-    if (!eb->locker_context) {
+    if (eb->locker_context) {
         zevbase_notify(eb);
     }
 
