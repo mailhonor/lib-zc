@@ -12,7 +12,6 @@ typedef struct zmap_redis_t zmap_redis_t;
 struct zmap_redis_t {
     char *url;
     char *key;
-    pthread_mutex_t locker;
     int fd;
     zstream_t *fp;
 };
@@ -150,18 +149,9 @@ static int ___query(zmap_node_t * node, char *query, zbuf_t * result, int timeou
 
 static int _query(zmap_node_t * node, char *query, zbuf_t * result, int timeout)
 {
-    zmap_redis_t *mnode;
     int ret;
 
-    mnode = (zmap_redis_t *) ((char *)node + sizeof(zmap_node_t));
-
-    if (zvar_map_pthread_mode) {
-        zpthread_lock(&(mnode->locker));
-    }
     ret = ___query(node, query, result, timeout);
-    if (zvar_map_pthread_mode) {
-        zpthread_unlock(&(mnode->locker));
-    }
 
     return ret;
 }
@@ -188,7 +178,6 @@ zmap_node_t *zmap_node_create_redis(char *title, int flags)
     mnode = (zmap_redis_t *) ((char *)rnode + sizeof(zmap_node_t));
     mnode->fd = -1;
     mnode->fp = 0;
-    pthread_mutex_init(&(mnode->locker), 0);
 
     zstrncpy(opstr, title + 6, 1000);
     zmap_title_split(opstr, args);

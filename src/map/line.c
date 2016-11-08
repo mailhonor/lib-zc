@@ -11,7 +11,6 @@
 typedef struct zmap_line_t zmap_line_t;
 struct zmap_line_t {
     char *url;
-    pthread_mutex_t locker;
     int fd;
     zstream_t *fp;
 };
@@ -123,18 +122,9 @@ static int ___query(zmap_node_t * node, char *query, zbuf_t * result, int timeou
 
 static int _query(zmap_node_t * node, char *query, zbuf_t * result, int timeout)
 {
-    zmap_line_t *mnode;
     int ret;
 
-    mnode = (zmap_line_t *) ((char *)node + sizeof(zmap_node_t));
-
-    if (zvar_map_pthread_mode) {
-        zpthread_lock(&(mnode->locker));
-    }
     ret = ___query(node, query, result, timeout);
-    if (zvar_map_pthread_mode) {
-        zpthread_unlock(&(mnode->locker));
-    }
 
     return ret;
 }
@@ -159,7 +149,6 @@ zmap_node_t *zmap_node_create_line(char *title, int flags)
     mnode = (zmap_line_t *) ((char *)rnode + sizeof(zmap_node_t));
     mnode->fd = -1;
     mnode->fp = 0;
-    pthread_mutex_init(&(mnode->locker), 0);
 
     mnode->url = zstrdup(title + 5);
 

@@ -4,8 +4,8 @@ all: target
 
 ${shell touch depend}
 CC=gcc
-CFLAGS= -ggdb -Wall -I../../ -O3
-GLOBAL_LIBS= -lpthread -lrt -lssl -lcrypto
+CFLAGS= -ggdb -Wall -I../../ -O3 -g
+GLOBAL_LIBS=
 SRCS=${shell find -type f -name "*.c"}
 DEST := $(SRCS:.c=)
 

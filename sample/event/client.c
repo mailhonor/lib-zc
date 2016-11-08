@@ -7,6 +7,7 @@
  */
 
 #include "libzc.h"
+#include <pthread.h>
 #include <time.h>
 
 static int after_write(zaio_t * aio);

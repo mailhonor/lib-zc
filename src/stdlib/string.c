@@ -350,10 +350,10 @@ char *zstrncat(char *dest, char *src, int len)
         len = rlen;
     }
     if (len > 0) {
-        memcpy(dest+llen, src, len);
+        memcpy(dest + llen, src, len);
     }
 
-    dest[llen+len] = 0;
+    dest[llen + len] = 0;
 
     return dest;
 }

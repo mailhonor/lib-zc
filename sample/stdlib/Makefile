@@ -1,2 +1,2 @@
 include ../../makefiles/sample.makefile
-LIBS=
+LIBS= -lrt

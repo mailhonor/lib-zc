@@ -12,7 +12,6 @@ typedef struct zmap_postproxy_t zmap_postproxy_t;
 struct zmap_postproxy_t {
     char *url;
     char *postfix_dict;
-    pthread_mutex_t locker;
     int fd;
     zstream_t *fp;
 };
@@ -185,18 +184,9 @@ static int ___query(zmap_node_t * node, char *query, zbuf_t * result, int timeou
 
 static int _query(zmap_node_t * node, char *query, zbuf_t * result, int timeout)
 {
-    zmap_postproxy_t *mnode;
     int ret;
 
-    mnode = (zmap_postproxy_t *) ((char *)node + sizeof(zmap_node_t));
-
-    if (zvar_map_pthread_mode) {
-        zpthread_lock(&(mnode->locker));
-    }
     ret = ___query(node, query, result, timeout);
-    if (zvar_map_pthread_mode) {
-        zpthread_unlock(&(mnode->locker));
-    }
 
     return ret;
 }
@@ -223,7 +213,6 @@ zmap_node_t *zmap_node_create_postproxy(char *title, int flags)
     mnode = (zmap_postproxy_t *) ((char *)rnode + sizeof(zmap_node_t));
     mnode->fd = -1;
     mnode->fp = 0;
-    pthread_mutex_init(&(mnode->locker), 0);
 
     zstrncpy(opstr, title + 10, 1000);
     zmap_title_split(opstr, args);

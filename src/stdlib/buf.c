@@ -33,6 +33,10 @@ int zbuf_need_space(zbuf_t * bf, int need)
 {
     int left, incr;
 
+    if (bf->static_mode) {
+        return -1;
+    }
+
     left = bf->size - bf->len;
     incr = need - left;
     if (incr < 0) {
@@ -124,19 +128,14 @@ int zbuf_strcat(zbuf_t * bf, char *src)
 int zbuf_memcpy(zbuf_t * bf, void *src_raw, int len)
 {
     char *src = (char *)src_raw;
+
     ZBUF_RESET(bf);
     if (len < 1) {
         return ZBUF_LEN(bf);
     }
-    if (len > 1024) {
-        bf->len = len;
-        zbuf_need_space(bf, len);
-        memcpy(bf->data, src, len);
-    } else {
-        while (len--) {
-            ZBUF_PUT(bf, *src);
-            src++;
-        }
+    while (len--) {
+        ZBUF_PUT(bf, *src);
+        src++;
     }
     ZBUF_TERMINATE(bf);
 
@@ -146,18 +145,14 @@ int zbuf_memcpy(zbuf_t * bf, void *src_raw, int len)
 int zbuf_memcat(zbuf_t * bf, void *src_raw, int len)
 {
     char *src = (char *)src_raw;
+
     if (len < 1) {
+        ZBUF_TERMINATE(bf);
         return ZBUF_LEN(bf);
     }
-    if (len > 1024) {
-        zbuf_need_space(bf, len);
-        memcpy(bf->data + bf->len, src, len);
-        bf->len += len;
-    } else {
-        while (len--) {
-            ZBUF_PUT(bf, *src);
-            src++;
-        }
+    while (len--) {
+        ZBUF_PUT(bf, *src);
+        src++;
     }
     ZBUF_TERMINATE(bf);
 

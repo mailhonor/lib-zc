@@ -1,3 +1,3 @@
 include ../../makefiles/sample.makefile
-LIBS=
+LIBS= -lpthread -lssl
 DELS= s2_unixsocket pid.pid master.pid

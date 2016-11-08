@@ -78,7 +78,6 @@ static void zmaster_server_init(void)
 
     /* EVENT */
     zvar_evbase_init();
-    zevbase_single_mode();
 
     /* VAR */
     server_entry_list = zgrid_create();

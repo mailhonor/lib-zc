@@ -12,7 +12,6 @@
 #include <ctype.h>
 #include <errno.h>
 #include <iconv.h>
-#include <pthread.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -92,8 +91,8 @@ typedef struct ztnef_mime_t ztnef_mime_t;
 #define ZTYPE_ZBUF      0x2
 #define ZTYPE_FILE      0x3
 
-#define zpthread_lock(l)        {if(pthread_mutex_lock(l)){zfatal("mutex:%m");}}
-#define zpthread_unlock(l)      {if(pthread_mutex_unlock(l)){zfatal("mutex:%m");}}
+#define zpthread_lock(l)        {if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
+#define zpthread_unlock(l)      {if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
 
 /* ################################################################## */
 extern char *zvar_progname;
@@ -217,12 +216,12 @@ struct zbuf_t {
     char *data;
     int len:31;
     int size:31;
-    unsigned int stack_mode:1;
+    unsigned int static_mode:1;
 };
 #define ZBUF_DATA(b)    ((b)->data)
 #define ZBUF_LEN(b)     ((b)->len)
 #define ZBUF_PUT(b, c)  \
-    (((b)->len<(b)->size)?((int)((b)->data[(b)->len++]=(c))):(((b)->stack_mode?0:zbuf_put_do((b), (c)))))
+    (((b)->len<(b)->size)?((int)((b)->data[(b)->len++]=(c))):(((b)->static_mode?0:zbuf_put_do((b), (c)))))
 #define ZBUF_RESET(b)    ((b)->len=0)
 #define ZBUF_TERMINATE(b)    ((b)->data[(b)->len]=0)
 #define ZBUF_TRUNCATE(b, n)    ((((b)->len>n)&&(n>0))?((b)->len=n):0)
@@ -270,7 +269,7 @@ void zbuf_sizedata_escape_pp(zbuf_t * bf, char **pp, int len);
     char name ## _databuf_STACK [_size+1]; \
     name->size = _size; name->len = 0; \
     name->data = name ## _databuf_STACK; \
-    name->stack_mode = 1;
+    name->static_mode = 1;
 
 #define ZSTACK_BUF_FROM(name, _data, _size)    \
     zbuf_t name ## _ZSTACT_BUF_, *name; \
@@ -856,7 +855,6 @@ struct zmap_t {
     int node_len;
 };
 
-extern int zvar_map_pthread_mode;
 extern zgrid_t *zvar_map_node_list;
 int zmap_main(int argc, char **argv);
 zmap_t *zmap_create(char *map_string, int flags_unused);
@@ -1237,7 +1235,6 @@ typedef int (*zevbase_loop_t) (zevbase_t *);
 struct zevbase_t {
     int epoll_fd;
     struct epoll_event *epoll_event_list;
-    void *locker;
     zrbtree_t general_timer_tree;
     zrbtree_t aio_timer_tree;
     zev_t eventfd_event;
@@ -1250,10 +1247,15 @@ struct zevbase_t {
 
     zaio_t *extern_queue_head;
     zaio_t *extern_queue_tail;
+
+    void *locker_context;
+    void (*lock) (zevbase_t *);
+    void (*unlock) (zevbase_t *);
+    void (*locker_fini) (zevbase_t *);
 };
 void zvar_evbase_init(void);
 int zevbase_notify(zevbase_t * eb);
-void zevbase_single_mode(void);
+int zevbase_use_pthread(zevbase_t * eb);
 zevbase_t *zevbase_create(void);
 void zevbase_free(zevbase_t * eb);
 int zevbase_dispatch(zevbase_t * eb, long delay);

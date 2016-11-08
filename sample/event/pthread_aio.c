@@ -7,6 +7,7 @@
  */
 
 #include "libzc.h"
+#include <pthread.h>
 #include <time.h>
 
 typedef int (*send_cb_t) (zaio_t *);

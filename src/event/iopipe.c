@@ -8,10 +8,11 @@
 
 #include "libzc.h"
 #include <openssl/ssl.h>
+#include <pthread.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 
-#define ZIOPIPE_RBUF_SIZE		4096
+#define ZIOPIPE_RBUF_SIZE	    	4096
 #define ZIOPIPE_BASE_LOCK(iopb)		(pthread_mutex_lock(iopb->locker))
 #define ZIOPIPE_BASE_UNLOCK(iopb)	(pthread_mutex_unlock(iopb->locker))
 

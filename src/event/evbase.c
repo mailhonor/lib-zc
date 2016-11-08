@@ -24,12 +24,8 @@
 #define ZAIO_CB_TYPE_SLEEP                  0X31U
 #define ZAIO_CB_TYPE_SSL_INIT               0X41U
 
-static int ___single_mode = 0;
-
-#define lock_evbase(eb)     { if(!___single_mode) { \
-    if(pthread_mutex_lock((pthread_mutex_t *)((eb)->locker))) {zfatal("pthread_mutex_lock:%m");}} }
-#define unlock_evbase(eb)   { if(!___single_mode) { \
-    if(pthread_mutex_unlock((pthread_mutex_t *)((eb)->locker))) {zfatal("pthread_mutex_unlock:%m");}} }
+#define lock_evbase(eb)     { if((eb)->locker_context) { (eb)->lock(eb);} }
+#define unlock_evbase(eb)   { if((eb)->locker_context) { (eb)->unlock(eb);} }
 
 /* ################################################################## */
 /* ev/event/trigger */
@@ -426,7 +422,7 @@ int zaio_ssl_init(zaio_t * aio, zsslctx_t * ctx, zaio_cb_t callback, int timeout
     lock_evbase(eb);
     ZMLINK_APPEND(eb->queue_head, eb->queue_tail, aio, queue_prev, queue_next);
     unlock_evbase(eb);
-    if (!___single_mode) {
+    if (!eb->locker_context) {
         zevbase_notify(eb);
     }
 
@@ -653,13 +649,9 @@ int zaio_attach(zaio_t * aio, zaio_cb_t callback)
 
     aio->callback = callback;
 
-    if (pthread_mutex_lock((pthread_mutex_t *) ((eb)->locker))) {
-        zfatal("pthread_mutex_lock:%m");
-    }
+    lock_evbase(eb);
     ZMLINK_APPEND(eb->extern_queue_head, eb->extern_queue_tail, aio, queue_prev, queue_next);
-    if (pthread_mutex_unlock((pthread_mutex_t *) ((eb)->locker))) {
-        zfatal("pthread_mutex_unlock:%m");
-    }
+    unlock_evbase(eb);
 
     zevbase_notify(eb);
 
@@ -725,7 +717,7 @@ int zaio_read(zaio_t * aio, int max_len, zaio_cb_t callback, int timeout)
     lock_evbase(eb);
     ZMLINK_APPEND(eb->queue_head, eb->queue_tail, aio, queue_prev, queue_next);
     unlock_evbase(eb);
-    if (!___single_mode) {
+    if (!eb->locker_context) {
         zevbase_notify(eb);
     }
 
@@ -789,7 +781,7 @@ int zaio_read_n(zaio_t * aio, int strict_len, zaio_cb_t callback, int timeout)
     lock_evbase(eb);
     ZMLINK_APPEND(eb->queue_head, eb->queue_tail, aio, queue_prev, queue_next);
     unlock_evbase(eb);
-    if (!___single_mode) {
+    if (!eb->locker_context) {
         zevbase_notify(eb);
     }
 
@@ -892,7 +884,7 @@ int zaio_read_delimiter(zaio_t * aio, char delimiter, int max_len, zaio_cb_t cal
     lock_evbase(eb);
     ZMLINK_APPEND(eb->queue_head, eb->queue_tail, aio, queue_prev, queue_next);
     unlock_evbase(eb);
-    if (!___single_mode) {
+    if (!eb->locker_context) {
         zevbase_notify(eb);
     }
 
@@ -952,7 +944,7 @@ int zaio_write_cache_flush(zaio_t * aio, zaio_cb_t callback, int timeout)
     lock_evbase(eb);
     ZMLINK_APPEND(eb->queue_head, eb->queue_tail, aio, queue_prev, queue_next);
     unlock_evbase(eb);
-    if (!___single_mode) {
+    if (!eb->locker_context) {
         zevbase_notify(eb);
     }
 
@@ -984,7 +976,7 @@ int zaio_sleep(zaio_t * aio, zaio_cb_t callback, int timeout)
     lock_evbase(eb);
     ZMLINK_APPEND(eb->queue_head, eb->queue_tail, aio, queue_prev, queue_next);
     unlock_evbase(eb);
-    if (!___single_mode) {
+    if (!eb->locker_context) {
         zevbase_notify(eb);
     }
 
@@ -1292,10 +1284,7 @@ zevbase_t *zevbase_create(void)
     zevbase_t *eb;
     int eventfd_fd;
 
-    eb = (zevbase_t *) zcalloc(1, sizeof(zevbase_t) + sizeof(pthread_mutex_t));
-
-    eb->locker = (char *)eb + sizeof(zevbase_t);
-    pthread_mutex_init(eb->locker, 0);
+    eb = (zevbase_t *) zcalloc(1, sizeof(zevbase_t));
 
     eb->aio_rwbuf_mpool = zmcot_create(sizeof(zaio_rwbuf_t));
 
@@ -1317,11 +1306,6 @@ zevbase_t *zevbase_create(void)
     return eb;
 }
 
-void zevbase_single_mode(void)
-{
-    ___single_mode = 1;
-}
-
 static inline int zevbase_extern_queue_checker(zevbase_t * eb)
 {
     zaio_t *aio;
@@ -1331,20 +1315,14 @@ static inline int zevbase_extern_queue_checker(zevbase_t * eb)
     }
 
     while (1) {
-        if (pthread_mutex_lock((pthread_mutex_t *) ((eb)->locker))) {
-            zfatal("pthread_mutex_lock:%m");
-        }
+        lock_evbase(eb);
         aio = eb->extern_queue_head;
         if (!aio) {
-            if (pthread_mutex_unlock((pthread_mutex_t *) ((eb)->locker))) {
-                zfatal("pthread_mutex_unlock:%m");
-            }
+            unlock_evbase(eb);
             return 0;
         }
         ZMLINK_DETACH(eb->extern_queue_head, eb->extern_queue_tail, aio, queue_prev, queue_next);
-        if (pthread_mutex_unlock((pthread_mutex_t *) ((eb)->locker))) {
-            zfatal("pthread_mutex_unlock:%m");
-        }
+        unlock_evbase(eb);
 
         if (aio->callback) {
             (aio->callback) (aio);
@@ -1476,7 +1454,9 @@ void zevbase_free(zevbase_t * eb)
     close(eb->epoll_fd);
     zfree(eb->epoll_event_list);
     zmcot_free(eb->aio_rwbuf_mpool);
-    pthread_mutex_destroy((pthread_mutex_t *) (eb->locker));
+    if (eb->locker_context) {
+        eb->locker_fini(eb);
+    }
     zfree(eb);
 }
 

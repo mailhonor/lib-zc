@@ -7,6 +7,7 @@
  */
 
 #include "libzc.h"
+#include <pthread.h>
 #include <signal.h>
 
 typedef struct zalart_env_t zalart_env_t;

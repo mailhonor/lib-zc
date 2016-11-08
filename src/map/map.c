@@ -8,10 +8,7 @@
 
 #include "libzc.h"
 
-int zvar_map_pthread_mode = 1;
 zgrid_t *zvar_map_node_list = 0;
-
-pthread_mutex_t locker = PTHREAD_MUTEX_INITIALIZER;
 
 zmap_node_t *zmap_node_create_static(char *title, int flags);
 zmap_node_t *zmap_node_create_memcache(char *title, int flags);
@@ -74,9 +71,6 @@ zmap_t *zmap_create(char *map_string, int flags)
     args = zargv_create(1);
     zargv_split_append(args, map_string, ",\t ;");
 
-    if (zvar_map_pthread_mode) {
-        zpthread_lock(&locker);
-    }
     if (!zvar_map_node_list) {
         zvar_map_node_list = zgrid_create();
     }
@@ -85,9 +79,6 @@ zmap_t *zmap_create(char *map_string, int flags)
         zarray_add(node_list, node);
     }
     ZARGV_WALK_END;
-    if (zvar_map_pthread_mode) {
-        zpthread_unlock(&locker);
-    }
 
     rmap->node_len = ZARRAY_LEN(node_list);
     rmap->node_list = (zmap_node_t **) zcalloc(rmap->node_len + 1, sizeof(zmap_node_t *));
@@ -113,16 +104,11 @@ int zmap_close(zmap_t * zm)
         return 0;
     }
 
-    if (zvar_map_pthread_mode) {
-        zpthread_lock(&locker);
-    }
     for (i = 0; i < zm->node_len; i++) {
         node = zm->node_list[i];
         node->close(node);
     }
-    if (zvar_map_pthread_mode) {
-        zpthread_unlock(&locker);
-    }
+
     zfree(zm->node_list);
     zfree(zm);
 
