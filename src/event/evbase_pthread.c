@@ -16,7 +16,7 @@ static void ___lock(zevbase_t * eb)
 
 static void ___unlock(zevbase_t * eb)
 {
-    zpthread_lock((eb)->locker_context);
+    zpthread_unlock((eb)->locker_context);
 }
 
 static void ___fini(zevbase_t * eb)
