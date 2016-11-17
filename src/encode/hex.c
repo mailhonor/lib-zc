@@ -52,7 +52,7 @@ int zhex_decode(void *src, int src_size, void *dest)
     int len_result = 0;
     unsigned char h_l, h_r;
 
-    for (src_pos = 0; src_pos + 1 < src_size; src += 2) {
+    for (src_pos = 0; src_pos + 1 < src_size; src_pos += 2) {
         h_l = zhex_to_dec_list[src_c[src_pos] << 4];
         h_r = zhex_to_dec_list[src_c[src_pos + 1]];
 
