@@ -39,7 +39,7 @@ int zgetlocaladdr(zaddr_t * addr_list, int max_count)
     return ret_count;
 }
 
-int zgetaddr(char *host, zaddr_t * addr_list, int max_count)
+int zgetaddr(const char *host, zaddr_t * addr_list, int max_count)
 {
     struct in_addr **addr_list_tmp;
     struct hostent htt, *htr = 0;

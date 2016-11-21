@@ -8,11 +8,12 @@
 
 #include "libzc.h"
 
-int zmail_parser_iconv(zmail_parser_t * parser, char *from_charset, char *in, int in_len, void *filter, int filter_type)
+int zmail_parser_iconv(zmail_parser_t * parser, const char *from_charset, const char *in, int in_len, zbuf_t *dest)
 {
     int ret = -1;
     char f_charset[128];
     int i, times = 2;
+    int old_len = ZBUF_LEN(dest);
 
     if (ZEMPTY(from_charset)) {
         times = 1;
@@ -30,8 +31,7 @@ int zmail_parser_iconv(zmail_parser_t * parser, char *from_charset, char *in, in
         ic->to_charset = parser->default_dest_charset;
         ic->in_str = in;
         ic->in_len = in_len;
-        ic->filter = filter;
-        ic->filter_type = filter_type;
+        ic->dest = dest;
 
         ret = zcharset_iconv(ic);
         ZICONV_FREE(ic);
@@ -39,6 +39,11 @@ int zmail_parser_iconv(zmail_parser_t * parser, char *from_charset, char *in, in
             break;
         }
         from_charset = 0;
+        if (i == 0) {
+            zbuf_truncate(dest, old_len);
+        }
     }
+    ZBUF_TERMINATE(dest);
+
     return ret;
 }

@@ -1,4 +1,4 @@
-all: OBJS_DEST/depend
+all: build_depend
 
 SRCS=${shell find src -type f -name "*.c"}
 
@@ -14,3 +14,6 @@ OBJS_DEST/%.depend: %.c
 OBJS_DEST/depend: $(DEPENDS)
 	@cat $(DEPENDS) > OBJS_DEST/depend
 
+#build_depend:OBJS_DEST/depend
+build_depend:
+	@echo > OBJS_DEST/depend

@@ -26,17 +26,17 @@ static int ___ssl_write(zstream_t * fp, void *buf, int len, int timeout)
     return zssl_write(ssl, buf, len, timeout);
 }
 
-zstream_t *zfopen_SSL(zssl_t * ssl)
+zstream_t *zstream_open_SSL(zssl_t * ssl)
 {
     zstream_t *fp;
 
     fp = zstream_create(0);
-    zfset_ioctx(fp, ssl, ___ssl_read, ___ssl_write);
+    zstream_set_ioctx(fp, ssl, ___ssl_read, ___ssl_write);
 
     return fp;
 }
 
-zssl_t *zfclose_SSL(zstream_t * fp)
+zssl_t *zstream_close_SSL(zstream_t * fp)
 {
     return (zssl_t *) zstream_free(fp);
 }

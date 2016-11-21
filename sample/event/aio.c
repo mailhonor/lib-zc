@@ -85,7 +85,7 @@ static void welcome(zaio_t * aio)
 {
     time_t t = time(0);
 
-    zaio_printf(aio, "welcome aio: %s\n", ctime(&t));
+    zaio_printf_1024(aio, "welcome aio: %s\n", ctime(&t));
     zaio_write_cache_flush(aio, after_write, 1000);
 }
 

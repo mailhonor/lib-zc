@@ -109,6 +109,7 @@ int zmail_parser_header_value_decode(zmail_parser_t * parser, char *in_src, int 
     int plen;
     ZSTACK_BUF_FROM(result, out, ZMAIL_HEADER_LINE_MAX_LENGTH * 3 + 16);
     ZSTACK_BUF(bq_join, ZMAIL_HEADER_LINE_MAX_LENGTH * 3 + 16);
+    ZSTACK_BUF_FROM(zout_string, out_string, ZMAIL_HEADER_LINE_MAX_LENGTH * 3 + 16);
 
     *out = 0;
     if (in_len < 1) {
@@ -128,7 +129,8 @@ int zmail_parser_header_value_decode(zmail_parser_t * parser, char *in_src, int 
             continue;
         }
         if ((mt->encode != 'B') && (mt->encode != 'Q')) {
-            convert_len = zmail_parser_iconv(parser, 0, mt->data, mt->len, out_string, ZMAIL_HEADER_LINE_MAX_LENGTH * 3);
+            zbuf_reset(zout_string);
+            convert_len = zmail_parser_iconv(parser, 0, mt->data, mt->len, zout_string);
             if ((convert_len < 0) || (convert_len < 1)) {
                 continue;
             }
@@ -170,15 +172,17 @@ int zmail_parser_header_value_decode(zmail_parser_t * parser, char *in_src, int 
         plen = ZBUF_LEN(bq_join);
         p[plen] = 0;
         ret = 0;
+        zbuf_reset(zout_string);
         if (mt->encode == 'B') {
-            ret = zbase64_decode(p, plen, p, ZMAIL_HEADER_LINE_MAX_LENGTH);
+            ret = zbase64_decode(p, plen, zout_string);
         } else if (mt->encode == 'Q') {
-            ret = zqp_decode_2047(p, plen, p, ZMAIL_HEADER_LINE_MAX_LENGTH);
+            ret = zqp_decode_2047(p, plen, zout_string);
         }
 
         if (ret < 1) {
             continue;
         }
+        zbuf_memcpy(bq_join, ZBUF_DATA(zout_string), ZBUF_LEN(zout_string));
         convert_len = 0;
         {
             /* rfc 2231 */
@@ -187,7 +191,8 @@ int zmail_parser_header_value_decode(zmail_parser_t * parser, char *in_src, int 
                 *p = 0;
             }
         }
-        convert_len = zmail_parser_iconv(parser, mt->charset, p, ret, out_string, ZMAIL_HEADER_LINE_MAX_LENGTH * 3);
+        zbuf_reset(zout_string);
+        convert_len = zmail_parser_iconv(parser, mt->charset, ZBUF_DATA(bq_join), ZBUF_LEN(bq_join), zout_string);
         if ((convert_len < 0) || (convert_len < 1)) {
             continue;
         }

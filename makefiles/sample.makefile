@@ -15,7 +15,7 @@ $(DEST): ../../libzc.a $(MY_LIBS)
 
 dest: $(DEST)
 
-target: depend libwow
+target: depend libzc
 	make dest MY_LIBS="$(MY_LIBS)" LIBS="$(LIBS)"
 
 clean: CLEAN
@@ -24,9 +24,9 @@ clean: CLEAN
 CLEAN:
 	@rm -f *~; rm -f $(DEST); rm -f tags gmon.out depend;rm -rf $(DELS);
 
-libwow:
+libzc:
 	@echo build global lib
-	@cd ../../; make libwow
+	@cd ../../; make libzc
 
 tag tags:
 	cd ../../; make tags

@@ -111,14 +111,14 @@ char *ztoupper(char *str)
 /* ################################################################## */
 /* strtok */
 
-void zstrtok_init(zstrtok_t * k, char *sstr)
+void zstrtok_init(zstrtok_t * k, const char *sstr)
 {
-    k->sstr = sstr;
+    k->sstr = (char *)sstr;
     k->len = 0;
     k->str = NULL;
 }
 
-zstrtok_t *zstrtok(zstrtok_t * k, char *delim)
+zstrtok_t *zstrtok(zstrtok_t * k, const char *delim)
 {
     char *r;
 
@@ -172,7 +172,7 @@ char *ztrim(char *str)
 /* ################################################################## */
 /* unit convert */
 
-int zstr_to_bool(char *s, int def)
+int zstr_to_bool(const char *s, int def)
 {
     if (!strcmp(s, "1") || !strcasecmp(s, "y") || !strcasecmp(s, "yes") || !strcasecmp(s, "true"))
         return 1;
@@ -182,7 +182,7 @@ int zstr_to_bool(char *s, int def)
     return def;
 }
 
-long zstr_to_second(char *s)
+long zstr_to_second(const char *s)
 {
     char unit, junk;
     long intval;
@@ -211,7 +211,7 @@ long zstr_to_second(char *s)
     return 0;
 }
 
-long zstr_to_size(char *s)
+long zstr_to_size(const char *s)
 {
     char unit, junk;
     long intval;
@@ -238,41 +238,10 @@ long zstr_to_size(char *s)
     return 0;
 }
 
-/* ################################################################## */
-/* printf */
-
-int zsnprintf(char *str, int size, char *format, ...)
-{
-    va_list ap;
-    int i;
-
-    va_start(ap, format);
-    i = vsnprintf(str, size, format, ap);
-    va_end(ap);
-    if (i >= size) {
-        i = size - 1;
-    }
-
-    return i;
-}
-
-int zvsnprintf(char *str, int size, char *format, va_list ap)
-{
-    int i;
-
-    i = vsnprintf(str, size, format, ap);
-    if (i >= size) {
-        i = size - 1;
-    }
-
-    return i;
-}
-
-/* ################################################################## */
 /* find */
-char *zmemstr(void *s, char *needle, int len)
+char *zmemstr(const void *s, const char *needle, int len)
 {
-    char *src_c = s;
+    char *src_c = (char *)s;
     int nlen = strlen(needle);
     int i, j;
 
@@ -295,9 +264,9 @@ char *zmemstr(void *s, char *needle, int len)
     return 0;
 }
 
-char *zmemcasestr(void *s, char *needle, int len)
+char *zmemcasestr(const void *s, const char *needle, int len)
 {
-    char *src_c = s;
+    char *src_c = (char *)s;
     int nlen = strlen(needle);
     int i, j;
 
@@ -323,7 +292,7 @@ char *zmemcasestr(void *s, char *needle, int len)
 /* ################################################################## */
 /* strncpy, strncat */
 
-char *zstrncpy(char *dest, char *src, int len)
+char *zstrncpy(char *dest, const char *src, int len)
 {
     int llen;
 
@@ -340,7 +309,7 @@ char *zstrncpy(char *dest, char *src, int len)
     return dest;
 }
 
-char *zstrncat(char *dest, char *src, int len)
+char *zstrncat(char *dest, const char *src, int len)
 {
     int llen, rlen;
 

@@ -98,24 +98,23 @@ static void attachments_show(char *hid, zmail_mime_t ** mime, int count)
 static void text_show(zmail_parser_t * parser, char *hid, zmail_mime_t ** mime_limit, int count)
 {
     int i;
-    char *out = 0;;
     int len;
     zmail_mime_t *mime;
+    zbuf_t *zout;
 
+    zout = zbuf_create(10240);
     for (i = 0; i < count; i++) {
         mime = mime_limit[i];
         printf(fmt, hid, mime->type);
-        out = (char *)zmalloc(mime->body_len * 3 + 16);
-        len = zmail_parser_decode_text_mime_body(parser, mime, out, mime->body_len * 3 + 16);
+        zbuf_reset(zout);
+        len = zmail_parser_decode_text_mime_body(parser, mime, zout);
         if (len < 0) {
-            zfree(out);
             printf("found error\n");
             continue;
         }
-        out[len] = 0;
-        printf(fmt, "", out);
-        zfree(out);
+        printf(fmt, "", ZBUF_DATA(zout));
     }
+    zbuf_free(zout);
 }
 
 void zmail_parser_show(zmail_parser_t * parser)
@@ -316,14 +315,15 @@ static void ___json_add_mime(int first, char *key, zmail_mime_t * mime, zbuf_t *
 static void ___json_add_text(zmail_parser_t * parser, int first, char *key, zmail_mime_t ** mime_limit, int count, zbuf_t * result)
 {
     int i;
-    char *out = 0;;
     int len;
     zmail_mime_t *mime;
     int f2 = 1;
+    zbuf_t *zout;
 
     if (!count) {
         return;
     }
+    zout = zbuf_create(10240);
     if (!first) {
         zbuf_strcat(result, ",");
     }
@@ -337,21 +337,19 @@ static void ___json_add_text(zmail_parser_t * parser, int first, char *key, zmai
             zbuf_strcat(result, ",");
         }
         mime = mime_limit[i];
-        out = (char *)zmalloc(mime->body_len * 3 + 16);
-        len = zmail_parser_decode_text_mime_body(parser, mime, out, mime->body_len * 3 + 16);
+        zbuf_reset(zout);
+        len = zmail_parser_decode_text_mime_body(parser, mime, zout);
         if (len < 0) {
-            zfree(out);
             continue;
         }
-        out[len] = 0;
         zbuf_strcat(result, "{");
         ___json_add_kv(1, "type", mime->type, result);
-        ___json_add_kv(0, "content", out, result);
+        ___json_add_kv(0, "content", ZBUF_DATA(zout), result);
         zbuf_strcat(result, "}");
         f2 = 0;
-        zfree(out);
     }
     zbuf_strcat(result, "]");
+    zbuf_free(zout);
 }
 
 void zmail_parser_show_json(zmail_parser_t * parser, zbuf_t * result)

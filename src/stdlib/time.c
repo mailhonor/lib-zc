@@ -11,7 +11,7 @@
 #include <time.h>
 
 /* ################################################################## */
-/* timeout means 1000*second */
+/* timeout millisecond`*/
 long ztimeout_set(long timeout)
 {
     long r;

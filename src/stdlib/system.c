@@ -13,7 +13,7 @@
 #include <grp.h>
 
 #define ___zerror_20161028(fmt, args...)    {errno2=errno; zerror(fmt, ##args); errno=errno2;}
-int zchroot_user(char *root_dir, char *user_name)
+int zchroot_user(const char *root_dir, const char *user_name)
 {
     int errno2;
     struct passwd *pwd;

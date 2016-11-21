@@ -111,12 +111,12 @@ static void zmaster_remove_old_child(void)
     int fd;
 
     while ((idn = zigrid_first(status_fd_list))) {
-        status_fd = zigrid_key(idn);
-        ev = (zev_t *) ((char *)(zigrid_value(idn)) + sizeof(zmaster_status_fd_t));
+        status_fd = ZIGRID_KEY(idn);
+        ev = (zev_t *) ((char *)(ZIGRID_VALUE(idn)) + sizeof(zmaster_status_fd_t));
         fd = zev_get_fd(ev);
         zev_fini(ev);
         close(fd);
-        zfree(zigrid_value(idn));
+        zfree(ZIGRID_VALUE(idn));
         zigrid_delete_node(status_fd_list, idn);
         close(status_fd);
     }
@@ -135,7 +135,7 @@ static void zmaster_set_stop(void)
     zmaster_entry_t *men;
 
     ZGRID_WALK_BEGIN(server_entry_list, n) {
-        men = (zmaster_entry_t *) (zgrid_value(n));
+        men = (zmaster_entry_t *) (ZGRID_VALUE(n));
         men->stop = 1;
         zfree(men->config_fn);
         zfree(men->cmd);
@@ -244,7 +244,7 @@ static void zmaster_reload_config(void)
     }
     ZARRAY_WALK_END;
 
-    zarray_free(config_list, 0, 0);
+    zarray_free(config_list);
 }
 
 static void zmaster_release_unused_entry(void)
@@ -255,7 +255,7 @@ static void zmaster_release_unused_entry(void)
 
     list = zarray_create(1024);
     ZGRID_WALK_BEGIN(server_entry_list, n) {
-        men = (zmaster_entry_t *) (zgrid_value(n));
+        men = (zmaster_entry_t *) (ZGRID_VALUE(n));
         if (men->stop) {
             zarray_add(list, n);
         }
@@ -263,7 +263,7 @@ static void zmaster_release_unused_entry(void)
     ZGRID_WALK_END;
 
     ZARRAY_WALK_BEGIN(list, n) {
-        men = (zmaster_entry_t *) (zgrid_value(n));
+        men = (zmaster_entry_t *) (ZGRID_VALUE(n));
         if (men->listen_fd != -1) {
             close(men->listen_fd);
         }
@@ -272,10 +272,10 @@ static void zmaster_release_unused_entry(void)
     }
     ZARRAY_WALK_END;
 
-    zarray_free(list, 0, 0);
+    zarray_free(list);
 }
 
-static void zmaster_active_one_server(char *name, zmaster_entry_t * men)
+static void zmaster_active_one_server(const char *name, zmaster_entry_t * men)
 {
     if (men->listen_fd == -1) {
         int limit = men->proc_limit;
@@ -301,11 +301,11 @@ static void zmaster_active_server(void)
 {
     zgrid_node_t *n;
     zmaster_entry_t *men;
-    char *name;
+    const char *name;
 
     ZGRID_WALK_BEGIN(server_entry_list, n) {
-        men = (zmaster_entry_t *) (zgrid_value(n));
-        name = zgrid_key(n);
+        men = (zmaster_entry_t *) (ZGRID_VALUE(n));
+        name = ZGRID_KEY(n);
         zmaster_active_one_server(name, men);
     }
     ZGRID_WALK_END;

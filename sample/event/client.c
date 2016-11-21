@@ -27,7 +27,7 @@ static int service_error(zaio_t * aio)
 
 static int before_write(zaio_t * aio)
 {
-    zaio_printf(aio, "AAAAAAAAA:%lu\n", time(0));
+    zaio_printf_1024(aio, "AAAAAAAAA:%lu\n", time(0));
     zaio_write_cache_flush(aio, after_write, 1 * 1000);
 
     return 0;

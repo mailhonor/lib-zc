@@ -113,11 +113,6 @@ void myos_free(myos_t * myos)
     zfree(myos);
 }
 
-void walk_fn(zrbtree_node_t * n, void *ctx)
-{
-    zinfo("name: %s", ZCONTAINER_OF(n, account_t, rbnode)->name);
-}
-
 int main(int argc, char **argv)
 {
     myos_t *myos;
@@ -149,7 +144,6 @@ int main(int argc, char **argv)
     ZRBTREE_WALK_FORWARD_END;
 
     zinfo("test walk ...............");
-    zrbtree_walk(&(myos->account_rbtree), walk_fn, 0);
 
     myos_free(myos);
 

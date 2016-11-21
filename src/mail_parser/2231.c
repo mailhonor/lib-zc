@@ -8,14 +8,12 @@
 
 #include "libzc.h"
 
-int zmail_parser_2231_decode(zmail_parser_t * parser, char *in_src, int in_len, char *out)
+int zmail_parser_2231_decode(zmail_parser_t * parser, char *in_src, int in_len, zbuf_t *out)
 {
     int len, ret;
     char *pend = in_src + in_len;
     char *ps, *p;
     char charset[64];
-
-    *out = 0;
 
     if (in_len < 1) {
         return 0;
@@ -46,39 +44,38 @@ int zmail_parser_2231_decode(zmail_parser_t * parser, char *in_src, int in_len, 
             *p = 0;
         }
     }
-    ret = zmail_parser_iconv(parser, charset, p, pend - p, out, (pend - p) * 3);
+    ret = zmail_parser_iconv(parser, charset, p, pend - p, out);
     if (ret < 1) {
         return 0;
     }
-    out[ret] = 0;
-
     return ret;
   err:
 
-    memcpy(out, in_src, in_len);
-    out[in_len] = 0;
+    zbuf_memcat(out, in_src, in_len);
 
     return in_len;
 }
 
 int zmail_parser_2231_decode_dup(zmail_parser_t * parser, char *in_src, int in_len, char **out_src)
 {
-    char out[ZMAIL_HEADER_LINE_MAX_LENGTH * 3 + 16];
-    int ret;
+    zbuf_t *out;
+    int len;
 
     in_len = zmail_parser_header_value_trim(parser, in_src, in_len, &in_src);
     if (in_len < 1) {
-        *out_src = zmpool_memdup(parser->mpool, out, 0);
+        *out_src = zmpool_memdup(parser->mpool, "", 0);
         return 0;
     }
 
-    *out_src = 0;
     if (in_len > ZMAIL_HEADER_LINE_MAX_LENGTH) {
         in_len = ZMAIL_HEADER_LINE_MAX_LENGTH;
     }
-    ret = zmail_parser_2231_decode(parser, in_src, in_len, out);
+    out = zbuf_create(in_len * 3);
+    zmail_parser_2231_decode(parser, in_src, in_len, out);
 
-    *out_src = zmpool_memdup(parser->mpool, out, ret);
+    *out_src = zmpool_memdup(parser->mpool, ZBUF_DATA(out), ZBUF_LEN(out));
+    len = ZBUF_LEN(out);
+    zbuf_free(out);
 
-    return ret;
+    return len;
 }

@@ -23,21 +23,21 @@ void *zstream_free(zstream_t * fp)
 {
     void *r;
 
-    zfflush(fp);
+    zstream_flush(fp);
     r = fp->io_ctx;
     zfree(fp);
 
     return r;
 }
 
-void zfset_ioctx(zstream_t * fp, void *io_ctx, zstream_read_t read_fn, zstream_write_t write_fn)
+void zstream_set_ioctx(zstream_t * fp, void *io_ctx, zstream_read_t read_fn, zstream_write_t write_fn)
 {
     fp->io_ctx = io_ctx;
     fp->read_fn = read_fn;
     fp->write_fn = write_fn;
 }
 
-void zfset_timeout(zstream_t * fp, int timeout)
+void zstream_set_timeout(zstream_t * fp, int timeout)
 {
     fp->timeout = ztimeout_set(timeout);
 }
@@ -45,7 +45,7 @@ void zfset_timeout(zstream_t * fp, int timeout)
 /* ################################################################## */
 /* read */
 
-static int zfread_raw_data(zstream_t * fp)
+static int zstream_read_raw_data(zstream_t * fp)
 {
     int ret;
     long time_left;
@@ -54,12 +54,12 @@ static int zfread_raw_data(zstream_t * fp)
         return fp->read_buf_p2 - fp->read_buf_p1;
     }
 
-    ZFFLUSH(fp);
+    ZSTREAM_FLUSH(fp);
 
-    if (ZFERROR(fp)) {
+    if (ZSTREAM_ERROR(fp)) {
         return -1;
     }
-    if (ZFEOF(fp)) {
+    if (ZSTREAM_EOF(fp)) {
         return 0;
     }
 
@@ -69,7 +69,7 @@ static int zfread_raw_data(zstream_t * fp)
         return -1;
     }
     fp->read_buf_p1 = fp->read_buf_p2 = 0;
-    ret = fp->read_fn(fp, fp->read_buf, ZFILE_RBUF_SIZE, time_left);
+    ret = fp->read_fn(fp, fp->read_buf, ZSTREAM_RBUF_SIZE, time_left);
     if (ret == 0) {
         fp->eof = 1;
         return 0;
@@ -83,10 +83,10 @@ static int zfread_raw_data(zstream_t * fp)
     return ret;
 }
 
-int zfgetchar(zstream_t * fp)
+int zstream_getchar(zstream_t * fp)
 {
     if (fp->read_buf_p2 <= fp->read_buf_p1) {
-        if (zfread_raw_data(fp) < 0) {
+        if (zstream_read_raw_data(fp) < 0) {
             return -1;
         }
     }
@@ -94,16 +94,16 @@ int zfgetchar(zstream_t * fp)
         return -1;
     }
 
-    return ZFGETCHAR(fp);
+    return ZSTREAM_GETCHAR(fp);
 }
 
-int zfread(zstream_t * fp, void *buf, int len)
+int zstream_read(zstream_t * fp, void *buf, int len)
 {
     char *p, *p2;
     int i, ret, rlen;
 
     if (fp->read_buf_p1 >= fp->read_buf_p2) {
-        ret = zfread_raw_data(fp);
+        ret = zstream_read_raw_data(fp);
         if (ret < 0) {
             return -1;
         } else if (ret == 0) {
@@ -127,14 +127,14 @@ int zfread(zstream_t * fp, void *buf, int len)
     return len;
 }
 
-int zfread_n(zstream_t * fp, void *buf, int len)
+int zstream_read_n(zstream_t * fp, void *buf, int len)
 {
     char *p;
     int i, ch;
 
     p = (char *)buf;
     for (i = 0; i < len; i++) {
-        ch = ZFGETCHAR(fp);
+        ch = ZSTREAM_GETCHAR(fp);
         if (ch < 0) {
             return -1;
         }
@@ -144,7 +144,7 @@ int zfread_n(zstream_t * fp, void *buf, int len)
     return len;
 }
 
-int zfread_delimiter(zstream_t * fp, void *buf, int len, char delimiter)
+int zstream_read_delimiter(zstream_t * fp, void *buf, int len, int delimiter)
 {
     char *p;
     int i, ch;
@@ -152,7 +152,7 @@ int zfread_delimiter(zstream_t * fp, void *buf, int len, char delimiter)
     i = -1;
     p = (char *)buf;
     for (i = 0; i < len; i++) {
-        ch = ZFGETCHAR(fp);
+        ch = ZSTREAM_GETCHAR(fp);
         if (ch < 0) {
             return -1;
         }
@@ -165,28 +165,29 @@ int zfread_delimiter(zstream_t * fp, void *buf, int len, char delimiter)
     return len;
 }
 
-int zfgets_n(zstream_t * fp, zbuf_t * bf, int len)
+int zstream_gets_n(zstream_t * fp, zbuf_t * bf, int len)
 {
     int i, ch;
 
     for (i = 0; i < len; i++) {
-        ch = ZFGETCHAR(fp);
+        ch = ZSTREAM_GETCHAR(fp);
         if (ch < 0) {
             return -1;
         }
         ZBUF_PUT(bf, ch);
     }
+    ZBUF_TERMINATE(bf);
 
     return len;
 }
 
-int zfgets_delimiter(zstream_t * fp, zbuf_t * bf, char delimiter)
+int zstream_gets_delimiter(zstream_t * fp, zbuf_t * bf, int delimiter)
 {
     int count, ch;
 
     count = 0;
     while (1) {
-        ch = ZFGETCHAR(fp);
+        ch = ZSTREAM_GETCHAR(fp);
         if (ch < 0) {
             return -1;
         }
@@ -196,6 +197,7 @@ int zfgets_delimiter(zstream_t * fp, zbuf_t * bf, char delimiter)
             return count;
         }
     }
+    ZBUF_TERMINATE(bf);
 
     return -1;
 }
@@ -203,7 +205,7 @@ int zfgets_delimiter(zstream_t * fp, zbuf_t * bf, char delimiter)
 /* ################################################################## */
 /* write */
 
-int zfflush(zstream_t * fp)
+int zstream_flush(zstream_t * fp)
 {
     int ret;
     long time_left;
@@ -236,13 +238,13 @@ int zfflush(zstream_t * fp)
     return data_len;
 }
 
-void zfputchar(zstream_t * fp, int ch)
+void zstream_putchar(zstream_t * fp, int ch)
 {
-    ZFFLUSH(fp);
-    ZFPUTCHAR(fp, ch);
+    ZSTREAM_FLUSH(fp);
+    ZSTREAM_PUTCHAR(fp, ch);
 }
 
-int zfwrite_n(zstream_t * fp, void *buf, int len)
+int zstream_write_n(zstream_t * fp, void *buf, int len)
 {
     int ch;
     char *p;
@@ -252,8 +254,8 @@ int zfwrite_n(zstream_t * fp, void *buf, int len)
     p = (char *)buf;
     while ((wlen--) > 0) {
         ch = *p;
-        ZFPUTCHAR(fp, ch);
-        if (ZFEXCEPTION(fp)) {
+        ZSTREAM_PUTCHAR(fp, ch);
+        if (ZSTREAM_EXCEPTION(fp)) {
             return -1;
         }
         p++;
@@ -262,14 +264,14 @@ int zfwrite_n(zstream_t * fp, void *buf, int len)
     return (len);
 }
 
-int zfputs(zstream_t * fp, char *s)
+int zstream_puts(zstream_t * fp, const char *s)
 {
     int i, ch;
 
     i = 0;
     while ((ch = (*s++))) {
-        ZFPUTCHAR(fp, ch);
-        if (ZFEXCEPTION(fp)) {
+        ZSTREAM_PUTCHAR(fp, ch);
+        if (ZSTREAM_EXCEPTION(fp)) {
             return -1;
         }
         i++;
@@ -278,18 +280,18 @@ int zfputs(zstream_t * fp, char *s)
     return i;
 }
 
-int zfprintf(zstream_t * fp, char *format, ...)
+int zstream_printf_1024(zstream_t * fp, const char *format, ...)
 {
-    char buf[1024000 + 16];
+    char buf[1024+1];
     va_list ap;
-    int i;
+    int len;
 
     va_start(ap, format);
-    i = zvsnprintf(buf, 1024000, format, ap);
+    len = zvsnprintf(buf, 1024, format, ap);
     va_end(ap);
-    zfwrite_n(fp, buf, i);
+    zstream_write_n(fp, buf, len);
 
-    return i;
+    return len;
 }
 
 /* ################################################################## */
@@ -297,37 +299,40 @@ int zfprintf(zstream_t * fp, char *format, ...)
 
 static int ___io_read(zstream_t * fp, void *buf, int len, int timeout)
 {
-    int fd;
+    ztype_convert_t ct;
 
-    fd = ZVOID_PTR_TO_INT((fp->io_ctx));
+    ct.ptr_void = fp->io_ctx;
 
-    return ztimed_read(fd, buf, len, timeout);
+    return ztimed_read(ct.i_int, buf, len, timeout);
 }
 
 static int ___io_write(zstream_t * fp, void *buf, int len, int timeout)
 {
-    int fd;
+    ztype_convert_t ct;
 
-    fd = ZVOID_PTR_TO_INT((fp->io_ctx));
+    ct.ptr_void = fp->io_ctx;
 
-    return ztimed_write(fd, buf, len, timeout);
+    return ztimed_write(ct.i_int, buf, len, timeout);
 }
 
-zstream_t *zfopen_FD(int fd)
+zstream_t *zstream_open_FD(int fd)
 {
     zstream_t *fp;
+    ztype_convert_t ct;
+
+    ct.i_int = fd;
 
     fp = zstream_create(0);
-    zfset_ioctx(fp, ZINT_TO_VOID_PTR(fd), ___io_read, ___io_write);
+    zstream_set_ioctx(fp, ct.ptr_void, ___io_read, ___io_write);
 
     return fp;
 }
 
-int zfclose_FD(zstream_t * fp)
+int zstream_close_FD(zstream_t * fp)
 {
-    void *r;
+    ztype_convert_t ct;
 
-    r = zstream_free(fp);
+    ct.ptr_void = zstream_free(fp);
 
-    return ZVOID_PTR_TO_INT(r);
+    return ct.i_int;
 }

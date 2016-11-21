@@ -25,7 +25,7 @@ static int server_error(zev_t * ev)
     zev_fini(ev);
     zfree(ev);
     if (fp) {
-        zfclose_FD(fp);
+        zstream_close_FD(fp);
     }
     close(fd);
 
@@ -47,7 +47,7 @@ static int server_read(zev_t * ev)
     }
 
     fp = (zstream_t *) zev_get_context(ev);
-    ret = zfread_line(fp, buf, 1024);
+    ret = zstream_read_line(fp, buf, 1024);
 
     if (ret < 0) {
         server_error(ev);
@@ -55,7 +55,7 @@ static int server_read(zev_t * ev)
     }
     buf[ret] = 0;
     if (!strncmp(buf, "exit", 4)) {
-        zfclose_FD(fp);
+        zstream_close_FD(fp);
         zev_fini(ev);
         zfree(ev);
         close(fd);
@@ -71,8 +71,8 @@ static int server_read(zev_t * ev)
         *p = 0;
     }
 
-    zfprintf(fp, "your input: %s\n", buf);
-    ret = ZFFLUSH(fp);
+    zstream_printf_1024(fp, "your input: %s\n", buf);
+    ret = ZSTREAM_FLUSH(fp);
     if (ret < 0) {
         server_error(ev);
         return -1;
@@ -94,10 +94,10 @@ static int server_welcome(zev_t * ev)
         return 1;
     }
 
-    fp = zfopen_FD(zev_get_fd(ev));
+    fp = zstream_open_FD(zev_get_fd(ev));
     time_t t = time(0);
-    zfprintf(fp, "welcome ev: %s\n", ctime(&t));
-    ret = ZFFLUSH(fp);
+    zstream_printf_1024(fp, "welcome ev: %s\n", ctime(&t));
+    ret = ZSTREAM_FLUSH(fp);
     if (ret < 0) {
         server_error(ev);
         return 1;

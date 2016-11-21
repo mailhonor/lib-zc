@@ -1,5 +1,5 @@
 
-all: libwow sample_part
+all: libzc sample_part
 
 .PHONY: test sample
 
@@ -7,13 +7,13 @@ DIRS=${shell find src -type d}
 DIRS_DEST = $(patsubst %, OBJS_DEST/%, $(DIRS))
 ${shell mkdir -p $(DIRS_DEST)}
 
-libwow lib wow: depend
+libzc lib: depend
 	make -f makefiles/lib.makefile
 
-test sample: libwow
+test sample: libzc
 	make -f makefiles/sample_list.makefile samples=ALL
 
-sample_part: libwow
+sample_part: libzc
 	@touch plist
 	make -f makefiles/sample_list.makefile samples=PART
 

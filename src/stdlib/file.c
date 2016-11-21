@@ -12,7 +12,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-int zfile_get_size(char *filename)
+int zfile_get_size(const char *filename)
 {
     struct stat st;
 
@@ -24,7 +24,7 @@ int zfile_get_size(char *filename)
 
 /* ################################################################## */
 /* file get/put contents */
-int zfile_put_contents(char *filename, void *data, int len)
+int zfile_put_contents(const char *filename, const void *data, int len)
 {
     int fd;
     int ret;
@@ -32,7 +32,6 @@ int zfile_put_contents(char *filename, void *data, int len)
     int errno2;
 
     while ((fd = open(filename, O_CREAT | O_RDWR | O_TRUNC, 0777)) == -1 && errno == EINTR) {
-        zmsleep(1);
         continue;
     }
 
@@ -48,7 +47,6 @@ int zfile_put_contents(char *filename, void *data, int len)
         }
         errno2 = errno;
         if (errno == EINTR) {
-            zmsleep(1);
             continue;
         }
         close(fd);
@@ -61,23 +59,58 @@ int zfile_put_contents(char *filename, void *data, int len)
     return 0;
 }
 
-int zfile_get_contents(char *filename, void *data, int len)
-{
-    zmmap_reader_t reader;
 
-    if (zmmap_reader_init(&reader, filename) < 0) {
+int zfile_get_contents(const char *filename, zbuf_t * bf)
+{
+    int fd;
+    struct stat st;
+    int errno2;
+    int true_len, rlen;
+    int ret;
+
+    while ((fd = open(filename, O_RDONLY)) == -1 && errno == EINTR) {
+        continue;
+    }
+    if (fd == -1) {
         return -1;
     }
-    if (len > reader.len) {
-        len = reader.len;
+    if (fstat(fd, &st) == -1) {
+        errno2 = errno;
+        close(fd);
+        errno = errno2;
+        return -1;
     }
-    memcpy(data, reader.data, len);
-    zmmap_reader_fini(&reader);
+    true_len = st.st_size;
+    zbuf_need_space(bf, true_len);
+    if (true_len > ZBUF_LEFT(bf)) {
+        true_len = ZBUF_LEFT(bf);
+    }
+    char *ps = ZBUF_DATA(bf); 
+    rlen = 0;
+    while(rlen < true_len) {
+        ret = read(fd, ps + rlen, true_len - rlen);
+        if (ret < 0) {
+            errno2 = errno;
+            if (errno == EINTR) {
+                continue;
+            }
+            close(fd);
+            errno = errno2;
+            return -1;
+        }
+        if (ret == 0) {
+            break;
+        }
+        rlen += ret;
+    }
+    close(fd);
+    ZBUF_SET_LEN(bf, ZBUF_LEN(bf) + rlen);
+    ZBUF_TERMINATE(bf);
 
-    return len;
+    return rlen;
 }
 
-int zfile_get_contents_to_zbuf(char *filename, zbuf_t * bf)
+int zfile_get_contents_mmap(const char *filename, zbuf_t * bf)
 {
     zmmap_reader_t reader;
 
@@ -92,7 +125,7 @@ int zfile_get_contents_to_zbuf(char *filename, zbuf_t * bf)
 
 /* ################################################################## */
 /* mmap ptr */
-int zmmap_reader_init(zmmap_reader_t * reader, char *filename)
+int zmmap_reader_init(zmmap_reader_t * reader, const char *filename)
 {
     int fd;
     int size;
@@ -105,7 +138,6 @@ int zmmap_reader_init(zmmap_reader_t * reader, char *filename)
     reader->len = 0;
 
     while ((fd = open(filename, O_RDONLY)) == -1 && errno == EINTR) {
-        zmsleep(1);
         continue;
     }
     if (fd == -1) {

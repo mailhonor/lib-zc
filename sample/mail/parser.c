@@ -80,22 +80,22 @@ static int save_att(zmail_parser_t * parser, zmail_mime_t * mime, int i)
             p++;
         }
     }
-    char *out;
+    zbuf_t *out;
     int ret;
-    out = (char *)zmalloc(mime->body_len * 3 + 16);
-    ret = zmail_parser_decode_mime_body(parser, mime, out, mime->body_len * 3 + 16);
+    out = zbuf_create(mime->body_len * 2);
+    ret = zmail_parser_decode_mime_body(parser, mime, out);
 
     printf("save attachment %s\n", tmpname);
     if (ret < 0) {
         printf("mail_parser_decode_mime_body: error\n");
-    } else if (zfile_put_contents(tmpname, out, ret) < 0) {
+    } else if (zfile_put_contents(tmpname, ZBUF_DATA(out), ret) < 0) {
         printf("mail_parser_decode_mime_body: save %m\n");
     }
 
     if (mime->is_tnef) {
         int j = 0;
         ztnef_parser_t *tnef_parser;
-        tnef_parser = ztnef_parser_create(out, ret);
+        tnef_parser = ztnef_parser_create(ZBUF_DATA(out), ret);
 
         if (ztnef_parser_run(tnef_parser) < 0) {
             printf("can not decode tnef");
@@ -105,7 +105,7 @@ static int save_att(zmail_parser_t * parser, zmail_mime_t * mime, int i)
         }
         ztnef_parser_free(tnef_parser);
     }
-    zfree(out);
+    zbuf_free(out);
     return 0;
 }
 

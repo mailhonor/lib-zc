@@ -22,8 +22,7 @@ int main(int argc, char **argv)
     char result_sha1[20 + 1];
     unsigned int result_crc32;
     unsigned long result_crc64;
-    char p_buf[64];
-    int plen;
+    ZSTACK_BUF(p_buf, 1024);
 
     zvar_progname = argv[0];
     if (argc != 2) {
@@ -37,24 +36,24 @@ int main(int argc, char **argv)
     }
 
     result_crc32 = zcrc32(reader.data, reader.len, 0);
-    plen = zhex_encode(&result_crc32, (int)(sizeof(unsigned int)), p_buf);
-    p_buf[plen] = 0;
-    printf("crc32\t: %s\n", p_buf);
+    ZBUF_RESET(p_buf);
+    zhex_encode(&result_crc32, (int)(sizeof(unsigned int)), p_buf);
+    printf("crc32\t: %s\n", ZBUF_DATA(p_buf));
 
     result_crc64 = zcrc64(reader.data, reader.len, 0);
-    plen = zhex_encode(&result_crc64, (int)(sizeof(unsigned long)), p_buf);
-    p_buf[plen] = 0;
-    printf("crc64\t: %s\n", p_buf);
+    ZBUF_RESET(p_buf);
+    zhex_encode(&result_crc64, (int)(sizeof(unsigned long)), p_buf);
+    printf("crc64\t: %s\n", ZBUF_DATA(p_buf));
 
     zmd5(reader.data, reader.len, result_md5);
-    plen = zhex_encode(result_md5, 16, p_buf);
-    p_buf[plen] = 0;
-    printf("md5\t: %s\n", p_buf);
+    ZBUF_RESET(p_buf);
+    zhex_encode(result_md5, 16, p_buf);
+    printf("md5\t: %s\n", ZBUF_DATA(p_buf));
 
     zsha1(reader.data, reader.len, result_sha1);
-    plen = zhex_encode(result_sha1, 20, p_buf);
-    p_buf[plen] = 0;
-    printf("sha1\t: %s\n", p_buf);
+    ZBUF_RESET(p_buf);
+    zhex_encode(result_sha1, 20, p_buf);
+    printf("sha1\t: %s\n", ZBUF_DATA(p_buf));
 
     zmmap_reader_fini(&reader);
 

@@ -21,7 +21,7 @@
 #include <unistd.h>
 
 /* ################################################################## */
-typedef struct zring_t zring_t;
+typedef union ztype_convert_t ztype_convert_t;
 typedef struct zlink_node_t zlink_node_t;
 typedef struct zlink_t zlink_t;
 typedef struct zhtable_node_t zhtable_node_t;
@@ -46,9 +46,6 @@ typedef struct zgrid_node_t zgrid_node_t;
 typedef struct zigrid_t zigrid_t;
 typedef struct zigrid_node_t zigrid_node_t;
 #define zconfig_t zdict_t
-typedef struct zkvlist_t zkvlist_t;
-typedef struct zmap_t zmap_t;
-typedef struct zmap_node_t zmap_node_t;
 typedef struct zaddr_t zaddr_t;
 typedef struct zsslctx_t zsslctx_t;
 typedef struct zssl_t zssl_t;
@@ -64,6 +61,7 @@ typedef struct zmd5_t zmd5_t;
 typedef struct zsha1_t zsha1_t;
 typedef struct zcharset_iconv_t zcharset_iconv_t;
 typedef struct zmail_parser_t zmail_parser_t;
+typedef struct zfinder_t zfinder_t;
 typedef struct zmail_mime_t zmail_mime_t;
 typedef struct zmail_addr_t zmail_addr_t;
 typedef struct zmail_header_line_t zmail_header_line_t;
@@ -74,35 +72,31 @@ typedef struct ztnef_mime_t ztnef_mime_t;
 /* ################################################################## */
 #define ZFREE(a)                     (zfree(a),a=0)
 #define ZEMPTY(str)                  (!(str)||!(*(str)))
-#define ZCHAR_PTR_TO_INT(ptr)        ((int) (long) (ptr))
-#define ZINT_TO_CHAR_PTR(val)        ((char *) (long) (val))
-#define ZVOID_PTR_TO_INT(ptr)        ((int) (long) (ptr))
-#define ZINT_TO_VOID_PTR(val)        ((void *) (long) (val))
 #define ZCONTAINER_OF(ptr,app_type,member)          \
     ((app_type *) (((char *) (ptr)) - offsetof(app_type,member)))
-#define ZERRORMSG_LEN                1024
+
+union ztype_convert_t {
+    const void *ptr_const_void;
+    const char *ptr_const_char;
+    void * ptr_void;
+    char * ptr_char;
+    long i_long;
+    int i_int;
+};
+#define ZCHAR_PTR_TO_INT(_ptr, _int)    {ztype_convert_t _ct;_ct.ptr_char=(_ptr);_int=_ct.i_int;}
+#define ZINT_TO_CHAR_PTR(_int, _ptr)    {ztype_convert_t _ct;_ct.i_int=(_int);_ptr=_ct.ptr_char;}
 
 #define ZSTR_N_CASE_EQ(a, b, n)       ((zchar_toupper(a[0]) == zchar_toupper(b[0])) && (!strncasecmp(a,b,n)))
 #define ZSTR_CASE_EQ(a, b)            ((zchar_toupper(a[0]) == zchar_toupper(b[0])) && (!strcasecmp(a,b)))
 #define ZSTR_N_EQ(a, b, n)            ((a[0] == b[0]) && (!strncmp(a,b,n)))
 #define ZSTR_EQ(a, b)                 ((a[0] == b[0]) && (!strcmp(a,b)))
 
-#define ZTYPE_BUF       0x1
-#define ZTYPE_ZBUF      0x2
-#define ZTYPE_FILE      0x3
 
 #define zpthread_lock(l)        {if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
 #define zpthread_unlock(l)      {if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
 
 /* ################################################################## */
 extern char *zvar_progname;
-
-/* ################################################################## */
-/* 常用函数类型 */
-typedef void (*zvoid_t) (void);
-typedef void (*zfunc_v_v_t) (void);
-typedef void (*zfunc_vp_v_t) (void *);
-typedef void *(*zfunc_vp_vp_t) (void *);
 
 /* ################################################################## */
 /* LOG, 通用 */
@@ -145,11 +139,11 @@ int zlog_parse_level(char *levstr);
 #define zmemdup         zmemdup_20160308
 void *zmalloc(int len);
 void *zcalloc(int nmemb, int size);
-void *zrealloc(void *ptr, int len);
-void zfree(void *ptr);
-char *zstrdup(char *ptr);
-char *zstrndup(char *ptr, int n);
-char *zmemdup(void *ptr, int n);
+void *zrealloc(const void *ptr, int len);
+void zfree(const void *ptr); //heihei
+char *zstrdup(const char *ptr);
+char *zstrndup(const char *ptr, int n);
+char *zmemdup(const void *ptr, int n);
 
 /* ################################################################## */
 /* time */
@@ -181,42 +175,34 @@ typedef struct {
     char *str;
     int len;
 } zstrtok_t;
-void zstrtok_init(zstrtok_t * k, char *sstr);
-zstrtok_t *zstrtok(zstrtok_t * k, char *delim);
+void zstrtok_init(zstrtok_t * k, const char *sstr);
+zstrtok_t *zstrtok(zstrtok_t * k, const char *delim);
 
 /* convert to unit */
-int zstr_to_bool(char *s, int def);
-long zstr_to_second(char *s);
-long zstr_to_size(char *s);
-
-/* sprintf */
-int zsnprintf(char *str, int size, char *format, ...);
-int zvsnprintf(char *str, int size, char *format, va_list ap);
+int zstr_to_bool(const char *s, int def);
+long zstr_to_second(const char *s);
+long zstr_to_size(const char *s);
 
 /* */
-char *zmemstr(void *s, char *needle, int len);
-char *zmemcasestr(void *s, char *needle, int len);
+char *zmemstr(const void *s, const char *needle, int len);
+char *zmemcasestr(const void *s, const char *needle, int len);
 
 /* strncpy, strncat */
-char *zstrncpy(char *dest, char *src, int len);
-char *zstrncat(char *dest, char *src, int len);
+char *zstrncpy(char *dest, const char *src, int len);
+char *zstrncat(char *dest, const char *src, int len);
 
-/* ################################################################## */
-/* SIZEDATA */
-struct zsdata_t {
-    int size;
-    char *data;
-};
-int zsdata_parse(zsdata_t * sd, void *data, int size);
-void zsdata_escape(zsdata_t * sd, zbuf_t * bf);
-
+/* strncpy, strncat */
+static inline int zvsnprintf(char *str, size_t size, const char *fmt, va_list ap) {
+    int ret=vsnprintf((str),(size),(fmt),(ap));
+    return ((ret<size)?ret:(size-1));
+}
 /* ################################################################## */
 /* BUF */
 struct zbuf_t {
     char *data;
     int len:31;
-    int size:31;
     unsigned int static_mode:1;
+    int size:31;
 };
 #define ZBUF_DATA(b)    ((b)->data)
 #define ZBUF_LEN(b)     ((b)->len)
@@ -225,6 +211,8 @@ struct zbuf_t {
 #define ZBUF_RESET(b)    ((b)->len=0)
 #define ZBUF_TERMINATE(b)    ((b)->data[(b)->len]=0)
 #define ZBUF_TRUNCATE(b, n)    ((((b)->len>n)&&(n>0))?((b)->len=n):0)
+#define ZBUF_LEFT(b)    ((b)->size - (b)->len)
+#define ZBUF_SET_LEN(b, nl) ((b)->len = (nl))
 
 zbuf_t *zbuf_create(int size);
 void zbuf_free(zbuf_t * bf);
@@ -244,23 +232,13 @@ static inline int zbuf_put(zbuf_t * bf, int ch)
 void zbuf_reset(zbuf_t * bf);
 void zbuf_terminate(zbuf_t * bf);
 void zbuf_truncate(zbuf_t * bf, int new_len);
-int zbuf_strncpy(zbuf_t * bf, char *src, int len);
-int zbuf_strcpy(zbuf_t * bf, char *src);
-int zbuf_strncat(zbuf_t * bf, char *src, int len);
-int zbuf_strcat(zbuf_t * bf, char *src);
-int zbuf_memcpy(zbuf_t * bf, void *src, int len);
-int zbuf_memcat(zbuf_t * bf, void *src, int len);
-int zbuf_add_int(zbuf_t * bf, int num);
-int zbuf_simple_sprintf(zbuf_t * bf, char *format, ...);
-int zbuf_vprintf(zbuf_t * bf, char *format, va_list ap);
-int zbuf_sprintf(zbuf_t * bf, char *format, ...);
-int zbuf_vsprintf(zbuf_t * bf, char *format, va_list ap);
-
-void zbuf_sizedata_escape(zbuf_t * bf, void *data, int len);
-void zbuf_sizedata_escape_int(zbuf_t * bf, int i);
-void zbuf_sizedata_escape_long(zbuf_t * bf, long i);
-void zbuf_sizedata_escape_dict(zbuf_t * bf, zdict_t * wd);
-void zbuf_sizedata_escape_pp(zbuf_t * bf, char **pp, int len);
+int zbuf_strncpy(zbuf_t * bf, const char *src, int len);
+int zbuf_strcpy(zbuf_t * bf, const char *src);
+int zbuf_strncat(zbuf_t * bf, const char *src, int len);
+int zbuf_strcat(zbuf_t * bf, const char *src);
+int zbuf_memcpy(zbuf_t * bf, const void *src, int len);
+int zbuf_memcat(zbuf_t * bf, const void *src, int len);
+int zbuf_printf_1024(zbuf_t * bf, const char *format, ...);
 
 /* STACK_BUF */
 #define ZSTACK_BUF(name, _size)    \
@@ -275,21 +253,8 @@ void zbuf_sizedata_escape_pp(zbuf_t * bf, char **pp, int len);
     zbuf_t name ## _ZSTACT_BUF_, *name; \
     name = &name ## _ZSTACT_BUF_; \
     name->size = _size; name->len = 0; \
-    name->data = (char *)(_data);
-
-/* ################################################################## */
-/* ZRING */
-#define ZRING_WALK_BEGIN(head, var_your_node)         {\
-    for (var_your_node = (head)->next; var_your_node != (head); var_your_node = var_your_node->next){
-#define ZRING_WALK_END                }}
-struct zring_t {
-    zring_t *prev;
-    zring_t *next;
-};
-void zring_init(zring_t * ring);
-void zring_append(zring_t * ring, zring_t * entry);
-void zring_prepend(zring_t * ring, zring_t * entry);
-void zring_detach(zring_t * entry);
+    name->data = (char *)(_data); \
+    name->static_mode = 1;
 
 /* ################################################################## */
 /* MLINK*/
@@ -337,17 +302,10 @@ zlink_node_t *zlink_detach(zlink_t * link, zlink_node_t * node);
 zlink_node_t *zlink_push(zlink_t * link, zlink_node_t * node);
 zlink_node_t *zlink_unshift(zlink_t * link, zlink_node_t * node);
 zlink_node_t *zlink_pop(zlink_t * link);
-zlink_node_t *zlink_shift(zlink_t * link);
-void zlink_fini(zlink_t * link, void (*fini_fn) (zlink_node_t *));
-void zlink_walk(zlink_t * link, void (*walk_fn) (zlink_node_t *));
 #define ZLINK_HEAD(link)     ((link)->head)
 #define ZLINK_TAIL(link)     ((link)->tail)
 #define ZLINK_PREV(node)     ((node)->prev)
 #define ZLINK_NEXT(node)     ((node)->next)
-#define zlink_head(link)     ((link)->head)
-#define zlink_tail(link)     ((link)->tail)
-#define zlink_prev(node)     ((node)->prev)
-#define zlink_next(node)     ((node)->next)
 
 /* ################################################################## */
 /* ARGV */
@@ -370,18 +328,14 @@ struct zargv_t {
             var_your_chp = (___ar_tmp_ptr)->argv[zargv_tmpvar_i];
 #define ZARGV_WALK_END                       }}
 
-#define zargv_len(ar)           ((ar)->argc)
-#define zargv_argc(ar)          ((ar)->argc)
-#define zargv_argv(ar)          ((ar)->argv)
-#define zargv_data(ar)          ((ar)->argv)
-zargv_t *zargv_create_mpool(int size, zmpool_t * mpool);
+zargv_t *zargv_create_mpool(zmpool_t * mpool, int size);
 zargv_t *zargv_create(int size);
 void zargv_free(zargv_t * argvp);
-void zargv_add(zargv_t * argvp, char *ns);
-void zargv_addn(zargv_t * argvp, char *ns, int nlen);
+void zargv_add(zargv_t * argvp, const char *ns);
+void zargv_addn(zargv_t * argvp, const char *ns, int nlen);
 void zargv_truncate(zargv_t * argvp, int len);
 void zargv_rest(zargv_t * argvp);
-zargv_t *zargv_split_append(zargv_t * argvp, char *string, char *delim);
+zargv_t *zargv_split_append(zargv_t * argvp, const char *string, const char *delim);
 void zargv_show(zargv_t * argvp);
 
 /* ################################################################## */
@@ -393,65 +347,14 @@ struct zarray_t {
 };
 #define ZARRAY_LEN(arr)            ((arr)->len)
 #define ZARRAY_DATA(arr)        ((arr)->data)
-#define zarray_len(arr)            ((arr)->len)
-#define zarray_data(arr)        ((arr)->data)
 zarray_t *zarray_create(int size);
-void zarray_free(zarray_t * arr, void (*free_fn) (void *, void *), void *ctx);
-void zarray_truncate(zarray_t * arr, int len, void (*free_fn) (void *, void *), void *ctx);
+void zarray_free(zarray_t * arr);
 void zarray_add(zarray_t * arr, void *ns);
 #define ZARRAY_WALK_BEGIN(arr, var_your_chp)    {\
     int  zargv_tmpvar_i;\
     for(zargv_tmpvar_i=0;zargv_tmpvar_i<(arr)->len;zargv_tmpvar_i++){\
         var_your_chp = (typeof(var_your_chp))((arr)->data[zargv_tmpvar_i]);
 #define ZARRAY_WALK_END                }}
-
-/* ################################################################## */
-/* HTABLE */
-typedef int (*zhtable_cmp_t) (zhtable_node_t * node1, zhtable_node_t * node2);
-typedef int (*zhtable_hash_t) (zhtable_node_t * node, int size);
-struct zhtable_node_t {
-    zhtable_node_t *next;
-    zhtable_node_t *prev;
-};
-struct zhtable_t {
-    int size;
-    int len;
-    zhtable_node_t **data;
-    zhtable_cmp_t cmp_fn;
-    zhtable_hash_t hash_fn;
-};
-void zhtable_init(zhtable_t * table, int size, zhtable_cmp_t cmp_fn, zhtable_hash_t hash_fn);
-zhtable_node_t *zhtable_attach(zhtable_t * table, zhtable_node_t * node);
-zhtable_node_t *zhtable_lookup(zhtable_t * table, zhtable_node_t * vnode);
-zhtable_node_t *zhtable_remove(zhtable_t * table, zhtable_node_t * vnode);
-zhtable_node_t *zhtable_detach(zhtable_t * table, zhtable_node_t * node);
-void zhtable_fini(zhtable_t * table, void (*fini_fn) (zhtable_node_t *, void *), void *ctx);
-void zhtable_walk(zhtable_t * table, void (*walk_fn) (zhtable_node_t *, void *), void *ctx);
-zhtable_node_t **zhtable_list(zhtable_t * table, zhtable_node_t ** list);
-#define ZHTABLE_LEN(table)    ((table)->len)
-#define ZHTABLE_SIZE(table)    ((table)->size)
-#define ZHTABLE_DATA(table)    ((table)->data)
-#define ZHTABLE_WALK_BEGIN(table, var_your_node) {                            \
-    unsigned var_your_node ## __LINE__ ## i = (table)->size;                    \
-    zhtable_node_t **var_your_node ## __LINE__ ## h = (table)->data;                    \
-    zhtable_node_t *var_your_node ## __LINE__ ## next;                        \
-    while (var_your_node ## __LINE__ ## i --){                             \
-        for (var_your_node= *var_your_node ## __LINE__ ## h++;                    \
-                var_your_node;var_your_node = var_your_node ## __LINE__ ## next){    \
-            var_your_node ## __LINE__ ## next = var_your_node->next;
-#define ZHTABLE_WALK_END                                        }}}
-#define ZHTABLE_BUF_HASH(result, pre_hash, key, cond)    \
-{                            \
-    unsigned long g;                \
-    result = pre_hash;                \
-    while (cond) {                    \
-        result = (result << 4U) + *key++;    \
-        if ((g = (result & 0xf0000000)) != 0) { \
-            result ^= (g >> 24U);        \
-            result ^= g;            \
-        }                    \
-    }                        \
-}
 
 /* ################################################################## */
 /* RBTREE */
@@ -490,11 +393,6 @@ static inline zrbtree_node_t *zrbtree_detach(zrbtree_t * tree, zrbtree_node_t * 
     zrbtree_erase(tree, node);
     return node;
 }
-
-void zrbtree_walk(zrbtree_t * tree, void (*walk_fn) (zrbtree_node_t *, void *), void *ctx);
-#define zrbtree_fini     zrbtree_walk
-void zrbtree_walk_forward(zrbtree_t * tree, void (*walk_fn) (zrbtree_node_t *, void *), void *ctx);
-void zrbtree_walk_back(zrbtree_t * tree, void (*walk_fn) (zrbtree_node_t *, void *), void *ctx);
 
 static inline void zrbtree_link_node(zrbtree_node_t * node, zrbtree_node_t * parent, zrbtree_node_t ** zrbtree_link)
 {
@@ -589,10 +487,6 @@ static inline void zrbtree_link_node(zrbtree_node_t * node, zrbtree_node_t * par
 #define ZRBTREE_WALK_BACK_END                }}
 
 /* ################################################################## */
-/* dichotomy */
-void *zdichotomy_search(void *list, long element_size, int element_count, int (*cmp_fn) (void *, void *), void *key);
-
-/* ################################################################## */
 /* CHAIN */
 struct zchain_t {
     zchain_node_t *head;
@@ -609,15 +503,9 @@ struct zchain_node_t {
 #define ZCHAIN_HEAD(c)   ((c)->head)
 #define ZCHAIN_TAIL(c)   ((c)->tail)
 #define ZCHAIN_LEN(c)    ((c)->len)
-#define zchain_next(n)   ((n)->next)
-#define zchain_prev(n)   ((n)->prev)
-#define zchain_head(c)   ((c)->head)
-#define zchain_tail(c)   ((c)->tail)
-#define zchain_len(c)    ((c)->len)
 zchain_t *zchain_create(void);
-void zchain_free(zchain_t * chain, void (*free_fn) (void *, void *), void *ctx);
+void zchain_free(zchain_t * chain);
 void zchain_free_STR(zchain_t * chain);
-void zchain_walk(zchain_t * chain, void (*walk_fn) (zchain_node_t *, void *ctx), void *ctx);
 int zchain_attach_before(zchain_t * chain, zchain_node_t * n, zchain_node_t * before);
 int zchain_detach(zchain_t * chain, zchain_node_t * n);
 zchain_node_t *zchain_add_before(zchain_t * chain, void *value, zchain_node_t * before);
@@ -646,25 +534,23 @@ struct zdict_node_t {
 };
 zdict_t *zdict_create(void);
 zdict_t *zdict_create_mpool(zmpool_t * mpool);
-zdict_node_t *zdict_add(zdict_t * dict, char *key, char *value);
-zdict_node_t *zdict_lookup(zdict_t * dict, char *key, char **value);
-zdict_node_t *zdict_lookup_near_prev(zdict_t * dict, char *key, char **value);
-zdict_node_t *zdict_lookup_near_next(zdict_t * dict, char *key, char **value);
+zdict_node_t *zdict_add(zdict_t * dict, const char *key, const char *value);
+zdict_node_t *zdict_lookup(zdict_t * dict, const char *key, char **value);
+zdict_node_t *zdict_lookup_near_prev(zdict_t * dict, const char *key, char **value);
+zdict_node_t *zdict_lookup_near_next(zdict_t * dict, const char *key, char **value);
 void zdict_delete_node(zdict_t * mp, zdict_node_t * n);
-void zdict_delete(zdict_t * dict, char *key);
+void zdict_delete(zdict_t * dict, const char *key);
 zdict_node_t *zdict_first(zdict_t * dict);
 zdict_node_t *zdict_last(zdict_t * dict);
 zdict_node_t *zdict_prev(zdict_node_t * node);
 zdict_node_t *zdict_next(zdict_node_t * node);
-void zdict_walk(zdict_t * dict, void (*walk_fn) (zdict_node_t *, void *), void *ctx);
 void zdict_free(zdict_t * dict);
 int zdict_keys(zdict_t * dict, char **key_list, int size);
-#define zdict_len(dict)              ((dict)->len)
-#define zdict_key(n)               ((n)->key)
-#define zdict_value(n)             ((n)->value)
-#define zdict_update_value(n, v)   ((n)->value = zstrdup((char *)(v)))
-#define ZDICT_WALK_BEGIN(dict, n) { \
-    for(n = zdict_first(dict); n; n = zdict_next(n)) {
+void zdict_show(zdict_t * dict);
+#define ZDICT_LEN(dict)            ((dict)->len)
+#define ZDICT_KEY(n)               ((n)->key)
+#define ZDICT_VALUE(n)             ((n)->value)
+#define ZDICT_WALK_BEGIN(dict, n)  { for(n = zdict_first(dict); n; n = zdict_next(n)) {
 #define ZDICT_WALK_END    }}
 
 /* ################################################################## */
@@ -691,13 +577,11 @@ zidict_node_t *zidict_first(zidict_t * dict);
 zidict_node_t *zidict_last(zidict_t * dict);
 zidict_node_t *zidict_prev(zidict_node_t * node);
 zidict_node_t *zidict_next(zidict_node_t * node);
-void zidict_walk(zidict_t * dict, void (*walk_fn) (zidict_node_t *, void *), void *ctx);
 void zidict_free(zidict_t * dict);
 int zidict_keys(zidict_t * dict, long *key_list, int size);
-#define zidict_len(dict)            ((dict)->len)
-#define zidict_key(n)               ((n)->key)
-#define zidict_value(n)             ((n)->value)
-#define zidict_update_value(n, v)   ((n)->value = zstrdup((char *)(v)))
+#define ZIDICT_LEN(dict)            ((dict)->len)
+#define ZIDICT_KEY(n)               ((n)->key)
+#define ZIDICT_VALUE(n)             ((n)->value)
 #define ZIDICT_WALK_BEGIN(idict, n) { \
     for(n = zidict_first(idict); n; n = zidict_next(n)) {
 #define ZIDICT_WALK_END    }}
@@ -716,23 +600,22 @@ struct zgrid_node_t {
 };
 zgrid_t *zgrid_create(void);
 zgrid_t *zgrid_create_mpool(zmpool_t * mpool);
-zgrid_node_t *zgrid_add(zgrid_t * mp, char *key, void *value, char **old_value);
-zgrid_node_t *zgrid_lookup(zgrid_t * mp, char *key, char **value);
-zgrid_node_t *zgrid_lookup_near_prev(zgrid_t * mp, char *key, char **value);
-zgrid_node_t *zgrid_lookup_near_next(zgrid_t * mp, char *key, char **value);
+zgrid_node_t *zgrid_add(zgrid_t * mp, const char *key, const void *value, char **old_value);
+zgrid_node_t *zgrid_lookup(zgrid_t * mp, const char *key, char **value);
+zgrid_node_t *zgrid_lookup_near_prev(zgrid_t * mp, const char *key, char **value);
+zgrid_node_t *zgrid_lookup_near_next(zgrid_t * mp, const char *key, char **value);
 void zgrid_delete_node(zgrid_t * mp, zgrid_node_t * n);
-void zgrid_delete(zgrid_t * mp, char *key, char **old_value);
+void zgrid_delete(zgrid_t * mp, const char *key, char **old_value);
 zgrid_node_t *zgrid_first(zgrid_t * mp);
 zgrid_node_t *zgrid_last(zgrid_t * mp);
 zgrid_node_t *zgrid_prev(zgrid_node_t * node);
 zgrid_node_t *zgrid_next(zgrid_node_t * node);
-void zgrid_walk(zgrid_t * mp, void (*walk_fn) (zgrid_node_t *, void *), void *ctx);
-void zgrid_free(zgrid_t * mp, void (*free_fn) (zgrid_node_t *, void *), void *ctx);
+void zgrid_free(zgrid_t * mp);
 int zgrid_keys(zgrid_t * mp, char **key_list, int size);
-#define zgrid_len(mp)              ((mp)->len)
-#define zgrid_key(n)               ((n)->key)
-#define zgrid_value(n)             ((char *)((n)->value))
-#define zgrid_set_value(n, v)      ((n)->value = (char *)(v))
+#define ZGRID_LEN(mp)              ((mp)->len)
+#define ZGRID_KEY(n)               ((n)->key)
+#define ZGRID_VALUE(n)             ((char *)((n)->value))
+#define ZGRID_SET_VALUE(n, v)      ((n)->value = (char *)(v))
 #define ZGRID_WALK_BEGIN(grid, n) { \
     for(n = zgrid_first(grid); n; n = zgrid_next(n)) {
 #define ZGRID_WALK_END    }}
@@ -761,13 +644,12 @@ zigrid_node_t *zigrid_first(zigrid_t * mp);
 zigrid_node_t *zigrid_last(zigrid_t * mp);
 zigrid_node_t *zigrid_prev(zigrid_node_t * node);
 zigrid_node_t *zigrid_next(zigrid_node_t * node);
-void zigrid_walk(zigrid_t * mp, void (*walk_fn) (zigrid_node_t *, void *), void *ctx);
-void zigrid_free(zigrid_t * mp, void (*free_fn) (zigrid_node_t *, void *), void *ctx);
+void zigrid_free(zigrid_t * mp);
 int zigrid_keys(zigrid_t * mp, long *key_list, int size);
-#define zigrid_len(mp)              ((mp)->len)
-#define zigrid_key(n)               ((n)->key)
-#define zigrid_value(n)             ((char *)((n)->value))
-#define zigrid_set_value(n, v)      ((n)->value = (char *)(v))
+#define ZIGRID_LEN(mp)              ((mp)->len)
+#define ZIGRID_KEY(n)               ((n)->key)
+#define ZIGRID_VALUE(n)             ((char *)((n)->value))
+#define ZIGRID_SET_VALUE(n, v)      ((n)->value = (char *)(v))
 #define ZIGRID_WALK_BEGIN(igrid, n) { \
     for(n = zigrid_first(igrid); n; n = zigrid_next(n)) {
 #define ZIGRID_WALK_END    }}
@@ -781,16 +663,12 @@ void zvar_config_init(void);
 #define zconfig_add     zdict_add
 #define zconfig_update  zdict_add
 #define zconfig_delete  zdict_delete
-void zconfig_show(zconfig_t * cf);
-#define ZCONFIG_WALK_BEGIN(cf, key, value)  {\
-    zdict_node_t * ___node_dict_config_1219; \
-    ZDICT_WALK_BEGIN(cf, ___node_dict_config_1219) {\
-        key = zdict_key(___node_dict_config_1219); \
-        value = (char *)zdict_value(___node_dict_config_1219);
-#define ZCONFIG_WALK_END   } ZDICT_WALK_END; }
+#define zconfig_show    zdict_show
+#define ZCONFIG_WALK_BEGIN ZDICT_WALK_BEGIN
+#define ZCONFIG_WALK_END   ZDICT_WALK_END
 
 /* config load */
-int zconfig_load(zconfig_t * cf, char *filename);
+int zconfig_load(zconfig_t * cf, const char *filename);
 
 /* config value */
 typedef struct {
@@ -815,12 +693,12 @@ typedef struct {
 #define zconfig_bool_table_t zconfig_int_table_t
 #define zconfig_second_table_t zconfig_long_table_t
 #define zconfig_size_table_t zconfig_long_table_t
-char *zconfig_get_str(zconfig_t * cf, char *name, char *def);
-int zconfig_get_bool(zconfig_t * cf, char *name, int def);
-int zconfig_get_int(zconfig_t * cf, char *name, int def, int min, int max);
-long zconfig_get_long(zconfig_t * cf, char *name, long def, long min, long max);
-long zconfig_get_second(zconfig_t * cf, char *name, long def, long min, long max);
-long zconfig_get_size(zconfig_t * cf, char *name, long def, long min, long max);
+char *zconfig_get_str(zconfig_t * cf, const char *name, const char *def);
+int zconfig_get_bool(zconfig_t * cf, const char *name, int def);
+int zconfig_get_int(zconfig_t * cf, const char *name, int def, int min, int max);
+long zconfig_get_long(zconfig_t * cf, const char *name, long def, long min, long max);
+long zconfig_get_second(zconfig_t * cf, const char *name, long def, long min, long max);
+long zconfig_get_size(zconfig_t * cf, const char *name, long def, long min, long max);
 void zconfig_get_str_table(zconfig_t * cf, zconfig_str_table_t * table);
 void zconfig_get_int_table(zconfig_t * cf, zconfig_int_table_t * table);
 void zconfig_get_long_table(zconfig_t * cf, zconfig_long_table_t * table);
@@ -829,44 +707,25 @@ void zconfig_get_second_table(zconfig_t * cf, zconfig_second_table_t * table);
 void zconfig_get_size_table(zconfig_t * cf, zconfig_size_table_t * table);
 
 /* ################################################################## */
-/* kvlist */
-zkvlist_t *zkvlist_create(char *path);
-void zkvlist_free(zkvlist_t * kv);
-int zkvlist_begin(zkvlist_t * kv);
-int zkvlist_end(zkvlist_t * kv);
-int zkvlist_changed(zkvlist_t * kv);
-int zkvlist_add(zkvlist_t * kv, char *key, char *value);
-int zkvlist_delete(zkvlist_t * kv, char *key);
-int zkvlist_lookup(zkvlist_t * kv, char *key, char **value);
-int zkvlist_load(zkvlist_t * kv);
-zdict_t *zkvlist_get_dict(zkvlist_t * kv);
-
-/* ################################################################## */
-
-struct zmap_node_t {
-    int (*query) (zmap_node_t * node, char *query, zbuf_t * result, int timeout);
-    int (*close) (zmap_node_t * node);
+/* find */
+struct zfinder_t {
     char *title;
-    int used;
+    char *uri;
+    char *prefix;
+    char *suffix;
+    zdict_t *parameters;
+    void *db;
+    int (*get) (zfinder_t *finder, const char *query, zbuf_t * result, int timeout);
+    int (*close) (zfinder_t *finder);
 };
-
-struct zmap_t {
-    zmap_node_t **node_list;
-    int node_len;
-};
-
-extern zgrid_t *zvar_map_node_list;
-int zmap_main(int argc, char **argv);
-zmap_t *zmap_create(char *map_string, int flags_unused);
-int zmap_close(zmap_t * zm);
-int zmap_query(zmap_t * zm, char *query, zbuf_t * result, int timeout);
-#define zmap_get_error(zm)      ((zm)->error_info)
-int zmap_read_line(zstream_t * fp, char *buf, int len, int *reach_end);
-int zmap_title_split(char *opstr, char **list);
-
+zfinder_t *zfinder_create(const char *title);
+int zfinder_get(zfinder_t *finder, const char *key, zbuf_t * result, int timeout);
+void zfinder_close(zfinder_t *finder);
+int zfinder_get_once(const char *title, const char *key, zbuf_t * result, int timeout);
+int zfinder_main(int argc, char **argv);
 /* ################################################################## */
 /* SYSTEM */
-int zchroot_user(char *root_dir, char *user_name);
+int zchroot_user(const char *root_dir, const char *user_name);
 
 /* ################################################################## */
 /* IO or FD's stat */
@@ -905,21 +764,20 @@ struct zaddr_t {
     char addr[16];
 };
 int zgetlocaladdr(zaddr_t * addr_list, int max_count);
-int zgetaddr(char *host, zaddr_t * addr_list, int max_count);
+int zgetaddr(const char *host, zaddr_t * addr_list, int max_count);
 int zgetpeer(int sockfd, int *host, int *port);
 
 /* ################################################################## */
 /* socket */
-int zunix_connect(char *addr, int timeout);
-int zinet_connect(char *dip, int port, int timeout);
-int zhost_connect(char *host, int port, int timeout);
-int zunix_listen(char *addr, int backlog);
-int zinet_listen(char *sip, int port, int backlog);
-int zfifo_listen(char *path);
+int zunix_connect(const char *addr, int timeout);
+int zinet_connect(const char *dip, int port, int timeout);
+int zhost_connect(const char *host, int port, int timeout);
+int zinet_listen(const char *sip, int port, int backlog);
+int zfifo_listen(const char *path);
 int zunix_accept(int fd);
 int zinet_accept(int fd);
-int zconnect(char *netpath, int timeout);
-int zlisten(char *netpath, int backlog);
+int zconnect(const char *netpath, int timeout);
+int zlisten(const char *netpath, int backlog);
 
 /* ################################################################## */
 /* parameter */
@@ -940,7 +798,7 @@ struct zssl_t {
 int zssl_INIT(int unused_flags);
 zsslctx_t *zsslctx_server_create(int unused_flags);
 zsslctx_t *zsslctx_client_create(int unused_flags);
-int zsslctx_set_cert(zsslctx_t * ssl_ctx, char *cert_file, char *key_file);
+int zsslctx_set_cert(zsslctx_t * ssl_ctx, const char *cert_file, const char *key_file);
 void zsslctx_free(zsslctx_t * ctx);
 void zssl_get_error(unsigned long *errcode, char *buf, int buf_len);
 zssl_t *zssl_create(zsslctx_t * ctx, int fd);
@@ -957,8 +815,8 @@ void zopenssl_free(void *ssl);  /* SSL * */
 
 /* ################################################################## */
 /* file vstream */
-#define ZFILE_RBUF_SIZE           4096
-#define ZFILE_WBUF_SIZE           4096
+#define ZSTREAM_RBUF_SIZE           4096
+#define ZSTREAM_WBUF_SIZE           4096
 
 typedef int (*zstream_read_t) (zstream_t *, void *, int, int);
 typedef int (*zstream_write_t) (zstream_t *, void *, int, int);
@@ -968,65 +826,65 @@ struct zstream_t {
     int write_buf_len;
     unsigned int error:1;
     unsigned int eof:1;
-    char read_buf[ZFILE_WBUF_SIZE + 1];
-    char write_buf[ZFILE_WBUF_SIZE + 1];
+    char read_buf[ZSTREAM_RBUF_SIZE + 1];
+    char write_buf[ZSTREAM_WBUF_SIZE + 1];
     zstream_read_t read_fn;
     zstream_write_t write_fn;
     void *io_ctx;
     long timeout;
 };
-#define ZFGETCHAR(fp)        (((fp)->read_buf_p1<(fp)->read_buf_p2)\
-    ?((int)((fp)->read_buf[(fp)->read_buf_p1++])):(zfgetchar(fp)))
-#define ZFGET                ZFGETCHAR
-#define ZFGETC               ZFGETCHAR
+#define ZSTREAM_GETCHAR(fp)        (((fp)->read_buf_p1<(fp)->read_buf_p2)\
+    ?((int)((fp)->read_buf[(fp)->read_buf_p1++])):(zstream_getchar(fp)))
+#define ZSTREAM_GET                ZSTREAM_GETCHAR
+#define ZSTREAM_GETC               ZSTREAM_GETCHAR
 
-#define ZFFLUSH(fp)          (((fp)->write_buf_len>0)?(zfflush(fp)):(0))
-#define ZFPUTCHAR(fp, ch)    (((fp)->write_buf_len<ZFILE_WBUF_SIZE)\
-        ?((fp)->write_buf[(fp)->write_buf_len++]=(ch)):(zfputchar(fp, ch)))
-#define ZFPUT                ZFPUTCHAR
-#define ZFPUTC               ZFPUTCHAR
+#define ZSTREAM_FLUSH(fp)          (((fp)->write_buf_len>0)?(zstream_flush(fp)):(0))
+#define ZSTREAM_PUTCHAR(fp, ch)    (((fp)->write_buf_len<ZSTREAM_WBUF_SIZE)\
+        ?((fp)->write_buf[(fp)->write_buf_len++]=(ch)):(zstream_putchar(fp, ch)))
+#define ZSTREAM_PUT                ZSTREAM_PUTCHAR
+#define ZSTREAM_PUTC               ZSTREAM_PUTCHAR
 
-#define ZFERROR(fp)          ((fp)->error)
-#define ZFEOF(fp)            ((fp)->eof)
-#define ZFEXCEPTION(fp)      ((fp)->eof || (fp)->error)
-#define ZFCTX(fp)            ((fp)->io_ctx)
-#define zferror(fp)          ((fp)->error)
-#define zfeof(fp)            ((fp)->eof)
-#define zfexception(fp)      ((fp)->eof || (fp)->error)
-#define zfctx(fp)            ((fp)->io_ctx)
-#define zfileno(fp)          (ZVOID_PTR_TO_INT((fp)->ctx))
+#define ZSTREAM_ERROR(fp)          ((fp)->error)
+#define ZSTREAM_EOF(fp)            ((fp)->eof)
+#define ZSTREAM_EXCEPTION(fp)      ((fp)->eof || (fp)->error)
+#define ZSTREAM_CTX(fp)            ((fp)->io_ctx)
+#define zstream_error(fp)          ((fp)->error)
+#define zstream_eof(fp)            ((fp)->eof)
+#define zstream_exception(fp)      ((fp)->eof || (fp)->error)
+#define zstream_ctx(fp)            ((fp)->io_ctx)
+#define zstream_ileno(fp)          (ZVOID_PTR_TO_INT((fp)->ctx))
 
 zstream_t *zstream_create(int unused);
 void *zstream_free(zstream_t * fp);
-void zfset_ioctx(zstream_t * fp, void *io_ctx, zstream_read_t read_fn, zstream_write_t write_fn);
-void zfset_timeout(zstream_t * fp, int timeout);
+void zstream_set_ioctx(zstream_t * fp, void *io_ctx, zstream_read_t read_fn, zstream_write_t write_fn);
+void zstream_set_timeout(zstream_t * fp, int timeout);
 
-zstream_t *zfopen_FD(int fd);
-int zfclose_FD(zstream_t * fp);
-#define zfdopen              zfopen_FD
-#define zfdclose             zfclose_FD
+zstream_t *zstream_open_FD(int fd);
+int zstream_close_FD(zstream_t * fp);
+#define zstream_dopen              zstream_open_FD
+#define zstream_dclose             zstream_close_FD
 
-zstream_t *zfopen_SSL(zssl_t * ssl);
-zssl_t *zfclose_SSL(zstream_t * fp);
+zstream_t *zstream_open_SSL(zssl_t * ssl);
+zssl_t *zstream_close_SSL(zstream_t * fp);
 
-int zfgetchar(zstream_t * fp);
-#define zfget                zfgetchar
-#define zfgetc               zfgetchar
-int zfread(zstream_t * fp, void *buf, int len);
-int zfread_n(zstream_t * fp, void *buf, int len);
-int zfread_delimiter(zstream_t * fp, void *buf, int len, char delimiter);
-#define zfread_line(fp, buf, len)   zfread_delimiter(fp, buf, len, '\n')
-int zfgets_n(zstream_t * fp, zbuf_t * bf, int len);
-int zfgets_delimiter(zstream_t * fp, zbuf_t * bf, char delimiter);
-#define zfgets(fp, bf)              zfgets_delimiter(fp, bf, '\n')
+int zstream_getchar(zstream_t * fp);
+#define zstream_get                zstream_getchar
+#define zstream_getc               zstream_getchar
+int zstream_read(zstream_t * fp, void *buf, int len);
+int zstream_read_n(zstream_t * fp, void *buf, int len);
+int zstream_read_delimiter(zstream_t * fp, void *buf, int len, int delimiter);
+#define zstream_read_line(fp, buf, len)   zstream_read_delimiter(fp, buf, len, '\n')
+int zstream_gets_n(zstream_t * fp, zbuf_t * bf, int len);
+int zstream_gets_delimiter(zstream_t * fp, zbuf_t * bf, int delimiter);
+#define zstream_gets(fp, bf)              zstream_gets_delimiter(fp, bf, '\n')
 
-int zfflush(zstream_t * fp);
-void zfputchar(zstream_t * fp, int ch);
-#define zfput                zfputchar
-#define zfputc               zfputchar
-int zfwrite_n(zstream_t * fp, void *buf, int len);
-int zfputs(zstream_t * fp, char *s);
-int zfprintf(zstream_t * fp, char *format, ...);
+int zstream_flush(zstream_t * fp);
+void zstream_putchar(zstream_t * fp, int ch);
+#define zstream_put                zstream_putchar
+#define zstream_putc               zstream_putchar
+int zstream_write_n(zstream_t * fp, void *buf, int len);
+int zstream_puts(zstream_t * fp, const char *s);
+int zstream_printf_1024(zstream_t * fp, const char *format, ...);
 
 /* ################################################################## */
 /* alarm */
@@ -1052,16 +910,16 @@ void zalarm_set(zalarm_t * alarm, zalarm_cb_t callback, long timeout);
 void zalarm_stop(zalarm_t * alarm);
 void zalarm_continue(zalarm_t * alarm);
 void zalarm(zalarm_cb_t callback, void *context, long timeout);
-#define zalarm_set_context(alarm,  ctx)     ((alarm)->context = ctx)
-#define zalarm_get_context(alarm)   ((alarm)->context)
+#define zalarm_set_context(alarm, ctx)    ((alarm)->context = (ctx))
+#define zalarm_get_context(alarm)         ((alarm)->context)
 
 /* ################################################################## */
 /* MPOOL */
 struct zmpool_t {
     void *worker;
     void *(*malloc) (zmpool_t *, int);
-    void *(*realloc) (zmpool_t *, void *, int);
-    void (*free) (zmpool_t *, void *);
+    void *(*realloc) (zmpool_t *, const void *, int);
+    void (*free) (zmpool_t *, const void *);
     void (*reset) (zmpool_t *);
     void (*free_pool) (zmpool_t *);
 };
@@ -1073,12 +931,12 @@ void zmpool_free_pool(zmpool_t * mp);
 
 void *zmpool_malloc(zmpool_t * mp, int len);
 void *zmpool_calloc(zmpool_t * mp, int nmemb, int size);
-void *zmpool_realloc(zmpool_t * mp, void *ptr, int len);
-void *zmpool_strdup(zmpool_t * mp, char *ptr);
-void *zmpool_strndup(zmpool_t * mp, char *ptr, int n);
-void *zmpool_memdup(zmpool_t * mp, void *ptr, int n);
+void *zmpool_realloc(zmpool_t * mp, const void *ptr, int len);
+void *zmpool_strdup(zmpool_t * mp, const char *ptr);
+void *zmpool_strndup(zmpool_t * mp, const char *ptr, int n);
+void *zmpool_memdup(zmpool_t * mp, const void *ptr, int n);
 void zmpool_reset(zmpool_t * mp);
-void zmpool_free(zmpool_t * mp, void *ptr);
+void zmpool_free(zmpool_t * mp, const void *ptr);
 
 /* ################################################################## */
 /* MCOT */
@@ -1126,7 +984,7 @@ int zev_unset(zev_t * ev);
 /* AIO */
 typedef struct zaio_rwbuf_t zaio_rwbuf_t;
 typedef struct zaio_rwbuf_list_t zaio_rwbuf_list_t;
-#define ZAIO_RWBUF_SIZE            10240
+#define ZAIO_RWBUF_SIZE            4096
 struct zaio_rwbuf_t {
     zaio_rwbuf_t *next;
     unsigned int p1:16;
@@ -1190,11 +1048,11 @@ int zaio_fetch_rbuf(zaio_t * aio, char *buf, int len);
 int zaio_attach(zaio_t * aio, zaio_cb_t callback);
 int zaio_read(zaio_t * aio, int max_len, zaio_cb_t callback, int timeout);
 int zaio_read_n(zaio_t * aio, int strict_len, zaio_cb_t callback, int timeout);
-int zaio_read_delimiter(zaio_t * aio, char delimiter, int max_len, zaio_cb_t callback, int timeout);
+int zaio_read_delimiter(zaio_t * aio, int delimiter, int max_len, zaio_cb_t callback, int timeout);
 #define zaio_read_line(a,c,d,e) zaio_read_delimiter(a,'\n',c,d,e)
-int zaio_printf(zaio_t * aio, char *fmt, ...);
-int zaio_puts(zaio_t * aio, char *s);
-int zaio_write_cache_append(zaio_t * aio, void *buf, int len);
+int zaio_printf_1024(zaio_t * aio, const char *fmt, ...);
+int zaio_puts(zaio_t * aio, const char *s);
+int zaio_write_cache_append(zaio_t * aio, const void *buf, int len);
 int zaio_write_cache_flush(zaio_t * aio, zaio_cb_t callback, int timeout);
 int zaio_write_cache_get_len(zaio_t * aio);
 int zaio_sleep(zaio_t * aio, zaio_cb_t callback, int timeout);
@@ -1277,9 +1135,9 @@ void ziopipe_enter(ziopipe_base_t * iopb, int client_fd, void *client_ssl, int s
 #define ZMASTER_LISTEN_INET            'i'
 #define ZMASTER_LISTEN_UNIX            'u'
 #define ZMASTER_LISTEN_FIFO            'f'
-#define ZMASTER_SERVER_STATUS_FD    3
-#define ZMASTER_MASTER_STATUS_FD    4
-#define ZMASTER_LISTEN_FD            5
+#define ZMASTER_SERVER_STATUS_FD       3
+#define ZMASTER_MASTER_STATUS_FD       4
+#define ZMASTER_LISTEN_FD              5
 
 typedef int (*zmaster_load_config_fn_t) (zarray_t * config_list);
 extern zmaster_load_config_fn_t zmaster_load_config_fn;
@@ -1303,58 +1161,24 @@ void zmaster_server_disconnect(int fd);
 /* ################################################################## */
 int zncr_decode(int ins, char *wchar);
 /* base64 */
-int zbase64_encode_to_df(void *src, int src_size, void *filter, int filter_type, int mime_flag);
-#define zbase64_encode zbase64_encode_to_df
-#define zbase64_encode_to_zbuf(src, src_size, filter, mime_flag) \
-    zbase64_encode_to_df(src, src_size, filter, ZDATA_FILTER_TYPE_ZBUF, mime_flag)
-#define zbase64_encode_to_file(src, src_size, filter, mime_flag) \
-    zbase64_encode_to_df(src, src_size, filter, ZDATA_FILTER_TYPE_FILE, mime_flag)
-#define zbase64_encode_to_zstream(src, src_size, filter, mime_flag) \
-    zbase64_encode_to_df(src, src_size, filter, ZDATA_FILTER_TYPE_ZSTREAM, mime_flag)
-
-int zbase64_decode_to_df(void *src, int src_size, void *filter, int filter_type);
-#define zbase64_decode zbase64_decode_to_df
-#define zbase64_decode_to_zbuf(src, src_size, filter) \
-    zbase64_decode_to_df(src, src_size, filter, ZDATA_FILTER_TYPE_ZBUF)
-#define zbase64_decode_to_file(src, src_size, filter) \
-    zbase64_decode_to_df(src, src_size, filter, ZDATA_FILTER_TYPE_FILE)
-#define zbase64_decode_to_zstream(src, src_size, filter) \
-    zbase64_decode_to_df(src, src_size, filter, ZDATA_FILTER_TYPE_ZSTREAM)
-
-int zbase64_decode_validate(void *src, int src_size, int *valid_len);
+int zbase64_encode(const void *src, int src_size, zbuf_t *dest, int mime_flag);
+int zbase64_decode(const void *src, int src_size, zbuf_t *dest);
+int zbase64_decode_get_valid_len(const void *src, int src_size);
 int zbase64_encode_get_min_len(int in_len, int mime_flag);
 
 /* quoted_printable */
-int zquoted_printable_decode_2045_to_df(void *src, int src_size, void *filter, int filter_type);
-int zquoted_printable_decode_2047_to_df(void *src, int src_size, void *filter, int filter_type);
-int zquoted_printable_decode_validate(void *src, int src_size, int *valid_len);
-#define zqp_decode_validate      zquoted_printable_decode_validate
-#define zqp_decode_2045 zquoted_printable_decode_2045_to_df
-#define zqp_decode_2045_to_df zquoted_printable_decode_2045_to_df
-#define zqp_decode_2045_to_zbuf(src, src_size, filter) \
-    zquoted_printable_decode_2045_to_df(src, src_size, filter, ZDATA_FILTER_TYPE_ZBUF)
-#define zqp_decode_2045_to_file(src, src_size, filter) \
-    zquoted_printable_decode_2045_to_df(src, src_size, filter, ZDATA_FILTER_TYPE_FILE)
-#define zqp_decode_2045_to_zstream(src, src_size, filter) \
-    zquoted_printable_decode_2045_to_df(src, src_size, filter, ZDATA_FILTER_TYPE_ZSTREAM)
-
-#define zqp_decode_2047 zquoted_printable_decode_2047_to_df
-#define zqp_decode_2047_to_df zquoted_printable_decode_2047_to_df
-#define zqp_decode_2047_to_zbuf(src, src_size, filter) \
-    zquoted_printable_decode_2047_to_df(src, src_size, filter, ZDATA_FILTER_TYPE_ZBUF)
-#define zqp_decode_2047_to_file(src, src_size, filter) \
-    zquoted_printable_decode_2047_to_df(src, src_size, filter, ZDATA_FILTER_TYPE_FILE)
-#define zqp_decode_2047_to_zstream(src, src_size, filter) \
-    zquoted_printable_decode_2047_to_df(src, src_size, filter, ZDATA_FILTER_TYPE_ZSTREAM)
+int zqp_decode_2045(const void *src, int src_size, zbuf_t *dest);
+int zqp_decode_2047(const void *src, int src_size, zbuf_t *dest);
+int zqp_decode_get_valid_len(const void *src, int src_size);
 
 /* hex */
 extern char zhex_to_dec_list[256];
-int zhex_encode(void *src, int src_size, void *dest);
-int zhex_decode(void *src, int src_size, void *dest);
+int zhex_encode(const void *src, int src_size, zbuf_t *dest);
+int zhex_decode(const void *src, int src_size, zbuf_t *dest);
 
 /* crc */
-unsigned int zcrc32(void *data, int size, unsigned int init_value);
-unsigned long zcrc64(void *data, int size, unsigned long init_value);
+unsigned int zcrc32(const void *data, int size, unsigned int init_value);
+unsigned long zcrc64(const void *data, int size, unsigned long init_value);
 
 /* md5 */
 struct zmd5_t {
@@ -1364,9 +1188,9 @@ struct zmd5_t {
     uint_fast32_t block[16];
 };
 void zmd5_init(zmd5_t * ctx);
-void zmd5_update(zmd5_t * ctx, void *data, int size);
+void zmd5_update(zmd5_t * ctx, const void *data, int size);
 void zmd5_final(zmd5_t * ctx, void *result);    //result'size >= 16
-char *zmd5(void *data, int size, void *result);
+char *zmd5(const void *data, int size, void *result);
 
 /* sha1 */
 struct zsha1_t {
@@ -1385,16 +1209,15 @@ struct zsha1_t {
     uint8_t count;
 };
 void zsha1_init(zsha1_t * ctx);
-void zsha1_update(zsha1_t * ctx, void *input, int len);
+void zsha1_update(zsha1_t * ctx, const void *input, int len);
 void zsha1_result(zsha1_t * ctx, void *result);
-char *zsha1(void *data, int size, void *result);
+char *zsha1(const void *data, int size, void *result);
 
 /* ################################################################## */
 /* file */
-int zfile_get_size(char *filename);
-int zfile_put_contents(char *filename, void *data, int len);
-int zfile_get_contents(char *filename, void *data, int len);
-int zfile_get_contents_to_zbuf(char *filename, zbuf_t * bf);
+int zfile_get_size(const char *filename);
+int zfile_put_contents(const char *filename, const void *data, int len);
+int zfile_get_contents(const char *filename, zbuf_t * dest);
 
 /* mmap reader */
 struct zmmap_reader_t {
@@ -1402,59 +1225,27 @@ struct zmmap_reader_t {
     int len;
     char *data;
 };
-int zmmap_reader_init(zmmap_reader_t * reader, char *filename);
+int zmmap_reader_init(zmmap_reader_t * reader, const char *filename);
 int zmmap_reader_fini(zmmap_reader_t * reader);
-
-/* ################################################################## */
-/* general data stream macro */
-#define ZDATA_FILTER_TYPE_ZBUF          -2
-#define ZDATA_FILTER_TYPE_FILE          -3
-#define ZDATA_FILTER_TYPE_ZSTREAM       -4
-
-#define ZDATA_FILTER_BUF(filter, type) \
-    char filter ## ___FILTER_CACHE_BUF___1223[4100]; \
-    int filter ## ___FILTER_CACHE_LEN___1223 = 0;\
-    int filter ## ___FILTER_CACHE_TYPE___1223 = type;
-
-#define ZDATA_FILTER_PUTC(filter, ch) \
-{ \
-    if (filter ## ___FILTER_CACHE_LEN___1223 > 4096) {\
-        zdata_filter_write(filter, filter ##___FILTER_CACHE_TYPE___1223, \
-            filter ## ___FILTER_CACHE_BUF___1223, filter ## ___FILTER_CACHE_LEN___1223); \
-        filter ## ___FILTER_CACHE_LEN___1223 = 0; \
-    } \
-    filter ## ___FILTER_CACHE_BUF___1223[filter ## ___FILTER_CACHE_LEN___1223++] = (ch); \
-}
-
-#define ZDATA_FILTER_FLUSH(filter) { \
-    if(filter ## ___FILTER_CACHE_LEN___1223 > 0) { \
-        zdata_filter_write(filter, filter ##___FILTER_CACHE_TYPE___1223, \
-            filter ## ___FILTER_CACHE_BUF___1223, filter ## ___FILTER_CACHE_LEN___1223); \
-        filter ## ___FILTER_CACHE_LEN___1223 = 0; \
-    }\
-}
-
-void zdata_filter_write(void *filter, int type, void *data, int len);
 
 /* ################################################################## */
 /* CHARSET */
 #define ZCHARSET_ICONV_ERROR_OPEN       (-2016)
 struct zcharset_iconv_t {
-    char *to_charset;
-    char *from_charset;
-    char *in_str;
+    const char *to_charset;
+    const char *from_charset;
+    const char *in_str;
     int in_len;
     int in_converted_len;
-    void *filter;
-    int filter_type;
+    zbuf_t *dest;
     int omit_invalid_bytes;
     int omit_invalid_bytes_count;
     iconv_t ic;
     char *to_charset_regular;
     char *from_charset_regular;
     int charset_regular;
-    char *default_charset;
-    char *out_str_runing;
+    const char *default_charset;
+    const char *out_str_runing;
     int out_len_runing;
 };
 
@@ -1467,8 +1258,8 @@ struct zcharset_iconv_t {
 
 void zcharset_iconv_init(zcharset_iconv_t * ic);
 void zcharset_iconv_fini(zcharset_iconv_t * ic);
-char *zcharset_correct_charset(char *charset, char *default_charset);
-int zcharset_detect(char *data, int len, char *charset_ret, char **charset_list);
+char *zcharset_correct_charset(const char *charset, const char *default_charset);
+int zcharset_detect(const char *data, int len, char *charset_ret, char **charset_list);
 int zcharset_iconv(zcharset_iconv_t * ic);
 
 extern char *zvar_charset_chinese[];
@@ -1490,7 +1281,7 @@ iconv_t iconv_open(const char *tocode, const char *fromcode)
     return libiconv_open(tocode, fromcode);
 }
 
-size_t iconv(iconv_t cd, char * *inbuf, size_t * inbytesleft, char * *outbuf, size_t * outbytesleft)
+size_t iconv(iconv_t cd, char **inbuf, size_t * inbytesleft, char **outbuf, size_t * outbytesleft)
 {
     return libiconv(cd, inbuf, inbytesleft, outbuf, outbytesleft);
 }
@@ -1503,7 +1294,6 @@ int iconv_close(iconv_t cd)
 
 /* ################################################################## */
 /* MAIL PARSER */
-
 #define ZMAIL_HEADER_LINE_MAX_LENGTH            10240
 
 #define ZMAIL_PARSER_MIME_TYPE_MULTIPART        1
@@ -1614,34 +1404,18 @@ struct zmail_parser_t {
 
 extern int zmail_parser_only_test_parse;
 
-zmail_parser_t *zmail_parser_create(char *mail_data, int mail_data_len);
+zmail_parser_t *zmail_parser_create(const char *mail_data, int mail_data_len);
 void zmail_parser_free(zmail_parser_t * parser);
-zmail_parser_t *zmail_parser_create_mpool(zmpool_t * imp, char *mail_data, int mail_data_len);
-int zmail_parser_set_default_charset(zmail_parser_t * paser, char *default_src_charset, char *default_dest_charset);
+zmail_parser_t *zmail_parser_create_mpool(zmpool_t * imp, const char *mail_data, int mail_data_len);
+int zmail_parser_set_default_charset(zmail_parser_t * paser, const char *default_src_charset, const char *default_dest_charset);
 int zmail_parser_set_mime_max_depth(zmail_parser_t * parser, int length);
 int zmail_parser_run(zmail_parser_t * paser);
 void zmail_parser_show(zmail_parser_t * parser);
 void zmail_parser_show_json(zmail_parser_t * parser, zbuf_t * result);
-int zmail_parser_iconv(zmail_parser_t * parser, char *from_charset, char *in, int in_len, void *filter, int filter_type);
-int zmail_parser_decode_mime_body_to_df(zmail_parser_t * parser, zmail_mime_t * mime, void *filter, int filter_type);
-#define zmail_parser_decode_mime_body zmail_parser_decode_mime_body_to_df
-#define zmail_parser_decode_mime_body_to_zbuf(parser, mime, filter) \
-    zmail_parser_decode_mime_body_to_df(parser, mime, filter, ZDATA_FILTER_TYPE_ZBUF)
-#define zmail_parser_decode_mime_body_to_file(parser, mime, filter) \
-    zmail_parser_decode_mime_body_to_df(parser, mime, filter, ZDATA_FILTER_TYPE_FILE)
-#define zmail_parser_decode_mime_body_to_zstream(parser, mime, filter) \
-    zmail_parser_decode_mime_body_to_df(parser, mime, filter, ZDATA_FILTER_TYPE_ZSTREAM)
-
-int zmail_parser_decode_text_mime_body_to_df(zmail_parser_t * parser, zmail_mime_t * mime, void *filter, int filter_type);
-#define zmail_parser_decode_text_mime_body zmail_parser_decode_text_mime_body_to_df
-#define zmail_parser_decode_text_mime_body_to_zbuf(parser, mime, filter) \
-    zmail_parser_decode_text_mime_body_to_df(parser, mime, filter, ZDATA_FILTER_TYPE_ZBUF)
-#define zmail_parser_decode_text_mime_body_to_file(parser, mime, filter) \
-    zmail_parser_decode_text_mime_body_to_df(parser, mime, filter, ZDATA_FILTER_TYPE_FILE)
-#define zmail_parser_decode_text_mime_body_to_zstream(parser, mime, filter) \
-    zmail_parser_decode_text_mime_body_to_df(parser, mime, filter, ZDATA_FILTER_TYPE_ZSTREAM)
-
-int zmail_parser_decode_tnef(zmail_parser_t * parser, char *tnef_data, int tnef_len, zmail_mime_t ** mime_tree);
+int zmail_parser_iconv(zmail_parser_t * parser, const char *from_charset, const char *in, int in_len, zbuf_t *dest);
+int zmail_parser_decode_mime_body(zmail_parser_t * parser, zmail_mime_t * mime, zbuf_t *dest);
+int zmail_parser_decode_text_mime_body(zmail_parser_t * parser, zmail_mime_t * mime, zbuf_t *dest);
+int zmail_parser_decode_tnef(zmail_parser_t * parser, const char *tnef_data, int tnef_len, zmail_mime_t ** mime_tree);
 
 #define ZMAIL_PARSER_MIME_WALK_BEGIN(mime_top, var_your_node) {\
     zmail_mime_t *___Next_0611; \
@@ -1718,8 +1492,6 @@ int ztnef_parser_get_mime_body(ztnef_parser_t * parser, ztnef_mime_t * mime, cha
 
 /* ################################################################## */
 /* util */
-int zquery_line(char *connection, char *query, char *result, int timeout);
-
 int zlicense_mac_check(char *salt, char *license);
 void zlicense_mac_build(char *salt, char *_mac, char *rbuf);
 

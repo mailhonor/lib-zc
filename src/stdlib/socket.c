@@ -112,7 +112,7 @@ int zunix_listen(char *addr, int backlog)
     return -1;
 }
 
-int zinet_listen(char *sip, int port, int backlog)
+int zinet_listen(const char *sip, int port, int backlog)
 {
     int sock;
     int on = 1;
@@ -157,7 +157,7 @@ int zinet_listen(char *sip, int port, int backlog)
     return -1;
 }
 
-int zlisten(char *netpath, int backlog)
+int zlisten(const char *netpath, int backlog)
 {
     char _netpath[1024];
     char *p;
@@ -182,7 +182,7 @@ int zlisten(char *netpath, int backlog)
 /* ################################################################## */
 /* fifo listen */
 
-int zfifo_listen(char *path)
+int zfifo_listen(const char *path)
 {
     int fd;
     int errno2;
@@ -257,7 +257,7 @@ static int ___timed_connect(int sock, struct sockaddr *sa, int len, int timeout)
     return (0);
 }
 
-int zunix_connect(char *addr, int timeout)
+int zunix_connect(const char *addr, int timeout)
 {
     struct sockaddr_un sun;
     int len = strlen(addr);
@@ -287,7 +287,7 @@ int zunix_connect(char *addr, int timeout)
     return (sock);
 }
 
-int zinet_connect(char *dip, int port, int timeout)
+int zinet_connect(const char *dip, int port, int timeout)
 {
     int sock;
     struct sockaddr_in addr;
@@ -312,7 +312,7 @@ int zinet_connect(char *dip, int port, int timeout)
     return (sock);
 }
 
-int zhost_connect(char *host, int port, int timeout)
+int zhost_connect(const char *host, int port, int timeout)
 {
     zaddr_t ip_list[8];
     int sock, count, i;
@@ -332,7 +332,7 @@ int zhost_connect(char *host, int port, int timeout)
     return -2;
 }
 
-int zconnect(char *netpath, int timeout)
+int zconnect(const char *netpath, int timeout)
 {
     char _netpath[1024];
     char *p;

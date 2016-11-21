@@ -55,7 +55,7 @@ zsslctx_t *zsslctx_client_create(int unused_flags)
 
 }
 
-int zsslctx_set_cert(zsslctx_t * ssl_ctx, char *cert_file, char *key_file)
+int zsslctx_set_cert(zsslctx_t * ssl_ctx, const char *cert_file, const char *key_file)
 {
     ERR_clear_error();
     if ((!cert_file) || (SSL_CTX_use_certificate_chain_file(ssl_ctx->ssl_ctx, cert_file) <= 0)) {

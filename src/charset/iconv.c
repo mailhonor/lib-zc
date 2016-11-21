@@ -10,7 +10,7 @@
 
 #define ZICONV_DEFAULT_CHARSET  "GB18030"
 
-char *zcharset_correct_charset(char *charset, char *default_charset)
+char *zcharset_correct_charset(const char *charset, const char *default_charset)
 {
     if (!default_charset) {
         default_charset = ZICONV_DEFAULT_CHARSET;
@@ -30,16 +30,16 @@ char *zcharset_correct_charset(char *charset, char *default_charset)
         charset = default_charset;
     }
 
-    return charset;
+    return (char *)charset;
 }
 
 static inline int zcharset_iconv_base(zcharset_iconv_t * ic)
 {
-    char *in_str = ic->in_str;
+    char *in_str = (char *)(ic->in_str);
     size_t in_len = (size_t) (ic->in_len);
     int in_converted_len = 0;
 
-    char *out_str = ic->out_str_runing;
+    char *out_str = (char *)(ic->out_str_runing);
     size_t out_len = (size_t) (ic->out_len_runing);
     int out_converted_len = 0;
 
@@ -144,24 +144,15 @@ int zcharset_iconv(zcharset_iconv_t * ic)
     int in_len;
     int out_converted_len = 0;
 
-    in_str = ic->in_str;
+    in_str = (char *)(ic->in_str);
     in_len = ic->in_len;
     while (in_len > 0) {
-        if (ic->filter_type > 0) {
-            ic->out_str_runing = (char *)(ic->filter);
-            ic->out_len_runing = ic->filter_type;
-        } else {
-
-            ic->in_str = in_str;
-            ic->in_len = in_len;
-            ic->out_str_runing = buf;
-            ic->out_len_runing = 4096;
-        }
+        ic->in_str = in_str;
+        ic->in_len = in_len;
+        ic->out_str_runing = buf;
+        ic->out_len_runing = 4096;
         len = zcharset_iconv_base(ic);
         if (len < 0) {
-            return len;
-        }
-        if (ic->filter_type > 0) {
             return len;
         }
         if (len == 0) {
@@ -171,7 +162,7 @@ int zcharset_iconv(zcharset_iconv_t * ic)
 
         in_str += ic->in_converted_len;
         in_len -= ic->in_converted_len;
-        zdata_filter_write(ic->filter, ic->filter_type, buf, len);
+        zbuf_memcat(ic->dest, buf, len);
     }
 
     return out_converted_len;

@@ -6,6 +6,13 @@
  * ================================
  */
 
+typedef struct zsdata_t  zsdata_t;
+struct zsdata_t
+{
+    int size;
+    char *data;
+};
+
 /* system user from /etc/passwd*/
 typedef struct sysuser_t sysuser_t;
 struct sysuser_t {

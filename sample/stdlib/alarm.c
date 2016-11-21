@@ -36,11 +36,13 @@ int alarm_cb_direct(zalarm_t * alarm)
 void test_normal(void)
 {
     zalarm_t *alarm;
+    ztype_convert_t ct;
     int i;
 
     for (i = 0; i < 3; i++) {
         alarm = zalarm_create();
-        zalarm_set_context(alarm, ZINT_TO_VOID_PTR(i));
+        ct.i_int = i;
+        zalarm_set_context(alarm, ct.ptr_void);
         zalarm_set(alarm, alarm_cb_normal, (i + 1) * 5 * 1000);
     }
 }
