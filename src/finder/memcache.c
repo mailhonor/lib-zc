@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
 int ___zfinder_read_line(zstream_t * fp, void *buf_void, int len, int *reach_end);
 
@@ -51,7 +51,7 @@ static int ___close(zfinder_t * finder)
     return 0;
 }
 
-static int ___connect(zfinder_t * finder, int timeout)
+static int ___connect(zfinder_t * finder, long timeout)
 {
     zfinder_memcache_t *my_db;
 
@@ -72,7 +72,7 @@ static int ___connect(zfinder_t * finder, int timeout)
     return 0;
 }
 
-static int ___get(zfinder_t * finder, const char *query, zbuf_t * result, int timeout)
+static int ___get(zfinder_t * finder, const char *query, zbuf_t * result, long timeout)
 {
     int i, ret, rend, len;
     long dtime = ztimeout_set(timeout);
@@ -144,7 +144,7 @@ static int ___get(zfinder_t * finder, const char *query, zbuf_t * result, int ti
     return -1;
 }
 
-static int _get(zfinder_t * finder, const char *query, zbuf_t * result, int timeout)
+static int _get(zfinder_t * finder, const char *query, zbuf_t * result, long timeout)
 {
     int ret;
 

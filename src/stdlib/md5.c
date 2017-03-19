@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
 /*
  * This is an OpenSSL-compatible implementation of the RSA Data Security,
@@ -157,7 +157,7 @@ void zmd5_update(zmd5_t * ctx, const void *data, int size)
     if (used) {
         free = 64 - used;
 
-        if (size < free) {
+        if ((unsigned long)size < free) {
             memcpy(&ctx->buffer[used], data, size);
             return;
         }
@@ -208,7 +208,7 @@ void zmd5_final(zmd5_t * ctx, void *result)
 
     body(ctx, ctx->buffer, 64);
 
-    unsigned char *r = result;
+    unsigned char *r = (unsigned char *)result;
     r[0] = ctx->a;
     r[1] = ctx->a >> 8;
     r[2] = ctx->a >> 16;

@@ -6,44 +6,89 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
-int zmail_parser_iconv(zmail_parser_t * parser, const char *from_charset, const char *in, int in_len, zbuf_t *dest)
+static inline void ___clear_null(zbuf_t *dest)
 {
-    int ret = -1;
-    char f_charset[128];
-    int i, times = 2;
-    int old_len = ZBUF_LEN(dest);
-
-    if (ZEMPTY(from_charset)) {
-        times = 1;
+    char ch, *p = (char *)ZBUF_DATA(dest);
+    size_t ri = 0, i, len = ZBUF_LEN(dest);
+    for (i=0;i<len;i++) {
+        ch = p[i];
+        if (ch == '\0') {
+            continue;
+        }
+        p[ri++] = ch;
     }
-    for (i = 0; i < times; i++) {
-        if (ZEMPTY(from_charset)) {
-            if (zcharset_detect_cjk(in, in_len, f_charset) < 0) {
-                strcpy(f_charset, parser->default_src_charset);
-            }
-        } else {
-            strncpy(f_charset, from_charset, 125);
-        }
-        ZICONV_CREATE(ic);
-        ic->from_charset = f_charset;
-        ic->to_charset = parser->default_dest_charset;
-        ic->in_str = in;
-        ic->in_len = in_len;
-        ic->dest = dest;
+    zbuf_truncate(dest, ri);
+    zbuf_terminate(dest);
+}
 
-        ret = zcharset_iconv(ic);
-        ZICONV_FREE(ic);
-        if (ret > -1) {
-            break;
+static inline void ___clear_null2(const char *data, size_t size, zbuf_t *dest)
+{
+    char ch, *p = (char *)data;
+    size_t i;
+
+    zbuf_reset(dest);
+    for (i=0;i<size;i++) {
+        ch = p[i];
+        if (ch == '\0') {
+            continue;
         }
-        from_charset = 0;
-        if (i == 0) {
-            zbuf_truncate(dest, old_len);
+        ZBUF_PUT(dest, ch);
+    }
+    zbuf_terminate(dest);
+}
+
+ssize_t zmime_iconv(const char *src_charset, const char *data, size_t size, zbuf_t *dest)
+{
+    char f_charset_buf[64];
+    const char *f_charset;
+    size_t ret;
+    int detact = 0;
+
+    f_charset = src_charset;
+    if (ZEMPTY(f_charset)) {
+        detact = 1;
+        if (zcharset_detect_cjk(data, size, f_charset_buf)) {
+            f_charset = f_charset_buf;
+        } else  {
+            f_charset = "GB18030";
         }
     }
-    ZBUF_TERMINATE(dest);
+    f_charset = zcharset_correct_charset(f_charset);
 
-    return ret;
+    zbuf_reset(dest);
+    ret = zcharset_iconv_zbuf(f_charset, data, size
+            , "UTF-8", dest
+            , 0
+            , -1, 0);
+
+    if (ret > 0 ) {
+        ___clear_null(dest);
+        return ZBUF_LEN(dest);
+    }
+
+    if(detact) {
+        ___clear_null2(data, size, dest);
+        return ZBUF_LEN(dest);
+    } else {
+        if (zcharset_detect_cjk(data, size, f_charset_buf)) {
+            f_charset = f_charset_buf;
+        } else  {
+            f_charset = "GB18030";
+        }
+    }
+
+    zbuf_reset(dest);
+    ret = zcharset_iconv_zbuf(f_charset, data, size
+            , "UTF-8", dest
+            , 0
+            , -1, 0);
+    if (ret > 0 ) {
+        ___clear_null(dest);
+        return ZBUF_LEN(dest);
+    }
+
+    ___clear_null2(data, size, dest);
+    return ZBUF_LEN(dest);
 }

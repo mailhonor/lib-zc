@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
 void usage(void)
 {
@@ -33,7 +33,7 @@ int main(int argc, char **argv)
     }
 
     result = zbuf_create(1);
-    zqp_decode_2045(reader.data, reader.len, result);
+    zqp_decode_2045(reader.data, reader.len, (char *)result, Z_DF_ZBUF);
     zmmap_reader_fini(&reader);
 
     printf("result:%s\n", ZBUF_DATA(result));

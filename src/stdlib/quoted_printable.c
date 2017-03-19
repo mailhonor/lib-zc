@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
 /* should check c1 and c2 are hex */
 #define ___hex_val(ccc) { ccc = zhex_to_dec_list[ccc];}
@@ -17,47 +17,47 @@
     break; \
 }
 
-int zqp_decode_2045(const void *src, int src_size, zbuf_t *dest)
+int zqp_decode_2045(const void *src, int src_size, char *dest, int dest_size)
 {
     unsigned char *src_c = (unsigned char *)src;
     int src_pos = 0;
-    unsigned char c0, c1, c2;
+    unsigned char c1, c2;
     unsigned char addch;
-    int old_len = ZBUF_LEN(dest);
+    int rlen = 0;
 
     while (1) {
-        ___get_next_ch(c0);
-        if (c0 != '=') {
-            ZBUF_PUT(dest, c0);
-            continue;
-        }
-        ___get_next_ch(c1);
-        if (c1 == '\r' || c1 == '\n') {
-            ___get_next_ch(c2);
-            if (c2 != '\r' && c2 != '\n') {
-                src_pos--;
+        ___get_next_ch(addch);
+        if (addch == '=') {
+            ___get_next_ch(c1);
+            if (c1 == '\r' || c1 == '\n') {
+                ___get_next_ch(c2);
+                if (c2 != '\r' && c2 != '\n') {
+                    src_pos--;
+                }
+                continue;
             }
-            continue;
+            ___get_next_ch(c2);
+            ___hex_val(c1);
+            ___hex_val(c2);
+            addch = ((c1 << 4) | c2);
         }
-        ___get_next_ch(c2);
-        ___hex_val(c1);
-        ___hex_val(c2);
-        addch = ((c1 << 4) | c2);
-        ZBUF_PUT(dest, addch);
+        if ((dest_size > 0) && (rlen+1 > dest_size)) {
+            break;
+        }
+        Z_DF_ADD_CHAR(dest_size, dest, rlen, addch);
     }
   over:
-    ZBUF_TERMINATE(dest);
 
-    return ZBUF_LEN(dest) - old_len;
+    return rlen;
 }
 
-int zqp_decode_2047(const void *src, int src_size, zbuf_t *dest)
+int zqp_decode_2047(const void *src, int src_size, char *dest, int dest_size)
 {
     unsigned char *src_c = (unsigned char *)src;
     int src_pos = 0;
     unsigned char c0, c1, c2;
     unsigned char addch;
-    int old_len = ZBUF_LEN(dest);
+    int rlen = 0;
 
     while (1) {
         ___get_next_ch(c0);
@@ -72,13 +72,14 @@ int zqp_decode_2047(const void *src, int src_size, zbuf_t *dest)
             ___hex_val(c2);
             addch = (c1 << 4 | c2);
         }
-        ZBUF_PUT(dest, addch);
+        if ((dest_size > 0) && (rlen+1 > dest_size)) {
+            break;
+        }
+        Z_DF_ADD_CHAR(dest_size, dest, rlen, addch);
     }
-
   over:
-    ZBUF_TERMINATE(dest);
 
-    return ZBUF_LEN(dest) - old_len;
+    return rlen;
 }
 
 int zqp_decode_get_valid_len(const void *src, int src_size)

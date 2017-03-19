@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
 typedef struct zfinder_postproxy_t zfinder_postproxy_t;
 struct zfinder_postproxy_t {
@@ -50,7 +50,7 @@ static int ___close(zfinder_t * finder)
     return 0;
 }
 
-static int ___connect(zfinder_t * finder, int timeout)
+static int ___connect(zfinder_t * finder, long timeout)
 {
     zfinder_postproxy_t *my_db;
 
@@ -70,7 +70,7 @@ static int ___connect(zfinder_t * finder, int timeout)
     return 0;
 }
 
-static int ___get(zfinder_t * finder, const char *query, zbuf_t * result, int timeout)
+static int ___get(zfinder_t * finder, const char *query, zbuf_t * result, long timeout)
 {
     int i, ret;
     long dtime = ztimeout_set(timeout);
@@ -94,27 +94,27 @@ static int ___get(zfinder_t * finder, const char *query, zbuf_t * result, int ti
         zstream_set_timeout(my_db->fp, ztimeout_left(dtime));
 
         zbuf_strcpy(zb, "request");
-        zbuf_putchar(zb, '\0');
+        zbuf_put(zb, '\0');
         zbuf_strcat(zb, "lookup");
-        zbuf_putchar(zb, '\0');
+        zbuf_put(zb, '\0');
 
         zbuf_strcat(zb, "table");
-        zbuf_putchar(zb, '\0');
+        zbuf_put(zb, '\0');
         zbuf_strcat(zb, my_db->postfix_dict);
-        zbuf_putchar(zb, '\0');
+        zbuf_put(zb, '\0');
 
         zbuf_strcat(zb, "flags");
-        zbuf_putchar(zb, '\0');
+        zbuf_put(zb, '\0');
         sprintf(buf, "%d", (1 << 6));
         zbuf_strcat(zb, buf);
-        zbuf_putchar(zb, '\0');
+        zbuf_put(zb, '\0');
 
         zbuf_strcat(zb, "key");
-        zbuf_putchar(zb, '\0');
+        zbuf_put(zb, '\0');
         zbuf_strcat(zb, query);
-        zbuf_putchar(zb, '\0');
+        zbuf_put(zb, '\0');
 
-        zbuf_putchar(zb, '\0');
+        zbuf_put(zb, '\0');
 
         if ((zstream_write_n(my_db->fp, ZBUF_DATA(zb), ZBUF_LEN(zb)) < 0) || (ZSTREAM_FLUSH(my_db->fp) < 0)) {
             zbuf_printf_1024(result, "zfinder_get: %s : write error", finder->title);
@@ -171,7 +171,7 @@ static int ___get(zfinder_t * finder, const char *query, zbuf_t * result, int ti
     return -1;
 }
 
-static int _get(zfinder_t * finder, const char *query, zbuf_t * result, int timeout)
+static int _get(zfinder_t * finder, const char *query, zbuf_t * result, long timeout)
 {
     int ret;
 
@@ -191,7 +191,7 @@ int zfinder_create_postproxy(zfinder_t *finder)
 
     my_db->fd = -1;
     my_db->fp = 0;
-    if (!zdict_lookup(finder->parameters, "dictname", &(my_db->postfix_dict))){
+    if (!zdict_find(finder->parameters, "dictname", &(my_db->postfix_dict))){
         zfree(my_db);
         finder->db = 0;
         return -1;

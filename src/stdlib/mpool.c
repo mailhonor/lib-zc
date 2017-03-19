@@ -6,61 +6,53 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
+void *zmem_common_pool_malloc(zmpool_t * mp, int len);
+void *zmem_common_pool_realloc(zmpool_t * mp, const void *ptr, int len);
+void zmem_common_pool_free(zmpool_t * mp, const void *ptr);
+void zmem_common_pool_reset(zmpool_t * mp);
+void zmem_common_pool_free_pool(zmpool_t * mp);
+
+void *zmem_greedy_pool_malloc(zmpool_t * mp, int len);
+void *zmem_greedy_pool_realloc(zmpool_t * mp, const void *ptr, int len);
+void zmem_greedy_pool_free(zmpool_t * mp, const void *ptr);
+void zmem_greedy_pool_reset(zmpool_t * mp);
+void zmem_greedy_pool_free_pool(zmpool_t * mp);
+
+zmpool_api_t zmpool_api_vector[2] = {
+    {
+        zmem_common_pool_malloc,
+        zmem_common_pool_realloc,
+        zmem_common_pool_free,
+        zmem_common_pool_reset,
+        zmem_common_pool_free_pool
+    },
+    {
+        zmem_greedy_pool_malloc,
+        zmem_greedy_pool_realloc,
+        zmem_greedy_pool_free,
+        zmem_greedy_pool_reset,
+        zmem_greedy_pool_free_pool
+    }
+};
+
+/* ################################################################## */
 void zmpool_free_pool(zmpool_t * mp)
 {
     if (mp) {
-        mp->free_pool(mp);
+        zmpool_api_vector[mp->api_id].free_pool(mp);
     }
 }
 
 void zmpool_reset(zmpool_t * mp)
 {
     if (mp) {
-        mp->reset(mp);
+        zmpool_api_vector[mp->api_id].reset(mp);
     }
 }
 
 /* ################################################################## */
-void *zmpool_malloc(zmpool_t * mp, int len)
-{
-    if (!mp) {
-        return zmalloc(len);
-    }
-    return mp->malloc(mp, len);
-}
-
-void *zmpool_realloc(zmpool_t * mp, const void *ptr, int len)
-{
-    if (!mp) {
-        return zrealloc(ptr, len);
-    }
-    return mp->realloc(mp, ptr, len);
-}
-
-void zmpool_free(zmpool_t * mp, const void *ptr)
-{
-    if (!mp) {
-        return zfree(ptr);
-    }
-    return mp->free(mp, ptr);
-}
-
-/* ################################################################## */
-void *zmpool_calloc(zmpool_t * mp, int nmemb, int size)
-{
-    void *r;
-
-    if (!mp) {
-        return zcalloc(nmemb, size);
-    }
-
-    r = zmpool_malloc(mp, nmemb * size);
-    memset(r, 0, nmemb * size);
-
-    return r;
-}
 
 void *zmpool_strdup(zmpool_t * mp, const char *ptr)
 {
@@ -71,11 +63,11 @@ void *zmpool_strdup(zmpool_t * mp, const char *ptr)
         return zstrdup(ptr);
     }
 
-    if (!ptr) {
-        ptr = "";
+    if ((!ptr) || (ptr == zblank_buffer)) {
+        return zblank_buffer;
     }
     len = strlen(ptr);
-    r = zmpool_malloc(mp, len + 1);
+    r = (char *)zmpool_malloc(mp, len + 1);
     if (len > 0) {
         memcpy(r, ptr, len);
     }
@@ -90,17 +82,17 @@ void *zmpool_strndup(zmpool_t * mp, const char *ptr, int n)
     char *r;
 
     if (!mp) {
-        return zstrndup(ptr, n);
+        return strndup(ptr, n);
     }
 
-    if (!ptr) {
-        ptr = "";
+    if ((!ptr) || (ptr == zblank_buffer) || (n < 1)) {
+        return zblank_buffer;
     }
     len = strlen(ptr);
     if (n > len) {
         n = len;
     }
-    r = zmpool_malloc(mp, n + 1);
+    r = (char *)zmpool_malloc(mp, n + 1);
     if (n > 0) {
         memcpy(r, ptr, n);
     }
@@ -113,15 +105,33 @@ void *zmpool_memdup(zmpool_t * mp, const void *ptr, int n)
 {
     char *r;
 
+    if ((!ptr) || (n < 1)) {
+        return zblank_buffer;
+    }
+
     if (!mp) {
         return zmemdup(ptr, n);
     }
 
-    if (!ptr) {
-        ptr = "";
+    r = (char *)zmpool_malloc(mp, n);
+    memcpy(r, ptr, n);
+
+    return r;
+}
+
+void *zmpool_memdupnull(zmpool_t * mp, const void *ptr, int n)
+{
+    char *r;
+
+    if ((!ptr) || (n<1)) {
+        return zblank_buffer;
     }
 
-    r = zmpool_malloc(mp, n + 1);
+    if (!mp) {
+        return zmemdupnull(ptr, n);
+    }
+
+    r = (char *)zmpool_malloc(mp, n + 1);
     if (n > 0) {
         memcpy(r, ptr, n);
     }

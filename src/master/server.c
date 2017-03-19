@@ -6,57 +6,57 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include <signal.h>
 
-int zvar_master_server_listen_fd;
-int zvar_master_server_listen_type;
-zmaster_server_service_t zmaster_server_service = 0;
-zmaster_server_cb_t zmaster_server_before_service = 0;
-zmaster_server_cb_t zmaster_server_reload = 0;
-zmaster_server_cb_t zmaster_server_loop = 0;
-zmaster_server_cb_t zmaster_server_before_exit = 0;
+void (*zmaster_server_simple_service) (int fd) = 0;
+void (*zmaster_server_service_register) (const char *service, int fd, int fd_type) = 0;
 
-static int test_mode;
-static int softstopping;
-static int reloading;
+void (*zmaster_server_before_service) (void) = 0;
+void (*zmaster_server_event_loop) (void) = 0;
+void (*zmaster_server_before_reload) (void) = 0;
+void (*zmaster_server_before_exit) (void) = 0;
+
+zevbase_t *zvar_master_server_evbase = 0;
+int zvar_master_server_reloading = 0;
+int zvar_master_server_stopping = 0;
+
+static int test_mode = 0;
 static pid_t parent_pid;
-static zev_t *ev_status;
-static zev_t *ev_listen;
+static zev_t *ev_listen = 0;
+static zev_t *ev_status = 0;
 static zevtimer_t reload_timer;
 
-static int reload_to_softstop(zevtimer_t * tm)
+static void reloading_to_stopping(zevtimer_t *tm)
 {
-    zmaster_server_stop_notify();
-
-    return 0;
+    zvar_master_server_stopping = 1;
 }
 
-static int on_master_reload(zev_t * zev)
+static void on_master_reload(zev_t * zev)
 {
-    reloading = 1;
-    if (zmaster_server_reload) {
-        zmaster_server_reload();
+    zvar_master_server_reloading = 1;
+    if (getppid() == parent_pid) {
+        if (zmaster_server_before_reload) {
+            zmaster_server_before_reload();
+        }
+        zevtimer_start(&reload_timer, reloading_to_stopping, 10 * 1000);
     } else {
-        zevtimer_start(&reload_timer, reload_to_softstop, 10 * 1000);
+        zmaster_server_stop_notify();
     }
-
-    return 0;
 }
 
 #define local_ev_close()    if(local_ev_close_do_once){local_ev_close_do_once=0;local_ev_close_do();}
 static int local_ev_close_do_once;
 static void local_ev_close_do()
 {
-    if (ev_listen) {
+    if (zmaster_server_simple_service  && ev_listen) {
+        int fd = zev_get_fd(ev_listen);
         zev_unset(ev_listen);
         zev_fini(ev_listen);
         zfree(ev_listen);
         ev_listen = 0;
-        close(zvar_master_server_listen_fd);
-        zvar_master_server_listen_fd = -1;
+        close(fd);
     }
-
     if (ev_status) {
         /* The master would receive the signal of closing ZMASTER_SERVER_STATUS_FD. */
         zev_unset(ev_status);
@@ -68,184 +68,127 @@ static void local_ev_close_do()
     }
 }
 
-static int inet_server_accept(zev_t * zev)
+static void service_register(char *s, char *optval)
 {
-    int fd;
-    int listen_fd;
-
-    listen_fd = zev_get_fd(zev);
-
-    fd = zinet_accept(listen_fd);
-    if (fd < 0) {
-        if (errno != EAGAIN) {
-            zfatal("inet_server_accept: %m");
-        }
-        return -1;
+    int t = optval[0];
+    switch(t) {
+        case ZMASTER_SERVER_LISTEN_INET:
+        case ZMASTER_SERVER_LISTEN_UNIX:
+        case ZMASTER_SERVER_LISTEN_FIFO:
+            break;
+        default:
+            zfatal("zmaster_server: unknown service type %c", t);
+            break;
     }
+    int fd = atoi(optval+1);
+    if (fd < 1) {
+        zfatal("zmaster_server: fd is invalid", optval+1);
+    }
+    zclose_on_exec(fd, 1);
     znonblocking(fd, 1);
-
-    zmaster_server_service(fd);
-
-    return 0;
+    if (zmaster_server_simple_service) {
+        ev_listen = zmaster_server_general_aio_register(zvar_master_server_evbase, fd, t, zmaster_server_simple_service);
+    } else {
+        zmaster_server_service_register(s, t, fd);
+    }
 }
 
-static int unix_server_accept(zev_t * zev)
+static void test_register(char *test_url)
 {
-    int fd;
-    int listen_fd;
+    char service_buf[1024];
+    char *service, *url, *p;
 
-    listen_fd = zev_get_fd(zev);
-
-    fd = zunix_accept(listen_fd);
-    if (fd < 0) {
-        if (errno != EAGAIN) {
-            zfatal("unix_server_accept: %m");
-        }
-        return -1;
+    strcpy(service_buf, test_url);
+    p = strstr(service_buf, "://");
+    if (p) {
+        *p=0;
+        service = service_buf;
+        url = p+1;
+    } else {
+        service = zblank_buffer;
+        url = service_buf;
     }
+
+    int fd_type;
+    int fd = zlisten(url, 5,  &fd_type);
+    if (fd < 0) {
+        zfatal("zmaster_server_test: open %s(%m)", test_url);
+    }
+    zclose_on_exec(fd, 1);
     znonblocking(fd, 1);
-
-    zmaster_server_service(fd);
-
-    return 0;
+    if (zmaster_server_simple_service) {
+        ev_listen = zmaster_server_general_aio_register(zvar_master_server_evbase, fd, fd_type, zmaster_server_simple_service);
+    } else {
+        zmaster_server_service_register(service, fd, fd_type);
+    }
 }
 
-void register_server(char *test_listen)
+static void ___usage(char *parameter)
 {
+    printf("do not run this command by hand\n");
+    exit(1);
+}
+
+static void  main_init(int argc, char **argv)
+{
+    zvar_progname = argv[0];
+    signal(SIGPIPE, SIG_IGN);
+    parent_pid = getppid();
+
+    test_mode = 1;
+    ev_status = 0;
+    ev_listen = 0;
+    local_ev_close_do_once = 1;
+
+    ZPARAMETER_BEGIN() {
+        if (!strcmp(optname, "-M")) {
+            test_mode = 0;
+            opti += 1;
+            continue;
+        }
+        if (optval == 0) {
+            ___usage(0);
+        }
+        if (!strncmp(optname, "-s", 2)) {
+            service_register(optname+2, optval);
+            opti += 2;
+            continue;
+        }
+        if (!strncmp(optname, "-l", 2)) {
+            test_register(optval);
+            opti += 2;
+            continue;
+        }
+    } ZPARAMETER_END;
+
     if (!test_mode) {
         ev_status = (zev_t *) zcalloc(1, sizeof(zev_t));
         zclose_on_exec(ZMASTER_MASTER_STATUS_FD, 1);
         znonblocking(ZMASTER_MASTER_STATUS_FD, 1);
 
-        zev_init(ev_status, zvar_evbase, ZMASTER_MASTER_STATUS_FD);
+        zev_init(ev_status, zvar_master_server_evbase, ZMASTER_MASTER_STATUS_FD);
         zev_read(ev_status, on_master_reload);
-
-        zvar_master_server_listen_fd = ZMASTER_LISTEN_FD;
-    } else {
-        if (test_listen == 0) {
-            test_listen = zconfig_get_str(zvar_config, "zlisten", 0);
-        }
-        if (ZEMPTY(test_listen)) {
-            zfatal("no listen");
-        }
-        if (strchr(test_listen, ':')) {
-            zvar_master_server_listen_type = ZMASTER_LISTEN_INET;
-        } else {
-            zvar_master_server_listen_type = ZMASTER_LISTEN_UNIX;
-        }
-        zvar_master_server_listen_fd = zlisten(test_listen, 10);
-
-        if (zvar_master_server_listen_fd < 0) {
-            zfatal("open %s(%m)", test_listen);
-        }
-    }
-    zclose_on_exec(zvar_master_server_listen_fd, 1);
-
-    znonblocking(zvar_master_server_listen_fd, 1);
-
-    zevtimer_init(&reload_timer, zvar_evbase);
-
-    if (!zmaster_server_service) {
-        return;
-    }
-
-    ev_listen = (zev_t *) zcalloc(1, sizeof(zev_t));
-    zev_init(ev_listen, zvar_evbase, zvar_master_server_listen_fd);
-
-    if (zvar_master_server_listen_type == ZMASTER_LISTEN_INET) {
-        zev_read(ev_listen, inet_server_accept);
-    } else if (zvar_master_server_listen_type == ZMASTER_LISTEN_UNIX) {
-        zev_read(ev_listen, unix_server_accept);
-    }
-}
-
-int zmaster_server_main(int argc, char **argv)
-{
-    int op;
-    char *test_listen = 0;
-
-    parent_pid = getppid();
-    test_mode = 1;
-    reloading = 0;
-    softstopping = 0;
-    ev_status = 0;
-    ev_listen = 0;
-    local_ev_close_do_once = 1;
-    signal(SIGPIPE, SIG_IGN);
-
-    if (!zvar_progname) {
-        zvar_progname = argv[0];
-    }
-
-    zvar_config_init();
-    zvar_evbase_init();
-
-    while ((op = getopt(argc, argv, "Ml:c:o:t:dv")) > 0) {
-        switch (op) {
-        case 'M':
-            test_mode = 0;
-            break;
-        case 'l':
-            test_listen = optarg;
-            break;
-        case 'c':
-            zconfig_load(zvar_config, optarg);
-            break;
-        case 'o':
-            {
-                char *key, *value;
-                key = zstrdup(optarg);
-                value = strchr(key, '=');
-                if (value) {
-                    *value++ = 0;
-                }
-                zconfig_add(zvar_config, key, value);
-                zfree(key);
-            }
-            break;
-        case 't':
-            zvar_master_server_listen_type = optarg[0];
-            break;
-        case 'd':
-            zlog_set_level_from_console(ZLOG_DEBUG);
-            break;
-        case 'v':
-            zlog_set_level_from_console(ZLOG_VERBOSE);
-            break;
-        default:
-            zfatal("parameters error");
-        }
-    }
-
-    zlog_set_level(zlog_parse_level(zconfig_get_str(zvar_config, "zlog_level", "info")));
-
-    register_server(test_listen);
-
-    {
-        char *run_user = zconfig_get_str(zvar_config, "zrun_user", 0);
-        if (!ZEMPTY(run_user)) {
-            if (zchroot_user(0, run_user) < 0) {
-                zfatal("change user %s(%m)", run_user);
-            }
-        }
     }
 
     if (zmaster_server_before_service) {
         zmaster_server_before_service();
     }
 
+}
+
+int zmaster_server_main(int argc, char **argv)
+{
+    main_init(argc, argv);
     while (1) {
-        zevbase_dispatch(zvar_evbase, 0);
-        if (zmaster_server_loop) {
-            zmaster_server_loop();
+        zevbase_dispatch(zvar_master_server_evbase, 0);
+        if (zmaster_server_event_loop) {
+            zmaster_server_event_loop();
         }
-        if (reloading) {
+        if (zvar_master_server_reloading) {
             local_ev_close();
-            if (getppid() != parent_pid) {
-                break;
-            }
+            break;
         }
-        if (softstopping) {
+        if (zvar_master_server_stopping) {
             local_ev_close();
             break;
         }
@@ -259,13 +202,68 @@ int zmaster_server_main(int argc, char **argv)
 
     zevtimer_fini(&reload_timer);
 
-    zevbase_free(zvar_evbase);
+    zevbase_free(zvar_master_server_evbase);
 
     return 0;
 }
 
 void zmaster_server_stop_notify(void)
 {
-    softstopping = 1;
-    zevbase_notify(zvar_evbase);
+    zvar_master_server_stopping = 1;
+    zevbase_notify(zvar_master_server_evbase);
 }
+
+
+/* **************************************** */
+static void ___inet_server_accept(zev_t * zev)
+{
+    int fd, listen_fd;
+    void (*cb)(int) = (void(*)(int))zev_get_context(zev);
+
+    listen_fd = zev_get_fd(zev);
+
+    fd = zinet_accept(listen_fd);
+    if (fd < 0) {
+        if (errno != EAGAIN) {
+            zfatal("inet_server_accept: %m");
+        }
+        return;
+    }
+    znonblocking(fd, 1);
+    zclose_on_exec(fd, 1);
+    cb(fd);
+}
+
+static void ___unix_server_accept(zev_t * zev)
+{
+    int fd, listen_fd;
+    void (*cb)(int) = (void(*)(int))zev_get_context(zev);
+
+    listen_fd = zev_get_fd(zev);
+
+    fd = zunix_accept(listen_fd);
+    if (fd < 0) {
+        if (errno != EAGAIN) {
+            zfatal("unix_server_accept: %m");
+        }
+        return;
+    }
+    znonblocking(fd, 1);
+    zclose_on_exec(fd, 1);
+    cb(fd);
+}
+
+zev_t *zmaster_server_general_aio_register(zevbase_t *eb, int fd, int fd_type, void (*callback) (int))
+{
+    zev_t *ev = (zev_t *) zcalloc(1, sizeof(zev_t));
+    zev_init(ev, eb, fd);
+    zev_set_context(ev, callback);
+    if (fd_type == ZMASTER_SERVER_LISTEN_INET) {
+        zev_read(ev, ___inet_server_accept);
+    } else if (fd_type == ZMASTER_SERVER_LISTEN_UNIX) {
+        zev_read(ev, ___unix_server_accept);
+    } else if (fd_type == ZMASTER_SERVER_LISTEN_FIFO) {
+    }
+    return ev;
+}
+

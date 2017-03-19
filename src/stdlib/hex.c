@@ -6,25 +6,27 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
-int zhex_encode(const void *src, int src_size, zbuf_t *dest)
+int zhex_encode(const void *src, int src_size, char *dest, int dest_size)
 {
-    unsigned char dec2hex[16] = "0123456789ABCDEF";
+    unsigned const char dec2hex[17] = "0123456789ABCDEF";
     unsigned char *src_c = (unsigned char *)src;
     int src_pos;
-    int old_len = ZBUF_LEN(dest);
     int addch;
+    int rlen = 0;
 
     for (src_pos = 0; src_pos < src_size; src_pos++) {
+        if ((dest_size > 0) && (rlen+2 > dest_size)) {
+            break;
+        }
         addch = dec2hex[src_c[src_pos] >> 4];
-        ZBUF_PUT(dest, addch);
+        Z_DF_ADD_CHAR(dest_size, dest, rlen, addch);
         addch = dec2hex[src_c[src_pos] & 0X0F];
-        ZBUF_PUT(dest, addch);
+        Z_DF_ADD_CHAR(dest_size, dest, rlen, addch);
     }
-    ZBUF_TERMINATE(dest);
 
-    return ZBUF_LEN(dest) - old_len;
+    return rlen;
 }
 
 char zhex_to_dec_list[256] = {
@@ -49,21 +51,23 @@ char zhex_to_dec_list[256] = {
     -1, -1, -1, -1, -1, -1, -1, -1, -1
 };
 
-int zhex_decode(const void *src, int src_size, zbuf_t *dest)
+int zhex_decode(const void *src, int src_size, char *dest, int dest_size)
 {
     unsigned char *src_c = (unsigned char *)src;
     int src_pos;
     unsigned char h_l, h_r;
     int addch;
-    int old_len = ZBUF_LEN(dest);
+    int rlen = 0;
 
     for (src_pos = 0; src_pos + 1 < src_size; src_pos += 2) {
+        if ((dest_size > 0) && (rlen+1 > dest_size)) {
+            break;
+        }
         h_l = zhex_to_dec_list[src_c[src_pos] << 4];
         h_r = zhex_to_dec_list[src_c[src_pos + 1]];
         addch = (h_l | h_r);
-        ZBUF_PUT(dest, addch);
+        Z_DF_ADD_CHAR(dest_size, dest, rlen, addch);
     }
-    ZBUF_TERMINATE(dest);
 
-    return ZBUF_LEN(dest) - old_len;
+    return rlen;
 }

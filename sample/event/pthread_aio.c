@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include <pthread.h>
 #include <time.h>
 
@@ -16,11 +16,12 @@ typedef struct {
     send_cb_t callback;
 } send_obj_t;
 
-static zchain_t *aio_chain;
+static zlist_t *aio_list;
 static pthread_mutex_t locker = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+static zevbase_t *evbase;
 
-static int after_write(zaio_t * aio);
+static void after_write(zaio_t * aio);
 static void send_aio_to_another_pthread(zaio_t * aio, send_cb_t callback);
 
 static int service_error(zaio_t * aio)
@@ -78,11 +79,9 @@ static int another_after_read(zaio_t * aio)
     return 0;
 }
 
-static int after_read(zaio_t * aio)
+static void after_read(zaio_t * aio)
 {
     send_aio_to_another_pthread(aio, another_after_read);
-
-    return 0;
 }
 
 static int another_after_write(zaio_t * aio)
@@ -101,18 +100,16 @@ static int another_after_write(zaio_t * aio)
     return 0;
 }
 
-static int after_write(zaio_t * aio)
+static void after_write(zaio_t * aio)
 {
     send_aio_to_another_pthread(aio, another_after_write);
-
-    return 0;
 }
 
 static void another_welcome(zaio_t * aio)
 {
     time_t t = time(0);
 
-    zaio_printf_1024(aio, "welcome aio: %s\n", ctime(&t));
+    zaio_write_cache_printf_1024(aio, "welcome aio: %s\n", ctime(&t));
     zaio_write_cache_flush(aio, after_write, 10 * 1000);
 }
 
@@ -121,7 +118,7 @@ static void welcome(zaio_t * aio)
     send_aio_to_another_pthread(aio, (send_cb_t) another_welcome);
 }
 
-static int before_accept(zev_t * ev)
+static void before_accept(zev_t * ev)
 {
     zinfo("before_accept");
     int sock;
@@ -132,23 +129,19 @@ static int before_accept(zev_t * ev)
     fd = zinet_accept(sock);
     if (fd < -1) {
         zinfo("accept fail");
-        return 0;
+        return;
     }
     znonblocking(fd, 1);
     aio = zaio_create();
-    zaio_init(aio, zvar_evbase, fd);
+    zaio_init(aio, evbase, fd);
 
     welcome(aio);
-
-    return 0;
 }
 
-static int timer_cb(zevtimer_t * zt)
+static void timer_cb(zevtimer_t * zt)
 {
     zinfo("now exit!");
     exit(1);
-
-    return 0;
 }
 
 void *another_pthread_deal_aio(void *arg)
@@ -157,11 +150,11 @@ void *another_pthread_deal_aio(void *arg)
 
     while (1) {
         pthread_mutex_lock(&locker);
-        while (!ZCHAIN_HEAD(aio_chain)) {
+        while (!ZLIST_HEAD(aio_list)) {
             pthread_cond_wait(&cond, &locker);
         }
         obj = 0;
-        zchain_shift(aio_chain, (char **)&obj);
+        zlist_shift(aio_list, (char **)&obj);
         pthread_mutex_unlock(&locker);
 
         if (obj) {
@@ -189,13 +182,13 @@ static void send_aio_to_another_pthread(zaio_t * aio, send_cb_t callback)
     obj->callback = callback;
 
     pthread_mutex_lock(&locker);
-    zchain_push(aio_chain, obj);
+    zlist_push(aio_list, obj);
     pthread_mutex_unlock(&locker);
     pthread_cond_signal(&cond);
 }
 
 pthread_t m_pth;
-static int ___log(int level, char *fmt, va_list ap)
+static void ___log(const char *fmt, va_list ap)
 {
     char log_buf[102400];
     int len;
@@ -206,8 +199,6 @@ static int ___log(int level, char *fmt, va_list ap)
     log_buf[len] = '\n';
     log_buf[len + 1] = 0;
     fputs(log_buf, stderr);
-
-    return 0;
 }
 
 int main(int argc, char **argv)
@@ -220,26 +211,26 @@ int main(int argc, char **argv)
 
     m_pth = pthread_self();
 
-    zlog_set_voutput(___log);
+    zlog_voutput = ___log;
 
-    aio_chain = zchain_create();
+    aio_list = zlist_create();
 
     pthread_create(&pth, 0, another_pthread_deal_aio, 0);
 
     port = 8899;
-    zvar_evbase = zevbase_create();
+    evbase = zevbase_create();
 
     sock = zinet_listen(0, port, 5);
     znonblocking(sock, 1);
     ev = zev_create();
-    zev_init(ev, zvar_evbase, sock);
+    zev_init(ev, evbase, sock);
     zev_read(ev, before_accept);
 
-    zevtimer_init(&tm, zvar_evbase);
+    zevtimer_init(&tm, evbase);
     zevtimer_start(&tm, timer_cb, 200 * 1000);
 
     while (1) {
-        zevbase_dispatch(zvar_evbase, 0);
+        zevbase_dispatch(evbase, 0);
     }
 
     return 0;

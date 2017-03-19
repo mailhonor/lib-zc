@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include <arpa/inet.h>
 #include <openssl/ssl.h>
 #include <sys/epoll.h>
@@ -19,6 +19,7 @@
 #define ZAIO_CB_TYPE_READ                   0X11U
 #define ZAIO_CB_TYPE_READ_N                 0X12U
 #define ZAIO_CB_TYPE_READ_DELIMETER         0X13U
+#define ZAIO_CB_TYPE_READ_SIZE_DATA         0X14U
 #define ZAIO_CB_WRITE                       0X20U
 #define ZAIO_CB_TYPE_WRITE                  0X21U
 #define ZAIO_CB_TYPE_SLEEP                  0X31U
@@ -120,7 +121,7 @@ static inline int zev_action(zev_t * ev)
 /* aio */
 
 #define epoll_event_count  4096
-static int zaio_event_set(zaio_t * aio, int ev_type, int timeout);
+static int zaio_event_set(zaio_t * aio, int ev_type, long timeout);
 static int ZAIO_P2_MAX = ZAIO_RWBUF_SIZE - 1;
 static void zaio_ready_do(zaio_t * aio);
 
@@ -150,7 +151,7 @@ static inline int zaio_timer_check(zevbase_t * eb)
     zrbtree_node_t *rn;
     long delay;
 
-    if (!zrbtree_have_data(&(eb->aio_timer_tree))) {
+    if (!ZRBTREE_HAVE_DATA(&(eb->aio_timer_tree))) {
         return delay;
     }
 
@@ -214,7 +215,7 @@ static inline void ___zaio_cache_shift(zaio_t * aio, zaio_rwbuf_list_t * ioc, vo
         if (len >= rlen) {
             rwb = rwb->next;
             lock_evbase(eb);
-            zmcot_free_one(eb->aio_rwbuf_mpool, ioc->head);
+            zmpiece_free_one(eb->aio_rwbuf_mpool, ioc->head);
             unlock_evbase(eb);
             ioc->head = rwb;
             len -= rlen;
@@ -261,7 +262,7 @@ static inline void ___zaio_cache_append(zaio_t * aio, zaio_rwbuf_list_t * ioc, c
     for (i = 0; i < len; i++) {
         if (!rwb || (p2 == ZAIO_P2_MAX)) {
             lock_evbase(eb);
-            rwb = (zaio_rwbuf_t *) zmcot_alloc_one(eb->aio_rwbuf_mpool);
+            rwb = (zaio_rwbuf_t *) zmpiece_alloc_one(eb->aio_rwbuf_mpool);
             unlock_evbase(eb);
             rwb->next = 0;
             rwb->p1 = 0;
@@ -288,16 +289,16 @@ static inline int zaio_try_ssl_read(zaio_t * aio, void *buf, int len)
 {
     int rlen, status;
 
-    aio->ssl->read_want_write = 0;
-    aio->ssl->read_want_read = 0;
+    aio->ssl_read_want_write = 0;
+    aio->ssl_read_want_read = 0;
 
-    rlen = SSL_read(aio->ssl->ssl, buf, len);
+    rlen = SSL_read(aio->ssl, buf, len);
     if (rlen < 1) {
-        status = SSL_get_error(aio->ssl->ssl, rlen);
+        status = SSL_get_error(aio->ssl, rlen);
         if (status == SSL_ERROR_WANT_WRITE) {
-            aio->ssl->read_want_write = 1;
+            aio->ssl_read_want_write = 1;
         } else if (status == SSL_ERROR_WANT_READ) {
-            aio->ssl->read_want_read = 1;
+            aio->ssl_read_want_read = 1;
         } else {
             aio->ssl->error = 1;
         }
@@ -310,16 +311,16 @@ static inline int zaio_try_ssl_write(zaio_t * aio, void *buf, int len)
 {
     int rlen, status;
 
-    aio->ssl->write_want_write = 0;
-    aio->ssl->write_want_read = 0;
+    aio->ssl_write_want_write = 0;
+    aio->ssl_write_want_read = 0;
 
-    rlen = SSL_write(aio->ssl->ssl, buf, len);
+    rlen = SSL_write(aio->ssl, buf, len);
     if (rlen < 1) {
-        status = SSL_get_error(aio->ssl->ssl, rlen);
+        status = SSL_get_error(aio->ssl, rlen);
         if (status == SSL_ERROR_WANT_WRITE) {
-            aio->ssl->write_want_write = 1;
+            aio->ssl_write_want_write = 1;
         } else if (status == SSL_ERROR_WANT_READ) {
-            aio->ssl->write_want_read = 1;
+            aio->ssl_write_want_read = 1;
         } else {
             aio->ssl->error = 1;
         }
@@ -333,16 +334,16 @@ static int zaio_try_ssl_connect(zaio_t * aio)
 {
     int rlen, status;
 
-    aio->ssl->write_want_write = 0;
-    aio->ssl->write_want_read = 0;
+    aio->ssl_write_want_write = 0;
+    aio->ssl_write_want_read = 0;
 
-    rlen = SSL_connect(aio->ssl->ssl);
+    rlen = SSL_connect(aio->ssl);
     if (rlen < 1) {
-        status = SSL_get_error(aio->ssl->ssl, rlen);
+        status = SSL_get_error(aio->ssl, rlen);
         if (status == SSL_ERROR_WANT_WRITE) {
-            aio->ssl->write_want_write = 1;
+            aio->ssl_write_want_write = 1;
         } else if (status == SSL_ERROR_WANT_READ) {
-            aio->ssl->write_want_read = 1;
+            aio->ssl_write_want_read = 1;
         } else {
             aio->ssl->error = 1;
         }
@@ -356,16 +357,16 @@ static int zaio_try_ssl_accept(zaio_t * aio)
 {
     int rlen, status;
 
-    aio->ssl->read_want_write = 0;
-    aio->ssl->read_want_read = 0;
+    aio->ssl_read_want_write = 0;
+    aio->ssl_read_want_read = 0;
 
-    rlen = SSL_accept(aio->ssl->ssl);
+    rlen = SSL_accept(aio->ssl);
     if (rlen < 1) {
-        status = SSL_get_error(aio->ssl->ssl, rlen);
+        status = SSL_get_error(aio->ssl, rlen);
         if (status == SSL_ERROR_WANT_WRITE) {
-            aio->ssl->read_want_write = 1;
+            aio->ssl_read_want_write = 1;
         } else if (status == SSL_ERROR_WANT_READ) {
-            aio->ssl->read_want_read = 1;
+            aio->ssl_read_want_read = 1;
         } else {
             aio->ssl->error = 1;
         }
@@ -375,15 +376,14 @@ static int zaio_try_ssl_accept(zaio_t * aio)
     return 1;
 }
 
-static inline int zaio_ssl_init___inner(zaio_t * aio, zaio_cb_t callback, int timeout)
+static inline int zaio_ssl_init___inner(zaio_t * aio, zaio_cb_t callback, long timeout)
 {
-    zaio_ssl_t *zssl = aio->ssl;
     int rlen;
 
     aio->rw_type = ZAIO_CB_TYPE_SSL_INIT;
     aio->callback = callback;
 
-    if (zssl->server_or_client) {
+    if (aio->ssl_server_or_client) {
         rlen = zaio_try_ssl_accept(aio);
     } else {
         rlen = zaio_try_ssl_connect(aio);
@@ -400,20 +400,21 @@ static inline int zaio_ssl_init___inner(zaio_t * aio, zaio_cb_t callback, int ti
     return 0;
 }
 
-int zaio_ssl_init(zaio_t * aio, zsslctx_t * ctx, zaio_cb_t callback, int timeout)
+void zaio_ssl_init(zaio_t * aio, SSL_CTX * ctx, int server_or_client, zaio_cb_t callback, long timeout)
 {
     zevbase_t *eb = zaio_get_base(aio);
-    zaio_ssl_t *zssl;
     SSL *ssl;
 
-    ssl = SSL_new(ctx->ssl_ctx);
+    ssl = SSL_new(ctx);
     SSL_set_fd(ssl, aio->fd);
 
-    zssl = (zaio_ssl_t *) zcalloc(1, sizeof(zaio_ssl_t));
-    zssl->ssl = ssl;
-    zssl->server_or_client = ctx->server_or_client;
-
-    aio->ssl = zssl;
+    aio->ssl = ssl;
+    aio->ssl_server_or_client = server_or_client;
+    aio->ssl_read_want_read = 0;
+    aio->ssl_read_want_write = 0;
+    aio->ssl_write_want_read = 0;
+    aio->ssl_write_want_write = 0;
+    aio->ssl_error = 0;
 
     aio->rw_type = ZAIO_CB_TYPE_SSL_INIT;
     aio->callback = callback;
@@ -425,52 +426,42 @@ int zaio_ssl_init(zaio_t * aio, zsslctx_t * ctx, zaio_cb_t callback, int timeout
     if (eb->locker_context) {
         zevbase_notify(eb);
     }
+}
 
-    return 0;
+void zaio_ssl_init_server(zaio_t * aio, SSL_CTX * ctx, zaio_cb_t callback, long timeout)
+{
+    zaio_ssl_init(aio, ctx, 1, callback, timeout);
+}
+
+void zaio_ssl_init_client(zaio_t * aio, SSL_CTX * ctx, zaio_cb_t callback, long timeout)
+{
+    zaio_ssl_init(aio, ctx, 0, callback, timeout);
 }
 
 void zaio_ssl_fini(zaio_t * aio)
 {
-    if (!(aio->ssl)) {
-        return;
+    if (aio->ssl) {
+        SSL_shutdown(aio->ssl);
+        SSL_free(aio->ssl);
+        aio->ssl = 0;
     }
-    if (aio->ssl->ssl) {
-        SSL_shutdown(aio->ssl->ssl);
-        SSL_free(aio->ssl->ssl);
-    }
-    zfree(aio->ssl);
+}
+
+void zaio_attach_SSL(zaio_t * aio, SSL *ssl)
+{
+    aio->ssl = ssl;
+    aio->ssl_read_want_read = 0;
+    aio->ssl_read_want_write = 0;
+    aio->ssl_write_want_read = 0;
+    aio->ssl_write_want_write = 0;
+    aio->ssl_error = 0;
+}
+
+SSL *zaio_detach_SSL(zaio_t *aio)
+{
+    SSL * r = aio->ssl;
     aio->ssl = 0;
-}
-
-zaio_ssl_t *zaio_ssl_detach(zaio_t * aio)
-{
-    zaio_ssl_t *zs;
-
-    zs = aio->ssl;
-    aio->ssl = 0;
-
-    return zs;
-}
-
-int zaio_ssl_attach(zaio_t * aio, zaio_ssl_t * zssl)
-{
-    aio->ssl = zssl;
-
-    return 0;
-}
-
-void *___zaio_ssl_detach_ssl(zaio_ssl_t * assl)
-{
-    SSL *ssl;
-
-    if (!assl->ssl) {
-        return 0;
-    }
-
-    ssl = assl->ssl;
-    assl->ssl = 0;
-
-    return ssl;
+    return r;
 }
 
 int zaio_fetch_rbuf(zaio_t * aio, char *buf, int len)
@@ -492,6 +483,27 @@ static void zaio_ready_do(zaio_t * aio)
         zfatal("zaio: not found callback");
     }
 
+    if ((rw_type == ZAIO_CB_TYPE_READ_N) && (aio->delimiter == 1)) {
+        if (aio->ret < 4) {
+            aio->ret = -1;
+            (callback)(aio);
+            return;
+        }
+        char buf[5];
+        unsigned char * p = (unsigned char *)buf;
+        int nlen;
+        zaio_fetch_rbuf(aio, buf, 4);
+        nlen  = (p[0]<<24) | (p[1]<<16) | (p[2]<<8) | p[3];
+        if (nlen > 1024 * 1024)
+        {
+            aio->ret = -1;
+            (callback)(aio);
+            return;
+        }
+        zaio_read_n(aio, nlen, aio->callback, -1);
+        return;
+    }
+
     if (rw_type == ZAIO_CB_TYPE_SLEEP) {
         aio->ret = 1;
     }
@@ -509,6 +521,7 @@ zaio_t *zaio_create(void)
 
 void zaio_free(zaio_t * aio)
 {
+    zaio_fini(aio);
     zfree(aio);
 }
 
@@ -522,17 +535,20 @@ void zaio_init(zaio_t * aio, zevbase_t * eb, int fd)
 
 void zaio_fini(zaio_t * aio)
 {
-    zaio_event_set(aio, 0, -2);
+    if (aio->evbase) {
+        zaio_event_set(aio, 0, -2);
 
-    if (aio->read_cache.len > 0) {
-        ___zaio_cache_shift(aio, &(aio->read_cache), 0, aio->read_cache.len);
+        if (aio->read_cache.len > 0) {
+            ___zaio_cache_shift(aio, &(aio->read_cache), 0, aio->read_cache.len);
+        }
+        if (aio->write_cache.len > 0) {
+            ___zaio_cache_shift(aio, &(aio->write_cache), 0, aio->write_cache.len);
+        }
+        if (aio->ssl) {
+            zaio_ssl_fini(aio);
+        }
     }
-    if (aio->write_cache.len > 0) {
-        ___zaio_cache_shift(aio, &(aio->write_cache), 0, aio->write_cache.len);
-    }
-    if (aio->ssl) {
-        zaio_ssl_fini(aio);
-    }
+    aio->evbase = 0;
 }
 
 void zaio_set_local_mode(zaio_t * aio)
@@ -540,7 +556,7 @@ void zaio_set_local_mode(zaio_t * aio)
     aio->is_local = 1;
 }
 
-static int zaio_event_set(zaio_t * aio, int ev_type, int timeout)
+static int zaio_event_set(zaio_t * aio, int ev_type, long timeout)
 {
     zevbase_t *eb = zaio_get_base(aio);
     int fd, events, old_events, e_events;
@@ -598,15 +614,15 @@ static int zaio_event_set(zaio_t * aio, int ev_type, int timeout)
                     events |= ZEV_WRITE;
                 }
             } else {
-                if (aio->ssl->read_want_read || aio->ssl->write_want_read) {
+                if (aio->ssl_read_want_read || aio->ssl_write_want_read) {
                     events |= ZEV_READ;
                 }
-                if (aio->ssl->read_want_write || aio->ssl->write_want_write) {
+                if (aio->ssl_read_want_write || aio->ssl_write_want_write) {
                     events |= ZEV_WRITE;
                 }
                 if (aio->write_cache.len > 0) {
-                    if ((aio->ssl->write_want_read == 0) && (aio->ssl->write_want_write == 0)) {
-                        aio->ssl->write_want_write = 1;
+                    if ((aio->ssl_write_want_read == 0) && (aio->ssl_write_want_write == 0)) {
+                        aio->ssl_write_want_write = 1;
                         events |= ZEV_WRITE;
                     }
                 }
@@ -643,10 +659,9 @@ static int zaio_event_set(zaio_t * aio, int ev_type, int timeout)
     return 0;
 }
 
-int zaio_attach(zaio_t * aio, zaio_cb_t callback)
+void zaio_attach(zaio_t * aio, zaio_cb_t callback)
 {
     zevbase_t *eb = zaio_get_base(aio);
-
     aio->callback = callback;
 
     lock_evbase(eb);
@@ -654,11 +669,9 @@ int zaio_attach(zaio_t * aio, zaio_cb_t callback)
     unlock_evbase(eb);
 
     zevbase_notify(eb);
-
-    return 0;
 }
 
-static inline int zaio_read___innner(zaio_t * aio, int max_len, zaio_cb_t callback, int timeout)
+static inline int zaio_read___innner(zaio_t * aio, int max_len, zaio_cb_t callback, long timeout)
 {
     int magic, rlen;
     char buf[10240];
@@ -705,7 +718,7 @@ static inline int zaio_read___innner(zaio_t * aio, int max_len, zaio_cb_t callba
     return 0;
 }
 
-int zaio_read(zaio_t * aio, int max_len, zaio_cb_t callback, int timeout)
+void zaio_read(zaio_t * aio, int max_len, zaio_cb_t callback, long timeout)
 {
     zevbase_t *eb = zaio_get_base(aio);
 
@@ -720,11 +733,9 @@ int zaio_read(zaio_t * aio, int max_len, zaio_cb_t callback, int timeout)
     if (eb->locker_context) {
         zevbase_notify(eb);
     }
-
-    return 0;
 }
 
-static inline int zaio_read_n___inner(zaio_t * aio, int strict_len, zaio_cb_t callback, int timeout)
+static inline int zaio_read_n___inner(zaio_t * aio, int strict_len, zaio_cb_t callback, long timeout)
 {
     int magic, rlen;
     char buf[10240];
@@ -768,7 +779,7 @@ static inline int zaio_read_n___inner(zaio_t * aio, int strict_len, zaio_cb_t ca
     return 0;
 }
 
-int zaio_read_n(zaio_t * aio, int strict_len, zaio_cb_t callback, int timeout)
+void zaio_read_n(zaio_t * aio, int strict_len, zaio_cb_t callback, long timeout)
 {
     zevbase_t *eb = zaio_get_base(aio);
 
@@ -784,8 +795,6 @@ int zaio_read_n(zaio_t * aio, int strict_len, zaio_cb_t callback, int timeout)
     if (eb->locker_context) {
         zevbase_notify(eb);
     }
-
-    return 0;
 }
 
 static inline int ___zaio_read_delimiter_check(zaio_t * aio, unsigned char delimiter, int max_len)
@@ -814,10 +823,9 @@ static inline int ___zaio_read_delimiter_check(zaio_t * aio, unsigned char delim
     }
 
     return -1;
-
 }
 
-static inline int zaio_read_delimiter___inner(zaio_t * aio, char delimiter, int max_len, zaio_cb_t callback, int timeout)
+static inline int zaio_read_delimiter___inner(zaio_t * aio, char delimiter, int max_len, zaio_cb_t callback, long timeout)
 {
     int magic, rlen;
     char buf[10240 + 10];
@@ -851,7 +859,7 @@ static inline int zaio_read_delimiter___inner(zaio_t * aio, char delimiter, int 
             break;
         }
         ___zaio_cache_append(aio, &(aio->read_cache), buf, rlen);
-        data = memchr(buf, aio->delimiter, rlen);
+        data = (char *)memchr(buf, aio->delimiter, rlen);
         if (data) {
             magic = aio->read_cache.len - rlen + (data - buf + 1);
             if (magic > aio->read_magic_len) {
@@ -871,7 +879,7 @@ static inline int zaio_read_delimiter___inner(zaio_t * aio, char delimiter, int 
     return 0;
 }
 
-int zaio_read_delimiter(zaio_t * aio, int delimiter, int max_len, zaio_cb_t callback, int timeout)
+void zaio_read_delimiter(zaio_t * aio, int delimiter, int max_len, zaio_cb_t callback, long timeout)
 {
     zevbase_t *eb = zaio_get_base(aio);
 
@@ -887,21 +895,117 @@ int zaio_read_delimiter(zaio_t * aio, int delimiter, int max_len, zaio_cb_t call
     if (eb->locker_context) {
         zevbase_notify(eb);
     }
+}
+
+static inline int ___zaio_read_size_data_check(zaio_t * aio)
+{
+    int magic = 0, end, ch, shift = 0, ci = 0, size = 0;
+    unsigned char *buf;
+    char tmpbuf[10];
+    zaio_rwbuf_t *rwb;
+
+    if (aio->read_cache.len == 0) {
+        return -1;
+    }
+
+    for (rwb = aio->read_cache.head; rwb; rwb = rwb->next) {
+        buf = (unsigned char *)(rwb->data);
+        end = rwb->p2 + 1;
+        for (ci = rwb->p1; ci != end; ci++) {
+            magic++;
+            ch = buf[ci];
+            size |= ((ch & 0177) << shift);
+            if (ch & 0200) {
+                goto over;
+            }
+            if (magic > 4) {
+                return -2;
+            }
+            shift += 7;
+        }
+    }
+    return -1;
+over:
+    ___zaio_cache_shift(aio, &(aio->read_cache), tmpbuf, size);
+    return size;
+}
+
+static inline int zaio_read_size_data___inner(zaio_t * aio, zaio_cb_t callback, long timeout)
+{
+    int magic, rlen;
+    char buf[10240];
+
+    aio->rw_type = ZAIO_CB_TYPE_READ_N;
+    aio->callback = callback;
+
+    while (1) {
+        if (aio->read_magic_len == 0) {
+           rlen = ___zaio_read_size_data_check(aio);
+           if ((rlen == -2) || (rlen == 0)) {
+               aio->ret = -1;
+               zaio_event_set(aio, 0, -2);
+               zaio_ready_do(aio);
+               return 0;
+           } else if (rlen > 0) {
+               aio->read_magic_len = rlen;
+               continue;
+           }
+        } else {
+            if (aio->read_cache.len < aio->read_magic_len) {
+                magic = -1;
+            } else {
+                magic = aio->read_magic_len;
+            }
+            if (magic > 0) {
+                aio->ret = magic;
+                zaio_event_set(aio, 2, timeout);
+                zaio_ready_do(aio);
+                return 0;
+            }
+        }
+        if (!(aio->ssl)) {
+            rlen = read(aio->fd, buf, 10240);
+        } else {
+            rlen = zaio_try_ssl_read(aio, buf, 10240);
+        }
+        if (rlen < 1) {
+            break;
+        }
+        ___zaio_cache_append(aio, &(aio->read_cache), buf, rlen);
+    }
+
+    zaio_event_set(aio, 1, timeout);
 
     return 0;
 }
 
-int zaio_write_cache_append(zaio_t * aio, const void *buf, int len)
+void zaio_read_size_data(zaio_t * aio, zaio_cb_t callback, long timeout)
 {
-    if (len < 1) {
-        return 0;
-    }
-    ___zaio_cache_append(aio, &(aio->write_cache), buf, len);
+    zevbase_t *eb = zaio_get_base(aio);
 
-    return len;
+    aio->delimiter = 0;
+    aio->rw_type = ZAIO_CB_TYPE_READ_SIZE_DATA;
+    aio->callback = callback;
+    aio->read_magic_len = 0;
+    aio->ret = timeout;
+
+    lock_evbase(eb);
+    ZMLINK_APPEND(eb->queue_head, eb->queue_tail, aio, queue_prev, queue_next);
+    unlock_evbase(eb);
+    if (eb->locker_context) {
+        zevbase_notify(eb);
+    }
 }
 
-int zaio_printf_1024(zaio_t * aio, const char *fmt, ...)
+void zaio_write_cache_append(zaio_t * aio, const void *buf, int len)
+{
+    if (len < 1) {
+        return;
+    }
+    ___zaio_cache_append(aio, &(aio->write_cache), buf, len);
+}
+
+void zaio_write_cache_printf_1024(zaio_t * aio, const char *fmt, ...)
 {
     va_list ap;
     char buf[1024+1];
@@ -912,18 +1016,23 @@ int zaio_printf_1024(zaio_t * aio, const char *fmt, ...)
     va_end(ap);
 
     zaio_write_cache_append(aio, buf, len);
-
-    return 0;
 }
 
-int zaio_puts(zaio_t * aio, const char *s)
+void zaio_puts(zaio_t * aio, const char *s)
 {
     zaio_write_cache_append(aio, s, strlen(s));
-
-    return 0;
 }
 
-static inline int zaio_write_cache_flush___inner(zaio_t * aio, zaio_cb_t callback, int timeout)
+void zaio_write_cache_size_data(zaio_t * aio, const void *buf, int len)
+{
+    char sbuf[12];
+    int ret;
+    ret = zsize_data_put_size(len, sbuf);
+    zaio_write_cache_append(aio, sbuf, ret);
+    zaio_write_cache_append(aio, buf, len);
+}
+
+static inline int zaio_write_cache_flush___inner(zaio_t * aio, zaio_cb_t callback, long timeout)
 {
     aio->ret = 1;
     aio->rw_type = ZAIO_CB_TYPE_WRITE;
@@ -934,7 +1043,7 @@ static inline int zaio_write_cache_flush___inner(zaio_t * aio, zaio_cb_t callbac
     return 0;
 }
 
-int zaio_write_cache_flush(zaio_t * aio, zaio_cb_t callback, int timeout)
+void zaio_write_cache_flush(zaio_t * aio, zaio_cb_t callback, long timeout)
 {
     zevbase_t *eb = zaio_get_base(aio);
 
@@ -948,8 +1057,6 @@ int zaio_write_cache_flush(zaio_t * aio, zaio_cb_t callback, int timeout)
     if (eb->locker_context) {
         zevbase_notify(eb);
     }
-
-    return 0;
 }
 
 int zaio_write_cache_get_len(zaio_t * aio)
@@ -957,7 +1064,7 @@ int zaio_write_cache_get_len(zaio_t * aio)
     return aio->write_cache.len;
 }
 
-static inline int zaio_sleep___inner(zaio_t * aio, zaio_cb_t callback, int timeout)
+static inline int zaio_sleep___inner(zaio_t * aio, zaio_cb_t callback, long timeout)
 {
     aio->rw_type = ZAIO_CB_TYPE_SLEEP;
     aio->callback = callback;
@@ -966,7 +1073,7 @@ static inline int zaio_sleep___inner(zaio_t * aio, zaio_cb_t callback, int timeo
     return 0;
 }
 
-int zaio_sleep(zaio_t * aio, zaio_cb_t callback, int timeout)
+void zaio_sleep(zaio_t * aio, zaio_cb_t callback, long timeout)
 {
     zevbase_t *eb = zaio_get_base(aio);
 
@@ -977,11 +1084,10 @@ int zaio_sleep(zaio_t * aio, zaio_cb_t callback, int timeout)
     lock_evbase(eb);
     ZMLINK_APPEND(eb->queue_head, eb->queue_tail, aio, queue_prev, queue_next);
     unlock_evbase(eb);
+
     if (eb->locker_context) {
         zevbase_notify(eb);
     }
-
-    return 0;
 }
 
 static inline int zaio_action_read_once(zaio_t * aio, int rw_type, char *buf)
@@ -1020,7 +1126,7 @@ static inline int zaio_action_read_once(zaio_t * aio, int rw_type, char *buf)
         }
     }
     if (rw_type == ZAIO_CB_TYPE_READ_DELIMETER) {
-        data = memchr(buf, aio->delimiter, rlen);
+        data = (char *)memchr(buf, aio->delimiter, rlen);
         if (data) {
             //aio->ret = aio->read_cache.len - rlen + (data - buf + 1);
             aio->ret = aio->read_cache.len + (data - buf + 1) - rlen;
@@ -1045,6 +1151,7 @@ static inline int zaio_action_read(zaio_t * aio, int rw_type)
     char buf[1100000];
     int ret;
 
+#if 0
     if ((aio->ssl) && (!aio->ssl->session_init)) {
         ret = zaio_try_ssl_accept(aio);
         if (ret > 0) {
@@ -1055,7 +1162,7 @@ static inline int zaio_action_read(zaio_t * aio, int rw_type)
 
         return 1;
     }
-
+#endif
     while (1) {
         ret = zaio_action_read_once(aio, rw_type, buf);
         if (ret == -1) {
@@ -1074,6 +1181,7 @@ static inline int zaio_action_write(zaio_t * aio, int rw_type)
     int wlen, rlen, len;
     char *data;
 
+#if 0
     if ((aio->ssl) && (!aio->ssl->session_init)) {
         rlen = zaio_try_ssl_connect(aio);
         if (rlen > 0) {
@@ -1084,6 +1192,7 @@ static inline int zaio_action_write(zaio_t * aio, int rw_type)
 
         return 1;
     }
+#endif
     while (1) {
         ___zaio_cache_first_line(aio, &(aio->write_cache), &data, &len);
         if (len == 0) {
@@ -1109,25 +1218,56 @@ static inline int zaio_action(zaio_t * aio)
 {
     int rw_type;
     int events, transfer;
-    zaio_ssl_t *ssl = aio->ssl;
 
     transfer = 1;
     rw_type = aio->rw_type;
     events = aio->recv_events;
 
+    if ((events & ZEV_RDHUP) && (rw_type & ZAIO_CB_TYPE_READ)) {
+        /* peer closed */
+        aio->ret = 0;
+        transfer = 0;
+        goto transfer;
+    }
+
+    if ((events & ZEV_RDHUP) && (rw_type & ZAIO_CB_READ) && (aio->read_cache.len < 1)) {
+        /* peer closed */
+        aio->ret = 0;
+        transfer = 0;
+        goto transfer;
+    }
     if (events & ZEV_EXCEPTION) {
         aio->ret = -1;
         transfer = 0;
         goto transfer;
     }
-#define _ssl_w (((ssl->write_want_write) &&(events & ZEV_WRITE))||((ssl->write_want_read) &&(events & ZEV_READ)))
-#define _ssl_r (((ssl->read_want_write) &&(events & ZEV_WRITE))||((ssl->read_want_read) &&(events & ZEV_READ)))
+
+    if (rw_type == ZAIO_CB_TYPE_SSL_INIT) {
+        int rlen;
+        if (aio->ssl_server_or_client) {
+            rlen = zaio_try_ssl_accept(aio);
+        } else {
+            rlen = zaio_try_ssl_connect(aio);
+        }
+        if (rlen > 0) {
+            zaio_event_set(aio, 2, -2);
+            zaio_ready_do(aio);
+            return 0;
+        }
+        transfer = 1;
+        goto transfer;
+    }
+
+#define _ssl_w (((aio->ssl_write_want_write)&&(events&ZEV_WRITE))||((aio->ssl_write_want_read) &&(events&ZEV_READ)))
+#define _ssl_r (((aio->ssl_read_want_write)&&(events&ZEV_WRITE))||((aio->ssl_read_want_read)&&(events&ZEV_READ)))
     if (((aio->ssl) && (_ssl_w)) || ((!(aio->ssl)) && (events & ZEV_WRITE))) {
         transfer = zaio_action_write(aio, rw_type);
+#if 0
         if (rw_type & ZAIO_CB_WRITE) {
             goto transfer;
         }
         transfer = 1;
+#endif
         goto transfer;
     }
 
@@ -1188,7 +1328,7 @@ static int inline zevtimer_check(zevbase_t * eb)
     zevtimer_cb_t callback;
     zrbtree_t *timer_tree = &(eb->general_timer_tree);
 
-    if (!zrbtree_have_data(timer_tree)) {
+    if (!ZRBTREE_HAVE_DATA(timer_tree)) {
         return delay;
     }
     while (1) {
@@ -1234,7 +1374,7 @@ void zevtimer_fini(zevtimer_t * timer)
     zevtimer_stop(timer);
 }
 
-int zevtimer_start(zevtimer_t * timer, zevtimer_cb_t callback, int timeout)
+void zevtimer_start(zevtimer_t * timer, zevtimer_cb_t callback, long timeout)
 {
     zevbase_t *eb = timer->evbase;
     zrbtree_t *timer_tree = &(eb->general_timer_tree);
@@ -1254,11 +1394,9 @@ int zevtimer_start(zevtimer_t * timer, zevtimer_cb_t callback, int timeout)
         }
         timer->in_time = 0;
     }
-
-    return 0;
 }
 
-int zevtimer_stop(zevtimer_t * timer)
+void zevtimer_stop(zevtimer_t * timer)
 {
     return zevtimer_start(timer, 0, 0);
 }
@@ -1266,11 +1404,11 @@ int zevtimer_stop(zevtimer_t * timer)
 /* ################################################################## */
 /* evbase */
 
-static int zevbase_notify_reader(zev_t * eb)
+static void zevbase_notify_reader(zev_t * eb)
 {
     uint64_t u;
 
-    return read(zev_get_fd(eb), &u, sizeof(uint64_t));
+    read(zev_get_fd(eb), &u, sizeof(uint64_t));
 }
 
 int zevbase_notify(zevbase_t * eb)
@@ -1287,7 +1425,7 @@ zevbase_t *zevbase_create(void)
 
     eb = (zevbase_t *) zcalloc(1, sizeof(zevbase_t));
 
-    eb->aio_rwbuf_mpool = zmcot_create(sizeof(zaio_rwbuf_t));
+    eb->aio_rwbuf_mpool = zmpiece_create(sizeof(zaio_rwbuf_t));
 
     zrbtree_init(&(eb->general_timer_tree), zevtimer_cmp);
     zrbtree_init(&(eb->aio_timer_tree), zaio_timer_cmp);
@@ -1360,6 +1498,8 @@ static inline int zevbase_queue_checker(zevbase_t * eb)
             zaio_read_n___inner(aio, aio->read_magic_len, aio->callback, aio->ret);
         } else if (rw_type == ZAIO_CB_TYPE_READ_DELIMETER) {
             zaio_read_delimiter___inner(aio, aio->delimiter, aio->read_magic_len, aio->callback, aio->ret);
+        } else if (rw_type == ZAIO_CB_TYPE_READ_SIZE_DATA) {
+            zaio_read_size_data___inner(aio, aio->callback, aio->ret);
         } else if (rw_type == ZAIO_CB_TYPE_WRITE) {
             zaio_write_cache_flush___inner(aio, aio->callback, aio->ret);
         } else if (rw_type == ZAIO_CB_TYPE_SLEEP) {
@@ -1393,14 +1533,14 @@ int zevbase_dispatch(zevbase_t * eb, long delay)
         zevbase_queue_checker(eb);
     }
 
-    if (zrbtree_have_data(&(eb->general_timer_tree))) {
+    if (ZRBTREE_HAVE_DATA(&(eb->general_timer_tree))) {
         delay_tmp = zevtimer_check(eb);
         if (delay_tmp < delay) {
             delay = delay_tmp;
         }
     }
 
-    if (zrbtree_have_data(&(eb->aio_timer_tree))) {
+    if (ZRBTREE_HAVE_DATA(&(eb->aio_timer_tree))) {
         delay_tmp = zaio_timer_check(eb);
         if (delay_tmp < delay) {
             delay = delay_tmp;
@@ -1454,19 +1594,9 @@ void zevbase_free(zevbase_t * eb)
     close(eb->eventfd_event.fd);
     close(eb->epoll_fd);
     zfree(eb->epoll_event_list);
-    zmcot_free(eb->aio_rwbuf_mpool);
+    zmpiece_free(eb->aio_rwbuf_mpool);
     if (eb->locker_context) {
         eb->locker_fini(eb);
     }
     zfree(eb);
-}
-
-/* ################################################################## */
-
-zevbase_t *zvar_evbase = 0;
-void zvar_evbase_init(void)
-{
-    if (!zvar_evbase) {
-        zvar_evbase = zevbase_create();
-    }
 }

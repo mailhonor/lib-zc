@@ -7,7 +7,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
 typedef struct zfinder_flat_t zfinder_flat_t;
 struct zfinder_flat_t {
@@ -27,13 +27,13 @@ static int _close(zfinder_t * finder)
     return 0;
 }
 
-static int _get(zfinder_t * finder, const char *query, zbuf_t * result, int timeout)
+static int _get(zfinder_t * finder, const char *query, zbuf_t * result, long timeout)
 {
     zfinder_flat_t *my_db = (zfinder_flat_t *)(finder->db);
     char *v;
     int len;
 
-    if (zdict_lookup(my_db->dict, query, &v)) {
+    if (zdict_find(my_db->dict, query, &v)) {
         len = strlen(v);
         if (len > 10240) {
             len = 10240;
@@ -98,7 +98,7 @@ int ___load_data(zfinder_t * finder)
             len--;
         }
         p[len] = 0;
-        zdict_add(my_db->dict, buf, p);
+        zdict_update_STR(my_db->dict, buf, p);
     }
 
     fclose(fp);

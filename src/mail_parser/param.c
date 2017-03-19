@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
 #define ___CASEEQ_LEN(a, b, n)          ((zchar_toupper(a[0]) == zchar_toupper((b)[0])) && (!strncasecmp(a,b,n)))
 #define ___CASEEQ(a, b)                 ((zchar_toupper(a[0]) == zchar_toupper(b[0])) && (!strcasecmp(a,b)))
@@ -99,102 +99,6 @@ static int find_next_kv(char *buf, int len, char **key, int *key_len, char **val
     return 0;
 }
 
-int deal_kv_list(zmail_parser_t * parser, zmail_mime_t * cmime, char *buf, int len)
-{
-    char *p, *key, *value, *nbuf;
-    int l, key_len, value_len, nlen = 0;
-    int ret;
-    char fns[10249];
-    int fns_len = 0;
-    int fns_type = 0;           /* 0: none charset, 1: have charset */
-
-    p = buf;
-    l = len;
-
-#define _FR(a)	{if(cmime->a) zmpool_free(parser->mpool, cmime->a);cmime->a=0;}
-    while (1) {
-        if (l < 2) {
-            break;
-        }
-        ret = find_next_kv(p, l, &key, &key_len, &value, &value_len, &nbuf, &nlen);
-        if (ret) {
-            break;
-        }
-        if (___CASEEQ_LEN(key, "boundary", key_len)) {
-            _FR(boundary);
-            cmime->boundary = (char *)zmpool_malloc(parser->mpool, value_len + 3);
-            cmime->boundary[0] = '-';
-            cmime->boundary[1] = '-';
-            memcpy(cmime->boundary + 2, value, value_len);
-            cmime->boundary[value_len + 2] = 0;
-            cmime->boundary_len = value_len + 2;
-        } else if (___CASEEQ_LEN(key, "charset", key_len)) {
-            _FR(charset);
-            zmail_parser_header_value_dup(parser, value, value_len, &(cmime->charset));
-        } else if (___CASEEQ_LEN(key, "name", key_len)) {
-            _FR(name);
-            int rlen = zmail_parser_header_value_dup(parser, value, value_len,
-                                                     &(cmime->name));
-            if ((rlen > 0) && (!zmail_parser_only_test_parse)) {
-                _FR(name_rd);
-                zmail_parser_header_value_decode_dup(parser, cmime->name, rlen, &(cmime->name_rd));
-            }
-        } else if (___CASEEQ_LEN(key, "filename", key_len)) {
-            _FR(filename);
-            int rlen = zmail_parser_header_value_dup(parser, value, value_len,
-                                                     &(cmime->filename));
-            if ((rlen > 0) && (!zmail_parser_only_test_parse)) {
-                _FR(filename_rd);
-                zmail_parser_header_value_decode_dup(parser, cmime->filename, rlen, &(cmime->filename_rd));
-            }
-        } else if ((key_len > 8) && (___CASEEQ_LEN(key, "filename*", 9))) {
-            /* rfc 2231 */
-            char *ps, *p;
-            ps = key + 9;
-            p = ps;
-            if (*p == '0') {
-                p++;
-                if (*p == '*') {
-                    fns_type = 1;
-                } else {
-                    fns_type = 0;
-                }
-                p--;
-            }
-            if (fns_len + value_len < 10240) {
-                memcpy(fns + fns_len, value, value_len);
-                fns_len += value_len;
-            }
-        }
-        if (nbuf == 0) {
-            break;
-        }
-        p = nbuf;
-        l = nlen;
-    }
-
-    if (fns_len > 0) {
-        if (fns_type == 0) {
-            _FR(filename);
-            int rlen = zmail_parser_header_value_dup(parser, fns, fns_len, &(cmime->filename));
-            if ((rlen > 0) && (!zmail_parser_only_test_parse)) {
-                _FR(filename_rd);
-                zmail_parser_header_value_decode_dup(parser, cmime->filename, rlen, &(cmime->filename_rd));
-            }
-        } else {
-            _FR(filename_star);
-            int rlen = zmail_parser_header_value_dup(parser, fns, fns_len, &(cmime->filename_star));
-            if ((rlen > 0) && (!zmail_parser_only_test_parse)) {
-                _FR(filename_rd);
-                zmail_parser_2231_decode_dup(parser, cmime->filename_star, rlen, &(cmime->filename_rd));
-            }
-        }
-    }
-#undef _FR
-
-    return 0;
-}
-
 static int find_value(char *buf, int len, char **value, int *value_len, char **nbuf, int *nlen)
 {
     char *p = buf, *p1;
@@ -217,20 +121,190 @@ static int find_value(char *buf, int len, char **value, int *value_len, char **n
     return 0;
 }
 
-int zmail_parser_header_parse_param(zmail_parser_t * parser, zmail_mime_t * cmime, char *buf, int len, char **attr)
+void zmime_header_param_decode(const char *data, size_t len, zbuf_t *val, zargv_t *params)
 {
     char *value, *nbuf;
     int value_len, nlen;
 
-    if (find_value(buf, len, &value, &value_len, &nbuf, &nlen)) {
-        return -1;
+    zbuf_reset(val);
+
+    if (find_value((char *)data, (int)len, &value, &value_len, &nbuf, &nlen)) {
+        return;
     }
-    zmail_parser_header_value_dup(parser, value, value_len, attr);
+    if (value_len) {
+        zbuf_memcpy(val, value, value_len);
+    }
 
     if (nbuf == 0) {
-        return 0;
+        return;
     }
-    deal_kv_list(parser, cmime, nbuf, nlen);
 
-    return 0;
+    char *start, *key;
+    int start_len, key_len;
+    zbuf_t *kbuf = zbuf_create(128);
+    zbuf_t *vbuf = zbuf_create(1024);
+
+    start = nbuf;
+    start_len = nlen;
+
+    while (1) {
+        if (start_len < 2) {
+            break;
+        }
+        if (find_next_kv(start, start_len, &key, &key_len, &value, &value_len, &nbuf, &nlen) ) {
+            break;
+        }
+        if (key_len < 1) {
+            continue;
+        }
+        zbuf_memcpy(kbuf, key, key_len);
+        zbuf_memcpy(vbuf, value, value_len);
+        zargv_add(params, key);
+        zargv_add(params, value);
+        if (nbuf == 0) {
+            break;
+        }
+        start = nbuf;
+        start_len = nlen;
+    }
+}
+
+void zmime_header_decode_content_type(const char *data, size_t len
+        , char **val, int *v_len
+        , char **boundary, int *b_len
+        , char **charset, int *c_len
+        , char **name, int *n_len
+        )
+{
+    char *value, *nbuf;
+    int value_len, nlen;
+
+    *v_len = *b_len = *c_len = *n_len = 0;
+
+    if (find_value((char *)data, (int)len, &value, &value_len, &nbuf, &nlen)) {
+        return;
+    }
+    if (value_len) {
+        *val = value;
+        *v_len = value_len;
+    }
+
+    if (nbuf == 0) {
+        return;
+    }
+
+    char *start, *key;
+    int start_len, key_len;
+
+    start = nbuf;
+    start_len = nlen;
+
+    while (1) {
+        if (start_len < 2) {
+            break;
+        }
+        if (find_next_kv(start, start_len, &key, &key_len, &value, &value_len, &nbuf, &nlen) ) {
+            break;
+        }
+        if (___CASEEQ_LEN(key, "boundary", key_len)) {
+            *boundary = value;
+            *b_len = value_len;
+        } else if (___CASEEQ_LEN(key, "charset", key_len)) {
+            *charset = value;
+            *c_len = value_len;
+        } else if (___CASEEQ_LEN(key, "name", key_len)) {
+            *name = value;
+            *n_len = value_len;
+        }
+        if (nbuf == 0) {
+            break;
+        }
+        start = nbuf;
+        start_len = nlen;
+    }
+}
+
+void zmime_header_decode_content_disposition(const char *data, size_t len
+        , char **val, int *v_len
+        , char **filename, int *f_len
+        , zbuf_t *filename_2231
+        , int *filename_2231_with_charset
+        )
+{
+    char *value, *nbuf;
+    int value_len, nlen;
+
+    *v_len = *f_len = 0;
+    if (filename_2231) {
+        zbuf_reset(filename_2231);
+    }
+
+    if (find_value((char *)data, (int)len, &value, &value_len, &nbuf, &nlen)) {
+        return;
+    }
+    if (value_len) {
+        *val = value;
+        *v_len = value_len;
+    }
+
+    if (nbuf == 0) {
+        return;
+    }
+
+    char *start, *key;
+    int start_len, key_len;
+    int flag_2231 = 0, charset_2231 = 0;
+
+    start = nbuf;
+    start_len = nlen;
+
+    while (1) {
+        if (start_len < 2) {
+            break;
+        }
+        if (find_next_kv(start, start_len, &key, &key_len, &value, &value_len, &nbuf, &nlen) ) {
+            break;
+        }
+        if (___CASEEQ_LEN(key, "filename", key_len)) {
+            *filename = value;
+            *f_len = value_len;
+        } else if ((key_len > 8) && (___CASEEQ_LEN(key, "filename*", 9))) {
+            if (filename_2231) {
+                zbuf_memcat(filename_2231, value, value_len);
+            }
+            if (!flag_2231) {
+                flag_2231 = 1;
+                if (key[9] != '0') {
+                    charset_2231 = 1;
+                } else if (key_len > 9) {
+                    if (key[10] =='*') {
+                        charset_2231 = 1;
+                    }
+                }
+            }
+        }
+
+        if (nbuf == 0) {
+            break;
+        }
+        start = nbuf;
+        start_len = nlen;
+    }
+    *filename_2231_with_charset = charset_2231;
+}
+
+void zmime_header_decode_content_transfer_encoding(const char *data, size_t len, char **val, int *v_len)
+{
+    char *value, *nbuf;
+    int value_len, nlen;
+
+    *v_len = 0;
+
+    if (find_value((char *)data, (int)len, &value, &value_len, &nbuf, &nlen)) {
+        return;
+    }
+    if (value_len) {
+        *val = value;
+        *v_len = value_len;
+    }
 }

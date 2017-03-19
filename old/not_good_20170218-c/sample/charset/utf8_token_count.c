@@ -61,7 +61,7 @@ int main(int argc, char **argv)
     }
     zgrid_node_t *node;
     ZGRID_WALK_BEGIN(ws, node) {
-        int count = *((int *)zgrid_value(node));
+        int count = *((int *)ZGRID_VALUE(node));
         int i = 1;
         while (i - 1 < count) {
             i = i * 2;
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
             i = 128;
         }
 
-        printf("%s%c", zgrid_key(node), i);
+        printf("%s%c", ZGRID_KEY(node), i);
     }
     ZGRID_WALK_END;
 

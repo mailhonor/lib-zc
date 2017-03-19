@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
 static void test_general(void)
 {
@@ -24,7 +24,7 @@ static void test_general(void)
 static void test_split(void)
 {
     zargv_t *ar;
-    char *original = "this is a test sentence.";
+    const char *original = "this is a test sentence.";
 
     zinfo("==========");
     ar = zargv_create(1);
@@ -45,7 +45,7 @@ static void test_mpool(void)
     zargv_t *ar;
     int i;
 
-    mpool = zmpool_create_default_pool(0);
+    mpool = zmpool_create_common_pool(0);
     for (i = 0; i < 1000; i++) {
         ar = zargv_create_mpool(mpool, 1);
         zargv_add(ar, "aaa");

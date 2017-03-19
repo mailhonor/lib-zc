@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
 #define ___SPACE_LEFT(a) ((a)->size - (a)->argc - 1)
 
@@ -64,7 +64,7 @@ void zargv_add(zargv_t * argvp, const char *ns)
 {
     if (___SPACE_LEFT(argvp) <= 0)
         zargv_extend(argvp);
-    argvp->argv[argvp->argc++] = zmpool_strdup(argvp->mpool, ns);
+    argvp->argv[argvp->argc++] = (char *)zmpool_strdup(argvp->mpool, (char *)ns);
     argvp->argv[argvp->argc] = 0;
 }
 
@@ -72,7 +72,7 @@ void zargv_addn(zargv_t * argvp, const char *ns, int nlen)
 {
     if (___SPACE_LEFT(argvp) <= 0)
         zargv_extend(argvp);
-    argvp->argv[argvp->argc++] = zmpool_strndup(argvp->mpool, ns, nlen);
+    argvp->argv[argvp->argc++] = (char *)zmpool_strndup(argvp->mpool, ns, nlen);
     argvp->argv[argvp->argc] = 0;
 }
 

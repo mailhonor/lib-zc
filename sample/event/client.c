@@ -6,12 +6,13 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include <pthread.h>
 #include <time.h>
 
-static int after_write(zaio_t * aio);
-static int service_error(zaio_t * aio)
+static zevbase_t *evbase;
+static void after_write(zaio_t * aio);
+static void service_error(zaio_t * aio)
 {
     int fd;
 
@@ -21,19 +22,15 @@ static int service_error(zaio_t * aio)
     zaio_fini(aio);
     zaio_free(aio);
     close(fd);
-
-    return -1;
 }
 
-static int before_write(zaio_t * aio)
+static void before_write(zaio_t * aio)
 {
-    zaio_printf_1024(aio, "AAAAAAAAA:%lu\n", time(0));
+    zaio_write_cache_printf_1024(aio, "AAAAAAAAA:%lu\n", time(0));
     zaio_write_cache_flush(aio, after_write, 1 * 1000);
-
-    return 0;
 }
 
-static int after_read(zaio_t * aio)
+static void after_read(zaio_t * aio)
 {
     int ret;
     char rbuf[102400];
@@ -45,11 +42,9 @@ static int after_read(zaio_t * aio)
     zaio_fetch_rbuf(aio, rbuf, ret);
 
     zaio_sleep(aio, before_write, 100);
-
-    return 0;
 }
 
-static int after_write(zaio_t * aio)
+static void after_write(zaio_t * aio)
 {
     int ret;
 
@@ -60,8 +55,6 @@ static int after_write(zaio_t * aio)
     }
 
     zaio_read_delimiter(aio, '\n', 1024, after_read, 10 * 1000);
-
-    return 0;
 }
 
 int limit = 100;
@@ -84,7 +77,7 @@ void *connect_action(void *arg)
         }
         znonblocking(fd, 1);
         zaio_t *aio = zaio_create();
-        zaio_init(aio, zvar_evbase, fd);
+        zaio_init(aio, evbase, fd);
         zaio_read_delimiter(aio, '\n', 1024, after_read, 10 * 1000);
         printf("%d\r", fd);
     }
@@ -104,13 +97,13 @@ int main(int argc, char **argv)
             limit = 10 * 10000;
         }
     }
-    zvar_evbase = zevbase_create();
+    evbase = zevbase_create();
 
     pthread_t pth;
     pthread_create(&pth, 0, connect_action, 0);
 
     while (1) {
-        zevbase_dispatch(zvar_evbase, 0);
+        zevbase_dispatch(evbase, 0);
     }
 
     return 0;

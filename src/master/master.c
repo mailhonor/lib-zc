@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include <sys/file.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -16,181 +16,328 @@
 #include <sys/wait.h>
 #include <dirent.h>
 
-/* FIXME FREE entry */
 
-#define zmaster_entry_info(m) zverbose("master entry: %s, limit:%d, count:%d, listen_on:%d, line:%d", \
-        m->cmd, m->proc_limit, m->proc_count, m->listen_on, __LINE__)
+zevbase_t *zvar_master_evbase = 0;
 
-typedef struct zmaster_entry_t zmaster_entry_t;
-typedef struct zmaster_status_fd_t zmaster_status_fd_t;
-struct zmaster_entry_t {
-    int stop;
+#define zdebug(fmt, args...) {if(debug_mode){zinfo(fmt, ##args);}}
+
+typedef struct server_entry_t server_entry_t;
+typedef struct listen_pair_t listen_pair_t;
+typedef struct child_status_t child_status_t;
+
+struct server_entry_t {
     char *config_fn;
     char *cmd;
+    char *module;
     int proc_limit;
     int proc_count;
-    int wakeup;
-    int wakeup_on;
-    int wakeup_now;
-    zevtimer_t wakeup_timer;
-    int listen_fd;
-    int listen_type;
-    int listen_on;
-    zev_t listen_ev;
-    int child_error;
-    zevtimer_t child_error_timer;
+    zidict_t *listens;
+    unsigned char listen_on;
+    unsigned char wait_on;
+    zevtimer_t wait_timer;
 };
 
-struct zmaster_status_fd_t {
-    long stamp;
-    zmaster_entry_t *men;
-    zev_t *ev;
-};
-
-int zvar_master_child_exception_check = 0;
-zmaster_load_config_fn_t zmaster_load_config_fn = 0;
-static int try_lock;
-static char *config_dir;
-static char *lock_file;
-
-static int self_init;
-static int sighup_on;
-static int lock_fd;
-static int master_status_fd[2];
-static zgrid_t *server_entry_list;
-static zigrid_t *status_fd_list;
-
-static void zmaster_listen_set(zmaster_entry_t * men);
-static int zmaster_start_child(zev_t * zev);
-
-static void zmaster_sighup_handler(int sig)
-{
-    zdebug("now reload");
-    sighup_on = sig;
-}
-
-static void zmaster_server_init(void)
-{
-    if (self_init) {
-        return;
-    }
-    self_init = 1;
-
-    /* EVENT */
-    zvar_evbase_init();
-
-    /* VAR */
-    server_entry_list = zgrid_create();
-    status_fd_list = zigrid_create();
-
-    /* SIG */
-    signal(SIGPIPE, SIG_IGN);
-    signal(SIGCHLD, SIG_IGN);
-
-    /* SIG RELOAD */
-    struct sigaction sig;
-    sigemptyset(&sig.sa_mask);
-    sig.sa_flags = 0;
-    sig.sa_handler = zmaster_sighup_handler;
-    if (sigaction(SIGHUP, &sig, (struct sigaction *)0) < 0) {
-        zfatal("%s: sigaction(%d) : %m", __FUNCTION__, SIGHUP);
-    }
-
-    /* MASTER STATUS */
-    if (pipe(master_status_fd) == -1) {
-        zfatal("zmaster: pipe : %m");
-    }
-    zclose_on_exec(master_status_fd[0], 1);
-}
-
-static void zmaster_remove_old_child(void)
-{
-    zigrid_node_t *idn;
-    int status_fd;
-    zev_t *ev;
+struct listen_pair_t {
+    char *service_name;
     int fd;
+    unsigned char iuf;
+    unsigned char used;
+    zev_t listen_ev;
+    server_entry_t *server;
+};
 
-    while ((idn = zigrid_first(status_fd_list))) {
-        status_fd = ZIGRID_KEY(idn);
-        ev = (zev_t *) ((char *)(ZIGRID_VALUE(idn)) + sizeof(zmaster_status_fd_t));
-        fd = zev_get_fd(ev);
-        zev_fini(ev);
-        close(fd);
-        zfree(ZIGRID_VALUE(idn));
-        zigrid_delete_node(status_fd_list, idn);
-        close(status_fd);
-    }
+struct child_status_t {
+    server_entry_t *server;
+    int fd;
+    zev_t status_ev;
+    long stamp;
+};
 
-    close(master_status_fd[0]);
-    close(master_status_fd[1]);
-    if (pipe(master_status_fd) == -1) {
-        zfatal("zmaster: pipe : %m");
+static int debug_mode = 0;
+static int sighup_on = 0;
+static char *config_path = 0;
+
+static int master_status_fd[2];
+static zdict_t *listen_pair_dict;
+static zidict_t *child_status_dict;
+static zvector_t *server_vector;
+
+
+static void disable_server_listen(server_entry_t *server)
+{
+    zdebug("zmaster: disable_server_listen server:%s, listen_one:%d", server->cmd, server->listen_on);
+    if (!server->listen_on) {
+        return;
     }
-    zclose_on_exec(master_status_fd[0], 1);
+    server->listen_on = 0;
+
+    zidict_node_t *n;
+    listen_pair_t *lp;
+    ZIDICT_WALK_BEGIN(server->listens, n) {
+        lp = (listen_pair_t *)(ZDICT_VALUE(n));
+        zev_unset(&(lp->listen_ev));
+    } ZIDICT_WALK_END;
 }
 
-static void zmaster_set_stop(void)
+static void start_one_child(zev_t *ev);
+static void enable_server_listen(server_entry_t *server)
 {
-    zgrid_node_t *n;
-    zmaster_entry_t *men;
-
-    ZGRID_WALK_BEGIN(server_entry_list, n) {
-        men = (zmaster_entry_t *) (ZGRID_VALUE(n));
-        men->stop = 1;
-        zfree(men->config_fn);
-        zfree(men->cmd);
-        zevtimer_fini(&(men->wakeup_timer));
-        zev_fini(&(men->listen_ev));
-        men->listen_on = 0;
-        men->child_error = 0;
-        zevtimer_fini(&(men->child_error_timer));
+    zdebug("zmaster: enable_server_listen server:%s, listen_one:%d", server->cmd, server->listen_on);
+    if (server->listen_on) {
+        return;
     }
-    ZGRID_WALK_END;
+    server->listen_on = 1;
+
+    zidict_node_t *n;
+    listen_pair_t *lp;
+    ZIDICT_WALK_BEGIN(server->listens, n) {
+        lp = (listen_pair_t *)(ZDICT_VALUE(n));
+        zev_set_context(&(lp->listen_ev), lp);
+        zev_read(&(lp->listen_ev), start_one_child);
+    } ZIDICT_WALK_END;
 }
 
-static void zmaster_reload_one_config(zconfig_t * cf)
+static void child_exception_over(zevtimer_t *tm)
 {
-    char *cmd, *listen;
-    zmaster_entry_t *men;
-    char *fn;
+    zdebug("zmaster: child_exception_over");
+    server_entry_t *server = (server_entry_t *)zevtimer_get_context(tm);
+    enable_server_listen(server);
+}
 
+static void child_strike(zev_t *ev)
+{
+    child_status_t *cs = (child_status_t *)zev_get_context(ev);
+    server_entry_t *server = cs->server;
+    zdebug("zmaster: child_strike, cmd:%s", server->cmd);
+    if (ztimeout_set(0) - cs->stamp < 100) {
+        if (!server->wait_on) {
+            zdebug("zmaster: child_strike, cmd:%s, exception", server->cmd);
+            zevtimer_set_context(&(server->wait_timer), server);
+            zevtimer_start(&(server->wait_timer), child_exception_over, 100);
+            server->wait_on = 1;
+        }
+    }
+
+    zev_fini(ev);
+    zfree(cs);
+    server->proc_count--;
+    if ((server->proc_count  < server->proc_limit) && (server->wait_on==0)) {
+        enable_server_listen(server);
+    }
+}
+
+static void start_one_child(zev_t *ev)
+{
+    listen_pair_t *lp = (listen_pair_t *)zev_get_context(ev);
+    server_entry_t *server = lp->server;
+    zdebug("zmaster: start_one_child, cmd:%s", server->cmd);
+
+    if (zev_exception(ev)) {
+        zmsleep(100);
+        return;
+    }
+    printf("AAA\n");
+    if (server->wait_on) {
+        disable_server_listen(server);
+        return;
+    }
+    printf("BBB\n");
+    if (server->proc_count >= server->proc_limit) {
+        disable_server_listen(server);
+        return;
+    }
+    printf("ccc\n");
+
+    int status_fd[2];
+    if (pipe(status_fd) == -1) {
+        zfatal("zmaster: pipe (%m)");
+    }
+    pid_t pid = fork();
+    if (pid == -1) {
+        close(status_fd[0]);
+        close(status_fd[1]);
+        zmsleep(100);
+        return;
+    } else if (pid) {
+        server->proc_count++;
+        if (server->proc_count >= server->proc_limit) {
+            disable_server_listen(server);
+        }
+        close(status_fd[0]);
+        child_status_t *cs = (child_status_t *)zcalloc(1, sizeof(child_status_t));
+        zidict_update(child_status_dict, status_fd[1], cs, 0);
+        cs->server = server;
+        cs->fd = status_fd[1];
+        zev_init(&(cs->status_ev), zvar_master_evbase, status_fd[1]);
+        zev_set_context(&(cs->status_ev), cs);
+        zev_read(&(cs->status_ev), child_strike);
+        cs->stamp = ztimeout_set(0);
+        return;
+    } else {
+        printf("GGGGGGG\n");
+        zargv_t *exec_argv = zargv_create(128);
+        char buf[4100];
+
+        close(status_fd[1]);
+        dup2(status_fd[0], ZMASTER_SERVER_STATUS_FD);
+        close(status_fd[0]);
+
+        close(master_status_fd[0]);
+        dup2(master_status_fd[1], ZMASTER_MASTER_STATUS_FD);
+        close(master_status_fd[1]);
+
+        zargv_add(exec_argv, server->cmd);
+        zargv_add(exec_argv, "-M");
+
+        if (config_path) {
+            snprintf(buf, 4096, "%s/main.cf", config_path);
+            if (zfile_get_size(buf) > -1) {
+                zargv_add(exec_argv, "--c");
+                zargv_add(exec_argv, buf);
+            }
+            if (server->config_fn) {
+                zargv_add(exec_argv, "--c");
+                snprintf(buf, 4096, "%s/%s", config_path, server->config_fn);
+                zargv_add(exec_argv, buf);
+            }
+        }
+        if (!zempty(server->module)) {
+            zargv_add(exec_argv, "--module");
+            zargv_add(exec_argv, server->module);
+        }
+        zidict_node_t *ind;
+        int fdnext = ZMASTER_LISTEN_FD;
+        ZIDICT_WALK_BEGIN(server->listens, ind) {
+            char iuffd[111];
+            listen_pair_t *lp2 = (listen_pair_t *)ZDICT_VALUE(ind);
+            dup2(lp2->fd, fdnext);
+            close(lp2->fd);
+            snprintf(iuffd, 100, "-s%s", lp->service_name);
+            zargv_add(exec_argv, iuffd);
+            sprintf(iuffd, "%c%d", lp2->iuf, fdnext);
+            zargv_add(exec_argv, iuffd);
+            fdnext++;
+
+        } ZDICT_WALK_END;
+
+        printf("HHHHHHHHHHHHHHHH\n");
+        execvp(server->cmd, (char **)(zmemdup(ZARGV_DATA(exec_argv), (ZARGV_LEN(exec_argv) + 1) * sizeof(char *))));
+        printf("JJJJJJJJJJJJJJJ\n");
+
+        zfatal("zmaster: start child error: %m");
+    }
+}
+
+static void remove_old_child(void)
+{
+    child_status_t *cs;
+    zidict_node_t *n;
+    while((n=zidict_first(child_status_dict))) {
+        cs = (child_status_t *)(ZIDICT_VALUE(n));
+        zev_fini(&(cs->status_ev));
+        close(cs->fd);
+        zfree(cs);
+        zidict_erase_node(child_status_dict, n);
+    }
+}
+
+static void remove_server_entry(void)
+{
+    server_entry_t *sv;
+
+    ZVECTOR_WALK_BEGIN(server_vector, sv) {
+        zfree(sv->config_fn);
+        zfree(sv->cmd);
+        zfree(sv->module);
+        zidict_free(sv->listens);
+        if (sv->wait_on) {
+            sv->wait_on = 0;
+            zevtimer_stop(&(sv->wait_timer));
+        }
+        zfree(sv);
+    } ZVECTOR_WALK_END;
+
+    zvector_free(server_vector);
+    server_vector = zvector_create(13);
+}
+
+static void set_listen_unused(void)
+{
+    listen_pair_t *lp;
+    zdict_node_t *n;
+
+    ZDICT_WALK_BEGIN(listen_pair_dict, n) {
+        lp = (listen_pair_t *)(ZDICT_VALUE(n));
+        lp->used = 0;
+        zev_fini(&(lp->listen_ev));
+        lp->server = 0;
+    } ZDICT_WALK_END;
+}
+
+static void prepare_server_by_config(zconfig_t *cf)
+{
+    char *cmd, *listen, *fn, *module;
+    server_entry_t *server;
     cmd = zconfig_get_str(cf, "zcmd", "");
-    if (!*cmd) {
-        return;
-    }
-
     listen = zconfig_get_str(cf, "zlisten", "");
-    if (!*listen) {
+    if (zempty(cmd) || zempty(listen)) {
         return;
     }
-
     fn = zconfig_get_str(cf, "z___Z_0428_fn", 0);
+    module = zconfig_get_str(cf, "zmodule", 0);
+    server = zcalloc(1, sizeof(server_entry_t));
+    zvector_add(server_vector, server);
+    server->listen_on = 1;
+    zevtimer_init(&(server->wait_timer), zvar_master_evbase);
+    server->config_fn = (fn ? zstrdup(fn) : 0);
+    server->cmd = zstrdup(cmd);
+    server->module = zstrdup(module);
+    server->proc_limit = zconfig_get_int(cf, "zproc_limit", 1, 1, 1000);
+    server->proc_count = 0;
+    server->listens = zidict_create();
 
-    if (!zgrid_lookup(server_entry_list, listen, (char **)&men)) {
-        men = zcalloc(1, sizeof(zmaster_entry_t));
-        men->listen_fd = -1;
-        zgrid_add(server_entry_list, listen, men, 0);
-    }
-    men->stop = 0;
-    men->config_fn = (fn ? zstrdup(fn) : 0);
-    men->cmd = zstrdup(cmd);
-    men->proc_limit = zconfig_get_int(cf, "zproc_limit", 0, 0, 10 * 1000);
-    if (men->proc_limit < 1) {
-        men->proc_limit = 1;
-    }
-    men->proc_count = 0;
-    men->wakeup = zconfig_get_int(cf, "zwakeup", 0, 0, 24 * 3600);
-    if (men->wakeup < 0) {
-        men->wakeup = 0;
-    }
-    zevtimer_init(&(men->wakeup_timer), zvar_evbase);
-    zevtimer_set_context(&(men->wakeup_timer), men);
-    men->child_error = 0;
-    zevtimer_init(&(men->child_error_timer), zvar_evbase);
-    zevtimer_set_context(&(men->child_error_timer), men);
+    char *service, lbuf[1024];
+    listen_pair_t *lp;
+    zargv_t *listens = zargv_create(8);
+    zargv_split_append(listens, listen, ";, \t");
+    ZARGV_WALK_BEGIN(listens, service) {
+        snprintf(lbuf, 1000, "%s", service);
+        service = lbuf;
+        listen = strstr(service, "://");
+        if (!listen) {
+            listen = service;
+            service = zblank_buffer;
+        } else {
+            *listen = 0;
+            listen += 3;
+        }
+        if (!zdict_find(listen_pair_dict, listen, (char **)&lp)) {
+            lp = (listen_pair_t *)zcalloc(1, sizeof(listen_pair_t));
+            zdict_update(listen_pair_dict, listen, lp, 0);
+            lp->fd = zlisten(listen, 5, (int *)&(lp->iuf));
+            if (lp->fd < 0) {
+                zfatal("zmaster: open %s error\n");
+            }
+            zclose_on_exec(lp->fd, 1);
+        }
+        if (lp->used) {
+            zfatal("zmaster: open %s twice", listen);
+        }
+        lp->used = 1;
+        printf("SSS start\n");
+        zfree(lp->service_name);
+        lp->service_name = zstrdup(service);
+        lp->server = server;
+        zev_init(&(lp->listen_ev), zvar_master_evbase, lp->fd);
+        zev_set_context(&(lp->listen_ev), lp);
+        zev_read(&(lp->listen_ev), start_one_child);
+
+        zidict_update(server->listens, lp->fd, lp, 0);
+    } ZARGV_WALK_END;
+    zargv_free(listens);
 }
 
-void zmaster_load_config_default(zarray_t * config_list)
+void zmaster_load_server_config_by_dir(const char *config_path, zvector_t * cfs)
 {
     DIR *dir;
     struct dirent ent, *ent_list;
@@ -198,9 +345,9 @@ void zmaster_load_config_default(zarray_t * config_list)
     char pn[4100];
     zconfig_t *cf;
 
-    dir = opendir(config_dir);
+    dir = opendir(config_path);
     if (!dir) {
-        zfatal("open %s/(%m)", config_dir);
+        zfatal("zmaster: open %s/(%m)", config_path);
     }
 
     while ((!readdir_r(dir, &ent, &ent_list)) && (ent_list)) {
@@ -217,279 +364,69 @@ void zmaster_load_config_default(zarray_t * config_list)
         }
 
         cf = zconfig_create();
-        snprintf(pn, 4096, "%s/%s", config_dir, fn);
+        snprintf(pn, 4096, "%s/%s", config_path, fn);
         zconfig_load(cf, pn);
         zconfig_update(cf, "z___Z_0428_fn", fn);
-        zarray_add(config_list, cf);
+        zvector_add(cfs, cf);
     }
     closedir(dir);
 }
 
-static void zmaster_reload_config(void)
+static void reload_config(void)
 {
-    zarray_t *config_list;
     zconfig_t *cf;
+    zvector_t *cfs = zvector_create(128);
 
-    config_list = zarray_create(100);
-
-    if (zmaster_load_config_fn) {
-        zmaster_load_config_fn(config_list);
+    if (zmaster_load_server_config_fn) {
+        zmaster_load_server_config_fn(cfs);
     } else {
-        zmaster_load_config_default(config_list);
+        zmaster_load_server_config_by_dir(config_path, cfs);
     }
 
-    ZARRAY_WALK_BEGIN(config_list, cf) {
-        zmaster_reload_one_config(cf);
+    ZVECTOR_WALK_BEGIN(cfs, cf) {
+        prepare_server_by_config(cf);
         zconfig_free(cf);
-    }
-    ZARRAY_WALK_END;
+    } ZVECTOR_WALK_END;
 
-    zarray_free(config_list);
+    zvector_free(cfs);
 }
 
-static void zmaster_release_unused_entry(void)
+static void release_unused_listen(void)
 {
-    zarray_t *list;
-    zgrid_node_t *n;
-    zmaster_entry_t *men;
+    zvector_t *vec = zvector_create(128);
+    listen_pair_t *lp;
+    zdict_node_t *n;
 
-    list = zarray_create(1024);
-    ZGRID_WALK_BEGIN(server_entry_list, n) {
-        men = (zmaster_entry_t *) (ZGRID_VALUE(n));
-        if (men->stop) {
-            zarray_add(list, n);
+    ZDICT_WALK_BEGIN(listen_pair_dict, n) {
+        lp = (listen_pair_t *)(ZDICT_VALUE(n));
+        if (lp->used) {
+            continue;
         }
-    }
-    ZGRID_WALK_END;
+        zvector_add(vec, n);
+    } ZDICT_WALK_END;
 
-    ZARRAY_WALK_BEGIN(list, n) {
-        men = (zmaster_entry_t *) (ZGRID_VALUE(n));
-        if (men->listen_fd != -1) {
-            close(men->listen_fd);
-        }
-        zfree(men);
-        zgrid_delete_node(server_entry_list, n);
-    }
-    ZARRAY_WALK_END;
-
-    zarray_free(list);
+    ZVECTOR_WALK_BEGIN(vec, n) {
+        lp = (listen_pair_t *)(ZDICT_VALUE(n));
+        close(lp->fd);
+        zfree(lp->service_name);
+        zfree(lp);
+        zdict_erase_node(listen_pair_dict, n);
+    }ZVECTOR_WALK_END;
+    zvector_free(vec);
 }
 
-static void zmaster_active_one_server(const char *name, zmaster_entry_t * men)
+static void reload_server(void)
 {
-    if (men->listen_fd == -1) {
-        int limit = men->proc_limit;
-        limit = ((limit > 100) ? 100 : limit);
-        limit = ((limit < 5) ? 5 : limit);
-        men->listen_fd = zlisten(name, limit);
-        if (men->listen_fd == -1) {
-            printf("open %s(%m)", name);
-            zfatal("open %s(%m)", name);
-        }
-
-        men->listen_type = ZMASTER_LISTEN_UNIX;
-        if (strchr(name, ':')) {
-            men->listen_type = ZMASTER_LISTEN_INET;
-        }
-    }
-    zev_init(&(men->listen_ev), zvar_evbase, men->listen_fd);
-    zev_set_context(&(men->listen_ev), men);
-    zmaster_listen_set(men);
+    remove_old_child();
+    remove_server_entry();
+    set_listen_unused();
+    reload_config();
+    release_unused_listen();
 }
 
-static void zmaster_active_server(void)
+static int zmaster_lock_pfile(char *lock_file)
 {
-    zgrid_node_t *n;
-    zmaster_entry_t *men;
-    const char *name;
-
-    ZGRID_WALK_BEGIN(server_entry_list, n) {
-        men = (zmaster_entry_t *) (ZGRID_VALUE(n));
-        name = ZGRID_KEY(n);
-        zmaster_active_one_server(name, men);
-    }
-    ZGRID_WALK_END;
-}
-
-static int zmaster_wakeup_idle(zevtimer_t * tm)
-{
-    zmaster_entry_t *men;
-
-    men = (zmaster_entry_t *) (zevtimer_get_context(tm));
-    zevtimer_stop(&(men->child_error_timer));
-    men->child_error = 0;
-    zmaster_listen_set(men);
-
-    return 0;
-}
-
-static int zmaster_wakeup_child(zevtimer_t * tm)
-{
-    zmaster_entry_t *men;
-
-    men = (zmaster_entry_t *) (zevtimer_get_context(tm));
-    if (men->proc_count) {
-        return 0;
-    }
-    men->wakeup_now = 1;
-    zmaster_start_child(&(men->listen_ev));
-
-    return 0;
-}
-
-static void zmaster_listen_set(zmaster_entry_t * men)
-{
-    zmaster_entry_info(men);
-    if (men->child_error || (men->proc_count >= men->proc_limit)) {
-        if (men->listen_on == 1) {
-            zev_unset(&(men->listen_ev));
-            men->listen_on = 0;
-        }
-        if (men->child_error) {
-            zevtimer_start(&(men->child_error_timer), zmaster_wakeup_idle, 100);
-        }
-    } else if ((men->listen_on == 0) && (men->proc_count < men->proc_limit)) {
-        zev_read(&(men->listen_ev), zmaster_start_child);
-        men->listen_on = 1;
-    }
-
-    if (men->wakeup > 0) {
-        if (men->proc_count > 0) {
-            if (men->wakeup_on) {
-                zevtimer_stop(&(men->wakeup_timer));
-                men->wakeup_on = 0;
-            }
-        } else {
-            if (!men->wakeup_on) {
-                zevtimer_start(&(men->wakeup_timer), zmaster_wakeup_child, men->wakeup * 1000);
-                men->wakeup_on = 1;
-            }
-        }
-    }
-    zmaster_entry_info(men);
-}
-
-static int zmaster_child_strike(zev_t * zev)
-{
-    zmaster_status_fd_t *fd_info;
-    zmaster_entry_t *men;
-    int fd;
-
-    fd = zev_get_fd(zev);
-    fd_info = (zmaster_status_fd_t *) zev_get_context(zev);
-    men = fd_info->men;
-
-    if (ztimeout_set(0) - fd_info->stamp < 100) {
-        if (zvar_master_child_exception_check) {
-            men->child_error = 1;
-        }
-    }
-
-    men->proc_count--;
-    zmaster_listen_set(men);
-    zmaster_entry_info(men);
-
-    zev_fini(zev);
-    zfree(fd_info);
-    zigrid_delete(status_fd_list, fd, 0);
-    close(fd);
-
-    return 0;
-}
-
-static int zmaster_start_child(zev_t * zev)
-{
-    int pid;
-    zmaster_entry_t *men;
-    int status_fd[2];
-
-    men = (zmaster_entry_t *) (zev_get_context(zev));
-
-    if (men->wakeup_now == 0) {
-        if (ZEV_EXCEPTION & zev_get_events(zev)) {
-            return 0;
-        }
-    }
-    men->wakeup_now = 0;
-
-    if (pipe(status_fd) == -1) {
-        zfatal("zmaster: pipe : %m");
-    }
-
-    pid = fork();
-    if (pid == -1) {
-        close(status_fd[0]);
-        close(status_fd[1]);
-        return 0;
-    } else if (pid) {
-        zmaster_status_fd_t *fd_info;
-        zev_t *ev;
-        men->proc_count++;
-        zmaster_listen_set(men);
-        zmaster_entry_info(men);
-        fd_info = (zmaster_status_fd_t *) zcalloc(1, sizeof(zmaster_status_fd_t) + sizeof(zev_t));
-        fd_info->stamp = ztimeout_set(0);
-        fd_info->men = men;
-        close(status_fd[0]);
-        zigrid_add(status_fd_list, status_fd[1], fd_info, 0);
-        ev = (zev_t *) ((char *)fd_info + sizeof(zmaster_status_fd_t));
-        zev_init(ev, zvar_evbase, status_fd[1]);
-        zev_set_context(ev, fd_info);
-        zev_set(ev, ZEV_READ, zmaster_child_strike);
-        return 0;
-    } else {
-        zargv_t *exec_argv;
-        char buf[4100];
-
-        close(status_fd[1]);
-        dup2(status_fd[0], ZMASTER_SERVER_STATUS_FD);
-        close(status_fd[0]);
-
-        close(master_status_fd[0]);
-        dup2(master_status_fd[1], ZMASTER_MASTER_STATUS_FD);
-        close(master_status_fd[1]);
-
-        dup2(men->listen_fd, ZMASTER_LISTEN_FD);
-        close(men->listen_fd);
-
-        exec_argv = zargv_create(1);
-
-        zargv_add(exec_argv, men->cmd);
-        zargv_add(exec_argv, "-M");
-
-        zargv_add(exec_argv, "-c");
-        snprintf(buf, 4096, "%s/main.cf", config_dir);
-        zargv_add(exec_argv, buf);
-
-        if (men->config_fn) {
-            zargv_add(exec_argv, "-c");
-            snprintf(buf, 4096, "%s/%s", config_dir, men->config_fn);
-            zargv_add(exec_argv, buf);
-        }
-
-        zargv_add(exec_argv, "-t");
-        sprintf(buf, "%c", men->listen_type);
-        zargv_add(exec_argv, buf);
-
-        execvp(men->cmd, (char **)(zmemdup(ZARGV_DATA(exec_argv), (ZARGV_LEN(exec_argv) + 1) * sizeof(char *))));
-
-        zfatal("zmaster_start_child error: %m");
-    }
-
-    return 0;
-}
-
-static void zmaster_reload_service(void)
-{
-    zmaster_remove_old_child();
-    zmaster_set_stop();
-    zmaster_reload_config();
-    zmaster_release_unused_entry();
-    zmaster_active_server();
-}
-
-static int zmaster_lock(void)
-{
+    int lock_fd;
     char pid_buf[33];
 
     lock_fd = open(lock_file, O_RDWR | O_CREAT, 0666);
@@ -513,71 +450,140 @@ static int zmaster_lock(void)
     return 0;
 }
 
-int zmaster_main(int argc, char **argv)
+static void sighup_handler(int sig)
 {
-    int op;
+    sighup_on = sig;
+}
 
-    try_lock = 0;
-    config_dir = "config";
-    lock_file = "master.pid";
+static void ___usage(char *parameter)
+{
+    exit(1);
+}
 
-    while ((op = getopt(argc, argv, "c:p:tdv")) > 0) {
-        switch (op) {
-        case 'c':
-            config_dir = optarg;
-            break;
-        case 't':
+static void init_all(int argc, char **argv)
+{
+    int len;
+    char *lock_file = 0;
+    int try_lock = 0;
+
+    ZPARAMETER_BEGIN() {
+        if (!strcmp(optname, "-t")) {
             try_lock = 1;
-            break;
-        case 'p':
-            lock_file = optarg;
-            break;
-        case 'd':
-            zlog_set_level_from_console(ZLOG_DEBUG);
-            break;
-        case 'v':
-            zlog_set_level_from_console(ZLOG_VERBOSE);
-            break;
-        default:
-            zfatal("args error");
+            opti+=1;
+            continue;
         }
-    }
+        if (!strcmp(optname, "-d")) {
+            debug_mode = 1;
+            opti+=1;
+            continue;
+        }
+        if (!optval) {
+            ___usage(0);
+        }
+        if (!strcmp(optname, "-c")) {
+            config_path = optval;
+            opti+=2;
+            continue;
+        }
+        if (!strcmp(optname, "-p")) {
+            lock_file = optval;
+            opti+=2;
+            continue;
+        }
+    } ZPARAMETER_END;
 
+    if (zempty(lock_file)) {
+        lock_file = "master.pid";
+    }
     if (try_lock) {
-        if (zmaster_lock()) {
+        if (zmaster_lock_pfile(lock_file)) {
             exit(0);
         } else {
             exit(1);
         }
     }
 
-    if (!zmaster_lock()) {
+    if (!zmaster_lock_pfile(lock_file)) {
         exit(1);
     }
 
-    {
-        int len;
-        config_dir = zstrdup(config_dir);
-        len = strlen(config_dir);
+    if (config_path) {
+        config_path = zstrdup(config_path);
+        len = strlen(config_path);
         if (len < 1) {
-            zfatal("config dir is null");
+            zfatal("zmaster: config dir is blank");
         }
-        if (config_dir[len - 1] == '/') {
-            config_dir[len - 1] = 0;
+        if (config_path[len - 1] == '/') {
+            config_path[len - 1] = 0;
         }
+    } else if (zmaster_load_server_config_fn == 0) {
+        zfatal("zmaster: need service config path");
     }
-    zmaster_server_init();
-    zmaster_reload_service();
 
+    /* SIG */
+    signal(SIGPIPE, SIG_IGN);
+    signal(SIGCHLD, SIG_IGN);
+
+    /* SIG RELOAD */
+    struct sigaction sig;
+    sigemptyset(&sig.sa_mask);
+    sig.sa_flags = 0;
+    sig.sa_handler = sighup_handler;
+    if (sigaction(SIGHUP, &sig, (struct sigaction *)0) < 0) {
+        zfatal("%s: sigaction(%d) : %m", __FUNCTION__, SIGHUP);
+    }
+
+    /* MASTER STATUS */
+    if (pipe(master_status_fd) == -1) {
+        zfatal("zmaster: pipe : %m");
+    }
+    zclose_on_exec(master_status_fd[0], 1);
+
+
+    /* VAR */
+    listen_pair_dict = zdict_create();
+    child_status_dict = zidict_create();
+    server_vector = zvector_create(128);
+}
+
+static void fini_all(void)
+{
+    remove_old_child();
+    zidict_free(child_status_dict);
+
+    remove_server_entry();
+    zvector_free(server_vector);
+
+    set_listen_unused();
+    release_unused_listen();
+    zdict_free(listen_pair_dict);
+
+    zevbase_free(zvar_master_evbase);
+    zconfig_free(zvar_default_config);
+    zvar_default_config = 0;
+
+    zfree(config_path);
+}
+
+int zmaster_main(int argc, char **argv)
+{
+    zvar_fatal_catch = 1;
+    init_all(argc, argv);
+    reload_server();
     sighup_on = 0;
+    long t1 = ztimeout_set(0);
     while (1) {
-        zevbase_dispatch(zvar_evbase, 0);
+        zevbase_dispatch(zvar_master_evbase, 1 * 1000);
         if (sighup_on) {
             zdebug("zmaster_reload");
             sighup_on = 0;
-            zmaster_reload_service();
+            reload_server();
+        }
+        if (ztimeout_set(0) - t1 > 10 * 1000) {
+            break;
         }
     }
+    fini_all();
 
     return 0;
 }

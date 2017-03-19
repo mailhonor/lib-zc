@@ -6,80 +6,53 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-int zssl_INIT(int unused_flags)
+#define zdebug(fmt, args...) {if(zvar_openssl_debug){zinfo(fmt, ##args);}}
+
+int zvar_openssl_debug = 0;
+void zopenssl_init(void)
 {
     SSL_library_init();
     OpenSSL_add_all_algorithms();
     SSL_load_error_strings();
-
-    return 0;
 }
 
-zsslctx_t *zsslctx_server_create(int unused_flags)
+SSL_CTX *zopenssl_create_SSL_CTX_server(void)
 {
-    zsslctx_t *zctx = 0;
-    SSL_CTX *ctx = 0;
-
-    ctx = SSL_CTX_new(SSLv23_server_method());
-    if (!ctx) {
-        return 0;
-    }
-
-    zctx = (zsslctx_t *) zcalloc(1, sizeof(zsslctx_t));
-    zctx->ssl_ctx = ctx;
-    zctx->server_or_client = 1;
-
-    return zctx;
-
+     return SSL_CTX_new(SSLv23_server_method());
 }
 
-zsslctx_t *zsslctx_client_create(int unused_flags)
+
+SSL_CTX *zopenssl_create_SSL_CTX_client(void)
 {
-    zsslctx_t *zctx = 0;
-    SSL_CTX *ctx = 0;
-
-    ctx = SSL_CTX_new(SSLv23_client_method());
-    if (!ctx) {
-        return 0;
-    }
-
-    zctx = (zsslctx_t *) zcalloc(1, sizeof(zsslctx_t));
-    zctx->ssl_ctx = ctx;
-    zctx->server_or_client = 0;
-
-    return zctx;
-
+     return SSL_CTX_new(SSLv23_client_method());
 }
 
-int zsslctx_set_cert(zsslctx_t * ssl_ctx, const char *cert_file, const char *key_file)
+int zopenssl_SSL_CTX_set_cert(SSL_CTX *ctx, const char *cert_file, const char *key_file)
 {
     ERR_clear_error();
-    if ((!cert_file) || (SSL_CTX_use_certificate_chain_file(ssl_ctx->ssl_ctx, cert_file) <= 0)) {
+    if ((!cert_file) || (SSL_CTX_use_certificate_chain_file(ctx, cert_file) <= 0)) {
         return (-1);
     }
-    if ((!key_file) || (SSL_CTX_use_PrivateKey_file(ssl_ctx->ssl_ctx, key_file, SSL_FILETYPE_PEM) <= 0)) {
+    if ((!key_file) || (SSL_CTX_use_PrivateKey_file(ctx, key_file, SSL_FILETYPE_PEM) <= 0)) {
         return (-1);
     }
-    if (!SSL_CTX_check_private_key(ssl_ctx->ssl_ctx)) {
+    if (!SSL_CTX_check_private_key(ctx)) {
         return (-1);
     }
 
     return 0;
 }
 
-void zsslctx_free(zsslctx_t * ctx)
+void zopenssl_SSL_CTX_free(SSL_CTX * ctx)
 {
-    if (ctx->ssl_ctx) {
-        SSL_CTX_free(ctx->ssl_ctx);
-    }
-    zfree(ctx);
+    SSL_CTX_free(ctx);
 }
 
-void zssl_get_error(unsigned long *ecode, char *buf, int buf_len)
+void zopenssl_get_error(unsigned long *ecode, char *buf, int buf_len)
 {
     unsigned long ec;
     ec = ERR_get_error();
@@ -92,51 +65,33 @@ void zssl_get_error(unsigned long *ecode, char *buf, int buf_len)
     }
 }
 
-zssl_t *zssl_create(zsslctx_t * ctx, int fd)
+SSL *zopenssl_create_SSL(SSL_CTX * ctx, int fd)
 {
-    zssl_t *zssl;
     SSL *ssl;
-
-    ssl = SSL_new(ctx->ssl_ctx);
+    ssl = SSL_new(ctx);
     SSL_set_fd(ssl, fd);
-
-    zssl = (zssl_t *) zcalloc(1, sizeof(zssl_t));
-    zssl->ssl = ssl;
-    zssl->fd = fd;
-    zssl->server_or_client = ctx->server_or_client;
-
-    return zssl;
-}
-
-void *zssl_detach_ssl(zssl_t * zssl)
-{
-    SSL *ssl;
-
-    ssl = zssl->ssl;
-
-    zssl->ssl = 0;
-
     return ssl;
 }
 
-void zssl_free(zssl_t * ssl)
+void zopenssl_SSL_free(SSL * ssl)
 {
-    if (ssl->ssl) {
-        SSL_shutdown(ssl->ssl);
-        SSL_free(ssl->ssl);
-    }
-    zfree(ssl);
+    SSL_shutdown(ssl);
+    SSL_free(ssl);
 }
 
-static inline int zssl_timed_do(zssl_t * zssl, int (*hsfunc) (SSL *), int (*rfunc) (SSL *, void *, int), int (*wfunc) (SSL *, const void *, int), void *buf, int num, int timeout)
+int zopenssl_SSL_get_fd(SSL *ssl)
+{
+    return SSL_get_fd(ssl);
+}
+
+static inline int zopenssl_timed_do(SSL *ssl, int (*hsfunc) (SSL *), int (*rfunc) (SSL *, void *, int), int (*wfunc) (SSL *, const void *, int), void *buf, int num, long timeout)
 {
     int ret;
     int status;
     int err;
-    SSL *ssl = zssl->ssl;
     long start_time;
     long left_time;
-    int fd = zssl->fd;
+    int fd = SSL_get_fd(ssl);
 
     start_time = ztimeout_set(timeout);
 
@@ -148,7 +103,7 @@ static inline int zssl_timed_do(zssl_t * zssl, int (*hsfunc) (SSL *), int (*rfun
         } else if (wfunc) {
             status = wfunc(ssl, buf, num);
         } else {
-            zfatal("zssl_timed_do: nothing to do here");
+            zfatal("zopenssl_timed_do: nothing to do here");
         }
         err = SSL_get_error(ssl, status);
 
@@ -171,9 +126,9 @@ static inline int zssl_timed_do(zssl_t * zssl, int (*hsfunc) (SSL *), int (*rfun
             break;
 
         default:
-            zdebug("zssl_timed_do: unexpected SSL_ERROR code %d", err);
+            zdebug("zopenssl_timed_do: unexpected SSL_ERROR code %d", err);
         case SSL_ERROR_SSL:
-            zdebug("zssl_timed_do: SSL_ERROR_SSL");
+            zdebug("zopenssl_timed_do: SSL_ERROR_SSL");
             /* FIXME */
         case SSL_ERROR_ZERO_RETURN:
         case SSL_ERROR_NONE:
@@ -186,43 +141,27 @@ static inline int zssl_timed_do(zssl_t * zssl, int (*hsfunc) (SSL *), int (*rfun
     return 0;
 }
 
-int zssl_connect(zssl_t * ssl, int timeout)
+int zopenssl_connect(SSL * ssl, long timeout)
 {
-    return zssl_timed_do(ssl, SSL_connect, 0, 0, 0, 0, timeout);
+    return zopenssl_timed_do(ssl, SSL_connect, 0, 0, 0, 0, timeout);
 }
 
-int zssl_accept(zssl_t * ssl, int timeout)
+int zopenssl_accept(SSL * ssl, long timeout)
 {
-    return zssl_timed_do(ssl, SSL_accept, 0, 0, 0, 0, timeout);
+    return zopenssl_timed_do(ssl, SSL_accept, 0, 0, 0, 0, timeout);
 }
 
-int zssl_shutdown(zssl_t * ssl, int timeout)
+int zopenssl_shutdown(SSL * ssl, long timeout)
 {
-    return zssl_timed_do(ssl, SSL_shutdown, 0, 0, 0, 0, timeout);
+    return zopenssl_timed_do(ssl, SSL_shutdown, 0, 0, 0, 0, timeout);
 }
 
-int zssl_read(zssl_t * ssl, void *buf, int len, int timeout)
+int zopenssl_read(SSL * ssl, void *buf, int len, long timeout)
 {
-    return zssl_timed_do(ssl, 0, SSL_read, 0, buf, len, timeout);
+    return zopenssl_timed_do(ssl, 0, SSL_read, 0, buf, len, timeout);
 }
 
-int zssl_write(zssl_t * ssl, void *buf, int len, int timeout)
+int zopenssl_write(SSL * ssl, const void *buf, int len, long timeout)
 {
-    return zssl_timed_do(ssl, 0, 0, SSL_write, buf, len, timeout);
-}
-
-void *___zopenssl_create(zsslctx_t * ctx, int fd)
-{
-    SSL *ssl;
-
-    ssl = SSL_new(ctx->ssl_ctx);
-    SSL_set_fd(ssl, fd);
-
-    return ssl;
-}
-
-void zopenssl_free(void *ssl)
-{
-    SSL_shutdown(ssl);
-    SSL_free(ssl);
+    return zopenssl_timed_do(ssl, 0, 0, SSL_write, (void *)buf, len, timeout);
 }

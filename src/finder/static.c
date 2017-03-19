@@ -6,14 +6,14 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
 static int _close(zfinder_t * finder)
 {
     return 0;
 }
 
-static int _get(zfinder_t * finder, const char *query, zbuf_t * result, int timeout)
+static int _get(zfinder_t * finder, const char *query, zbuf_t * result, long timeout)
 {
     zbuf_strcpy(result, (char *)(finder->title) + 9);
     return 1;

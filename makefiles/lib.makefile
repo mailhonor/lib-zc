@@ -1,17 +1,16 @@
 all: libzc.a
 
 include OBJS_DEST/depend
-include makefiles/depend.static
 
 CC=gcc
 
-CFLAGS= -Wall -I./ -O3 -ggdb
+CFLAGS= -Wall -I./ -O3 -g
 
 SRCS=${shell find src -type f -name "*.c"}
 
 OBJS_DEST = $(patsubst %.c, OBJS_DEST/%.o, $(SRCS))
 
-OBJS_DEST/%.o: %.c libzc.h
+OBJS_DEST/%.o: %.c
 	@echo build $<
 	@$(CC) $(CFLAGS) -c $< -o $@
 

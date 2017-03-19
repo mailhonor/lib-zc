@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
 void usage(void)
 {
@@ -35,8 +35,8 @@ int main(int argc, char **argv)
         }
     }
 
-    zconfig_add(config, "date", "2015-10-21");
-    zconfig_add(config, "author", "eli960@163.com");
+    zconfig_update(config, "date", "2015-10-21");
+    zconfig_update(config, "author", "eli960@163.com");
 
     /* ouput config */
     zconfig_show(config);

@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
 /*	$KAME: sha1.c,v 1.5 2000/11/08 06:13:08 itojun Exp $	*/
 /*
@@ -321,7 +321,7 @@ void zsha1_update(zsha1_t * ctxt, const void *input, int len)
 
     off = 0;
 
-    while (off < len) {
+    while (off < (size_t)len) {
         gapstart = COUNT % 64;
         gaplen = 64 - gapstart;
 

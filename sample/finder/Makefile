@@ -1,2 +1,2 @@
-include ../../makefiles/sample.makefile
 LIBS=
+include ../../makefiles/sample.makefile

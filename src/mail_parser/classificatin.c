@@ -6,81 +6,85 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
-static int ___mime_identify_type(zmail_mime_t * mime)
+#define _ZPMT_MULTIPART        1
+#define _ZPMT_ATTACHMENT       2
+#define _ZPMT_PLAIN            3
+#define _ZPMT_HTML             4
+static int ___mime_identify_type(zmime_t * mime)
 {
     char *type;
 
     type = mime->type;
     if (ZEMPTY(type)) {
-        return ZMAIL_PARSER_MIME_TYPE_MULTIPART;
+        return _ZPMT_MULTIPART;
     }
     if (ZSTR_N_EQ(type, "multipart/", 10)) {
-        return ZMAIL_PARSER_MIME_TYPE_MULTIPART;
+        return _ZPMT_MULTIPART;
     }
     if (ZSTR_N_EQ(type, "application/", 12)) {
         if (strstr(type + 12, "tnef")) {
             mime->is_tnef = 1;
         }
-        return ZMAIL_PARSER_MIME_TYPE_ATTACHMENT;
+        return _ZPMT_ATTACHMENT;
     }
     if ((!ZEMPTY(mime->disposition)) && (ZSTR_N_EQ(mime->disposition, "attachment", 10))) {
-        return ZMAIL_PARSER_MIME_TYPE_ATTACHMENT;
+        return _ZPMT_ATTACHMENT;
     }
     if (ZSTR_N_EQ(type, "image/", 6)) {
-        return ZMAIL_PARSER_MIME_TYPE_ATTACHMENT;
+        return _ZPMT_ATTACHMENT;
     }
     if (ZSTR_N_EQ(type, "audio/", 6)) {
-        return ZMAIL_PARSER_MIME_TYPE_ATTACHMENT;
+        return _ZPMT_ATTACHMENT;
     }
     if (ZSTR_N_EQ(type, "video/", 6)) {
-        return ZMAIL_PARSER_MIME_TYPE_ATTACHMENT;
+        return _ZPMT_ATTACHMENT;
     }
     if (ZSTR_N_EQ(type, "text/", 5)) {
         if (!strcmp(type + 5, "html")) {
             if (strstr(mime->disposition, "attachment")) {
-                return ZMAIL_PARSER_MIME_TYPE_ATTACHMENT;
+                return _ZPMT_ATTACHMENT;
             }
-            return ZMAIL_PARSER_MIME_TYPE_HTML;
+            return _ZPMT_HTML;
         }
         if (!strcmp(type + 5, "plain")) {
             if (strstr(mime->disposition, "attachment")) {
-                return ZMAIL_PARSER_MIME_TYPE_ATTACHMENT;
+                return _ZPMT_ATTACHMENT;
             }
-            return ZMAIL_PARSER_MIME_TYPE_PLAIN;
+            return _ZPMT_PLAIN;
         }
-        return ZMAIL_PARSER_MIME_TYPE_ATTACHMENT;
+        return _ZPMT_ATTACHMENT;
     }
     if (ZSTR_N_EQ(type, "message/", 8)) {
         if (strstr(type + 8, "delivery")) {
-            return ZMAIL_PARSER_MIME_TYPE_PLAIN;
+            return _ZPMT_PLAIN;
         }
         if (strstr(type + 8, "notification")) {
-            return ZMAIL_PARSER_MIME_TYPE_PLAIN;
+            return _ZPMT_PLAIN;
         }
-        return ZMAIL_PARSER_MIME_TYPE_ATTACHMENT;
+        return _ZPMT_ATTACHMENT;
     }
 
-    return ZMAIL_PARSER_MIME_TYPE_ATTACHMENT;
+    return _ZPMT_ATTACHMENT;
 }
 
 /* ################################################################## */
 typedef struct {
-    zmail_mime_t *alternative;
-    zmail_mime_t *self;
+    zmime_t *alternative;
+    zmime_t *self;
 } ___view_mime_t;
 
-static int ___mime_identify_view_part(zmail_mime_t * mime, ___view_mime_t * view_list, int *view_len)
+static int ___mime_identify_view_part(zmime_t * mime, ___view_mime_t * view_list, int *view_len)
 {
     char *type;
     int i, mime_type;
-    zmail_mime_t *parent;
+    zmime_t *parent;
 
     type = mime->type;
     mime_type = mime->mime_type;
 
-    if ((mime_type != ZMAIL_PARSER_MIME_TYPE_PLAIN) && (mime_type != ZMAIL_PARSER_MIME_TYPE_HTML)) {
+    if ((mime_type != _ZPMT_PLAIN) && (mime_type != _ZPMT_HTML)) {
         return 0;
     }
     if (ZEMPTY(type)) {
@@ -121,69 +125,63 @@ static int ___mime_identify_view_part(zmail_mime_t * mime, ___view_mime_t * view
 }
 
 /* ################################################################## */
-int zmail_parser_mime_identify_type(zmail_parser_t * parser)
+void zmail_mime_classify(zmail_t * parser)
 {
-    zmpool_t *imp = parser->mpool;
-    zmail_mime_t *mime = parser->mime;
-    zmail_mime_t *m;
+    zmime_t *m;
     int i;
+
+    if (parser->classify_flag) {
+        return;
+    }
+    parser->classify_flag = 1;
 
     {
         /* classify */
         int type;
-        zmail_mime_t *text_mime[1024];
+        zmime_t *text_mime[10240];
         int text_len = 0;
-        zmail_mime_t *att_mime[1024];
+        zmime_t *att_mime[10240];
         int att_len = 0;
 
-        ZMAIL_PARSER_MIME_WALK_BEGIN(mime, m) {
+        ZVECTOR_WALK_BEGIN(parser->all_mimes, m) {
             type = ___mime_identify_type(m);
             m->mime_type = type;
-            if ((type == ZMAIL_PARSER_MIME_TYPE_PLAIN) || (type == ZMAIL_PARSER_MIME_TYPE_HTML)) {
-                if (text_len < 1000) {
+            if ((type == _ZPMT_PLAIN) || (type == _ZPMT_HTML)) {
+                if (text_len < 10000) {
                     text_mime[text_len++] = m;
                 }
-            } else if (type == ZMAIL_PARSER_MIME_TYPE_ATTACHMENT) {
-                if (att_len < 1000) {
+            } else if (type == _ZPMT_ATTACHMENT) {
+                if (att_len < 10000) {
                     att_mime[att_len++] = m;
                 }
             }
-        }
-        ZMAIL_PARSER_MIME_WALK_END;
+        } ZVECTOR_WALK_END;
 
-        parser->text_mime_count = text_len;
-        parser->text_mime_list = (zmail_mime_t **) zmpool_calloc(imp, text_len + 1, (sizeof(zmail_mime_t *)));
+        parser->text_mimes = zvector_create_MPOOL(parser->mpool, text_len);
         for (i = 0; i < text_len; i++) {
-            parser->text_mime_list[i] = text_mime[i];
+            zvector_add(parser->text_mimes, text_mime[i]);
         }
-        text_mime[text_len] = 0;
 
-        parser->attachment_mime_count = att_len;
-        parser->attachment_mime_list = (zmail_mime_t **) zmpool_calloc(imp, att_len + 1, (sizeof(zmail_mime_t *)));
+        parser->attachment_mimes = zvector_create_MPOOL(parser->mpool, att_len);
         for (i = 0; i < att_len; i++) {
-            parser->attachment_mime_list[i] = att_mime[i];
+            zvector_add(parser->attachment_mimes, att_mime[i]);
         }
-        att_mime[att_len] = 0;
     }
 
     {
         /* similar to the above text-mime, 
          * in addition to the case of alternative, html is preferred */
-        ___view_mime_t view_mime[1024];
+        ___view_mime_t view_mime[10240];
         int view_len = 0;
-        ZMAIL_PARSER_MIME_WALK_BEGIN(mime, m) {
-            if (view_len < 1000) {
+        ZVECTOR_WALK_BEGIN(parser->all_mimes, m) {
+            if (view_len < 10000) {
                 ___mime_identify_view_part(m, view_mime, &view_len);
             }
-        }
-        ZMAIL_PARSER_MIME_WALK_END;
-        parser->view_mime_count = view_len;
-        parser->view_mime_list = (zmail_mime_t **) zmpool_calloc(imp, view_len + 1, sizeof(zmail_mime_t *));
-        for (i = 0; i < view_len; i++) {
-            parser->view_mime_list[i] = view_mime[i].self;
-        }
-        parser->view_mime_list[i] = 0;
-    }
+        } ZVECTOR_WALK_END;
 
-    return 0;
+        parser->show_mimes = zvector_create_MPOOL(parser->mpool, view_len);
+        for (i = 0; i < view_len; i++) {
+            zvector_add(parser->show_mimes, view_mime[i].self);
+        }
+    }
 }

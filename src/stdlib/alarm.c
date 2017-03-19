@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include <pthread.h>
 #include <signal.h>
 

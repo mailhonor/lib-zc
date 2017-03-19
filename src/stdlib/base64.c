@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
 static const char b64enc[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -46,15 +46,18 @@ static const unsigned char b64dec[256] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 };
 
-int zbase64_encode(const void *src, int src_size, zbuf_t *dest, int mime_flag)
+int zbase64_encode(const void *src, int src_size, char *dest, int dest_size, int mime_flag)
 {
     unsigned char *src_c = (unsigned char *)src;
     unsigned char tmp[4];
     int src_pos;
     int mime_count = 0;
-    int old_len = ZBUF_LEN(dest);
+    int rlen = 0;
 
     for (src_pos = 0; src_pos < src_size;) {
+        if ((dest_size>0) && (rlen + 5 > dest_size)) {
+            break;
+        }
         tmp[0] = b64enc[src_c[src_pos] >> 2];
         switch (src_size - src_pos) {
         case 1:
@@ -76,33 +79,35 @@ int zbase64_encode(const void *src, int src_size, zbuf_t *dest, int mime_flag)
             src_pos += 3;
             break;
         }
-        ZBUF_PUT(dest, tmp[0]);
-        ZBUF_PUT(dest, tmp[1]);
-        ZBUF_PUT(dest, tmp[2]);
-        ZBUF_PUT(dest, tmp[3]);
+        Z_DF_ADD_CHAR(dest_size, dest, rlen, tmp[0]);
+        Z_DF_ADD_CHAR(dest_size, dest, rlen, tmp[1]);
+        Z_DF_ADD_CHAR(dest_size, dest, rlen, tmp[2]);
+        Z_DF_ADD_CHAR(dest_size, dest, rlen, tmp[3]);
 
         if (mime_flag) {
             mime_count++;
             if (mime_count == 19) {
-                ZBUF_PUT(dest, '\r');
-                ZBUF_PUT(dest, '\n');
+                if ((dest_size>0) && (rlen + 3 > dest_size)) {
+                    break;
+                }
+                Z_DF_ADD_CHAR(dest_size, dest, rlen, '\r');
+                Z_DF_ADD_CHAR(dest_size, dest, rlen, '\n');
                 mime_count = 0;
             }
         }
     }
-    ZBUF_TERMINATE(dest);
 
-    return (ZBUF_LEN(dest) - old_len);
+    return rlen;
 }
 
-int zbase64_decode(const void *src, int src_size, zbuf_t *dest)
+int zbase64_decode(const void *src, int src_size, char *dest, int dest_size)
 {
     unsigned char *src_c = (unsigned char *)src;
     int src_pos = 0;
     unsigned char input[4], output[3];
     int ret = -1;
     unsigned char c0, c1, c2, c3;
-    int old_len = ZBUF_LEN(dest);
+    int rlen = 0;
 
 #define ___get_next_ch(c0123)    while(1){ \
     if(src_pos >= src_size){ goto over; } \
@@ -135,7 +140,10 @@ int zbase64_decode(const void *src, int src_size, zbuf_t *dest)
             if (c2 != '=' || c3 != '=') {
                 break;
             }
-            ZBUF_PUT(dest, output[0]);
+            if ((dest_size>0) && (rlen + 2 > dest_size)) {
+                break;
+            }
+            Z_DF_ADD_CHAR(dest_size, dest, rlen, output[0]);
             ret = 1;
             break;
         }
@@ -146,25 +154,30 @@ int zbase64_decode(const void *src, int src_size, zbuf_t *dest)
             if (c3 != '=') {
                 break;
             }
-            ZBUF_PUT(dest, output[0]);
-            ZBUF_PUT(dest, output[1]);
+            if ((dest_size>0) && (rlen + 3 > dest_size)) {
+                break;
+            }
+            Z_DF_ADD_CHAR(dest_size, dest, rlen, output[0]);
+            Z_DF_ADD_CHAR(dest_size, dest, rlen, output[1]);
             ret = 1;
             break;
         }
 
         output[2] = ((input[2] << 6) & 0xc0) | input[3];
-        ZBUF_PUT(dest, output[0]);
-        ZBUF_PUT(dest, output[1]);
-        ZBUF_PUT(dest, output[2]);
+        if ((dest_size>0) && (rlen + 4 > dest_size)) {
+            break;
+        }
+        Z_DF_ADD_CHAR(dest_size, dest, rlen, output[0]);
+        Z_DF_ADD_CHAR(dest_size, dest, rlen, output[1]);
+        Z_DF_ADD_CHAR(dest_size, dest, rlen, output[2]);
     }
     if (ret == 1) {
         goto retry;
     }
 
 over:
-    ZBUF_TERMINATE(dest);
 
-    return (ZBUF_LEN(dest) - old_len);
+    return rlen;
 }
 
 int zbase64_decode_get_valid_len(const void *src, int src_size)

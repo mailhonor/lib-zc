@@ -6,37 +6,30 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
-static int ___ssl_read(zstream_t * fp, void *buf, int len, int timeout)
+static int ___ssl_read(zstream_t * fp, void *buf, int len, long timeout)
 {
-    zssl_t *ssl;
-
-    ssl = (zssl_t *) (fp->io_ctx);
-
-    return zssl_read(ssl, buf, len, timeout);
+    return zopenssl_read((SSL *)(fp->io_ctx), buf, len, timeout);
 }
 
-static int ___ssl_write(zstream_t * fp, void *buf, int len, int timeout)
+static int ___ssl_write(zstream_t * fp, const void *buf, int len, long timeout)
 {
-    zssl_t *ssl;
-
-    ssl = (zssl_t *) (fp->io_ctx);
-
-    return zssl_write(ssl, buf, len, timeout);
+    return zopenssl_write((SSL *)(fp->io_ctx), buf, len, timeout);
 }
 
-zstream_t *zstream_open_SSL(zssl_t * ssl)
+zstream_t *zstream_open_SSL(SSL * ssl)
 {
     zstream_t *fp;
 
-    fp = zstream_create(0);
+    fp = zstream_create();
     zstream_set_ioctx(fp, ssl, ___ssl_read, ___ssl_write);
 
     return fp;
 }
 
-zssl_t *zstream_close_SSL(zstream_t * fp)
+SSL *zstream_close_SSL(zstream_t * fp)
 {
-    return (zssl_t *) zstream_free(fp);
+    return (SSL *) zstream_free(fp);
 }
+

@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include <sys/types.h>
 
 unsigned int zcrc32(const void *data, int size, unsigned int init_value)

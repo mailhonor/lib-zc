@@ -6,9 +6,9 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
-zstream_t *zstream_create(int unused)
+zstream_t *zstream_create(void)
 {
     zstream_t *fp;
 
@@ -30,14 +30,14 @@ void *zstream_free(zstream_t * fp)
     return r;
 }
 
-void zstream_set_ioctx(zstream_t * fp, void *io_ctx, zstream_read_t read_fn, zstream_write_t write_fn)
+void zstream_set_ioctx(zstream_t * fp, const void *io_ctx, zstream_read_t read_fn, zstream_write_t write_fn)
 {
-    fp->io_ctx = io_ctx;
+    fp->io_ctx = (void *)io_ctx;
     fp->read_fn = read_fn;
     fp->write_fn = write_fn;
 }
 
-void zstream_set_timeout(zstream_t * fp, int timeout)
+void zstream_set_timeout(zstream_t * fp, long timeout)
 {
     fp->timeout = ztimeout_set(timeout);
 }
@@ -240,13 +240,21 @@ int zstream_flush(zstream_t * fp)
 
 void zstream_putchar(zstream_t * fp, int ch)
 {
-    ZSTREAM_FLUSH(fp);
-    ZSTREAM_PUTCHAR(fp, ch);
+    if (fp->error) {
+        return;
+    }
+    if ((fp)->write_buf_len == ZSTREAM_WBUF_SIZE) {
+        ZSTREAM_FLUSH(fp);
+    }
+    if (fp->error) {
+        return;
+    }
+    (fp)->write_buf[(fp)->write_buf_len++]=(ch);
 }
 
-int zstream_write_n(zstream_t * fp, void *buf, int len)
+int zstream_write_n(zstream_t * fp, const void *buf, int len)
 {
-    int ch;
+    char ch;
     char *p;
     int wlen;
 
@@ -297,7 +305,7 @@ int zstream_printf_1024(zstream_t * fp, const char *format, ...)
 /* ################################################################## */
 /* io/fd */
 
-static int ___io_read(zstream_t * fp, void *buf, int len, int timeout)
+static int ___io_read(zstream_t * fp, void *buf, int len, long timeout)
 {
     ztype_convert_t ct;
 
@@ -306,7 +314,7 @@ static int ___io_read(zstream_t * fp, void *buf, int len, int timeout)
     return ztimed_read(ct.i_int, buf, len, timeout);
 }
 
-static int ___io_write(zstream_t * fp, void *buf, int len, int timeout)
+static int ___io_write(zstream_t * fp, const void *buf, int len, long timeout)
 {
     ztype_convert_t ct;
 
@@ -322,7 +330,7 @@ zstream_t *zstream_open_FD(int fd)
 
     ct.i_int = fd;
 
-    fp = zstream_create(0);
+    fp = zstream_create();
     zstream_set_ioctx(fp, ct.ptr_void, ___io_read, ___io_write);
 
     return fp;

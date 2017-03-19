@@ -1,28 +1,26 @@
 all: target
 
-.PHONY: tags depend
+.PHONY: tags
 
-${shell touch depend}
 CC=gcc
-CFLAGS= -ggdb -Wall -I../../ -O3 -g
+CFLAGS= -ggdb -Wall -I../../ -O3
 GLOBAL_LIBS=
+
 SRCS=${shell find -type f -name "*.c"}
 DEST := $(SRCS:.c=)
-
-$(DEST): ../../libzc.a $(MY_LIBS)
 .c:
-	$(CC) $*.c -o $* $(CFLAGS) ../../libzc.a $(MY_LIBS) $(GLOBAL_LIBS) $(LIBS)
+	$(CC) $*.c -o $* $(CFLAGS) ../../libzc.a $(GLOBAL_LIBS) $(LIBS) $($*_LIB)
 
-dest: $(DEST)
 
-target: depend libzc
-	make dest MY_LIBS="$(MY_LIBS)" LIBS="$(LIBS)"
+$(DEST): ../../libzc.a ../../zc.h
+
+target: libzc $(DEST)
 
 clean: CLEAN
 	@echo clean
 
 CLEAN:
-	@rm -f *~; rm -f $(DEST); rm -f tags gmon.out depend;rm -rf $(DELS);
+	@rm -f *~; rm -f $(DEST); rm -f tags gmon.out;rm -rf $(DELS);
 
 libzc:
 	@echo build global lib
@@ -31,9 +29,4 @@ libzc:
 tag tags:
 	cd ../../; make tags
 
-depend: *.c
-	@$(CC) -E -MM *.c -I../../ | sed s/.o:/:/ > depend
-
-targetFromTop: depend
-	make dest MY_LIBS="$(MY_LIBS)" LIBS="$(LIBS)"
-
+targetFromTop: $(DEST)

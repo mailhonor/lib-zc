@@ -1,12 +1,12 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
- * 2015-10-21
+ * 2015-10-12
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include <ctype.h>
 
 /* ################################################################## */
@@ -169,6 +169,103 @@ char *ztrim(char *str)
     return np;
 }
 
+/* skip */
+char *zskip_left(const char *str, const char *ignores)
+{
+    char ch;
+    int i = 0;
+
+    while((ch = str[i++])) {
+        const char *ignore_p = ignores;
+        while(*ignore_p) {
+            if (ch == (*ignore_p)) {
+                break;
+            }
+            ignore_p ++;
+        }
+        if (!*ignore_p) {
+            return (char *)str + i;
+        }
+    }
+    return (NULL);
+}
+
+char *zskip_right(const char *str, int size, const char *ignores)
+{
+    int i = 0;
+    if (size < 1)
+        return (NULL);
+    for (i = 0; i < size; i++) {
+        const char ch = str[size - i - 1];
+        const char *ignore_p = ignores;
+        while(*ignore_p) {
+            if (ch == (*ignore_p)) {
+                break;
+            }
+            ignore_p ++;
+        }
+        if (!*ignore_p) {
+            return (char *)str + i;
+        }
+    }
+    return (NULL);
+}
+
+int zskip(const char *line, int len, const char *ignores_left, const char *ignores_right, char **start)
+{
+    const char *ps,  *pend = line + len;
+    int i, ch;
+
+    for (i = 0; i < len; i++) {
+        ch = line[i];
+        if (strchr(ignores_left, ch)) {
+            continue;
+        }
+        break;
+    }
+    if (i == len) {
+        return 0;
+    }
+
+    if (!ignores_right) {
+        ignores_right = ignores_left;
+    }
+    ps = line + i;
+    len = pend - ps;
+    for (i = len - 1; i >= 0; i--) {
+        ch = ps[i];
+        if (strchr(ignores_right, ch)) {
+            continue;
+        }
+        break;
+    }
+    if (i < 0) {
+        return 0;
+    }
+
+    *start = (char *)ps;
+
+    return i+1;
+
+}
+
+char *zfind_delim(const char *str, const char *delims)
+{
+    char ch;
+    int i = 0;
+
+    while((ch = str[i++])) {
+        const char *ignore_p = delims;
+        while(*ignore_p) {
+            if (ch == (*ignore_p)) {
+                return (char *)str + i;
+            }
+            ignore_p ++;
+        }
+    }
+    return (NULL);
+}
+
 /* ################################################################## */
 /* unit convert */
 
@@ -294,35 +391,34 @@ char *zmemcasestr(const void *s, const char *needle, int len)
 
 char *zstrncpy(char *dest, const char *src, int len)
 {
-    int llen;
+    int i;
 
-    llen = strlen(src);
-    if (llen < len) {
-        len = llen;
-    }
-    if (len > 0) {
-        memcpy(dest, src, len);
+    for (i=0;i<len;i++) {
+        if (!(src[i])) {
+            break;
+        }
+        dest[i] = src[i];
     }
 
-    dest[len] = 0;
+    dest[i] = 0;
 
     return dest;
 }
 
 char *zstrncat(char *dest, const char *src, int len)
 {
-    int llen, rlen;
+    int olen, i;
 
-    llen = strlen(dest);
-    rlen = strlen(src);
-    if (rlen < len) {
-        len = rlen;
-    }
-    if (len > 0) {
-        memcpy(dest + llen, src, len);
+    olen = strlen(dest);
+    for (i=0;i<len;i++) {
+        if (!(src[i])) {
+            break;
+        }
+        dest[olen + i] = src[i];
     }
 
-    dest[llen + len] = 0;
+    dest[olen + i] = 0;
 
     return dest;
 }
+

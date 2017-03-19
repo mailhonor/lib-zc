@@ -6,14 +6,14 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include <poll.h>
 #include <sys/file.h>
 #include <sys/ioctl.h>
 
 /* ################################################################## */
 /* read */
-int zread_wait(int fd, int timeout)
+int zread_wait(int fd, long timeout)
 {
     struct pollfd pollfd;
 
@@ -41,7 +41,7 @@ int zread_wait(int fd, int timeout)
     return 1;
 }
 
-int ztimed_read(int fd, void *buf, int len, int timeout)
+int ztimed_read(int fd, void *buf, int len, long timeout)
 {
     int ret;
     long start_time;
@@ -69,7 +69,7 @@ int ztimed_read(int fd, void *buf, int len, int timeout)
     return 0;
 }
 
-int ztimed_strict_read(int fd, void *buf, int len, int timeout)
+int ztimed_strict_read(int fd, void *buf, int len, long timeout)
 {
     int ret;
     int left;
@@ -78,7 +78,7 @@ int ztimed_strict_read(int fd, void *buf, int len, int timeout)
     long left_time;
 
     left = len;
-    ptr = buf;
+    ptr = (char *)buf;
 
     start_time = ztimeout_set(timeout);
 
@@ -109,7 +109,7 @@ int ztimed_strict_read(int fd, void *buf, int len, int timeout)
 
 /* ################################################################## */
 /* write */
-int zwrite_wait(int fd, int timeout)
+int zwrite_wait(int fd, long timeout)
 {
     struct pollfd pollfd;
 
@@ -137,7 +137,7 @@ int zwrite_wait(int fd, int timeout)
     return 1;
 }
 
-int ztimed_write(int fd, void *buf, int len, int timeout)
+int ztimed_write(int fd, const void *buf, int len, long timeout)
 {
     int ret;
     long start_time;
@@ -165,7 +165,7 @@ int ztimed_write(int fd, void *buf, int len, int timeout)
     return 0;
 }
 
-int ztimed_strict_write(int fd, void *buf, int len, int timeout)
+int ztimed_strict_write(int fd, const void *buf, int len, long timeout)
 {
     int ret;
     int left;
@@ -176,7 +176,7 @@ int ztimed_strict_write(int fd, void *buf, int len, int timeout)
     start_time = ztimeout_set(timeout);
 
     left = len;
-    ptr = buf;
+    ptr = (char *)buf;
 
     while (left > 0) {
         left_time = ztimeout_left(start_time);
@@ -272,6 +272,33 @@ int zflock(int fd, int flags)
 {
     int ret;
     while ((ret = flock(fd, flags)) < 0 && errno == EINTR)
+        sleep(1);
+
+    return ret;
+}
+
+int zshared_flock(int fd)
+{
+    int ret;
+    while ((ret = flock(fd, LOCK_SH)) < 0 && errno == EINTR)
+        sleep(1);
+
+    return ret;
+}
+
+int zexclusive_flock(int fd)
+{
+    int ret;
+    while ((ret = flock(fd, LOCK_EX)) < 0 && errno == EINTR)
+        sleep(1);
+
+    return ret;
+}
+
+int zremove_flock(int fd)
+{
+    int ret;
+    while ((ret = flock(fd, LOCK_UN)) < 0 && errno == EINTR)
         sleep(1);
 
     return ret;

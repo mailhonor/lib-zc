@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -40,7 +40,7 @@ int zfile_put_contents(const char *filename, const void *data, int len)
     }
 
     while (len > wlen) {
-        ret = write(fd, data + wlen, len - wlen);
+        ret = write(fd, (char *)data + wlen, len - wlen);
         if (ret > -1) {
             wlen += ret;
             continue;
@@ -51,7 +51,7 @@ int zfile_put_contents(const char *filename, const void *data, int len)
         }
         close(fd);
         errno = errno2;
-        return -1;
+        return 0;
     }
 
     close(fd);
@@ -123,6 +123,13 @@ int zfile_get_contents_mmap(const char *filename, zbuf_t * bf)
     return reader.len;
 }
 
+void zfile_get_contents_sample(const char *filename, zbuf_t * dest)
+{
+    if (zfile_get_contents_mmap(filename, dest) < 0) {
+        zfatal("file_get_contents from %s (%m)", filename);
+    }
+}
+
 /* ################################################################## */
 /* mmap ptr */
 int zmmap_reader_init(zmmap_reader_t * reader, const char *filename)
@@ -160,7 +167,7 @@ int zmmap_reader_init(zmmap_reader_t * reader, const char *filename)
 
     reader->fd = fd;
     reader->len = size;
-    reader->data = data;
+    reader->data = (char *)data;
 
     return 0;
 }

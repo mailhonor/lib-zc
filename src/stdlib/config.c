@@ -6,15 +6,24 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
-zconfig_t *zvar_config = 0;
+zconfig_t *zvar_default_config = 0;
 
-void zvar_config_init(void)
+void zdefault_config_init(void)
 {
-    if (zvar_config == 0) {
-        zvar_config = zconfig_create();
+    if (zvar_default_config == 0) {
+        zvar_default_config = zconfig_create();
+        zatexit(zdefault_config_fini);
     }
+}
+
+void zdefault_config_fini(void)
+{
+    if (zvar_default_config) {
+        zdict_free(zvar_default_config);
+    }
+    zvar_default_config = 0;
 }
 
 /* ################################################################## */
@@ -45,7 +54,7 @@ int zconfig_load(zconfig_t * cf, const char *filename)
         if (!ZEMPTY(value)) {
             value = ztrim(value);
         }
-        zconfig_add(cf, name, value);
+        zconfig_update(cf, name, value);
     }
     zfree(line_buf);
     fclose(fp);
@@ -60,7 +69,7 @@ char *zconfig_get_str(zconfig_t * cf, const char *name, const char *def)
 {
     char *value;
 
-    zdict_lookup(cf, name, &value);
+    zdict_find(cf, name, &value);
     if (!ZEMPTY(value)) {
         return value;
     }
@@ -140,10 +149,8 @@ long zconfig_get_size(zconfig_t * cf, const char *name, long def, long min, long
 void zconfig_get_str_table(zconfig_t * cf, zconfig_str_table_t * table)
 {
     while (table->name) {
-        if (table->target[0]) {
-            zfree(table->target[0]);
-        }
         table->target[0] = zconfig_get_str(cf, table->name, table->defval);
+        table++;
     }
 }
 
@@ -151,6 +158,7 @@ void zconfig_get_bool_table(zconfig_t * cf, zconfig_bool_table_t * table)
 {
     while (table->name) {
         table->target[0] = zconfig_get_bool(cf, table->name, table->defval);
+        table++;
     }
 }
 
@@ -160,6 +168,7 @@ void zconfig_get_bool_table(zconfig_t * cf, zconfig_bool_table_t * table)
         while (table->name) \
         { \
             table->target[0] = zconfig_get_ ## ttype(cf, table->name, table->defval, table->min, table->max); \
+            table++; \
         } \
     }
 ___ZCONFIG_GET_TABLE(int);

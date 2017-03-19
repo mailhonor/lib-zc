@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
 void usage()
 {
@@ -37,22 +37,22 @@ int main(int argc, char **argv)
 
     result_crc32 = zcrc32(reader.data, reader.len, 0);
     ZBUF_RESET(p_buf);
-    zhex_encode(&result_crc32, (int)(sizeof(unsigned int)), p_buf);
+    zhex_encode_zbuf(&result_crc32, (int)(sizeof(unsigned int)), p_buf);
     printf("crc32\t: %s\n", ZBUF_DATA(p_buf));
 
     result_crc64 = zcrc64(reader.data, reader.len, 0);
     ZBUF_RESET(p_buf);
-    zhex_encode(&result_crc64, (int)(sizeof(unsigned long)), p_buf);
+    zhex_encode_zbuf(&result_crc64, (int)(sizeof(unsigned long)), p_buf);
     printf("crc64\t: %s\n", ZBUF_DATA(p_buf));
 
     zmd5(reader.data, reader.len, result_md5);
     ZBUF_RESET(p_buf);
-    zhex_encode(result_md5, 16, p_buf);
+    zhex_encode_zbuf(result_md5, 16, p_buf);
     printf("md5\t: %s\n", ZBUF_DATA(p_buf));
 
     zsha1(reader.data, reader.len, result_sha1);
     ZBUF_RESET(p_buf);
-    zhex_encode(result_sha1, 20, p_buf);
+    zhex_encode_zbuf(result_sha1, 20, p_buf);
     printf("sha1\t: %s\n", ZBUF_DATA(p_buf));
 
     zmmap_reader_fini(&reader);

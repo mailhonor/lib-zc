@@ -6,11 +6,12 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include <time.h>
 
-static int after_write(zaio_t * aio);
-static int service_error(zaio_t * aio)
+static zevbase_t *evbase;
+static void after_write(zaio_t * aio);
+static void service_error(zaio_t * aio)
 {
     printf("service_error\n");
     int fd;
@@ -21,11 +22,9 @@ static int service_error(zaio_t * aio)
     zaio_fini(aio);
     zaio_free(aio);
     close(fd);
-
-    return -1;
 }
 
-static int after_read(zaio_t * aio)
+static void after_read(zaio_t * aio)
 {
     printf("after_read\n");
     int ret, fd, len;
@@ -43,7 +42,7 @@ static int after_read(zaio_t * aio)
         zaio_fini(aio);
         zaio_free(aio);
         close(fd);
-        return 0;
+        return;
     }
 
     rbuf[ret] = 0;
@@ -61,11 +60,9 @@ static int after_read(zaio_t * aio)
     zaio_write_cache_append(aio, rbuf, len);
     zaio_write_cache_append(aio, "\n", 1);
     zaio_write_cache_flush(aio, after_write, 1000);
-
-    return 0;
 }
 
-static int after_write(zaio_t * aio)
+static void after_write(zaio_t * aio)
 {
     int ret;
     printf("before_write\n");
@@ -77,19 +74,17 @@ static int after_write(zaio_t * aio)
     }
 
     zaio_read_delimiter(aio, '\n', 1024, after_read, 10 * 1000);
-
-    return 0;
 }
 
 static void welcome(zaio_t * aio)
 {
     time_t t = time(0);
 
-    zaio_printf_1024(aio, "welcome aio: %s\n", ctime(&t));
+    zaio_write_cache_printf_1024(aio, "welcome aio: %s\n", ctime(&t));
     zaio_write_cache_flush(aio, after_write, 1000);
 }
 
-static int before_accept(zev_t * ev)
+static void before_accept(zev_t * ev)
 {
     printf("before_accept\n");
     int sock;
@@ -100,23 +95,19 @@ static int before_accept(zev_t * ev)
     fd = zinet_accept(sock);
     if (fd < -1) {
         printf("accept fail\n");
-        return 0;
+        return;
     }
     znonblocking(fd, 1);
     aio = zaio_create();
-    zaio_init(aio, zvar_evbase, fd);
+    zaio_init(aio, evbase, fd);
 
     welcome(aio);
-
-    return 0;
 }
 
-static int timer_cb(zevtimer_t * zt)
+static void timer_cb(zevtimer_t * zt)
 {
     zinfo("now exit!");
     exit(1);
-
-    return 0;
 }
 
 int main(int argc, char **argv)
@@ -127,19 +118,19 @@ int main(int argc, char **argv)
     zevtimer_t tm;
 
     port = 8899;
-    zvar_evbase = zevbase_create();
+    evbase = zevbase_create();
 
     sock = zinet_listen(0, port, 5);
     znonblocking(sock, 1);
     ev = zev_create();
-    zev_init(ev, zvar_evbase, sock);
+    zev_init(ev, evbase, sock);
     zev_read(ev, before_accept);
 
-    zevtimer_init(&tm, zvar_evbase);
+    zevtimer_init(&tm, evbase);
     zevtimer_start(&tm, timer_cb, 200 * 1000);
 
     while (1) {
-        zevbase_dispatch(zvar_evbase, 0);
+        zevbase_dispatch(evbase, 0);
     }
 
     return 0;

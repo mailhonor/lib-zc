@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
 zmmap_reader_t reader;
 int cmd = 0;
@@ -25,9 +25,9 @@ void test()
     bf = zbuf_create(102400);
 
     if (cmd == 'd') {
-        result_len = zbase64_decode(reader.data, reader.len, bf);
+        result_len = zbase64_decode(reader.data, reader.len, (char *)bf, Z_DF_ZBUF);
     } else {
-        result_len = zbase64_encode(reader.data, reader.len, bf, 1);
+        result_len = zbase64_encode(reader.data, reader.len, (char *)bf, Z_DF_ZBUF, 1);
     }
 
     printf("result: %d\n%s\n", result_len, ZBUF_DATA(bf));

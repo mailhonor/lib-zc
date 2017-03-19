@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 
 int (*zfinder_create_extend_fn)(zfinder_t *finder, const char *type) = 0;
 
@@ -35,7 +35,7 @@ zfinder_t *zfinder_create(const char *title)
     }
     title_len = strlen(title);
 
-    p = strstr(title, "://");
+    p = (char *)strstr(title, "://");
     if (!p) {
         zfatal("zfinder_create: can not create %s", title);
     }
@@ -63,10 +63,10 @@ zfinder_t *zfinder_create(const char *title)
     finder->uri = (char *)finder + sizeof(zfinder_t) + (title_len + 1);
     memcpy(finder->title, title, title_len);
     memcpy(finder->uri, uri, uri_len);
-    if (zdict_lookup(parameters, "prefix", &p)) {
+    if (zdict_find(parameters, "prefix", &p)) {
         finder->prefix = p;
     }
-    if (zdict_lookup(parameters, "suffix", &p)) {
+    if (zdict_find(parameters, "suffix", &p)) {
         finder->suffix = p;
     }
     finder->parameters = parameters;
@@ -204,9 +204,9 @@ static void ___zfinder_parse_parameters(zdict_t *parameters, const char *str)
         if(p) {
             *p++ = 0;
         } else {
-            p = "";
+            p = zblank_buffer;
         }
-        zdict_add(parameters, ps, p);
+        zdict_update_STR(parameters, ps, p);
     } ZARGV_WALK_END;
     zargv_free(args);
 }

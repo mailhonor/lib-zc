@@ -1494,6 +1494,7 @@ int ztnef_parser_get_mime_body(ztnef_parser_t * parser, ztnef_mime_t * mime, cha
 /* util */
 int zlicense_mac_check(char *salt, char *license);
 void zlicense_mac_build(char *salt, char *_mac, char *rbuf);
+int zquery_line(const char *connection, const char *query, char *result, int timeout);
 
 #ifdef LIBZC_MALLOC_NAMESAPCE
 #undef zmalloc

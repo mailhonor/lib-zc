@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include "sysuser.h"
 
 typedef struct myos_t myos_t;
@@ -62,7 +62,7 @@ account_t *myos_add_account(myos_t * myos, char *name, void *attributes)
     return n;
 }
 
-account_t *myos_find_account(myos_t * myos, char *name, void **value)
+account_t *myos_find_account(myos_t * myos, const char *name, void **value)
 {
     account_t *cmp_n;
     zrbtree_node_t *cmp_rn /* and return_rn */ ;

@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include <stdint.h>
 
 unsigned long zcrc64(const void *data, int size, unsigned long init_value)

@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -157,23 +157,55 @@ int zinet_listen(const char *sip, int port, int backlog)
     return -1;
 }
 
-int zlisten(const char *netpath, int backlog)
+int zlisten(const char *netpath, int backlog, int *type)
 {
-    char _netpath[1024];
-    char *p;
-    int port;
-    int fd;
+    char _netpath[1024], *path, *host, *p;
+    int fd, port, tp;
 
-    fd = 0;
     strncpy(_netpath, netpath, 1000);
+    _netpath[1000] = 0;
 
     p = strchr(_netpath, ':');
     if (p) {
-        *p = 0;
-        port = atoi(p + 1);
-        fd = zinet_listen(_netpath, port, backlog);
+        *p++ = 0;
+        if (!strcmp(_netpath, "inet")) {
+            tp = 'i';
+            host = p;
+            p = strchr(host, ':');
+            if (!p) {
+                errno = EINVAL;
+                return -1;
+            } else {
+                port = atoi(p+1);
+            }
+        } else if (!strcmp(_netpath, "unix")) {
+            tp = 'u';
+            path  = p;
+        } else if (!strcmp(_netpath, "fifo")) {
+            tp = 'f';
+            path  = p;
+        } else {
+            tp = 'i';
+            host = _netpath;
+            port = atoi(p);
+        }
     } else {
-        fd = zunix_listen(_netpath, backlog);
+        tp = 'u';
+        path = _netpath;
+    }
+    if ((tp == 'i') && (port <1)){
+        errno = EINVAL;
+        return -1;
+    }
+    if (tp == 'i') {
+        fd = zinet_listen(host, port, backlog);
+    } else if (tp == 'u') {
+        fd = zunix_listen(path, backlog);
+    } else if (tp == 'f') {
+        fd = zfifo_listen(path);
+    }
+    if (type) {
+        *type = tp;
     }
 
     return fd;
@@ -220,7 +252,7 @@ static int ___sane_connect(int sock, struct sockaddr *sa, socklen_t len)
     return (connect(sock, sa, len));
 }
 
-static int ___timed_connect(int sock, struct sockaddr *sa, int len, int timeout)
+static int ___timed_connect(int sock, struct sockaddr *sa, int len, long timeout)
 {
     int error;
     socklen_t error_len;
@@ -243,6 +275,7 @@ static int ___timed_connect(int sock, struct sockaddr *sa, int len, int timeout)
             return (-1);
         }
     } else {
+        /* FIXME */
 #if 0
         if (___sane_connect(sock, sa, len) < 0 && errno != EINPROGRESS) {
             return (-1);
@@ -257,7 +290,7 @@ static int ___timed_connect(int sock, struct sockaddr *sa, int len, int timeout)
     return (0);
 }
 
-int zunix_connect(const char *addr, int timeout)
+int zunix_connect(const char *addr, long timeout)
 {
     struct sockaddr_un sun;
     int len = strlen(addr);
@@ -287,7 +320,7 @@ int zunix_connect(const char *addr, int timeout)
     return (sock);
 }
 
-int zinet_connect(const char *dip, int port, int timeout)
+int zinet_connect(const char *dip, int port, long timeout)
 {
     int sock;
     struct sockaddr_in addr;
@@ -312,7 +345,7 @@ int zinet_connect(const char *dip, int port, int timeout)
     return (sock);
 }
 
-int zhost_connect(const char *host, int port, int timeout)
+int zhost_connect(const char *host, int port, long timeout)
 {
     zaddr_t ip_list[8];
     int sock, count, i;
@@ -332,7 +365,7 @@ int zhost_connect(const char *host, int port, int timeout)
     return -2;
 }
 
-int zconnect(const char *netpath, int timeout)
+int zconnect(const char *netpath, long timeout)
 {
     char _netpath[1024];
     char *p;

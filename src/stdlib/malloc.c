@@ -1,19 +1,21 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
- * 2015-09-28
+ * 2015-10-12
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
+
+char zblank_buffer[1] = {'\0'};
 
 void *zmalloc(int len)
 {
     void *r;
 
     if (len < 1) {
-        len = 1;
+        return zblank_buffer;
     }
     if ((r = malloc(len)) == 0) {
         zfatal("zmalloc: insufficient memory for %ld bytes: %m", (long)len);
@@ -27,6 +29,9 @@ void *zcalloc(int nmemb, int size)
 {
     void *r;
 
+    if ((!nmemb) || (!size)) {
+        return zblank_buffer;
+    }
     if ((r = calloc(nmemb, size)) == 0) {
         zfatal("zcalloc: insufficient memory for %ldx%ld bytes: %m", (long)nmemb, size);
     }
@@ -39,7 +44,8 @@ void *zrealloc(const void *ptr, int len)
     void *r;
 
     if (len < 1) {
-        len = 1;
+        zfree(ptr);
+        return zblank_buffer;
     }
 
     if ((r = realloc((void *)ptr, len)) == 0) {
@@ -51,7 +57,7 @@ void *zrealloc(const void *ptr, int len)
 
 void zfree(const void *ptr)
 {
-    if (ptr) {
+    if ((ptr) &&(ptr!=zblank_buffer)) {
         free((void *)ptr);
     }
 }
@@ -60,8 +66,8 @@ char *zstrdup(const char *ptr)
 {
     char *r;
 
-    if (!ptr) {
-        ptr = "";
+    if ((!ptr) || (!*ptr)) {
+        return zblank_buffer;
     }
     r = strdup(ptr);
     if (r == NULL) {
@@ -75,12 +81,8 @@ char *zstrndup(const char *ptr, int n)
 {
     char *r;
 
-    if (!ptr) {
-        ptr = "";
-    }
-
-    if (!n) {
-        return zmalloc(0);
+    if ((!ptr) || (!*ptr) || (n<1)) {
+        return zblank_buffer;
     }
 
     r = strndup(ptr, n);
@@ -95,17 +97,32 @@ char *zmemdup(const void *ptr, int n)
 {
     char *r;
 
-    if (!ptr) {
-        ptr = "";
+    if ((!ptr) || (n<1) ) {
+        return zblank_buffer;
     }
 
-    r = zmalloc(n + 1);
-    if (r == NULL) {
-        zfatal("zmemdup: insufficient memory for %ld bytes: %m", (long)n);
+    if ((r = (char *)malloc(n)) == 0) {
+        zfatal("zmalloc: insufficient memory for %ld bytes: %m", (long)n);
     }
-    if (n > 0) {
-        memcpy(r, ptr, n);
+
+    memcpy(r, ptr, n);
+
+    return r;
+}
+
+
+char *zmemdupnull(const void *ptr, int n)
+{
+    char *r;
+
+    if ((!ptr) || (n<1) ) {
+        return zblank_buffer;
     }
+
+    if ((r = (char *)malloc(n+1)) == 0) {
+        zfatal("zmalloc: insufficient memory for %ld bytes: %m", (long)(n+1));
+    }
+    memcpy(r, ptr, n);
     r[n] = 0;
 
     return r;

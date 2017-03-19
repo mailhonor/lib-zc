@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include "../rbtree/sysuser.h"
 
 int main(int argc, char **argv)
@@ -22,11 +22,11 @@ int main(int argc, char **argv)
     sysuser_load();
 
     for (i = 0; i < sysuser_count; i++) {
-        zdict_add(myos, sysuser_list[i].login_name, sysuser_list[i].shell);
+        zdict_update_STR(myos, sysuser_list[i].login_name, sysuser_list[i].shell);
     }
 
     zdict_node_t *sn;
-    if ((sn = zdict_lookup_near_prev(myos, "paemon", &shell))) {
+    if ((sn = zdict_find_near_prev(myos, "paemon", &shell))) {
         zinfo("Found user %s, whose shell is %s", ZDICT_KEY(sn), shell);
     } else {
         zinfo("Dit not find the user daemon");

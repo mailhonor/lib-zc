@@ -1,5 +1,5 @@
 
-all: libzc sample_part
+all: libzc
 
 .PHONY: test sample
 
@@ -11,11 +11,7 @@ libzc lib: depend
 	make -f makefiles/lib.makefile
 
 test sample: libzc
-	make -f makefiles/sample_list.makefile samples=ALL
-
-sample_part: libzc
-	@touch plist
-	make -f makefiles/sample_list.makefile samples=PART
+	make -f makefiles/sample_list.makefile
 
 depend:
 	make -f makefiles/depend.makefile
@@ -28,7 +24,7 @@ clean:
 	make clean -f makefiles/sample_list.makefile
 
 CLEAN: clean
-	rm -r tags plist
+	rm -r tags
 
 indent:
 	find src -name "*.[ch]" -exec Indent {} \;

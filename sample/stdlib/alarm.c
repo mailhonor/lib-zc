@@ -6,31 +6,25 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
 
-int alarm_cb_normal(zalarm_t * alarm)
+void alarm_cb_normal(zalarm_t * alarm)
 {
     zinfo("alarm_cb normal: %zd", time(0));
     zalarm_free(alarm);
-
-    return 0;
 }
 
-int alarm_cb_ignore_free(zalarm_t * alarm)
+void alarm_cb_ignore_free(zalarm_t * alarm)
 {
     zinfo("alarm_cb ignore: %zd", time(0));
-
-    return 0;
 }
 
-int alarm_cb_direct(zalarm_t * alarm)
+void alarm_cb_direct(zalarm_t * alarm)
 {
     zinfo("alarm_cb direct: %zd", time(0));
-
-    return 0;
 }
 
 void test_normal(void)

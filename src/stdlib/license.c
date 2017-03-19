@@ -6,7 +6,8 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
+
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -48,7 +49,7 @@ static int get_mac_list(__MAC * mac_list)
     return ret_num;
 }
 
-int zlicense_mac_check(char *salt, char *license)
+zbool_t zlicense_mac_check(const char *salt, const char *license)
 {
     char *mac;
     char license_c[20];
@@ -71,7 +72,7 @@ int zlicense_mac_check(char *salt, char *license)
     return 0;
 }
 
-void zlicense_mac_build(char *salt, char *_mac, char *rbuf)
+void zlicense_mac_build(const char *salt, const char *_mac, char *rbuf)
 {
     char mac[128];
     char buf[512];
@@ -79,9 +80,9 @@ void zlicense_mac_build(char *salt, char *_mac, char *rbuf)
     int i;
     unsigned long crc;
 
-    strcpy(mac, _mac);
+    snprintf(mac, 127, "%s", _mac);
     ztoupper(mac);
-    sprintf(buf, "%s,%s", salt, mac);
+    snprintf(buf, 511, "%s,%s", salt, mac);
     crc = zcrc64(buf, strlen(buf), 0);
 
     p = (unsigned char *)(&crc);

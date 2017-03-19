@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "libzc.h"
+#include "zc.h"
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <netdb.h>

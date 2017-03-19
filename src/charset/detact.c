@@ -6,8 +6,14 @@
  * ================================
  */
 
-#include "libzc.h"
-#include "charset_utf8.h"
+#include "zc.h"
+#include "charset_utf8.hpp"
+
+int zvar_charset_debug = 0;
+const char *zvar_charset_chinese[] = { "UTF-8", "GB18030", "BIG5", 0 };
+const char *zvar_charset_japanese[] = { "UTF-8", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", 0 };
+const char *zvar_charset_korean[] = { "UTF-8", "KS_C_5601", "KS_C_5861", 0 };
+const char *zvar_charset_cjk[] = { "UTF-8", "GB18030", "BIG5", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", "KS_C_5601", "KS_C_5861", 0 };
 
 static inline int utf8_len(char *buf, int len)
 {
@@ -87,14 +93,16 @@ static double ___chinese_score(char *str, int len, int omit_invalid_bytes_count)
         return 0;
     }
 
-    zverbose("``````````````````````%ld, %d, %d", score, count, omit_invalid_bytes_count);
+    if (zvar_charset_debug) {
+        fprintf(stderr, "charset detact score:%ld, count:%ld, omit_invalid_bytes_count:%d\n", score, count, omit_invalid_bytes_count);
+    }
     return ((double)score / (count + omit_invalid_bytes_count));
 }
 
-int zcharset_detect(const char *data, int len, char *charset_ret, char **charset_list)
+zbool_t zcharset_detect(const char *data, size_t len, char *charset_ret, const char **charset_list)
 {
-    int ret, i, max_i;
-    char **csp, *fromcode;
+    size_t ret, i, max_i;
+    const char **csp, *fromcode;
     char out_string[4096*3 + 16 + 10];
     int len_to_use, list_len;
     int omit_invalid_bytes_count;
@@ -118,16 +126,10 @@ int zcharset_detect(const char *data, int len, char *charset_ret, char **charset
         result_score_list[i] = 0;
         fromcode = charset_list[i];
 
-        ZICONV_CREATE(ic);
-        ic->from_charset = fromcode;
-        ic->to_charset = "UTF-8";
-        ic->in_str = (char *)data;
-        ic->in_len = len_to_use;
-        ic->dest = zout_string;
-        ic->omit_invalid_bytes = 99999;
-        ret = zcharset_iconv(ic);
-        omit_invalid_bytes_count = ic->omit_invalid_bytes_count;
-        ZICONV_FREE(ic);
+        ret = zcharset_iconv(fromcode, data, len_to_use
+                , "UTF-8", (char *)zout_string, Z_DF_ZBUF
+                , 0
+                , -1, &omit_invalid_bytes_count);
 
         if (ret < 0) {
             continue;
@@ -141,20 +143,15 @@ int zcharset_detect(const char *data, int len, char *charset_ret, char **charset
             max_i = i;
             max_score = result_score_list[i];
         }
-        zverbose("%s, %f", fromcode, result_score_list[i]);
+        if (zvar_charset_debug) {
+            fprintf(stderr, "charset detact, charset:%s, score:%f\n", fromcode, result_score_list[i]);
+        }
     }
 
     if (max_i == -1) {
-        return -1;
+        return 0;
     }
     strcpy(charset_ret, charset_list[max_i]);
 
-    return 0;
+    return 1;
 }
-
-/* ################################################################## */
-
-char *zvar_charset_chinese[] = { "UTF-8", "GB18030", "BIG5", 0 };
-char *zvar_charset_japanese[] = { "UTF-8", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", 0 };
-char *zvar_charset_korean[] = { "UTF-8", "KS_C_5601", "KS_C_5861", 0 };
-char *zvar_charset_cjk[] = { "UTF-8", "GB18030", "BIG5", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", "KS_C_5601", "KS_C_5861", 0 };
