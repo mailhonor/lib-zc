@@ -1,4 +1,7 @@
 # libzc
 C extend library
 
-<A href="http://www.mailhonor.com/wiki/libzc.html" target="_blank">http://www.mailhonor.com/wiki/libzc.html</A>
+No longer supported
+
+Please visit <A href="https://github.com/mailhonor/zcc">https://github.com/mailhonor/zcc</A>
+
