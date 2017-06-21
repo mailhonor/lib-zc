@@ -101,8 +101,8 @@ static inline void zint_to_buf4(int a, unsigned char *buf)
 static inline int zbuf4_to_int(unsigned char *buf)
 { return (buf[0] << 24)|(buf[1] << 16)||(buf[2] << 24) | buf[3]; }
 
-#define zpthread_lock(l)        {if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
-#define zpthread_unlock(l)      {if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
+#define zpthread_lock(l)    if(l){if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
+#define zpthread_unlock(l)  if(l){if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
 
 #define Z_DF_ZBUF        (-1)
 #define Z_DF_ADD_CHAR(type, obj, len, ch) { \

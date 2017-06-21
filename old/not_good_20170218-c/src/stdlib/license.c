@@ -62,6 +62,7 @@ int zlicense_mac_check(char *salt, char *license)
     mac_num = get_mac_list(mac_list);
     for (i = 0; i < mac_num; i++) {
         mac = mac_list[i].val;
+        printf("SSS:%s\n", mac);
         zlicense_mac_build(salt, mac, license_c);
         if (!strncasecmp(license_c, license, 12)) {
             return 1;
