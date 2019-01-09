@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>LIBZC HTTPD EXPLORE</title>
+<script type="text/javascript">
+var display_data=___DISPLAY_DATA___;
+function display_paths()
+{
+    var po = document.getElementById("paths");
+    var ns = window.location.href.split("/explore/"); ns.shift();
+    ns = ns.join("/explore/").split("/");ns.unshift(""); console.log(ns);
+    var i=0;
+    for (i=0;i<ns.length-1;i++) {
+	var s = ns.slice(0,i+1);
+	o=document.createElement("A");
+	o.href = "/explore" + s.join("/") + "/";
+	o.innerHTML = s.join("/") + "/";
+	po.append(o);
+	o=document.createElement("BR"); po.append(o);
+    }
+
+}
+
+function do_display()
+{
+    display_paths();
+    var table = document.getElementById("items");
+    var i=0;
+    for (i=0;i<display_data.length;i++) {
+        var fo=display_data[i];
+	var tr = table.insertRow(table.rows.length);
+	var ntd = tr.insertCell(tr.cells.length);
+	var ttd = tr.insertCell(tr.cells.length);
+	ttd.innerTEXT = fo.type;
+	ttd.textContent = fo.type;
+        var a=document.createElement("A");
+	a.innerTEXT = fo.name;
+	a.textContent = fo.name;
+	console.log(fo.name);
+	if (fo.type == "regular file") {
+	    a.href=fo.name;
+	} else if (fo.type == "directory") {
+	    a.href=fo.name + "/";
+	} else {
+	}
+	ntd.append(a);
+    }
+}
+
+</script>
+</head>
+<body onload="do_display();">
+<B id="paths"></B>
+<HR>
+<TABLE id="items" cellspacing=10>
+<TR><TH width="300">Name</TH><TH>Type</TH></TR>
+</TABLE>
+<HR>
+<i>LIBZC HTTPD <A href="/">homepage</A></i> 
+</body>
+</html>

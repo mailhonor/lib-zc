@@ -1,21 +1,18 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
- * 2016-03-18
+ * 2017-01-06
  * ================================
  */
 
 #include "zc.h"
-#include "charset_utf8.hpp"
 
-int zvar_charset_debug = 0;
-const char *zvar_charset_chinese[] = { "UTF-8", "GB18030", "BIG5", 0 };
-const char *zvar_charset_japanese[] = { "UTF-8", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", 0 };
-const char *zvar_charset_korean[] = { "UTF-8", "KS_C_5601", "KS_C_5861", 0 };
-const char *zvar_charset_cjk[] = { "UTF-8", "GB18030", "BIG5", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", "KS_C_5601", "KS_C_5861", 0 };
+#define mydebug          if (zvar_charset_debug)zinfo
 
-static inline int utf8_len(char *buf, int len)
+#include "charset_utf8.h"
+
+static inline __attribute__((always_inline)) int utf8_len(char *buf, int len)
 {
     unsigned char *ptr;
     int ret;
@@ -35,7 +32,7 @@ static inline int utf8_len(char *buf, int len)
     return ret;
 }
 
-static inline unsigned long ___chinese_word_score(unsigned char *word, int ulen)
+static inline __attribute__((always_inline)) unsigned long chinese_word_score(unsigned char *word, int ulen)
 {
     int start = 0, middle, end;
     unsigned int mint, wint;
@@ -74,7 +71,7 @@ static inline unsigned long ___chinese_word_score(unsigned char *word, int ulen)
     return 0;
 }
 
-static double ___chinese_score(char *str, int len, int omit_invalid_bytes_count)
+static double chinese_get_score(const char *fromcode, char *str, int len, int omit_invalid_bytes_count)
 {
     int i = 0, ulen;
     unsigned long score = 0;
@@ -83,7 +80,7 @@ static double ___chinese_score(char *str, int len, int omit_invalid_bytes_count)
     while (i + 1 < len) {
         ulen = utf8_len(str + i, len - i);
         if ((ulen == 2) || (ulen == 3)) {
-            score += ___chinese_word_score((unsigned char *)str + i, ulen);
+            score += chinese_word_score((unsigned char *)str + i, ulen);
             count++;
         }
         i += ulen;
@@ -93,24 +90,23 @@ static double ___chinese_score(char *str, int len, int omit_invalid_bytes_count)
         return 0;
     }
 
-    if (zvar_charset_debug) {
-        fprintf(stderr, "charset detact score:%ld, count:%ld, omit_invalid_bytes_count:%d\n", score, count, omit_invalid_bytes_count);
-    }
+    mydebug("        # %-20s, score:%lu, count:%lu, omit:%d" , fromcode, score, count, omit_invalid_bytes_count);
     return ((double)score / (count + omit_invalid_bytes_count));
 }
 
-zbool_t zcharset_detect(const char *data, size_t len, char *charset_ret, const char **charset_list)
+char *zcharset_detect(const char **charset_list, const char *data, int size, zbuf_t *charset_result)
 {
-    size_t ret, i, max_i;
+    int i;
+    int ret, max_i;
     const char **csp, *fromcode;
-    char out_string[4096*3 + 16 + 10];
     int len_to_use, list_len;
-    int omit_invalid_bytes_count;
-    double result_score_list[1024], max_score;
-    ZSTACK_BUF_FROM(zout_string, out_string, 4096*3 + 16);
+    double result_score, max_score;
+    zbuf_t *out_bf = zbuf_create(1024);
+    int converted_len, omit_invalid_bytes_count;
+    zbuf_reset(charset_result);
 
     list_len = 0;
-    len_to_use = (len>4096?4096:len);
+    len_to_use = (size>4096?4096:size);
     csp = charset_list;
     for (fromcode = *csp; fromcode; csp++, fromcode = *csp) {
         list_len++;
@@ -121,37 +117,47 @@ zbool_t zcharset_detect(const char *data, size_t len, char *charset_ret, const c
 
     max_score = 0;
     max_i = -1;
+    mydebug("###########");
     for (i = 0; i < list_len; i++) {
-        zbuf_reset(zout_string);
-        result_score_list[i] = 0;
+        result_score = 0;
         fromcode = charset_list[i];
 
-        ret = zcharset_iconv(fromcode, data, len_to_use
-                , "UTF-8", (char *)zout_string, Z_DF_ZBUF
-                , 0
-                , -1, &omit_invalid_bytes_count);
-
+        ret = zcharset_iconv(fromcode, data, len_to_use, "UTF-8", out_bf, &converted_len, -1, &omit_invalid_bytes_count);
         if (ret < 0) {
+            mydebug("        # %-20s, iconv failure", fromcode);
             continue;
         }
         if (omit_invalid_bytes_count > 5) {
-            //continue;
+            mydebug("        # %-20s, omit_invalid_bytes: %d", fromcode, omit_invalid_bytes_count);
+            continue;
         }
-        zbuf_terminate(zout_string);
-        result_score_list[i] = ___chinese_score(out_string, ret, omit_invalid_bytes_count);
-        if (max_score < result_score_list[i]) {
+        if (converted_len < 1) {
+            continue;
+        }
+        result_score = chinese_get_score(fromcode, zbuf_data(out_bf), ret, omit_invalid_bytes_count);
+        if (max_score < result_score) {
             max_i = i;
-            max_score = result_score_list[i];
-        }
-        if (zvar_charset_debug) {
-            fprintf(stderr, "charset detact, charset:%s, score:%f\n", fromcode, result_score_list[i]);
+            max_score = result_score;
         }
     }
+    zbuf_free(out_bf);
 
-    if (max_i == -1) {
+    if (max_i == (ssize_t)-1) {
         return 0;
     }
-    strcpy(charset_ret, charset_list[max_i]);
+    zbuf_puts(charset_result, charset_list[max_i]);
 
-    return 1;
+    return zbuf_data(charset_result);
 }
+
+char *zcharset_detect_cjk(const char *data, int size, zbuf_t *charset_result)
+{
+    return zcharset_detect(zvar_charset_cjk, data, size, charset_result);
+}
+
+/* ################################################################## */
+
+const char *zvar_charset_chinese[] = { "UTF-8", "GB18030", "BIG5", "UTF-7", 0 };
+const char *zvar_charset_japanese[] = { "UTF-8", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", "UTF-7", 0 };
+const char *zvar_charset_korean[] = { "UTF-8", "KS_C_5601", "KS_C_5861", "UTF-7", 0 };
+const char *zvar_charset_cjk[] = { "UTF-8", "GB18030", "BIG5", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", "KS_C_5601", "KS_C_5861", "UTF-7", 0 };

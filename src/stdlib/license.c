@@ -1,6 +1,6 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
  * 2016-09-09
  * ================================
@@ -13,81 +13,50 @@
 #include <sys/socket.h>
 #include <net/if.h>
 
-typedef struct {
-    char val[20];
-} __MAC;
 
-static int get_mac_list(__MAC * mac_list)
+int zlicense_mac_check(const char *salt, const char *license)
 {
-    int sock_fd;
-    struct ifreq buf[128];
-    struct ifconf ifc;
-    int ret_num = 0, interface_num;
+    zbuf_t *license_c = zbuf_create(0);
+    zargv_t *mac_list = zargv_create(0);
 
-    if ((sock_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-        return -1;
-    }
-    ifc.ifc_len = sizeof(buf);
-    ifc.ifc_req = buf;
-    if (ioctl(sock_fd, SIOCGIFCONF, (char *)&ifc) < 0) {
-        return -1;
-    }
-    interface_num = ifc.ifc_len / sizeof(struct ifreq);
-
-    while (interface_num--) {
-
-        if (ioctl(sock_fd, SIOCGIFHWADDR, (char *)&buf[interface_num]) < 0) {
-            continue;
-        }
-
-        sprintf(mac_list[ret_num].val, "%02X:%02X:%02X:%02X:%02X:%02X", (unsigned char)buf[interface_num].ifr_hwaddr.sa_data[0], (unsigned char)buf[interface_num].ifr_hwaddr.sa_data[1], (unsigned char)buf[interface_num].ifr_hwaddr.sa_data[2], (unsigned char)buf[interface_num].ifr_hwaddr.sa_data[3], (unsigned char)buf[interface_num].ifr_hwaddr.sa_data[4], (unsigned char)buf[interface_num].ifr_hwaddr.sa_data[5]);
-        ret_num++;
-    }
-
-    close(sock_fd);
-
-    return ret_num;
-}
-
-zbool_t zlicense_mac_check(const char *salt, const char *license)
-{
-    char *mac;
-    char license_c[20];
-    __MAC mac_list[128];
-    int mac_num, i;
-
-    if (!license || !*license) {
+    if (ZEMPTY(salt) || ZEMPTY(license)) {
         return 0;
     }
-
-    mac_num = get_mac_list(mac_list);
-    for (i = 0; i < mac_num; i++) {
-        mac = mac_list[i].val;
+    zget_mac_address(mac_list);
+    ZARGV_WALK_BEGIN(mac_list, mac) {
+        zbuf_reset(license_c);
         zlicense_mac_build(salt, mac, license_c);
-        if (!strncasecmp(license_c, license, 12)) {
+        if (!strncasecmp(zbuf_data(license_c), license, 16)) {
             return 1;
         }
-    }
+    } ZARGV_WALK_END;
 
     return 0;
 }
 
-void zlicense_mac_build(const char *salt, const char *_mac, char *rbuf)
+void zlicense_mac_build(const char *salt, const char *_mac, zbuf_t *result)
 {
-    char mac[128];
-    char buf[512];
-    unsigned char *p;
-    int i;
-    unsigned long crc;
+    zbuf_t *builder = zbuf_create(128);
+    zbuf_puts(builder, salt);
+    zbuf_puts(builder, ",");
+    int len = zbuf_len(builder);
+    zbuf_puts(builder, _mac);
+    zstr_tolower(zbuf_data(builder) + len);
+    long crc = zcrc64(zbuf_data(builder), zbuf_len(builder), 0);
+    zhex_encode(&crc, 8, result);
+    zbuf_free(builder);
+}
 
-    snprintf(mac, 127, "%s", _mac);
-    ztoupper(mac);
-    snprintf(buf, 511, "%s,%s", salt, mac);
-    crc = zcrc64(buf, strlen(buf), 0);
-
-    p = (unsigned char *)(&crc);
-    for (i = 0; i < 8; i++) {
-        sprintf(rbuf + i * 2, "%02X", *p++);
+int zlicense_mac_check_from_config_filename(const char *salt, const char *config_file, const char *key)
+{
+    zconfig_t *cf = zconfig_create();
+    zconfig_load_from_filename(cf, config_file);
+    char *license = zconfig_get_str(cf, key, "");
+    if (ZEMPTY(license)) {
+        return 0;
     }
-    rbuf[16] = 0;
+    if (zlicense_mac_check(salt, license) == 0) {
+        return 0;
+    }
+    return 1;
 }

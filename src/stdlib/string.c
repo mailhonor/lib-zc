@@ -10,10 +10,6 @@
 #include <ctype.h>
 
 /* ################################################################## */
-/* string case convert.
- * only support Enlish locale.
- */
-
 unsigned const char zchar_lowercase_list[256] = {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
@@ -84,24 +80,24 @@ unsigned const char zchar_uppercase_list[256] = {
     0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
 };
 
-char *ztolower(char *str)
+char *zstr_tolower(char *str)
 {
     char *scan = str;
 
     while (*scan) {
-        *scan = ZCHAR_TOLOWER(*scan);
+        *scan = ztolower(*scan);
         scan++;
     }
 
     return (str);
 }
 
-char *ztoupper(char *str)
+char *zstr_toupper(char *str)
 {
     char *scan = str;
 
     while (*scan) {
-        *scan = ZCHAR_TOUPPER(*scan);
+        *scan = ztoupper(*scan);
         scan++;
     }
 
@@ -279,7 +275,7 @@ int zstr_to_bool(const char *s, int def)
     return def;
 }
 
-long zstr_to_second(const char *s)
+long zstr_to_second(const char *s, long def)
 {
     char unit, junk;
     long intval;
@@ -290,7 +286,7 @@ long zstr_to_second(const char *s)
     case 2:
         if (intval < 0)
             return 0;
-        switch (ZCHAR_TOLOWER(unit)) {
+        switch (ztolower(unit)) {
         case 'w':
             return (intval * (7 * 24 * 3600));
         case 'd':
@@ -305,10 +301,10 @@ long zstr_to_second(const char *s)
         }
     }
 
-    return 0;
+    return def;
 }
 
-long zstr_to_size(const char *s)
+long zstr_to_size(const char *s, long def)
 {
     char unit, junk;
     long intval;
@@ -319,7 +315,7 @@ long zstr_to_size(const char *s)
     case 2:
         if (intval < 0)
             return 0;
-        switch (ZCHAR_TOLOWER(unit)) {
+        switch (ztolower(unit)) {
         case 'g':
             return (intval * (1024 * 1024 * 1024));
         case 'm':
@@ -332,15 +328,14 @@ long zstr_to_size(const char *s)
         }
     }
 
-    return 0;
+    return def;
 }
 
-/* find */
-char *zmemstr(const void *s, const char *needle, int len)
+char *zmemstr(const void *s, const char *needle, size_t len)
 {
     char *src_c = (char *)s;
-    int nlen = strlen(needle);
-    int i, j;
+    size_t nlen = strlen(needle);
+    size_t i, j;
 
     if (len < nlen) {
         return 0;
@@ -361,11 +356,11 @@ char *zmemstr(const void *s, const char *needle, int len)
     return 0;
 }
 
-char *zmemcasestr(const void *s, const char *needle, int len)
+char *zmemcasestr(const void *s, const char *needle, size_t len)
 {
     char *src_c = (char *)s;
-    int nlen = strlen(needle);
-    int i, j;
+    size_t nlen = strlen(needle);
+    size_t i, j;
 
     if (len < nlen) {
         return 0;
@@ -374,7 +369,7 @@ char *zmemcasestr(const void *s, const char *needle, int len)
 
     for (i = 0; i < len; i++) {
         for (j = 0; j < nlen; j++) {
-            if (zchar_toupper(needle[j]) != zchar_toupper(src_c[i + j])) {
+            if (zchar_lowercase_list[(unsigned char)(needle[j])] != zchar_lowercase_list[(unsigned char)(src_c[i + j])]) {
                 break;
             }
         }
@@ -385,40 +380,3 @@ char *zmemcasestr(const void *s, const char *needle, int len)
 
     return 0;
 }
-
-/* ################################################################## */
-/* strncpy, strncat */
-
-char *zstrncpy(char *dest, const char *src, int len)
-{
-    int i;
-
-    for (i=0;i<len;i++) {
-        if (!(src[i])) {
-            break;
-        }
-        dest[i] = src[i];
-    }
-
-    dest[i] = 0;
-
-    return dest;
-}
-
-char *zstrncat(char *dest, const char *src, int len)
-{
-    int olen, i;
-
-    olen = strlen(dest);
-    for (i=0;i<len;i++) {
-        if (!(src[i])) {
-            break;
-        }
-        dest[olen + i] = src[i];
-    }
-
-    dest[olen + i] = 0;
-
-    return dest;
-}
-

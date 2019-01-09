@@ -1,3 +1,0 @@
-
-zcmd = ./simple_server
-zlisten = 0:8899

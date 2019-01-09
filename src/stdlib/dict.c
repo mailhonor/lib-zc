@@ -1,6 +1,6 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
  * 2015-10-12
  * ================================
@@ -18,72 +18,64 @@ static int zdict_zrbtree_cmp(zrbtree_node_t * n1, zrbtree_node_t * n2)
     return strcmp(dn1->key, dn2->key);
 }
 
-zdict_t *zdict_create(void)
-{
-    return zdict_create_mpool(0);
-}
-
-zdict_t *zdict_create_STR(void)
-{
-    return zdict_create_mpool_STR(0);
-}
-
-zdict_t *zdict_create_mpool(zmpool_t * mpool)
+zdict_t *zdict_create()
 {
     zdict_t *dict;
-
-    dict = (zdict_t *) zmpool_malloc(mpool, sizeof(zdict_t));
-    dict->mpool = mpool;
+    dict = (zdict_t *) zmalloc(sizeof(zdict_t));
     dict->len = 0;
-    dict->is_STR = 0;
     zrbtree_init(&(dict->rbtree), zdict_zrbtree_cmp);
-
-    return dict;
-}
-
-zdict_t *zdict_create_mpool_STR(zmpool_t * mpool)
-{
-    zdict_t *dict = zdict_create_mpool(mpool);
-    dict->is_STR = 1;
     return dict;
 }
 
 void zdict_free(zdict_t * dict)
 {
+    if (!dict) {
+        return;
+    }
     zdict_node_t *n;
-
     while ((n = zdict_first(dict))) {
         zrbtree_detach(&(dict->rbtree), &(n->rbnode));
-        if (dict->is_STR) {
-            zmpool_free(dict->mpool, n->value);
-        }
-        zmpool_free(dict->mpool, n->key);
-        zmpool_free(dict->mpool, n);
+        zbuf_fini(&(n->value));
+        zfree(n->key);
+        zfree(n);
     }
-    zmpool_free(dict->mpool, dict);
+    zfree(dict);
 }
 
-zdict_node_t *zdict_update(zdict_t * dict, const char *key, const void *value, char **old_value)
+void zdict_reset(zdict_t *dict)
+{
+    if (!dict) {
+        return;
+    }
+    zdict_node_t *n;
+    while ((n = zdict_first(dict))) {
+        zrbtree_detach(&(dict->rbtree), &(n->rbnode));
+        zbuf_fini(&(n->value));
+        zfree(n->key);
+        zfree(n);
+    }
+    dict->len = 0;
+}
+
+zdict_node_t *zdict_update_string(zdict_t * dict, const char *key, const char *value, int value_len)
 {
     zdict_node_t mp_n, *mp_np;
     zrbtree_node_t *rb_np;
 
-    mp_n.key = (char *)key;
+    mp_n.key = (char *)(void *)key;
     rb_np = zrbtree_attach(&(dict->rbtree), &(mp_n.rbnode));
 
+    if (value_len < 0) {
+        value_len = strlen(value);
+    }
     if (rb_np != &(mp_n.rbnode)) {
         mp_np = ZCONTAINER_OF(rb_np, zdict_node_t, rbnode);
-        if (old_value) {
-            *old_value = (char *)(mp_np->value);
-        }
-        mp_np->value = (char *)value;
+        zbuf_memcpy(&(mp_np->value), value, value_len);
     } else {
-        mp_np = (zdict_node_t *) zmpool_malloc(dict->mpool, sizeof(zdict_node_t));
-        mp_np->key = (char *)zmpool_strdup(dict->mpool, key);
-        mp_np->value = (char *)value;
-        if (old_value) {
-            *old_value = 0;
-        }
+        mp_np = (zdict_node_t *) zmalloc(sizeof(zdict_node_t));
+        mp_np->key = zstrdup(key);
+        zbuf_init(&(mp_np->value), value_len);
+        zbuf_memcpy(&(mp_np->value), value, value_len);
         zrbtree_replace_node(&(dict->rbtree), &(mp_n.rbnode), &(mp_np->rbnode));
         dict->len++;
     }
@@ -91,22 +83,22 @@ zdict_node_t *zdict_update(zdict_t * dict, const char *key, const void *value, c
     return mp_np;
 }
 
-zdict_node_t *zdict_update_STR(zdict_t * dict, const char *key, const char *value)
+zdict_node_t *zdict_update(zdict_t *dict, const char *key, const zbuf_t *value)
 {
     zdict_node_t mp_n, *mp_np;
     zrbtree_node_t *rb_np;
 
-    mp_n.key = (char *)key;
+    mp_n.key = (char *)(void *)key;
     rb_np = zrbtree_attach(&(dict->rbtree), &(mp_n.rbnode));
 
     if (rb_np != &(mp_n.rbnode)) {
         mp_np = ZCONTAINER_OF(rb_np, zdict_node_t, rbnode);
-        zmpool_free(dict->mpool, mp_np->value);
-        mp_np->value = (char *)zmpool_strdup(dict->mpool, value);
+        zbuf_memcpy(&(mp_np->value), zbuf_data(value), zbuf_len(value));
     } else {
-        mp_np = (zdict_node_t *) zmpool_malloc(dict->mpool, sizeof(zdict_node_t));
-        mp_np->key = (char *)zmpool_strdup(dict->mpool, key);
-        mp_np->value = (char *)zmpool_strdup(dict->mpool, value);
+        mp_np = (zdict_node_t *) zmalloc(sizeof(zdict_node_t));
+        mp_np->key = zstrdup(key);
+        zbuf_init(&(mp_np->value), zbuf_len(value));
+        zbuf_memcpy(&(mp_np->value), zbuf_data(value), zbuf_len(value));
         zrbtree_replace_node(&(dict->rbtree), &(mp_n.rbnode), &(mp_np->rbnode));
         dict->len++;
     }
@@ -114,7 +106,7 @@ zdict_node_t *zdict_update_STR(zdict_t * dict, const char *key, const char *valu
     return mp_np;
 }
 
-zdict_node_t *zdict_find(zdict_t * dict, const char *key, char **value)
+zdict_node_t *zdict_find(const zdict_t * dict, const char *key, zbuf_t **value)
 {
     zdict_node_t mp_n, *mp_np;
     zrbtree_node_t *rb_np;
@@ -122,12 +114,12 @@ zdict_node_t *zdict_find(zdict_t * dict, const char *key, char **value)
     if (value) {
         *value = 0;
     }
-    mp_n.key = (char *)key;
+    mp_n.key = (char *)(void *)key;
     rb_np = zrbtree_find(&(dict->rbtree), &(mp_n.rbnode));
     if (rb_np) {
         mp_np = ZCONTAINER_OF(rb_np, zdict_node_t, rbnode);
         if (value) {
-            *value = (char *)(mp_np->value);
+            *value = &(mp_np->value);
         }
         return mp_np;
     }
@@ -135,7 +127,7 @@ zdict_node_t *zdict_find(zdict_t * dict, const char *key, char **value)
     return 0;
 }
 
-zdict_node_t *zdict_find_near_prev(zdict_t * dict, const char *key, char **value)
+zdict_node_t *zdict_find_near_prev(const zdict_t * dict, const char *key, zbuf_t **value)
 {
     zdict_node_t mp_n, *mp_np;
     zrbtree_node_t *rb_np;
@@ -144,12 +136,12 @@ zdict_node_t *zdict_find_near_prev(zdict_t * dict, const char *key, char **value
         *value = 0;
     }
 
-    mp_n.key = (char *)key;
+    mp_n.key = (char *)(void *)key;
     rb_np = zrbtree_near_prev(&(dict->rbtree), &(mp_n.rbnode));
     if (rb_np) {
         mp_np = ZCONTAINER_OF(rb_np, zdict_node_t, rbnode);
         if (value) {
-            *value = (char *)(mp_np->value);
+            *value = &(mp_np->value);
         }
         return mp_np;
     }
@@ -157,7 +149,7 @@ zdict_node_t *zdict_find_near_prev(zdict_t * dict, const char *key, char **value
     return 0;
 }
 
-zdict_node_t *zdict_find_near_next(zdict_t * dict, const char *key, char **value)
+zdict_node_t *zdict_find_near_next(const zdict_t * dict, const char *key, zbuf_t **value)
 {
     zdict_node_t mp_n, *mp_np;
     zrbtree_node_t *rb_np;
@@ -166,12 +158,12 @@ zdict_node_t *zdict_find_near_next(zdict_t * dict, const char *key, char **value
         *value = 0;
     }
 
-    mp_n.key = (char *)key;
+    mp_n.key = (char *)(void *)key;
     rb_np = zrbtree_near_next(&(dict->rbtree), &(mp_n.rbnode));
     if (rb_np) {
         mp_np = ZCONTAINER_OF(rb_np, zdict_node_t, rbnode);
         if (value) {
-            *value = (char *)(mp_np->value);
+            *value = &(mp_np->value);
         }
         return mp_np;
     }
@@ -179,18 +171,16 @@ zdict_node_t *zdict_find_near_next(zdict_t * dict, const char *key, char **value
     return 0;
 }
 
-void zdict_erase_node(zdict_t * dict, zdict_node_t * n)
+void zdict_delete_node(zdict_t * dict, zdict_node_t * n)
 {
     zrbtree_detach(&(dict->rbtree), &(n->rbnode));
-    zmpool_free(dict->mpool, n->key);
-    if (dict->is_STR) {
-        zmpool_free(dict->mpool, n->value);
-    }
-    zmpool_free(dict->mpool, n);
+    zfree(n->key);
+    zbuf_fini(&(n->value));
+    zfree(n);
     dict->len--;
 }
 
-void zdict_erase(zdict_t * dict, const char *key, char **value)
+void zdict_delete(zdict_t * dict, const char *key)
 {
     zdict_node_t *n;
 
@@ -199,31 +189,13 @@ void zdict_erase(zdict_t * dict, const char *key, char **value)
         return;
     }
     zrbtree_detach(&(dict->rbtree), &(n->rbnode));
-    zmpool_free(dict->mpool, n->key);
-    if (value) {
-        *value = (char *)(n->value);
-    }
-    zmpool_free(dict->mpool, n->value);
-    zmpool_free(dict->mpool, n);
+    zfree(n->key);
+    zbuf_fini(&(n->value));
+    zfree(n);
     dict->len--;
 }
 
-void zdict_erase_STR(zdict_t * dict, const char *key)
-{
-    zdict_node_t *n;
-
-    n = zdict_find(dict, key, 0);
-    if (!n) {
-        return;
-    }
-    zrbtree_detach(&(dict->rbtree), &(n->rbnode));
-    zmpool_free(dict->mpool, n->key);
-    zmpool_free(dict->mpool, n->value);
-    zmpool_free(dict->mpool, n);
-    dict->len--;
-}
-
-zdict_node_t *zdict_first(zdict_t * dict)
+zdict_node_t *zdict_first(const zdict_t * dict)
 {
     zrbtree_node_t *rn = zrbtree_first(&(dict->rbtree));
     if (rn) {
@@ -232,7 +204,7 @@ zdict_node_t *zdict_first(zdict_t * dict)
     return 0;
 }
 
-zdict_node_t *zdict_last(zdict_t * dict)
+zdict_node_t *zdict_last(const zdict_t * dict)
 {
     zrbtree_node_t *rn = zrbtree_last(&(dict->rbtree));
     if (rn) {
@@ -241,7 +213,7 @@ zdict_node_t *zdict_last(zdict_t * dict)
     return 0;
 }
 
-zdict_node_t *zdict_prev(zdict_node_t * node)
+zdict_node_t *zdict_prev(const zdict_node_t * node)
 {
     zrbtree_node_t *rn = zrbtree_prev(&(node->rbnode));
     if (rn) {
@@ -250,7 +222,7 @@ zdict_node_t *zdict_prev(zdict_node_t * node)
     return 0;
 }
 
-zdict_node_t *zdict_next(zdict_node_t * node)
+zdict_node_t *zdict_next(const zdict_node_t * node)
 {
     zrbtree_node_t *rn = zrbtree_next(&(node->rbnode));
     if (rn) {
@@ -259,34 +231,79 @@ zdict_node_t *zdict_next(zdict_node_t * node)
     return 0;
 }
 
-int zdict_keys(zdict_t * dict, char **key_list, int size)
+void zdict_debug_show(const zdict_t * dict)
 {
-    zrbtree_node_t *rnode;
-    zdict_node_t *node;
-    int i;
-
-    i = 0;
-    ZRBTREE_WALK_BEGIN(&(dict->rbtree), rnode) {
-        node = ZCONTAINER_OF(rnode, zdict_node_t, rbnode);
-        if (i == size) {
-            goto end;
-        }
-        i++;
-        *key_list = (char *)ZDICT_KEY(node);
-        key_list++;
-    }
-    ZRBTREE_WALK_END;
-
-  end:
-
-    return i;
+    ZDICT_WALK_BEGIN(dict, k, v) {
+        printf("%s = %s\n", k, zbuf_data(v));
+    } ZDICT_WALK_END;
 }
 
-void zdict_show(zdict_t * dict)
+char *zdict_get_str(const zdict_t * dict, const char *name, const char *def)
 {
-    zdict_node_t *n;
+    zbuf_t *str_val;
+    if (!zdict_find(dict, name, &str_val)) {
+        return (char *)(void *)def;
+    }
+    return zbuf_data(str_val);
+}
 
-    ZDICT_WALK_BEGIN(dict, n) {
-        printf("%s = %s\n", ZDICT_KEY(n), ZDICT_VALUE(n));
-    } ZDICT_WALK_END;
+int zdict_get_bool(const zdict_t * dict, const char *name, int def)
+{
+    char *str_val = zdict_get_str(dict, name, 0);
+    if (str_val && *str_val) {
+        return zstr_to_bool(str_val, def);
+    }
+    return def;
+}
+
+int zdict_get_int(const zdict_t * dict, const char *name, int def, int min, int max)
+{
+    int r = def;
+    char *str_val = zdict_get_str(dict, name, 0);
+    if (str_val && *str_val) {
+        r = atoi(str_val);
+        if ((r < min) || (r > max)) {
+            return def;
+        }
+    }
+    return r;
+}
+
+long zdict_get_long(const zdict_t * dict, const char *name, long def, long min, long max)
+{
+    long r = def;
+    char *str_val = zdict_get_str(dict, name, 0);
+    if (str_val && *str_val) {
+        r = atol(str_val);
+        if ((r < min) || (r > max)) {
+            return def;
+        }
+    }
+    return r;
+}
+
+long zdict_get_second(const zdict_t *dict, const char *name, long def, long min, long max)
+{
+    long r = def;
+    char *str_val = zdict_get_str(dict, name, 0);
+    if (str_val && *str_val) {
+        r = zstr_to_second(str_val, def);
+        if ((r < min) || (r > max)) {
+            return def;
+        }
+    }
+    return r;
+}
+
+long zdict_get_size(const zdict_t *dict, const char *name, long def, long min, long max)
+{
+    long r = def;
+    char *str_val = zdict_get_str(dict, name, 0);
+    if (str_val && *str_val) {
+        r = zstr_to_size(str_val, def);
+        if ((r < min) || (r > max)) {
+            return def;
+        }
+    }
+    return r;
 }

@@ -1,6 +1,6 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
  * 2015-10-13
  * ================================
@@ -11,11 +11,13 @@
 #include <ifaddrs.h>
 #include <netdb.h>
 #include <sys/types.h>
+#include <errno.h>
 
-int zgetlocaladdr(zaddr_t * addr_list, int max_count)
+int zget_localaddr(zargv_t *addrs)
 {
     struct ifaddrs *ifaddr, *ifa;
     struct sockaddr_in *scin;
+    char ipbuf[32];
     int ret_count = 0;
 
     if (getifaddrs(&ifaddr) == -1) {
@@ -30,7 +32,8 @@ int zgetlocaladdr(zaddr_t * addr_list, int max_count)
             continue;
         }
         scin = (struct sockaddr_in *)(ifa->ifa_addr);
-        inet_ntop(AF_INET, &(scin->sin_addr), (addr_list++)->addr, 16);
+        inet_ntop(AF_INET, &(scin->sin_addr), ipbuf, 16);
+        zargv_add(addrs, ipbuf);
         ret_count++;
     }
 
@@ -39,48 +42,41 @@ int zgetlocaladdr(zaddr_t * addr_list, int max_count)
     return ret_count;
 }
 
-int zgetaddr(const char *host, zaddr_t * addr_list, int max_count)
+int zget_hostaddr(const char *host, zargv_t *addrs)
 {
     struct in_addr **addr_list_tmp;
     struct hostent htt, *htr = 0;
-    char hbuf[4096], *tmpbuf;
+    char *tmpbuf, ipbuf[32];
     int tmpbuflen = 4096, hterror;
-    int alloc_flag = 0, i;
     int ret_count = 0;
 
-    if (ZEMPTY(host)) {
-        return zgetlocaladdr(addr_list, max_count);
+    if (zempty(host)) {
+        return zget_localaddr(addrs);
     }
 
-    tmpbuf = hbuf;
+    tmpbuf = (char *)zmalloc(tmpbuflen + 1);
     while (gethostbyname_r(host, &htt, tmpbuf, tmpbuflen, &htr, &hterror)) {
         if (hterror == NETDB_INTERNAL && errno == ERANGE) {
             tmpbuflen *= 2;
-            if (alloc_flag) {
-                tmpbuf = (char *)zrealloc(tmpbuf, tmpbuflen);
-            } else {
-                tmpbuf = (char *)zmalloc(tmpbuflen);
-                alloc_flag = 1;
-            }
+            tmpbuf = (char *)zrealloc(tmpbuf, tmpbuflen + 1);
         } else {
             break;
         }
     }
     if (htr) {
         addr_list_tmp = (struct in_addr **)htr->h_addr_list;
-        for (i = 0; addr_list_tmp[i] != 0 && i < max_count; i++) {
-            inet_ntop(AF_INET, addr_list_tmp[i], addr_list[i].addr, 16);
+        for (size_t i = 0; addr_list_tmp[i] != 0; i++) {
+            inet_ntop(AF_INET, addr_list_tmp[i], ipbuf, 16);
+            zargv_add(addrs, ipbuf);
             ret_count++;
         }
     }
-    if (alloc_flag) {
-        zfree(tmpbuf);
-    }
+    zfree(tmpbuf);
 
     return ret_count;
 }
 
-int zgetpeer(int sockfd, int *host, int *port)
+int zget_peername(int sockfd, int *host, int *port)
 {
     struct sockaddr_in sa;
     socklen_t sa_length = sizeof(struct sockaddr);
@@ -99,3 +95,112 @@ int zgetpeer(int sockfd, int *host, int *port)
 
     return 0;
 }
+
+char *zget_ipstring(int ip, char *ipstr)
+{
+    return (char *)(void *)inet_ntop(AF_INET, &ip, ipstr, 16);
+}
+
+int zget_ipint(const char *ipstr)
+{
+    int ip = inet_addr(ipstr);
+    if ((unsigned int)ip == INADDR_NONE) {
+        return 0;
+    }
+    return ip;
+}
+
+static int ___ip_switch(int ip)
+{
+    int ip_switch;
+    char *p1 = (char *)&ip;
+    char *p2 = (char *)&ip_switch;
+    p2[0] = p1[3];
+    p2[1] = p1[2];
+    p2[2] = p1[1];
+    p2[3] = p1[0];
+    return ip_switch;
+}
+
+static int ___get_netmask(int masklen)
+{
+    if ((masklen < 1) || (masklen > 32)) {
+        return 0;
+    }
+    int mask = 0;
+    for (int mi = masklen; mi < 32; mi ++) {
+        mask = mask << 1;
+        mask += 1;
+    }
+    mask = ~mask;
+    return mask;
+}
+
+int zget_network(int ip, int masklen)
+{
+    int nip = ___ip_switch(ip);
+    int mask = ___get_netmask(masklen);
+    return ___ip_switch(nip & mask);
+}
+
+int zget_netmask(int masklen)
+{
+    return ___ip_switch(___get_netmask(masklen));
+}
+
+int zget_broadcast(int ip, int masklen)
+{
+    int nip = ___ip_switch(ip);
+    int mask = ___get_netmask(masklen);
+    return ___ip_switch(nip |(~mask));
+}
+
+int zget_ip_min(int ip, int masklen)
+{
+    int nip = ___ip_switch(ip);
+    int mask = ___get_netmask(masklen);
+    return ___ip_switch((nip & mask) + 1);
+}
+
+int zget_ip_max(int ip, int masklen)
+{
+    int nip = ___ip_switch(ip);
+    int mask = ___get_netmask(masklen);
+    return ___ip_switch((nip |(~mask)) -1);
+}
+
+int zip_is_intranet(int ip)
+{
+    int a = ((unsigned char *)&ip)[0];
+    int b = ((unsigned char *)&ip)[1];
+
+    if ((a==127)||(a==10)) {
+        return 1;
+    }
+    if ((a==192) && (b==168)) {
+        return 1;
+    }
+    if ((a==172) && (15<b) && (b<32)) {
+        return 1;
+    }
+
+    return 0;
+}
+
+int zip_is_intranet2(const char *ip)
+{
+    if (!ip) {
+        return 0;
+    }
+    if ((!strncmp(ip, "127.", 4))||(!strncmp(ip, "10.", 3))||(!strncmp(ip, "192.168.", 8))) {
+        return 1;
+    }
+    if ((!strncmp(ip, "172.",4)) && ip[4] && ip[5] && (ip[6]=='.')) {
+        int a = (ip[4] - '0') * 10 + (ip[5] - '0');
+        if ((a>15) && (a<32)){
+            return 1;
+        }
+    }
+    return 0;
+}
+

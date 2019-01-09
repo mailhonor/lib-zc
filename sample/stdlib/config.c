@@ -1,6 +1,6 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
  * 2015-10-21
  * ================================
@@ -10,7 +10,7 @@
 
 void usage(void)
 {
-    zinfo("USAGE: %s config_filename...\n", zvar_progname);
+    printf("USAGE: %s config_filename\n", zvar_progname);
     exit(0);
 }
 
@@ -30,16 +30,21 @@ int main(int argc, char **argv)
     /* load config */
     for (i = 1; i < argc; i++) {
         fn = argv[i];
-        if (zconfig_load(config, fn) < 0) {
+        if (zconfig_load_from_filename(config, fn) < 0) {
             exit(-1);
         }
     }
 
-    zconfig_update(config, "date", "2015-10-21");
-    zconfig_update(config, "author", "eli960@163.com");
+    zconfig_update_string(config, "date", "2015-10-21", -1);
+    zconfig_update_string(config, "author", "eli960@qq.com", -1);
 
     /* ouput config */
-    zconfig_show(config);
+    zconfig_debug_show(config);
+
+    zbuf_t *bf = zbuf_create(0);
+    zbuf_put(bf, 'a');
+    zbuf_strcat(bf, "aaaaaaaaaaa");
+    printf("bf: %s\n", bf->data);
 
     return 0;
 }

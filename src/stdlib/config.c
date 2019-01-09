@@ -1,6 +1,6 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
  * 2015-10-12
  * ================================
@@ -9,25 +9,25 @@
 #include "zc.h"
 
 zconfig_t *zvar_default_config = 0;
-
-void zdefault_config_init(void)
+zconfig_t *zdefault_config_init(void)
 {
     if (zvar_default_config == 0) {
         zvar_default_config = zconfig_create();
-        zatexit(zdefault_config_fini);
+        zinner_atexit(zdefault_config_fini);
     }
+    return zvar_default_config;
 }
 
 void zdefault_config_fini(void)
 {
     if (zvar_default_config) {
-        zdict_free(zvar_default_config);
+        zconfig_free(zvar_default_config);
     }
     zvar_default_config = 0;
 }
 
 /* ################################################################## */
-int zconfig_load(zconfig_t * cf, const char *filename)
+int zconfig_load_from_filename(zconfig_t * cf, const char *filename)
 {
     FILE *fp;
     char *name, *value;
@@ -54,7 +54,7 @@ int zconfig_load(zconfig_t * cf, const char *filename)
         if (!ZEMPTY(value)) {
             value = ztrim(value);
         }
-        zconfig_update(cf, name, value);
+        zconfig_update_string(cf, name, value, -1);
     }
     zfree(line_buf);
     fclose(fp);
@@ -62,90 +62,14 @@ int zconfig_load(zconfig_t * cf, const char *filename)
     return 0;
 }
 
-/* ################################################################## */
-
-#define ___RANGE_VALUE(val, min, max) {if(val < min){val = min;}else if(val>max){val = max;}}
-char *zconfig_get_str(zconfig_t * cf, const char *name, const char *def)
+void zconfig_load_annother(zconfig_t *cf, zconfig_t *another)
 {
-    char *value;
-
-    zdict_find(cf, name, &value);
-    if (!ZEMPTY(value)) {
-        return value;
-    }
-
-    return (char *)def;
+    ZCONFIG_WALK_BEGIN(another, k, v) {
+        zconfig_update(cf, k, v);
+    } ZCONFIG_WALK_END;
 }
 
-int zconfig_get_bool(zconfig_t * cf, const char *name, int def)
-{
-    char *value;
-
-    value = zconfig_get_str(cf, name, 0);
-    if (ZEMPTY(value)) {
-        return def;
-    }
-
-    return zstr_to_bool(value, def);
-}
-
-int zconfig_get_int(zconfig_t * cf, const char *name, int def, int min, int max)
-{
-    char *value;
-
-    value = zconfig_get_str(cf, name, 0);
-    if (!ZEMPTY(value)) {
-        def = atoi(value);
-    }
-    ___RANGE_VALUE(def, min, max);
-
-    return def;
-}
-
-long zconfig_get_long(zconfig_t * cf, const char *name, long def, long min, long max)
-{
-    char *value;
-
-    value = zconfig_get_str(cf, name, 0);
-    if (!ZEMPTY(value)) {
-        def = atoll(value);
-    }
-    ___RANGE_VALUE(def, min, max);
-
-    return def;
-}
-
-long zconfig_get_second(zconfig_t * cf, const char *name, long def, long min, long max)
-{
-    char *value;
-
-    value = zconfig_get_str(cf, name, 0);
-    if (!ZEMPTY(value)) {
-        def = zstr_to_second(value);
-    }
-
-    ___RANGE_VALUE(def, min, max);
-
-    return def;
-}
-
-long zconfig_get_size(zconfig_t * cf, const char *name, long def, long min, long max)
-{
-    char *value;
-
-    value = zconfig_get_str(cf, name, 0);
-    if (!ZEMPTY(value)) {
-        def = zstr_to_size(value);
-    }
-
-    ___RANGE_VALUE(def, min, max);
-
-    return def;
-}
-
-/* ################################################################## */
-/* table */
-
+/* table ############################################################ */
 void zconfig_get_str_table(zconfig_t * cf, zconfig_str_table_t * table)
 {
     while (table->name) {

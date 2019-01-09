@@ -1,6 +1,6 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
  * 2015-10-12
  * ================================
@@ -10,55 +10,66 @@
 
 zlist_t *zlist_create(void)
 {
-    zlist_t *zc;
-
-    zc = (zlist_t *) zmalloc(sizeof(zlist_t));
-    ZMLINK_INIT(zc->head);
-    ZMLINK_INIT(zc->tail);
-    zc->len = 0;
-
-    return (zc);
+    zlist_t *list = zmalloc(sizeof(zlist_t));
+    zlist_init(list);
+    return (list);
 }
 
-void zlist_free(zlist_t * zc)
+void zlist_free(zlist_t * list)
+{
+    zlist_fini(list);
+    zfree(list);
+}
+
+void zlist_init(zlist_t *list)
+{
+    memset(list, 0, sizeof(zlist_t));
+}
+
+void zlist_fini(zlist_t *list)
 {
     zlist_node_t *n, *next;
-
-    n = zc->head;
+    if (!list) {
+        return;
+    }
+    n = list->head;
     for (; n; n = next) {
         next = n->next;
         zfree(n);
     }
-
-    zfree(zc);
 }
 
-void zlist_attach_before(zlist_t * zc, zlist_node_t * n, zlist_node_t * before)
+void zlist_reset(zlist_t *list)
 {
-    ZMLINK_ATTACH_BEFORE(zc->head, zc->tail, n, prev, next, before);
-    zc->len++;
+    while(list->len) {
+        zlist_pop(list, 0);
+    }
 }
 
-void zlist_detach(zlist_t * zc, zlist_node_t * n)
+void zlist_attach_before(zlist_t * list, zlist_node_t * n, zlist_node_t * before)
 {
-    ZMLINK_DETACH(zc->head, zc->tail, n, prev, next);
-    zc->len--;
+    ZMLINK_ATTACH_BEFORE(list->head, list->tail, n, prev, next, before);
+    list->len++;
 }
 
-zlist_node_t *zlist_add_before(zlist_t * zc, const void *value, zlist_node_t * before)
+void zlist_detach(zlist_t * list, zlist_node_t * n)
+{
+    ZMLINK_DETACH(list->head, list->tail, n, prev, next);
+    list->len--;
+}
+
+zlist_node_t *zlist_add_before(zlist_t * list, const void *value, zlist_node_t * before)
 {
     zlist_node_t *n;
 
-    n = (zlist_node_t *) zmalloc(sizeof(zlist_node_t));
+    n = (zlist_node_t *) zcalloc(1, sizeof(zlist_node_t));
     n->value = (char *)value;
-    ZMLINK_INIT(n->prev);
-    ZMLINK_INIT(n->next);
-    zlist_attach_before(zc, n, before);
+    zlist_attach_before(list, n, before);
 
     return n;
 }
 
-zbool_t zlist_delete(zlist_t * zc, zlist_node_t * n, char **value)
+int zlist_delete(zlist_t * list, zlist_node_t * n, void **value)
 {
     if (n == 0) {
         return 0;
@@ -66,7 +77,7 @@ zbool_t zlist_delete(zlist_t * zc, zlist_node_t * n, char **value)
     if (value) {
         *value = n->value;
     }
-    zlist_detach(zc, n);
+    zlist_detach(list, n);
     zfree(n);
 
     return 1;

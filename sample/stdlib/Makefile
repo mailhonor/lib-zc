@@ -1,2 +1,2 @@
-alarm_LIB= -lrt
+SUFFIX_LIBS= -lcrypto -lssl -lpthread
 include ../../makefiles/sample.makefile

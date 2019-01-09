@@ -1,6 +1,6 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
  * 2016-04-22
  * ================================
@@ -19,62 +19,46 @@ typedef struct {
 static zlist_t *aio_list;
 static pthread_mutex_t locker = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-static zevbase_t *evbase;
+static zevent_base_t *evbase;
 
 static void after_write(zaio_t * aio);
 static void send_aio_to_another_pthread(zaio_t * aio, send_cb_t callback);
 
 static int service_error(zaio_t * aio)
 {
-    zinfo("service_error");
-    int fd;
-
-    fd = zaio_get_fd(aio);
-
-    zinfo("%d: error or idle too long, ret %d", fd, zaio_get_ret(aio));
-    zaio_fini(aio);
-    zaio_free(aio);
-    close(fd);
-
+    zinfo("service_error %d: error or idle too long, ret %d", zaio_get_fd(aio), zaio_get_result(aio));
+    zaio_free(aio, 1);
     return -1;
 }
 
 static int another_after_read(zaio_t * aio)
 {
     zinfo("after_read");
-    int ret, fd, len;
-    char rbuf[102400];
-    char *p;
+    int ret, len;
+    char *rbuf;
 
-    ret = zaio_get_ret(aio);
-    fd = zaio_get_fd(aio);
+    ret = zaio_get_result(aio);
     if (ret < 1) {
         return service_error(aio);
     }
-    zaio_fetch_rbuf(aio, rbuf, ret);
+
+    zbuf_t *bf = zbuf_create(1024);
+    zaio_fetch_rbuf(aio, bf, ret);
+    zbuf_trim_right_rn(bf);
+    rbuf = zbuf_data(bf);
+    len = zbuf_len(bf);
 
     if (ret > 3 && !strncmp(rbuf, "exit", 4)) {
-        zaio_fini(aio);
-        zaio_free(aio);
-        close(fd);
+        zaio_free(aio, 1);
         return 0;
     }
 
     rbuf[ret] = 0;
-    p = strchr(rbuf, '\r');
-    if (p) {
-        *p = 0;
-    }
-    p = strchr(rbuf, '\n');
-    if (p) {
-        *p = 0;
-    }
-    len = strlen(rbuf);
 
-    zaio_write_cache_append(aio, "your input:   ", 12);
-    zaio_write_cache_append(aio, rbuf, len);
-    zaio_write_cache_append(aio, "\n", 1);
-    zaio_write_cache_flush(aio, after_write, 10 * 1000);
+    zaio_cache_puts(aio, "your input:   ");
+    zaio_cache_write(aio, rbuf, len);
+    zaio_cache_puts(aio, "\n");
+    zaio_cache_flush(aio, after_write, 10);
 
     return 0;
 }
@@ -89,13 +73,13 @@ static int another_after_write(zaio_t * aio)
     int ret;
     zinfo("before_write");
 
-    ret = zaio_get_ret(aio);
+    ret = zaio_get_result(aio);
 
     if (ret < 1) {
         return service_error(aio);
     }
 
-    zaio_read_delimiter(aio, '\n', 1024, after_read, 10 * 1000);
+    zaio_gets(aio, 1024, after_read, 10 * 1000);
 
     return 0;
 }
@@ -109,8 +93,8 @@ static void another_welcome(zaio_t * aio)
 {
     time_t t = time(0);
 
-    zaio_write_cache_printf_1024(aio, "welcome aio: %s\n", ctime(&t));
-    zaio_write_cache_flush(aio, after_write, 10 * 1000);
+    zaio_cache_printf_1024(aio, "welcome aio: %s\n", ctime(&t));
+    zaio_cache_flush(aio, after_write, 10);
 }
 
 static void welcome(zaio_t * aio)
@@ -118,27 +102,25 @@ static void welcome(zaio_t * aio)
     send_aio_to_another_pthread(aio, (send_cb_t) another_welcome);
 }
 
-static void before_accept(zev_t * ev)
+static void before_accept(zeio_t * ev)
 {
     zinfo("before_accept");
     int sock;
     int fd;
     zaio_t *aio;
 
-    sock = zev_get_fd(ev);
+    sock = zeio_get_fd(ev);
     fd = zinet_accept(sock);
     if (fd < -1) {
         zinfo("accept fail");
         return;
     }
     znonblocking(fd, 1);
-    aio = zaio_create();
-    zaio_init(aio, evbase, fd);
-
+    aio = zaio_create(fd, evbase);
     welcome(aio);
 }
 
-static void timer_cb(zevtimer_t * zt)
+static void timer_cb(zetimer_t * zt)
 {
     zinfo("now exit!");
     exit(1);
@@ -150,11 +132,11 @@ void *another_pthread_deal_aio(void *arg)
 
     while (1) {
         pthread_mutex_lock(&locker);
-        while (!ZLIST_HEAD(aio_list)) {
+        while (!zlist_head(aio_list)) {
             pthread_cond_wait(&cond, &locker);
         }
         obj = 0;
-        zlist_shift(aio_list, (char **)&obj);
+        zlist_shift(aio_list, (void **)&obj);
         pthread_mutex_unlock(&locker);
 
         if (obj) {
@@ -188,49 +170,42 @@ static void send_aio_to_another_pthread(zaio_t * aio, send_cb_t callback)
 }
 
 pthread_t m_pth;
-static void ___log(const char *fmt, va_list ap)
+static void ___log(const char *fn, size_t line, const char *fmt, va_list ap)
 {
-    char log_buf[102400];
-    int len;
     pthread_t c_pth = pthread_self();
 
-    len = sprintf(log_buf, "%s[%d][%lu]: ", (pthread_equal(m_pth, c_pth) ? "pth1" : "pth2"), getpid(), pthread_self());
-    len += zvsnprintf(log_buf + len, 102000 - len - 2, fmt, ap);
-    log_buf[len] = '\n';
-    log_buf[len + 1] = 0;
-    fputs(log_buf, stderr);
+    fprintf(stderr, "%s[%lu]: ", (pthread_equal(m_pth, c_pth) ? "pth1" : "pth2"), pthread_self());
+    vfprintf(stderr, fmt, ap);
+    printf("\n");
 }
 
 int main(int argc, char **argv)
 {
     int port;
     int sock;
-    zev_t *ev;
-    zevtimer_t tm;
+    zeio_t *ev;
+    zetimer_t *tm;
     pthread_t pth;
 
     m_pth = pthread_self();
 
-    zlog_voutput = ___log;
+    zlog_vprintf = ___log;
 
     aio_list = zlist_create();
 
     pthread_create(&pth, 0, another_pthread_deal_aio, 0);
 
     port = 8899;
-    evbase = zevbase_create();
+    evbase = zevent_base_create();
 
-    sock = zinet_listen(0, port, 5);
-    znonblocking(sock, 1);
-    ev = zev_create();
-    zev_init(ev, evbase, sock);
-    zev_read(ev, before_accept);
+    sock = zinet_listen(0, port, 5, 1);
+    ev = zeio_create(sock, evbase);
+    zeio_enable_read(ev, before_accept);
 
-    zevtimer_init(&tm, evbase);
-    zevtimer_start(&tm, timer_cb, 200 * 1000);
+    tm = zetimer_create(evbase);
+    zetimer_start(tm, timer_cb, 200);
 
-    while (1) {
-        zevbase_dispatch(evbase, 0);
+    while(zevent_base_dispatch(evbase)) {
     }
 
     return 0;

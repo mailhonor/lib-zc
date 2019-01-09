@@ -3,16 +3,17 @@ all: target
 .PHONY: tags
 
 CC=gcc
-CFLAGS= -ggdb -Wall -I../../ -O3
+CFLAGS= -std=gnu11 -ggdb -Wall -Winline -I../../ -O3
 GLOBAL_LIBS=
 
+ALL_LIBS = 
 SRCS=${shell find -type f -name "*.c"}
 DEST := $(SRCS:.c=)
 .c:
-	$(CC) $*.c -o $* $(CFLAGS) ../../libzc.a $(GLOBAL_LIBS) $(LIBS) $($*_LIB)
+	$(CC) $*.c -o $* $(CFLAGS) $($*_LIB) $(PREFIX_LIBS) ../../libzc.a $(SUFFIX_LIBS) $(LIB_$*) $(GLOBAL_LIBS)
 
 
-$(DEST): ../../libzc.a ../../zc.h
+$(DEST): ../../libzc.a ../../libzc_coroutine.a ../../zc.h
 
 target: libzc $(DEST)
 
@@ -21,6 +22,7 @@ clean: CLEAN
 
 CLEAN:
 	@rm -f *~; rm -f $(DEST); rm -f tags gmon.out;rm -rf $(DELS);
+	@find -type f -name "*~" -exec rm  {} \;
 
 libzc:
 	@echo build global lib

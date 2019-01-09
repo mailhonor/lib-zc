@@ -1,6 +1,6 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
  * 2015-10-12
  * ================================
@@ -13,7 +13,6 @@ void test_password(void)
     FILE *fp;
     char linebuf[102404];
     zlist_t *list;
-    zlist_node_t *n;
     zargv_t *av;
 
     list = zlist_create();
@@ -24,10 +23,22 @@ void test_password(void)
         zlist_push(list, av);
     }
     zinfo("now test ZLIST_WALK_BEGIN");
-    ZLIST_WALK_BEGIN(list, n) {
+    ZLIST_NODE_WALK_BEGIN(list, n) {
         zinfo("%s", ((zargv_t *) (n->value))->argv[0]);
     }
-    ZLIST_WALK_END;
+    ZLIST_NODE_WALK_END;
+
+    int f=0;
+    while(zlist_len(list)) {
+        if (f) {
+            f = 0;
+            zlist_pop(list, 0);
+        } else {
+            f = 1;
+            zlist_shift(list, 0);
+        }
+    }
+    zlist_free(list);
 }
 
 int main(int argc, char **argv)

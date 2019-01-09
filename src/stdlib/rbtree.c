@@ -1,6 +1,6 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
  * 2015-09-28
  * ================================
@@ -575,7 +575,7 @@ void __zrbtree_insert_augmented(zrbtree_t * root, zrbtree_node_t * node, void (*
 /*
  * This function returns the first node (in sort order) of the tree.
  */
-zrbtree_node_t *zrbtree_first(zrbtree_t * root)
+zrbtree_node_t *zrbtree_first(const zrbtree_t * root)
 {
     zrbtree_node_t *n;
 
@@ -587,7 +587,7 @@ zrbtree_node_t *zrbtree_first(zrbtree_t * root)
     return n;
 }
 
-zrbtree_node_t *zrbtree_last(zrbtree_t * root)
+zrbtree_node_t *zrbtree_last(const zrbtree_t * root)
 {
     zrbtree_node_t *n;
 
@@ -599,7 +599,7 @@ zrbtree_node_t *zrbtree_last(zrbtree_t * root)
     return n;
 }
 
-zrbtree_node_t *zrbtree_next(zrbtree_node_t * node)
+zrbtree_node_t *zrbtree_next(const zrbtree_node_t * node)
 {
     zrbtree_node_t *parent;
 
@@ -630,7 +630,7 @@ zrbtree_node_t *zrbtree_next(zrbtree_node_t * node)
     return parent;
 }
 
-zrbtree_node_t *zrbtree_prev(zrbtree_node_t * node)
+zrbtree_node_t *zrbtree_prev(const zrbtree_node_t * node)
 {
     zrbtree_node_t *parent;
 
@@ -681,6 +681,11 @@ void zrbtree_init(zrbtree_t * tree, zrbtree_cmp_t cmp_fn)
     tree->cmp_fn = cmp_fn;
 }
 
+zrbtree_node_t *zrbtree_parent(const zrbtree_node_t * node)
+{
+    return ((zrbtree_node_t *) ((node)->__zrbtree_parent_color & ~3));
+}
+
 zrbtree_node_t *zrbtree_attach(zrbtree_t * tree, zrbtree_node_t * node)
 {
     zrbtree_node_t **new_node = &(tree->zrbtree_node), *parent = 0;
@@ -703,7 +708,7 @@ zrbtree_node_t *zrbtree_attach(zrbtree_t * tree, zrbtree_node_t * node)
     return node;
 }
 
-zrbtree_node_t *zrbtree_find(zrbtree_t * tree, zrbtree_node_t * vnode)
+zrbtree_node_t *zrbtree_find(const zrbtree_t * tree, zrbtree_node_t * vnode)
 {
     zrbtree_node_t *node;
     int cmp_result;
@@ -723,6 +728,12 @@ zrbtree_node_t *zrbtree_find(zrbtree_t * tree, zrbtree_node_t * vnode)
     return 0;
 }
 
+zrbtree_node_t *zrbtree_detach(zrbtree_t * tree, zrbtree_node_t * node)
+{
+    zrbtree_erase(tree, node);
+    return node;
+}
+
 zrbtree_node_t *zrbtree_remove(zrbtree_t * tree, zrbtree_node_t * vnode)
 {
     zrbtree_node_t *node;
@@ -735,7 +746,15 @@ zrbtree_node_t *zrbtree_remove(zrbtree_t * tree, zrbtree_node_t * vnode)
     return node;
 }
 
-zrbtree_node_t *zrbtree_near_prev(zrbtree_t * tree, zrbtree_node_t * vnode)
+void zrbtree_link_node(zrbtree_node_t * node, zrbtree_node_t * parent, zrbtree_node_t ** zrbtree_link)
+{
+    node->__zrbtree_parent_color = (unsigned long)parent;
+    node->zrbtree_left = node->zrbtree_right = 0;
+
+    *zrbtree_link = node;
+}
+
+zrbtree_node_t *zrbtree_near_prev(const zrbtree_t * tree, zrbtree_node_t * vnode)
 {
     zrbtree_node_t *node, *ret_node;
     int cmp_result;
@@ -757,7 +776,7 @@ zrbtree_node_t *zrbtree_near_prev(zrbtree_t * tree, zrbtree_node_t * vnode)
     return ret_node;
 }
 
-zrbtree_node_t *zrbtree_near_next(zrbtree_t * tree, zrbtree_node_t * vnode)
+zrbtree_node_t *zrbtree_near_next(const zrbtree_t * tree, zrbtree_node_t * vnode)
 {
     zrbtree_node_t *node, *ret_node;
     int cmp_result;

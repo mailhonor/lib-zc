@@ -1,0 +1,18 @@
+/*
+ * ================================
+ * eli960@qq.com
+ * http://www.mailhonor.com/
+ * 2017-07-24
+ * ================================
+ */
+
+#include "zc.h"
+#include <time.h>
+
+char *zbuild_rfc1123_date_string(long t, char *buf)
+{
+    struct tm tmbuf;
+    gmtime_r((time_t *)(&t), &tmbuf);
+    strftime(buf, zvar_rfc1123_date_string_size, "%a, %d %b %Y %H:%M:%S GMT", &tmbuf);
+    return buf;
+}

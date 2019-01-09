@@ -1,6 +1,6 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
  * 2015-10-21
  * ================================
@@ -105,7 +105,6 @@ int main(int argc, char **argv)
 {
     myos_t *myos;
     account_t *account;
-    zrbtree_node_t *rn;
     sysuser_t *user = 0;
     int i;
 
@@ -129,7 +128,7 @@ int main(int argc, char **argv)
     zinfo("test MACRO of walk");
     ZRBTREE_WALK_FORWARD_BEGIN(&(myos->account_rbtree), rn) {
         account = ZCONTAINER_OF(rn, account_t, rbnode);
-        zinfo("name: %s", account->name);
+        zinfo("name: %s, home: %s", account->name, account->attributes->home);
     }
     ZRBTREE_WALK_FORWARD_END;
 

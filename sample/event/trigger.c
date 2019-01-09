@@ -1,6 +1,6 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
  * 2016-03-15
  * ================================
@@ -9,112 +9,99 @@
 #include "zc.h"
 #include <time.h>
 
-static zevbase_t *evbase;
-static int server_error(zev_t * ev)
+static zevent_base_t *evbase;
+static int server_error(zeio_t * ev)
 {
-    int events, fd;
+    int ret, fd;
     zstream_t *fp;
 
-    events = zev_get_events(ev);
-    fd = zev_get_fd(ev);
-    fp = (zstream_t *)zev_get_context(ev);
+    ret = zeio_get_result(ev);
+    fd = zeio_get_fd(ev);
+    fp = (zstream_t *)zeio_get_context(ev);
 
-    if (events & ZEV_EXCEPTION) {
+    if (ret < 0) {
         zinfo("%d: error", fd);
     }
 
-    zev_fini(ev);
-    zfree(ev);
+    zeio_free(ev, 1);
     if (fp) {
-        zstream_close_FD(fp);
+        zstream_close(fp, 1);
     }
     close(fd);
 
     return 0;
 }
 
-static void server_read(zev_t * ev)
+static void server_read(zeio_t * ev)
 {
-    int fd, events, ret;
-    char buf[1024], *p;
-    zstream_t *fp;
+    int ret;
 
-    events = zev_get_events(ev);
-    fd = zev_get_fd(ev);
-
-    if (events & ZEV_EXCEPTION) {
+    if (zeio_get_result(ev) < 1) {
         server_error(ev);
         return;
     }
 
-    fp = (zstream_t *) zev_get_context(ev);
-    ret = zstream_read_line(fp, buf, 1024);
+    ZSTACK_BUF(bf, 1025);
+    zstream_t *fp= zstream_open_fd(zeio_get_fd(ev));
+    ret = zstream_gets(fp, bf, 1024);
+    if (ret < 1) {
+        zstream_close(fp, 0);
+        server_error(ev);
+        return;
+    }
+    if (!strncmp(zbuf_data(bf), "exit", 4)) {
+        zstream_close(fp, 0);
+        server_error(ev);
+        return;
+    }
+    zbuf_trim_right_rn(bf);
 
+    zstream_printf_1024(fp, "your input: %s\n", zbuf_data(bf));
+    ret = zstream_flush(fp);
     if (ret < 0) {
-        server_error(ev);
-        return;
-    }
-    buf[ret] = 0;
-    if (!strncmp(buf, "exit", 4)) {
-        zstream_close_FD(fp);
-        zev_fini(ev);
-        zfree(ev);
-        close(fd);
-        return;
-    }
-    p = strchr(buf, '\r');
-    if (p) {
-        *p = 0;
-    }
-    p = strchr(buf, '\n');
-    if (p) {
-        *p = 0;
-    }
-
-    zstream_printf_1024(fp, "your input: %s\n", buf);
-    ret = ZSTREAM_FLUSH(fp);
-    if (ret < 0) {
+        zstream_close(fp, 0);
         server_error(ev);
         return;
     }
 
-    zev_read(ev, server_read);
+    zeio_enable_read(ev, server_read);
 }
 
-static void server_welcome(zev_t * ev)
+static void server_welcome(zeio_t * ev)
 {
-    int events, ret;
+    int ret;
     zstream_t *fp;
 
-    events = zev_get_events(ev);
-    if (events & ZEV_EXCEPTION) {
+    if (zeio_get_result(ev) < 0) {
         server_error(ev);
         return;
     }
 
-    fp = zstream_open_FD(zev_get_fd(ev));
+    fp = zstream_open_fd(zeio_get_fd(ev));
     time_t t = time(0);
     zstream_printf_1024(fp, "welcome ev: %s\n", ctime(&t));
-    ret = ZSTREAM_FLUSH(fp);
+    ret = zstream_flush(fp);
+    zstream_close(fp, 0);
     if (ret < 0) {
         server_error(ev);
         return;
     }
 
-    zev_set_context(ev, fp);
-    zev_read(ev, server_read);
+    zeio_enable_read(ev, server_read);
 }
 
-static void before_accept(zev_t * ev)
+static void before_accept(zeio_t * ev)
 {
-    int sock = zev_get_fd(ev);
+    int sock = zeio_get_fd(ev);
     int fd = zinet_accept(sock);
-    zev_t *nev = zev_create();
-    zev_init(nev, evbase, fd);
-    zev_write(nev, server_welcome);
+    if (fd < 0) {
+        return;
+    }
+    zeio_t *nev = zeio_create(fd, evbase);
+    zeio_enable_write(nev, server_welcome);
 }
 
-static void timer_cb(zevtimer_t * zt)
+static void timer_cb(zetimer_t * zt)
 {
     zinfo("now exit!");
     exit(1);
@@ -122,24 +109,30 @@ static void timer_cb(zevtimer_t * zt)
 
 int main(int argc, char **argv)
 {
-    int port;
     int sock;
-    zev_t *ev;
-    zevtimer_t tm;
+    zeio_t *ev;
+    zetimer_t *tm;
+    char *server;
 
-    port = 8899;
-    evbase = zevbase_create();
-    sock = zinet_listen(0, port, 5);
-    znonblocking(sock, 1);
-    ev = zev_create();
-    zev_init(ev, evbase, sock);
-    zev_read(ev, before_accept);
+    zmain_parameter_run(argc, argv);
+    printf("USAGE: %s -server 0:8899\n", zvar_progname);
+    server = zconfig_get_str(zvar_default_config, "server", "");
 
-    zevtimer_init(&tm, evbase);
-    zevtimer_start(&tm, timer_cb, 200 * 1000);
+    sock = zlisten(server, 0, 1, 5);
+    if (sock < 0) {
+        printf("ERR listen on %s(%m)\n", server);
+        return 1;
+    }
 
-    while (1) {
-        zevbase_dispatch(evbase, 0);
+    printf("### echo server\n");
+    evbase = zevent_base_create();
+    ev = zeio_create(sock, evbase);
+    zeio_enable_read(ev, before_accept);
+
+    tm = zetimer_create(evbase);
+    zetimer_start(tm, timer_cb, 200);
+
+    while(zevent_base_dispatch(evbase)) {
     }
 
     return 0;

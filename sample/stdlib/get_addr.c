@@ -1,6 +1,6 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
  * 2015-10-21
  * ================================
@@ -10,24 +10,27 @@
 
 static void get_host_addr(char *host)
 {
-    zaddr_t addr_list[128];
-    int count, i;
+    zargv_t *addr_list =  zargv_create(0);
+    int count;
 
-    count = zgetaddr(host, addr_list, 128);
+    count = zget_hostaddr(host, addr_list);
     if (count == 0) {
-        zinfo("%s'addr none", host);
-        return;
+        printf("%s'addr none\n", host);
+    } else if (count < 0) {
+        printf("%s'addr error\n", host);
+    } else {
+        printf("%s'addr list(%d):\n", host, count);
+        ZARGV_WALK_BEGIN(addr_list, ip) {
+            printf("    %s\n", ip);
+        } ZARGV_WALK_END;
     }
-    zinfo("%s'addr list(%d):", host, count);
-    for (i = 0; i < count; i++) {
-        zinfo("        %s", addr_list[i].addr);
-    }
+    zargv_free(addr_list);
 }
 
 int main(int argc, char **argv)
 {
     if (argc < 2) {
-        zinfo("USAGE: %s host_or_domain\n", argv[0]);
+        printf("USAGE: %s host_or_domain\n", argv[0]);
         return 0;
     }
     get_host_addr(argv[1]);

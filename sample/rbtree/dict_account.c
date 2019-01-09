@@ -1,6 +1,6 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
  * 2015-10-21
  * ================================
@@ -12,8 +12,7 @@
 int main(int argc, char **argv)
 {
     zdict_t *myos;
-    zdict_node_t *rn;
-    sysuser_t *user = 0;
+    zbuf_t *shell;
     int i;
 
     myos = zdict_create();
@@ -22,20 +21,20 @@ int main(int argc, char **argv)
     sysuser_load();
 
     for (i = 0; i < sysuser_count; i++) {
-        zdict_update(myos, sysuser_list[i].login_name, sysuser_list + i, 0);
+        zdict_update_string(myos, sysuser_list[i].login_name, sysuser_list[i].shell, -1);
     }
 
-    if (zdict_find(myos, "daemon", (char **)&user)) {
-        zinfo("Found user daemon, whose shell is %s", user->shell);
+    if (zdict_find(myos, "daemon", &shell)) {
+        zinfo("Found user daemon, whose shell is %s", zbuf_data(shell));
     } else {
         zinfo("Dit not find the user daemon");
     }
 
     zinfo("test MACRO of walk");
-    ZDICT_WALK_BEGIN(myos, rn) {
-        zinfo("name: %s", ZDICT_KEY(rn));
+    ZDICT_NODE_WALK_BEGIN(myos, rn) {
+        zinfo("name: %s, home: %s", zdict_node_key(rn), zbuf_data(zdict_node_value(rn)));
     }
-    ZDICT_WALK_END;
+    ZDICT_NODE_WALK_END;
 
     zinfo("test walk ...............");
 

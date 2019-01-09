@@ -1,6 +1,6 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
  * 2016-12-03
  * ================================
@@ -11,9 +11,10 @@
 #include "zc.h"
 #include <pwd.h>
 #include <grp.h>
+#include <errno.h>
 
 #define ___zinfo(fmt,args...){errno2=errno;zinfo("chroot_user: "fmt,##args);errno=errno2;}
-zbool_t chroot_user(const char *root_dir, const char *user_name)
+int zchroot_user(const char *root_dir, const char *user_name)
 {
     int errno2;
     struct passwd *pwd;
@@ -29,17 +30,17 @@ zbool_t chroot_user(const char *root_dir, const char *user_name)
         if ((pwd = getpwnam(user_name)) == 0) {
             ___zinfo("unknown user: %s", user_name);
             errno = ENONET;
-            return 0;
+            return -1;
         }
         uid = pwd->pw_uid;
         gid = pwd->pw_gid;
         if (setgid(gid) < 0) {
             ___zinfo("setgid %ld : %m", (long)gid);
-            return 0;
+            return -1;
         }
         if (initgroups(user_name, gid) < 0) {
             ___zinfo("initgroups: %m");
-            return 0;
+            return -1;
         }
     }
 
@@ -49,11 +50,11 @@ zbool_t chroot_user(const char *root_dir, const char *user_name)
     if (root_dir) {
         if (chroot(root_dir)) {
             ___zinfo("chroot (%s) : %m", root_dir);
-            return 0;
+            return -1;
         }
         if (chdir("/")) {
             ___zinfo("chdir (/): %m");
-            return 0;
+            return -1;
         }
     }
 
@@ -63,9 +64,9 @@ zbool_t chroot_user(const char *root_dir, const char *user_name)
     if (user_name != 0) {
         if (setuid(uid) < 0) {
             ___zinfo("setuid %ld: %m", (long)uid);
-            return 0;
+            return -1;
         }
     }
 
-    return 1;
+    return 0;
 }

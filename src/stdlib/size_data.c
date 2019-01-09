@@ -83,7 +83,6 @@ void zsize_data_escape(zbuf_t * zb, const void *data, int len)
 	if (len > 0) {
 		zbuf_memcat(zb, data, len);
 	}
-    ZBUF_PUT(zb, '\0');
 }
 
 void zsize_data_escape_int(zbuf_t * zb, int i)
@@ -104,19 +103,17 @@ void zsize_data_escape_long(zbuf_t * zb, long i)
 
 void zsize_data_escape_dict(zbuf_t * zb, zdict_t * zd)
 {
-	zdict_node_t *n;
-	ZDICT_WALK_BEGIN(zd, n) {
-        zsize_data_escape(zb, (char *)ZDICT_KEY(n), -1);
-        zsize_data_escape(zb, (char *)ZDICT_VALUE(n), -1);
+	ZDICT_WALK_BEGIN(zd, k, v) {
+        zsize_data_escape(zb, k, -1);
+        zsize_data_escape(zb, zbuf_data(v), zbuf_len(v));
     } ZDICT_WALK_END;
 }
 
 void zsize_data_escape_pp(zbuf_t * zb, const char **pp, int size)
 {
-    int i;
-    for (i = 0;i<size;i++) {
+    for (int i = 0;i<size;i++) {
         zsize_data_escape(zb, pp[i], -1);
-    };
+    }
 }
 
 int zsize_data_put_size(int size, char *buf)
@@ -137,7 +134,7 @@ int zsize_data_get_size_from_zstream(zstream_t *fp)
 {
     int ch, size = 0, shift = 0;
     while (1) {
-        ch = ZSTREAM_GET(fp);
+        ch = ZSTREAM_GETC(fp);
         if (ch == -1) {
             return -1;
         }

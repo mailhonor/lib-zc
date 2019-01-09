@@ -10,7 +10,7 @@
 #include <pthread.h>
 #include <openssl/ssl.h>
 
-static zevbase_t *main_evbase;
+static zevent_base_t *main_evbase;
 static char *proxy_address = 0;
 static int proxy_ssl = 0;
 
@@ -28,8 +28,8 @@ static ziopipe_base_t *iop;
 typedef struct fd_to_fd_linker fd_to_fd_linker;
 struct fd_to_fd_linker
 {
-    zaio_t proxy;
-    zaio_t dest;
+    zaio_t *proxy;
+    zaio_t *dest;
 };
 
 static void ___usage(char *parameter)
@@ -43,44 +43,22 @@ static void ___usage(char *parameter)
 
 static void parameters_do(int argc, char **argv)
 {
-    ZPARAMETER_BEGIN() {
-        if (optval == 0) {
-            ___usage(0);
-        }
-        if (!strcmp(optname, "-proxy")) {
-            proxy_address = optval;
-            opti += 2;
-            continue;
-        }
-        if (!strcmp(optname, "-ssl-proxy")) {
-            proxy_address = optval;
-            proxy_ssl = 1;
-            opti += 2;
-            continue;
-        }
-        if (!strcmp(optname, "-dest")) {
-            dest_address = optval;
-            opti += 2;
-            continue;
-        }
-        if (!strcmp(optname, "-ssl-dest")) {
-            dest_address = optval;
-            dest_ssl = 1;
-            opti += 2;
-            continue;
-        }
-        if (!strcmp(optname, "-ssl-key")) {
-            ssl_key = optval;
-            opti += 2;
-            continue;
-        }
-        if (!strcmp(optname, "-ssl-cert")) {
-            ssl_cert = optval;
-            opti += 2;
-            continue;
-        }
+    zmain_parameter_run(argc, argv);
+
+    proxy_address = zconfig_get_str(zvar_default_config, "proxy", 0);
+    if (zempty(proxy_address)) {
+        proxy_address = zconfig_get_str(zvar_default_config, "ssl-proxy", 0);
+        proxy_ssl = 1;
     }
-    ZPARAMETER_END;
+
+    dest_address = zconfig_get_str(zvar_default_config, "dest", 0);
+    if (zempty(dest_address)) {
+        dest_address = zconfig_get_str(zvar_default_config, "ssl-dest", 0);
+        dest_ssl = 1;
+    }
+
+    ssl_key = zconfig_get_str(zvar_default_config, "ssl-key", 0);
+    ssl_cert = zconfig_get_str(zvar_default_config, "ssl-cert", 0);
 
     if (proxy_ssl && dest_ssl) {
         proxy_ssl = 0;
@@ -100,8 +78,8 @@ static void ssl_do()
 {
     zopenssl_init();
 
-    ssl_proxy_ctx = zopenssl_create_SSL_CTX_server();
-    ssl_dest_ctx = zopenssl_create_SSL_CTX_client();
+    ssl_proxy_ctx = zopenssl_SSL_CTX_create_server();
+    ssl_dest_ctx = zopenssl_SSL_CTX_create_client();
 
     if (proxy_ssl) {
         if (zempty(ssl_key) || zempty(ssl_cert)) {
@@ -117,59 +95,52 @@ static void ssl_do()
 
 static void after_connect(zaio_t *aio)
 {
-    int ret = zaio_get_ret(aio);
     fd_to_fd_linker *jctx = (fd_to_fd_linker *)zaio_get_context(aio);
-    int proxy_fd = zaio_get_fd(&(jctx->proxy));
-    int dest_fd = zaio_get_fd(&(jctx->dest));
-    if (ret < 0) {
-        zaio_fini(&(jctx->proxy));
-        zaio_fini(&(jctx->dest));
-        close(proxy_fd);
-        close(dest_fd);
+    int proxy_fd = zaio_get_fd(jctx->proxy);
+    int dest_fd = zaio_get_fd(jctx->dest);
+    if (zaio_get_result(aio) < 0) {
+        zaio_free(jctx->proxy, 1);
+        zaio_free(jctx->dest, 1);
         zfree(jctx);
         return;
     }
 
-    SSL *proxy_SSL = zaio_detach_SSL(&(jctx->proxy));
-    SSL *dest_SSL = zaio_detach_SSL(&(jctx->dest));
+    SSL *proxy_SSL = zaio_get_ssl(jctx->proxy);
+    SSL *dest_SSL = zaio_get_ssl(jctx->dest);
     ziopipe_enter(iop, proxy_fd, proxy_SSL, dest_fd, dest_SSL, 0, 0);
-    zaio_fini(&(jctx->proxy));
-    zaio_fini(&(jctx->dest));
+    zaio_free(jctx->proxy, 0);
+    zaio_free(jctx->dest, 0);
     zfree(jctx);
 }
 
 static void after_accept(zaio_t *aio)
 {
-    int proxy_fd = zaio_get_fd(aio);
-    int ret = zaio_get_fd(aio);
     fd_to_fd_linker *jctx = (fd_to_fd_linker *)zaio_get_context(aio);
-    if (ret < 0) {
-        zaio_fini(&(jctx->proxy));
-        close(proxy_fd);
+    if (zaio_get_result(aio) < 0) {
+        zaio_free(jctx->proxy, 1);
         zfree(jctx);
         return;
     }
 
-    int dest_fd = zconnect(dest_address, 0);
+    int dest_fd = zconnect(dest_address, 1, 10);
     if (dest_fd < 0) {
-        zaio_fini(&(jctx->proxy));
-        close(proxy_fd);
+        zaio_free(jctx->proxy, 1);
         zfree(jctx);
         return;
     }
 
-    zaio_init(&(jctx->dest), main_evbase, dest_fd);
-    zaio_set_context(&(jctx->dest), jctx);
+    jctx->dest = zaio_create(dest_fd, main_evbase);
+    zaio_set_context(jctx->dest, jctx);
     if (dest_ssl) {
-        zaio_ssl_init_client(&(jctx->dest), ssl_dest_ctx, after_connect, 10 * 1000);
+        zaio_tls_connect(jctx->dest, ssl_dest_ctx, after_connect, 10);
         return;
     }
-    after_connect(&(jctx->dest));
+    after_connect(jctx->dest);
 }
 
-static void start_one(zev_t *ev)
+static void start_one(zeio_t *ev)
 {
-    int fd = zev_get_fd(ev);
+    int fd = zeio_get_fd(ev);
     int proxy_fd = zinet_accept(fd);
     if (proxy_fd < 0) {
         return;
@@ -178,30 +149,28 @@ static void start_one(zev_t *ev)
 
     fd_to_fd_linker *jctx = (fd_to_fd_linker *)zcalloc(1, sizeof(fd_to_fd_linker));
 
-    zaio_init(&(jctx->proxy), main_evbase, proxy_fd);
-    zaio_set_context(&(jctx->proxy), jctx);
+    jctx->proxy = zaio_create(proxy_fd, main_evbase);
+    zaio_set_context(jctx->proxy, jctx);
     if (proxy_ssl) {
-        zaio_ssl_init_server(&(jctx->proxy), ssl_proxy_ctx, after_accept, 10 * 1000);
+        zaio_tls_accept(jctx->proxy, ssl_proxy_ctx, after_accept, 10);
         return;
     }
-    after_accept(&(jctx->proxy));
+    after_accept(jctx->proxy);
 }
 
 static void *before_accept_incoming(void *arg)
 {
     int fd_type;
-    int fd = zlisten(proxy_address, 5, &fd_type);
+    int fd = zlisten(proxy_address, &fd_type, 5, 1);
     if (fd < 0) {
         printf("ERR: can not open %s (%m)\n", proxy_address);
         exit(1);
     }
 
-    zev_t *eio = zev_create();
-    zev_init(eio, main_evbase, fd);
-    zev_read(eio, start_one);
+    zeio_t *eio = zeio_create(fd, main_evbase);
+    zeio_enable_read(eio, start_one);
 
-    while(1) {
-        zevbase_dispatch(main_evbase, 1000);
+    while(zevent_base_dispatch(main_evbase)) {
     }
 
     return arg;
@@ -218,15 +187,11 @@ void * iop_run(void *arg)
 
 int main(int argc, char **argv)
 {
-    zvar_progname = argv[0];
-
     parameters_do(argc, argv);
-
     ssl_do();
-
-    main_evbase = zevbase_create();
-
+    main_evbase = zevent_base_create();
     pthread_t pth;
+
 #if 0
     pthread_create(&pth, 0, before_accept_incoming, 0);
     iop_run();

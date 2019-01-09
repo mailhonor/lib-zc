@@ -1,6 +1,6 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
  * 2015-12-08
  * ================================
@@ -8,11 +8,14 @@
 
 #include "zc.h"
 #include <iconv.h>
+#include <errno.h>
+
+int zvar_charset_debug = 0;
 
 #define ZCHARSET_ICONV_ERROR_OPEN       (-2016)
 
-typedef struct zcharset_iconv_t zcharset_iconv_t;
-struct zcharset_iconv_t {
+typedef struct charset_iconv_t charset_iconv_t;
+struct charset_iconv_t {
     char *to_charset;
     char *from_charset;
     unsigned char charset_regular:1;
@@ -22,7 +25,6 @@ struct zcharset_iconv_t {
     iconv_t ic;
 };
 
-int zvar_charset_iconv = 0;
 char *zcharset_correct_charset(const char *charset)
 {
 
@@ -45,7 +47,7 @@ char *zcharset_correct_charset(const char *charset)
     return (char *)charset;
 }
 
-static inline int zcharset_iconv_base(zcharset_iconv_t * ic, char *_in_str, int _in_len, char *_out_s, int _out_l)
+static inline int charset_iconv_base(charset_iconv_t * ic, char *_in_str, int _in_len, char *_out_s, int _out_l)
 {
     char *in_str = _in_str;
     size_t in_len = (size_t) (_in_len);
@@ -134,14 +136,11 @@ static inline int zcharset_iconv_base(zcharset_iconv_t * ic, char *_in_str, int 
     return out_converted_len;
 }
 
-int zcharset_iconv(
-        const char *from_charset, const char *src, int src_len
-        , const char *to_charset,  char *dest, int dest_len
-        , int *src_converted_len
-        , int omit_invalid_bytes_limit, int *omit_invalid_bytes_count
-        )
+int zcharset_iconv(const char *from_charset, const char *src, int src_len,
+        const char *to_charset, zbuf_t *dest, int *src_converted_len,
+        int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
 {
-    zcharset_iconv_t ic_buf, *ic = &ic_buf;
+    charset_iconv_t ic_buf, *ic = &ic_buf;
     char buf[4910];
     int len;
     char *in_str;
@@ -149,8 +148,9 @@ int zcharset_iconv(
     int out_converted_len = 0;
     char *str_running;
     int len_running;
+    zbuf_reset(dest);
 
-    memset(ic, 0, sizeof(zcharset_iconv_t));
+    memset(ic, 0, sizeof(charset_iconv_t));
     ic->from_charset = (char *)(from_charset);
     ic->to_charset = (char *)(to_charset);
     if (omit_invalid_bytes_limit < 0) {
@@ -163,14 +163,9 @@ int zcharset_iconv(
     in_len = src_len;
 
     while (in_len > 0) {
-        if (dest_len > 0) {
-            str_running = dest;
-            len_running = dest_len;
-        } else  {
-            str_running = buf;
-            len_running = 4096;
-        }
-        len = zcharset_iconv_base(ic, in_str, in_len, str_running, len_running);
+        str_running = buf;
+        len_running = 4096;
+        len = charset_iconv_base(ic, in_str, in_len, str_running, len_running);
         if (len < 0) {
             out_converted_len = -1;
             break;
@@ -181,18 +176,8 @@ int zcharset_iconv(
         if (len == 0) {
             break;
         }
-        if (dest_len > 0) {
-            dest[len] = 0;
-            out_converted_len = len;
-            break;
-        }
         out_converted_len += len;
-
-        if (dest_len == Z_DF_ZBUF) {
-            zbuf_memcat((zbuf_t *)dest, buf, len);
-        } else {
-            zfatal("zcharset_iconv: Z_DF type unknown");
-        }
+        zbuf_memcat(dest, buf, len);
     }
 
     if ((ic->ic) && (ic->ic != (iconv_t) - 1)) {

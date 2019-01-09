@@ -1,6 +1,6 @@
 /*
  * ================================
- * eli960@163.com
+ * eli960@qq.com
  * http://www.mailhonor.com/
  * 2015-09-29
  * ================================
@@ -8,81 +8,132 @@
 
 #include "zc.h"
 
-#define ___SPACE_LEFT(a) ((a)->size - (a)->argc - 1)
+typedef struct zargv_mpool_t zargv_mpool_t;
+struct zargv_mpool_t {
+    zargv_t v;
+    zmpool_t *mpool;
+};
 
 zargv_t *zargv_create(int size)
 {
-    return zargv_create_mpool(0, size);
+    zargv_t *argvp = (zargv_t *) zmalloc(sizeof(zargv_t));
+    zargv_init(argvp, size);
+    return (argvp);
 }
 
-zargv_t *zargv_create_mpool(zmpool_t * mpool, int size)
+void zargv_init(zargv_t *argvp, int size)
 {
-    zargv_t *argvp;
-    int sane_size;
+    int sane_size = (size < 0 ? 13 : size);
+    argvp->argv = (char **)zmalloc((sane_size + 1) * sizeof(char *));
+    argvp->size = sane_size;
+    argvp->argc = 0;
+    argvp->argv[0] = 0;
 
-    argvp = (zargv_t *) zmpool_malloc(mpool, sizeof(zargv_t));
-    argvp->mpool = mpool;
-    sane_size = (size < 13 ? 13 : size);
+    argvp->mpool_used = 0;
+}
+
+void zargv_init_mpool(zargv_t *argvp, int size, zmpool_t *mpool)
+{
+    int sane_size = (size < 0 ? 13 : size);
     argvp->argv = (char **)zmpool_malloc(mpool, (sane_size + 1) * sizeof(char *));
     argvp->size = sane_size;
     argvp->argc = 0;
     argvp->argv[0] = 0;
 
-    return (argvp);
+    argvp->mpool_used = 1;
+    zargv_mpool_t *ama = (zargv_mpool_t *)argvp;
+    ama->mpool = mpool;
 }
 
-void zargv_free(zargv_t * argvp)
+void zargv_fini(zargv_t *argvp)
 {
+    zargv_mpool_t *ama = (zargv_mpool_t *)argvp;
     char **cpp;
 
     for (cpp = argvp->argv; cpp < argvp->argv + argvp->argc; cpp++) {
-        zmpool_free(argvp->mpool, *cpp);
+        if (argvp->mpool_used) {
+            zmpool_free(ama->mpool, *cpp);
+        } else {
+            zfree(*cpp);
+        }
     }
-    zmpool_free(argvp->mpool, argvp->argv);
-    zmpool_free(argvp->mpool, argvp);
+    if (argvp->mpool_used) {
+            zmpool_free(ama->mpool, argvp->argv);
+    } else {
+        zfree(argvp->argv);
+    }
+}
+
+
+void zargv_free(zargv_t * argvp)
+{
+    if (argvp) {
+        zargv_fini(argvp);
+        zfree(argvp);
+    }
 }
 
 static void zargv_extend(zargv_t * argvp)
 {
-    int new_size;
-
-    new_size = argvp->size * 2;
-#if 1
-    /* Within mpool mode, realloc maybe is invalid or not recommended */
-    void *old;
-    old = argvp->argv;
-    argvp->argv = (char **)zmpool_malloc(argvp->mpool, (new_size + 1) * sizeof(char *));
-    memcpy(argvp->argv, old, argvp->size * sizeof(char *));
-    zmpool_free(argvp->mpool, old);
-#else
-    argvp->argv = (char **)zrealloc((char *)argvp->argv, (new_size + 1) * sizeof(char *));
-#endif
+    int new_size = argvp->size * 2;
+    if (new_size < 1) {
+        new_size = 2;
+    }
+    if (argvp->mpool_used) {
+        zargv_mpool_t *ama = (zargv_mpool_t *)argvp;
+        char **npp = (char **)zmpool_malloc(ama->mpool, (new_size + 1) * sizeof(char *));
+        if (argvp->argc) {
+            memcpy(npp, argvp->argv, argvp->argc * sizeof(char *));
+        }
+        zmpool_free(ama->mpool, argvp->argv);
+        argvp->argv = npp;
+    } else {
+        argvp->argv = (char **)zrealloc(argvp->argv, (new_size + 1) * sizeof(char *));
+    }
     argvp->size = new_size;
 }
 
 void zargv_add(zargv_t * argvp, const char *ns)
 {
-    if (___SPACE_LEFT(argvp) <= 0)
+    if (argvp->argc >= argvp->size) {
         zargv_extend(argvp);
-    argvp->argv[argvp->argc++] = (char *)zmpool_strdup(argvp->mpool, (char *)ns);
+    }
+    if (argvp->mpool_used) {
+        zargv_mpool_t *ama = (zargv_mpool_t *)argvp;
+        argvp->argv[argvp->argc++] = zmpool_strdup(ama->mpool, ns);
+    } else {
+        argvp->argv[argvp->argc++] = zstrdup(ns);
+    }
     argvp->argv[argvp->argc] = 0;
 }
 
 void zargv_addn(zargv_t * argvp, const char *ns, int nlen)
 {
-    if (___SPACE_LEFT(argvp) <= 0)
+    if (argvp->argc >= argvp->size) {
         zargv_extend(argvp);
-    argvp->argv[argvp->argc++] = (char *)zmpool_strndup(argvp->mpool, ns, nlen);
+    }
+    if (argvp->mpool_used) {
+        zargv_mpool_t *ama = (zargv_mpool_t *)argvp;
+        argvp->argv[argvp->argc++] = zmpool_strndup(ama->mpool, ns, nlen);
+    } else {
+        argvp->argv[argvp->argc++] = zstrndup(ns, nlen);
+    }
     argvp->argv[argvp->argc] = 0;
 }
 
 void zargv_truncate(zargv_t * argvp, int len)
 {
+    zargv_mpool_t *ama = (zargv_mpool_t *)argvp;
     char **cpp;
 
     if (len < argvp->argc) {
-        for (cpp = argvp->argv + len; cpp < argvp->argv + argvp->argc; cpp++)
-            zmpool_free(argvp->mpool, *cpp);
+        for (cpp = argvp->argv + len; cpp < argvp->argv + argvp->argc; cpp++) {
+            if (argvp->mpool_used) {
+                zmpool_free(ama->mpool, *cpp);
+            } else {
+                zfree(*cpp);
+            }
+        }
         argvp->argc = len;
         argvp->argv[argvp->argc] = 0;
     }
@@ -98,16 +149,15 @@ zargv_t *zargv_split_append(zargv_t * argvp, const char *string, const char *del
     zstrtok_t stok;
 
     zstrtok_init(&stok, (char *)string);
-    while (zstrtok(&stok, delim))
+    while (zstrtok(&stok, delim)) {
         zargv_addn(argvp, stok.str, stok.len);
+    }
 
     return (argvp);
 }
 
-void zargv_show(zargv_t * argvp)
+void zargv_debug_show(zargv_t * argvp)
 {
-    char *p;
-
     ZARGV_WALK_BEGIN(argvp, p) {
         printf("%s\n", p);
     }
