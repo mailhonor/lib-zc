@@ -16,12 +16,12 @@ int ztimed_read_write_wait_millisecond(int fd, long timeout, int *readable, int 
     struct pollfd pollfd;
     long critical_time = 0, left_time;
     *readable = *writeable = 0;
-    if (timeout < 1) {
+    if (timeout < 0) {
         left_time = zvar_max_timeout_millisecond;
     } else {
         left_time = timeout;
     }
-    for (;left_time>0;left_time=ztimeout_left_millisecond(critical_time)) {
+    for (;left_time>=0;left_time=ztimeout_left_millisecond(critical_time)) {
         if (critical_time == 0) {
             critical_time = ztimeout_set_millisecond(left_time);
         }
@@ -84,12 +84,12 @@ int ztimed_read_wait_millisecond(int fd, long timeout)
     struct pollfd pollfd;
     long critical_time = 0, left_time;
 
-    if (timeout < 1) {
+    if (timeout < 0) {
         left_time = zvar_max_timeout_millisecond;
     } else {
         left_time = timeout;
     }
-    for (;left_time>0;left_time=ztimeout_left_millisecond(critical_time)) {
+    for (;left_time>=0;left_time=ztimeout_left_millisecond(critical_time)) {
         if (critical_time == 0) {
             critical_time = ztimeout_set_millisecond(left_time);
         }
@@ -166,7 +166,7 @@ int ztimed_read(int fd, void *buf, int size, int timeout)
     } else {
         left_time = timeout;
     }
-    for (;left_time>0;left_time=ztimeout_left_millisecond(critical_time)) {
+    for (;left_time>=0;left_time=ztimeout_left_millisecond(critical_time)) {
         if (critical_time == 0) {
             critical_time = ztimeout_set_millisecond(left_time);
         }
@@ -236,7 +236,7 @@ int ztimed_readn(int fd, void *buf, int size, int timeout)
     } else {
         left_time = timeout;
     }
-    for (;(left>0) && (left_time>0);left_time=ztimeout_left_millisecond(critical_time)) {
+    for (;(left>=0) && (left_time>=0);left_time=ztimeout_left_millisecond(critical_time)) {
         if (critical_time == 0) {
             critical_time = ztimeout_set_millisecond(left_time);
         }
@@ -280,12 +280,12 @@ int ztimed_write_wait_millisecond(int fd, long timeout)
     struct pollfd pollfd;
     long critical_time = 0, left_time;
 
-    if (timeout < 1) {
+    if (timeout < 0) {
         left_time = zvar_max_timeout_millisecond;
     } else {
         left_time = timeout;
     }
-    for (;left_time>0;left_time=ztimeout_left_millisecond(critical_time)) {
+    for (;left_time>=0;left_time=ztimeout_left_millisecond(critical_time)) {
         if (critical_time == 0) {
             critical_time = ztimeout_set_millisecond(left_time);
         }
@@ -379,7 +379,7 @@ int ztimed_write(int fd, const void *buf, int size, int timeout)
     } else {
         left_time = timeout;
     }
-    for (;(left>0) && (left_time>0);left_time=ztimeout_left_millisecond(critical_time)) {
+    for (;(left>=0) && (left_time>=0);left_time=ztimeout_left_millisecond(critical_time)) {
         if (critical_time == 0) {
             critical_time = ztimeout_set_millisecond(left_time);
         }

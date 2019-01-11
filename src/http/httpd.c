@@ -14,32 +14,15 @@
 #include <errno.h>
 #include <time.h>
 
-struct zhttpd_upload_file_t {
+struct zhttpd_uploaded_file_t {
+    zhttpd_t *httpd;
     char *name;
     char *filename;
-    char *saved_pathname;
+    int encoding;
+    int raw_len;
+    int offset;
     int size;
 };
-
-const char *zhttpd_upload_file_get_name(zhttpd_upload_file_t *fo)
-{
-    return fo->name;
-}
-
-const char *zhttpd_upload_file_get_filename(zhttpd_upload_file_t *fo)
-{
-    return fo->filename;
-}
-
-const char *zhttpd_upload_file_get_saved_pathname(zhttpd_upload_file_t *fo)
-{
-    return fo->saved_pathname;
-}
-
-int zhttpd_upload_file_get_size(zhttpd_upload_file_t *fo)
-{
-    return fo->size;
-}
 
 zbool_t zvar_httpd_debug = 0;
 zbool_t zvar_httpd_no_cache = 0;
@@ -58,7 +41,8 @@ struct zhttpd_t {
     zdict_t *request_post_vars;
     zdict_t *request_headers;
     zdict_t *request_cookies;
-    zvector_t *request_upload_files; /* <zhttpd_upload_file_t *> */
+    zvector_t *request_uploaded_files; /* <zhttpd_uploaded_file_t *> */
+    char *uploaded_tmp_mime_filename;
     /* */
     unsigned int stop:1;
     unsigned int exception:1;
@@ -89,6 +73,81 @@ static void zhttpd_loop_clear(zhttpd_t *httpd);
 static void zhttpd_request_header_do(zhttpd_t * httpd, int first, zbuf_t *linebuf);
 static void zhttpd_request_data_do(zhttpd_t *httpd, zbuf_t *linebuf);
 
+const char *zhttpd_uploaded_file_get_name(zhttpd_uploaded_file_t *fo)
+{
+    return fo->name;
+}
+
+const char *zhttpd_uploaded_file_get_filename(zhttpd_uploaded_file_t *fo)
+{
+    return fo->filename;
+}
+
+int zhttpd_uploaded_file_get_size(zhttpd_uploaded_file_t *fo)
+{
+    if (fo->size != -1) {
+        return fo->size;
+    }
+
+    zhttpd_t *httpd = fo->httpd;
+    zmmap_reader_t reader;
+    if (zmmap_reader_init(&reader, httpd->uploaded_tmp_mime_filename) < 1){
+        return -1;
+    }
+    zbuf_t *data = zbuf_create(4096);
+    if (fo->encoding == 'B') {
+        zbase64_decode(reader.data + fo->offset, fo->raw_len, data, 0);
+    } else if (fo->encoding == 'Q') {
+        zqp_decode_2045(reader.data + fo->offset, fo->raw_len, data);
+    } else {
+        zbuf_memcpy(data, reader.data + fo->offset, fo->size);
+    }
+    zmmap_reader_fini(&reader);
+    fo->size = zbuf_len(data);
+    zfree(data);
+    return fo->size;
+}
+
+int zhttpd_uploaded_file_save_to(zhttpd_uploaded_file_t *fo, const char *filename)
+{
+    zhttpd_t *httpd = fo->httpd;
+    zmmap_reader_t reader;
+    if (zmmap_reader_init(&reader, httpd->uploaded_tmp_mime_filename) < 1){
+        return -1;
+    }
+    zbuf_t *data = zbuf_create(4096);
+    if (fo->encoding == 'B') {
+        zbase64_decode(reader.data + fo->offset, fo->raw_len, data, 0);
+    } else if (fo->encoding == 'Q') {
+        zqp_decode_2045(reader.data + fo->offset, fo->raw_len, data);
+    } else {
+        zbuf_memcpy(data, reader.data + fo->offset, fo->size);
+    }
+    zmmap_reader_fini(&reader);
+    int ret = zfile_put_contents(filename, zbuf_data(data), zbuf_len(data));
+    zbuf_free(data);
+    return ret;
+}
+
+int zhttpd_uploaded_file_get_data(zhttpd_uploaded_file_t *fo, zbuf_t *data)
+{
+    zhttpd_t *httpd = fo->httpd;
+    zbuf_reset(data);
+    zmmap_reader_t reader;
+    if (zmmap_reader_init(&reader, httpd->uploaded_tmp_mime_filename) < 1){
+        return -1;
+    }
+    if (fo->encoding == 'B') {
+        zbase64_decode(reader.data + fo->offset, fo->raw_len, data, 0);
+    } else if (fo->encoding == 'Q') {
+        zqp_decode_2045(reader.data + fo->offset, fo->raw_len, data);
+    } else {
+        zbuf_memcpy(data, reader.data + fo->offset, fo->size);
+    }
+    zmmap_reader_fini(&reader);
+    return fo->size;
+}
+
 static zhttpd_t * _zhttpd_malloc_struct_general()
 {
     zhttpd_t * httpd = (zhttpd_t *)zcalloc(1, sizeof(zhttpd_t));
@@ -104,7 +163,8 @@ static zhttpd_t * _zhttpd_malloc_struct_general()
     httpd->request_post_vars = zdict_create();
     httpd->request_headers = zdict_create();
     httpd->request_cookies = zdict_create();
-    httpd->request_upload_files = zvector_create(-1);
+    httpd->request_uploaded_files = zvector_create(-1);
+    httpd->uploaded_tmp_mime_filename = 0;
 
     httpd->stop = 0;
     httpd->exception = 0;
@@ -166,14 +226,17 @@ void zhttpd_close(zhttpd_t *httpd, zbool_t close_fd_and_release_ssl)
     zfree(httpd->tmp_path_for_post);
     zfree(httpd->gzip_file_suffix);
 
-    ZVECTOR_WALK_BEGIN(httpd->request_upload_files, zhttpd_upload_file_t *, fo) {
-        zunlink(fo->saved_pathname);
+    ZVECTOR_WALK_BEGIN(httpd->request_uploaded_files, zhttpd_uploaded_file_t *, fo) {
         zfree(fo->name);
         zfree(fo->filename);
-        zfree(fo->saved_pathname);
         zfree(fo);
     } ZVECTOR_WALK_END;
-    zvector_free(httpd->request_upload_files);
+    zvector_free(httpd->request_uploaded_files);
+
+    if (!zempty(httpd->uploaded_tmp_mime_filename)){
+        zunlink(httpd->uploaded_tmp_mime_filename);
+        zfree(httpd->uploaded_tmp_mime_filename);
+    }
 
     zfree(httpd);
 }
@@ -323,9 +386,9 @@ const zdict_t *zhttpd_request_get_cookies(zhttpd_t *httpd)
     return httpd->request_cookies;
 }
 
-const zvector_t *zhttpd_request_get_upload_files(zhttpd_t *httpd)
+const zvector_t *zhttpd_request_get_uploaded_files(zhttpd_t *httpd)
 {
-    return httpd->request_upload_files;
+    return httpd->request_uploaded_files;
 }
 
 /* response completely */
@@ -705,14 +768,18 @@ static void zhttpd_loop_clear(zhttpd_t *httpd)
     zdict_reset(httpd->request_headers);
     zdict_reset(httpd->request_cookies);
 
-    ZVECTOR_WALK_BEGIN(httpd->request_upload_files, zhttpd_upload_file_t *, fo) {
-        zunlink(fo->saved_pathname);
+    ZVECTOR_WALK_BEGIN(httpd->request_uploaded_files, zhttpd_uploaded_file_t *, fo) {
         zfree(fo->name);
         zfree(fo->filename);
-        zfree(fo->saved_pathname);
         zfree(fo);
     } ZVECTOR_WALK_END;
-    zvector_reset(httpd->request_upload_files);
+    zvector_reset(httpd->request_uploaded_files);
+
+    if (!zempty(httpd->uploaded_tmp_mime_filename)){
+        zunlink(httpd->uploaded_tmp_mime_filename);
+        zfree(httpd->uploaded_tmp_mime_filename);
+        httpd->uploaded_tmp_mime_filename = 0;
+    }
 
     httpd->unsupported_cmd = 0;
     httpd->request_keep_alive = 0;
@@ -959,41 +1026,36 @@ static void _zhttpd_request_data_do_disabled_form_data(zhttpd_t *httpd)
     zhttpd_response_flush(httpd);
 }
 
-static void _zhttpd_upload_dump_file(zhttpd_t *httpd, zmime_t *mime, zbuf_t *linebuf, const char *data_filename, int sn, zbuf_t *tmpbf, const char *name, const char *filename)
+static void _zhttpd_uploaded_dump_file(zhttpd_t *httpd, zmime_t *mime, zbuf_t *linebuf, zbuf_t *tmpbf, const char *name, const char *filename)
 {
 
-    zbuf_strcpy(linebuf, data_filename);
-    zbuf_put(linebuf, '_');
-    zbuf_printf_1024(linebuf, "%ld", sn);
-    char *fn = zbuf_data(linebuf);
-    const char *wdata = 0;
-    int wlen = 0;
-
+    int wlen = 0, raw_len = 0;
     const char *encoding = zmime_get_encoding(mime);
+    raw_len = zmime_get_body_len(mime);
     if (zempty(encoding)) {
-        wdata = zmime_get_body_data(mime);
-        wlen = zmime_get_body_len(mime);
+        wlen = raw_len;
     } else {
-        zbuf_reset(tmpbf);
-        zmime_get_decoded_content(mime, tmpbf);
-        wdata = zbuf_data(tmpbf);
-        wlen = zbuf_len(tmpbf);
-    }
-    if (zfile_put_contents(fn, wdata, wlen) < 0) {
-        httpd->exception = 1;
-        zinfo("error write data to %s(%m)", fn);
-        return;
+        wlen = -1;
     }
 
-    zhttpd_upload_file_t *fo = (zhttpd_upload_file_t *)zcalloc(1, sizeof(zhttpd_upload_file_t));
+    zhttpd_uploaded_file_t *fo = (zhttpd_uploaded_file_t *)zcalloc(1, sizeof(zhttpd_uploaded_file_t));
+    fo->httpd = httpd;
     fo->name = zstrdup(name);
     fo->filename = zstrdup(filename);
-    fo->saved_pathname = zstrdup(fn);
     fo->size = wlen;
-    zvector_push(httpd->request_upload_files, fo);
+    fo->offset = zmime_get_body_offset(mime);
+    fo->raw_len = raw_len;
+    if (!strcmp(encoding, "base64")) {
+        fo->encoding = 'B';
+    } else if (!strcmp(encoding, "quoted-printable")) {
+        fo->encoding = 'Q';
+    } else {
+        fo->encoding = 0;
+    }
+    zvector_push(httpd->request_uploaded_files, fo);
 }
 
-static void _zhttpd_request_data_do_form_data_one_mime(zhttpd_t *httpd, zmime_t *mime, zbuf_t *linebuf, char *data_filename, int *sn)
+static void _zhttpd_request_data_do_form_data_one_mime(zhttpd_t *httpd, zmime_t *mime, zbuf_t *linebuf)
 {
     const char *disposition = zmime_get_disposition(mime);
     if (strncasecmp(disposition, "form-data", 9)) {
@@ -1020,7 +1082,7 @@ static void _zhttpd_request_data_do_form_data_one_mime(zhttpd_t *httpd, zmime_t 
                 zdict_update(httpd->request_post_vars, name, tmp_bf);
             }
         } else {
-            _zhttpd_upload_dump_file(httpd, mime, linebuf, data_filename, *sn, tmp_bf, name, filename);
+            _zhttpd_uploaded_dump_file(httpd, mime, linebuf, tmp_bf, name, filename);
         }
     } else {
         name = zstrdup(name);
@@ -1039,8 +1101,7 @@ static void _zhttpd_request_data_do_form_data_one_mime(zhttpd_t *httpd, zmime_t 
             zmime_header_line_get_params(zbuf_data(linebuf), zbuf_len(linebuf), tmp_bf, params);
             zbuf_reset(tmp_bf);
             char *filename = zdict_get_str(params, "filename", "");
-            *sn = *sn + 1;
-            _zhttpd_upload_dump_file(httpd, child, linebuf, data_filename, *sn, tmp_bf, name, filename);
+            _zhttpd_uploaded_dump_file(httpd, child, linebuf, tmp_bf, name, filename);
             if (httpd->exception) {
                 break;
             }
@@ -1070,11 +1131,9 @@ static void _zhttpd_request_data_do_form_data(zhttpd_t *httpd, zbuf_t *linebuf, 
     }
 
     const zvector_t *mvec = zmail_get_all_mimes(mime_parser);
-    int i = 0;
     ZVECTOR_WALK_BEGIN(mvec, zmime_t *, mime) {
         if (httpd->exception == 0) {
-            i++;
-            _zhttpd_request_data_do_form_data_one_mime(httpd, mime, linebuf, data_filename, &i);
+            _zhttpd_request_data_do_form_data_one_mime(httpd, mime, linebuf);
         }
     } ZVECTOR_WALK_END;
 
@@ -1082,10 +1141,7 @@ over:
     if (mime_parser) {
         zmail_free(mime_parser);
     }
-    if (data_filename) {
-        zunlink(data_filename);
-        zfree(data_filename);
-    }
+    httpd->uploaded_tmp_mime_filename = data_filename;
 }
 
 static void zhttpd_request_data_do(zhttpd_t *httpd, zbuf_t *linebuf)

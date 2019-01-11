@@ -137,14 +137,18 @@ static void upload_do(zhttpd_t *httpd)
     zjson_object_update(js, "post_vars", ___dict_to_json(zhttpd_request_get_post_vars(httpd)), 0);
 
     zjson_t *files_js = zjson_object_update(js, "files", zjson_create(), 0);
-    const zvector_t *files = zhttpd_request_get_upload_files(httpd);
-    ZVECTOR_WALK_BEGIN(files, zhttpd_upload_file_t *, fo) {
+    const zvector_t *files = zhttpd_request_get_uploaded_files(httpd);
+    int file_id = 0;
+    ZVECTOR_WALK_BEGIN(files, zhttpd_uploaded_file_t *, fo) {
         zjson_t *tmpjs = zjson_create();
-        zjson_object_update(tmpjs, "name", zjson_create_string(zhttpd_upload_file_get_name(fo), -1), 0);
-        zjson_object_update(tmpjs, "filename", zjson_create_string(zhttpd_upload_file_get_filename(fo), -1), 0);
-        zjson_object_update(tmpjs, "save_pathname", zjson_create_string(zhttpd_upload_file_get_saved_pathname(fo), -1), 0);
-        zjson_object_update(tmpjs, "size", zjson_create_long(zhttpd_upload_file_get_size(fo)), 0);
+        zjson_object_update(tmpjs, "name", zjson_create_string(zhttpd_uploaded_file_get_name(fo), -1), 0);
+        zjson_object_update(tmpjs, "filename", zjson_create_string(zhttpd_uploaded_file_get_filename(fo), -1), 0);
+        zjson_object_update(tmpjs, "size", zjson_create_long(zhttpd_uploaded_file_get_size(fo)), 0);
+        char saved_filename[1024];
+        sprintf(saved_filename, "uploaded_files/%d.dat", file_id++);
+        zjson_object_update(tmpjs, "saved_filename", zjson_create_string(saved_filename, -1), 0);
         zjson_array_push(files_js, tmpjs);
+        zhttpd_uploaded_file_save_to(fo, saved_filename);
     } ZVECTOR_WALK_END;
 
     zbuf_t *bf = zbuf_create(-1);

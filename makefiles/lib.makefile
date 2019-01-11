@@ -19,7 +19,7 @@ OBJS_ZC = $(patsubst %.c, OBJS_DEST/%.o, $(SRCS_ZC))
 
 OBJS_DEST/%.o: %.c
 	@echo build $<
-	$(CC) $(CFLAGS) -c $< -o $@
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 libzc.a: $(OBJS_ZC)
 	@echo build libzc.a

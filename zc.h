@@ -68,7 +68,7 @@ typedef struct zjson_t zjson_t;
 typedef struct zmemcache_client_t zmemcache_client_t;
 typedef struct zredis_client_t zredis_client_t;
 typedef struct zurl_t zurl_t;
-typedef struct zhttpd_upload_file_t zhttpd_upload_file_t;
+typedef struct zhttpd_uploaded_file_t zhttpd_uploaded_file_t;
 typedef struct zhttpd_t zhttpd_t;
 typedef struct zsqlite3_proxy_client_t zsqlite3_proxy_client_t;
 
@@ -1404,7 +1404,7 @@ const zdict_t *zhttpd_request_get_query_vars(zhttpd_t *httpd);
 const zdict_t *zhttpd_request_get_post_vars(zhttpd_t *httpd);
 const zdict_t *zhttpd_request_get_cookies(zhttpd_t *httpd);
 
-const zvector_t *zhttpd_request_get_upload_files(zhttpd_t *httpd); /* zhttpd_upload_file * */
+const zvector_t *zhttpd_request_get_uploaded_files(zhttpd_t *httpd); /* zhttpd_uploaded_file * */
 
 /* response completely */
 void zhttpd_response_200(zhttpd_t *httpd, const char *data, int size);
@@ -1445,11 +1445,12 @@ void zhttpd_response_flush(zhttpd_t *httpd);
 /* stream */
 zstream_t *zhttpd_get_stream(zhttpd_t *httpd);
 
-/* zhttpd_upload_file_t */
-const char *zhttpd_upload_file_get_filename(zhttpd_upload_file_t *fo);
-const char *zhttpd_upload_file_get_name(zhttpd_upload_file_t *fo);
-const char *zhttpd_upload_file_get_saved_pathname(zhttpd_upload_file_t *fo);
-int zhttpd_upload_file_get_size(zhttpd_upload_file_t *fo);
+/* zhttpd_uploaded_file_t */
+const char *zhttpd_uploaded_file_get_filename(zhttpd_uploaded_file_t *fo);
+const char *zhttpd_uploaded_file_get_name(zhttpd_uploaded_file_t *fo);
+int zhttpd_uploaded_file_get_size(zhttpd_uploaded_file_t *fo);
+int zhttpd_uploaded_file_save_to(zhttpd_uploaded_file_t *fo, const char *filename);
+int zhttpd_uploaded_file_get_data(zhttpd_uploaded_file_t *fo, zbuf_t *data);
 
 /* sqlite3 ################################################## */
 /* zsqlite3_proxd based on zevent_server */

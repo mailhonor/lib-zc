@@ -238,6 +238,9 @@ int zopenssl_SSL_get_fd(SSL *ssl)
 }
 
 #define ___Z_SSL_TIMED_DO(excute_sentence)  \
+    if (timeout < 0) { \
+        timeout = zvar_max_timeout; \
+    } \
     if (timeout == 0) { \
         return excute_sentence; \
     } \
@@ -263,45 +266,30 @@ int zopenssl_SSL_get_fd(SSL *ssl)
 
 int zopenssl_timed_connect(SSL * ssl, int timeout)
 {
-    if (timeout < 0) {
-        timeout = zvar_max_timeout;
-    }
     ___Z_SSL_TIMED_DO(SSL_connect(ssl));
     return (ret==1?1:-1);
 }
 
 int zopenssl_timed_accept(SSL * ssl, int timeout)
 {
-    if (timeout < 0) {
-        timeout = zvar_max_timeout;
-    }
     ___Z_SSL_TIMED_DO(SSL_accept(ssl));
     return (ret==1?1:-1);
 }
 
 int zopenssl_timed_shutdown(SSL * ssl, int timeout)
 {
-    if (timeout < 0) {
-        timeout = zvar_max_timeout;
-    }
     ___Z_SSL_TIMED_DO(SSL_shutdown(ssl));
     return (ret==1?1:-1);
 }
 
 int zopenssl_timed_read(SSL * ssl, void *buf, int len, int timeout)
 {
-    if (timeout < 0) {
-        timeout = zvar_max_timeout;
-    }
     ___Z_SSL_TIMED_DO(SSL_read(ssl, buf, len));
     return ret;
 }
 
 int zopenssl_timed_write(SSL * ssl, const void *buf, int len, int timeout)
 {
-    if (timeout < 0) {
-        timeout = zvar_max_timeout;
-    }
     ___Z_SSL_TIMED_DO(SSL_write(ssl, buf, len));
     return ret;
 }
