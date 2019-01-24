@@ -38,8 +38,7 @@ static void builder_table_reset_hash_node_size(builder_table_t *table, int _hash
             for (node = hv[thash]; node; node_last = node, node = node->next) {
                 int r = memcmp(key, zbuf_data(&(node->key)), klen);
                 if (!r) {
-                    printf("ERR it is impossible\n");
-                    exit(1);
+                    zfatal("ERR it is impossible\n");
                 }
                 if (r < 0) {
                     break;
@@ -302,7 +301,11 @@ int zcdb_builder_build(zcdb_builder_t *builder, const char *dest_db_pathname)
     zint_pack(dblen, intbuf);
     fwrite(intbuf, 1, 4, fp);
 
+    fseek(fp, 20, SEEK_SET);
+    zint_pack(val_length, intbuf);
+    fwrite(intbuf, 1, 4, fp);
     fflush(fp);
+
     if (ferror(fp)) {
         fclose(fp);
         return -1;
