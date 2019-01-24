@@ -71,6 +71,9 @@ typedef struct zurl_t zurl_t;
 typedef struct zhttpd_uploaded_file_t zhttpd_uploaded_file_t;
 typedef struct zhttpd_t zhttpd_t;
 typedef struct zsqlite3_proxy_client_t zsqlite3_proxy_client_t;
+typedef struct zcdb_t zcdb_t;
+typedef struct zcdb_walker_t zcdb_walker_t;
+typedef struct zcdb_builder_t zcdb_builder_t;
 
 #define zinline inline __attribute__((always_inline))
 
@@ -96,6 +99,69 @@ union ztype_convert_t {
 #define ZSTR_CASE_EQ(a, b)            ((ztoupper(a[0]) == ztoupper(b[0])) && (!strcasecmp(a,b)))
 #define ZSTR_N_EQ(a, b, n)            ((a[0] == b[0]) && (!strncmp(a,b,n)))
 #define ZSTR_EQ(a, b)                 ((a[0] == b[0]) && (!strcmp(a,b)))
+
+/* inline ######################################################### */
+zinline unsigned int zint_unpack(const void *buf)
+{
+    unsigned char *p = (unsigned char *)buf;
+    unsigned int n = p[0];
+    n <<= 8; n |= p[1];
+    n <<= 8; n |= p[2];
+    n <<= 8; n |= p[3];
+    return n;
+}
+
+zinline void zint_pack(unsigned int num, void *buf)
+{
+    unsigned char *p = (unsigned char *)buf;
+    p[3] = num & 255;
+    num >>= 8; p[2] = num & 255;
+    num >>= 8; p[1] = num & 255;
+    num >>= 8; p[0] = num & 255;
+}
+
+zinline unsigned int zint_unpack3(const void *buf)
+{
+    unsigned char *p = (unsigned char *)buf;
+    unsigned int n = p[0];
+    n <<= 8; n |= p[1];
+    n <<= 8; n |= p[2];
+    return n;
+}
+
+zinline void zint_pack3(unsigned int num, void *buf)
+{
+    unsigned char *p = (unsigned char *)buf;
+    p[2] = num & 255;
+    num >>= 8; p[1] = num & 255;
+    num >>= 8; p[0] = num & 255;
+}
+
+zinline unsigned int zint_unpack2(const void *buf)
+{
+    unsigned char *p = (unsigned char *)buf;
+    unsigned int n = p[0];
+    n <<= 8; n |= p[1];
+    return n;
+}
+
+zinline void zint_pack2(unsigned int num, void *buf)
+{
+    unsigned char *p = (unsigned char *)buf;
+    p[1] = num & 255;
+    num >>= 8; p[0] = num & 255;
+}
+
+zinline unsigned zhash_djb(const void *buf, int len)
+{
+    register const unsigned char *p = (const unsigned char *)buf;
+    register const unsigned char *end = p + len;
+    register unsigned hash = 5381;	/* start value */
+    while (p < end) {
+        hash = (hash + (hash << 5)) ^ *p++;
+    }
+    return hash;
+}
 
 /* log ############################################################ */
 extern int zvar_log_fatal_catch;  /*= 0; */
@@ -668,19 +734,19 @@ void zconfig_load_annother(zconfig_t *cf, zconfig_t *another);
 
 /* config value */
 typedef struct {
-    char *name;
-    char *defval;
-    char **target;
+    const char *name;
+    const char *defval;
+    const char **target;
 } zconfig_str_table_t;
 typedef struct {
-    char *name;
+    const char *name;
     int defval;
     int *target;
     int min;
     int max;
 } zconfig_int_table_t;
 typedef struct {
-    char *name;
+    const char *name;
     long defval;
     long *target;
     long min;
@@ -1469,6 +1535,26 @@ int zsqlite3_proxy_client_query(zsqlite3_proxy_client_t *client, const char *sql
 int zsqlite3_proxy_client_get_row(zsqlite3_proxy_client_t *client, zbuf_t ***rows);
 int zsqlite3_proxy_client_get_column(zsqlite3_proxy_client_t *client);
 const char *zsqlite3_proxy_client_get_error_msg(zsqlite3_proxy_client_t *client);
+
+/* cdb ################################################################ */
+#define zvar_cdb_code_version "0001"
+zcdb_t *zcdb_open(const char *cdb_pathname);
+zcdb_t *zcdb_open2(const char *cdb_pathname, zbuf_t *error_msg);
+int zcdb_get_count(zcdb_t *cdb);
+/* -1:出错, 0: 没找到, 1: 找到. 线程安全 */
+int zcdb_find(zcdb_t *cdb, const void *key, int klen, const void **val, int *vlen);
+void zcdb_close(zcdb_t *cdb);
+
+zcdb_walker_t *zcdb_walker_create(zcdb_t *cdb);
+/* -1:出错, 0: 没找到, 1: 找到. 非线程安全 */
+int zcdb_walker_walk(zcdb_walker_t *walker, const void **key, int *klen, const void **val, int *vlen);
+void zcdb_walker_reset(zcdb_walker_t *walker);
+void zcdb_walker_free(zcdb_walker_t *walker);
+
+zcdb_builder_t *zcdb_builder_create();
+void zcdb_builder_update(zcdb_builder_t *builder, const void *key, int klen, const void *val, int vlen);
+int zcdb_builder_build(zcdb_builder_t *builder, const char *dest_db_pathname);
+void zcdb_builder_free(zcdb_builder_t *builder);
 
 /* END ################################################################ */
 #ifdef ZC_NAMESAPCE_NO_MALLOC
