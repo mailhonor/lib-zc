@@ -6,6 +6,7 @@ include makefiles/defined.include
 CC=gcc
 
 CFLAGS= -std=gnu11 -Wall -Winline -I./ -O3 -g -ggdb $(EXTRA_MODULES)
+CFLAGS= -std=gnu99 -Wall -Winline -I./ -O3 -g -ggdb $(EXTRA_MODULES)
 
 SRCS=${shell find src -type f -name "*.c"}
 

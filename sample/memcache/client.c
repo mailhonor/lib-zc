@@ -16,7 +16,7 @@ int main(int argc, char **argv)
     int flag;
     char *server;
 
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
     str = zbuf_create(1024);
     server = zconfig_get_str(zvar_default_config, "sever", "127.0.0.1:11211");
     do {
@@ -55,7 +55,7 @@ int main(int argc, char **argv)
         printf("zmemcache_client_version %s\n", zbuf_data(str));
 
     } while(0);
-    printf("USAGE: %s [ -server 127.0.0.1:6379 ]\n", argv[0]);
+    printf("USAGE: %s [ -O server 127.0.0.1:6379 ]\n", argv[0]);
     zbuf_free(str);
     if (mc) {
         zmemcache_client_disconnect(mc);

@@ -29,12 +29,12 @@ static void show_decoded_line_utf8(zbuf_t *line)
 
 int main(int argc, char **argv)
 {
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
     char *fn;
-    if (zvar_main_parameter_argc==0) {
+    if (zvar_main_redundant_argc==0) {
         usage();
     }
-    fn = zvar_main_parameter_argv[0];
+    fn = zvar_main_redundant_argv[0];
     default_charset = zconfig_get_str(zvar_default_config, "default-charset", "gb18030");
     result = zbuf_create(0);
     mime_header_line_walk_test(fn, show_decoded_line_utf8);

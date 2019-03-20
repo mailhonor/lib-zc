@@ -10,7 +10,7 @@
 
 int main(int argc, char **argv)
 {
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
     zstream_t *fp = zstream_open_file("./dd", "w+");
     if (!fp) {
         printf("ERR can not open dd(%m)\n");

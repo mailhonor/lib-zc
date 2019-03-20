@@ -175,7 +175,6 @@ static zbool_t zmail_decode_mime_read_header_line(zmail_t *parser, mail_parser_c
                 pmime->child_tail = cmime;
             }
         }
-        
         return 0;
     }
     if (safe_llen > zvar_mime_header_line_max_length) {
@@ -281,7 +280,6 @@ static mail_parser_context_t *zmail_decode_mime_prepare_context(zmail_t *parser)
 
     ctx->bls_idx = 0;
     ctx->bls_len = zmail_decode_mime_get_all_boundary(parser, &(ctx->bls_ptr));
-
     ctx->part_mail_data = parser->mail_data;
     ctx->part_mail_size = parser->mail_size;
 
@@ -322,12 +320,13 @@ int zmail_decode_mime_inner(zmail_t * parser)
         }
         if (cnode->bls_len == 0) {
             ctx->bls_idx = -1;
-            ctx->bls_idx = 0;
+            ctx->bls_len = 0;
             ctx->part_mail_data = parser->mail_data+cmime->body_offset;
             ctx->part_mail_size = cmime->body_len;
             zmail_decode_mime_prepare_node(parser, ctx);
             continue;
         }
+
         boundary_line_t *bls, *bls1, *bls2;
         bls1 = 0;
         bls2 = 0;
@@ -343,11 +342,12 @@ int zmail_decode_mime_inner(zmail_t * parser)
             bls1 = bls2;
             bls2 = bls;
             if (bls1 && bls2) {
-                int i1 = (bls1 - ctx->bls_ptr)/sizeof(boundary_line_t)+1;
-                int i2 = (bls2-bls1)/sizeof(boundary_line_t)-1;
+                int i1 = (bls1 - ctx->bls_ptr) + 1;
+                int i2 = (bls2 - ctx->bls_ptr);
+
                 if (i1 <= i2){
                     ctx->bls_idx= i1;
-                    ctx->bls_len = i2-i1 + 1;
+                    ctx->bls_len = i2 - i1 + 1;
                 } else {
                     ctx->bls_idx= -1;
                     ctx->bls_len = 0;
@@ -368,7 +368,7 @@ int zmail_decode_mime_inner(zmail_t * parser)
             }
         }
         ctx->bls_idx = -1;
-        ctx->bls_idx = 0;
+        ctx->bls_len = 0;
         ctx->part_mail_data = parser->mail_data + bls2->part_offset;
         ctx->part_mail_size = cnode->mail_data + cnode->mail_size - (parser->mail_data + bls2->part_offset);
         zmail_decode_mime_prepare_node(parser, ctx);

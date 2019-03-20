@@ -95,16 +95,9 @@ static int zrobust_syscall_close(int fd) {
 /* }}} */
 extern pthread_mutex_t *zvar_general_pthread_mutex;
 
-static int zvar_coroutine_block_pthread_count_limit = 0;
-static int zvar_coroutine_fileio_use_block_pthread = 0;
-void zcoroutine_set_block_pthread_limit(size_t limit) 
-{
-    zvar_coroutine_block_pthread_count_limit = (int)limit;
-}
-void zcoroutine_set_fileio_use_block_pthread(int r) 
-{
-    zvar_coroutine_fileio_use_block_pthread = r;
-}
+int zvar_coroutine_block_pthread_count_limit = 0;
+zbool_t zvar_coroutine_fileio_use_block_pthread = 0;
+
 static int zvar_coroutine_block_pthread_count_current = 0;
 
 static void *zcoroutine_hook_fileio_worker(void *arg);
@@ -504,20 +497,16 @@ static int zcoroutine_start_wrap(zcoroutine_t *co, void *unused)
 static int base_count = 0;
 void zcoroutine_base_init()
 {
+    pthread_mutex_lock(zvar_general_pthread_mutex);
+    zvar_coroutine_mode_flag = 1;
     if (zcoroutine_fd_attribute_vec == 0) {
-        pthread_mutex_lock(zvar_general_pthread_mutex);
-        if (zcoroutine_fd_attribute_vec == 0) {
-            zcoroutine_fd_attribute_vec = (zcoroutine_fd_attribute **)zcalloc(zvar_max_fd + 1, sizeof(void *));
-            zvar_coroutine_mode_flag = 1;
-        }
-        pthread_mutex_unlock(zvar_general_pthread_mutex);
+        zcoroutine_fd_attribute_vec = (zcoroutine_fd_attribute **)zcalloc(zvar_max_fd + 1, sizeof(void *));
     }
     if (zvar_coroutine_base_per_pthread == 0) {
         zcoroutine_base_create();
-        pthread_mutex_lock(zvar_general_pthread_mutex);
         base_count++;
-        pthread_mutex_unlock(zvar_general_pthread_mutex);
     }
+    pthread_mutex_unlock(zvar_general_pthread_mutex);
 }
 
 void zcoroutine_base_fini()
@@ -525,6 +514,7 @@ void zcoroutine_base_fini()
     if (zcoroutine_fd_attribute_vec == 0) {
         return;
     }
+    pthread_mutex_lock(zvar_general_pthread_mutex);
     zcoroutine_base_t *cobs = zvar_coroutine_base_per_pthread;
     if (cobs) {
         if (cobs->deleted_coroutine_head) {
@@ -535,14 +525,14 @@ void zcoroutine_base_fini()
         zrobust_syscall_close(cobs->event_fd);
         zfree(cobs);
         zvar_coroutine_base_per_pthread = 0;
-        pthread_mutex_lock(zvar_general_pthread_mutex);
         base_count--;
         if (base_count == 0) {
             zfree(zcoroutine_fd_attribute_vec);
             zcoroutine_fd_attribute_vec = 0;
+            zvar_coroutine_mode_flag = 0;
         }
-        pthread_mutex_unlock(zvar_general_pthread_mutex);
     }
+    pthread_mutex_unlock(zvar_general_pthread_mutex);
 }
 
 void zcoroutine_go(void *(*start_job)(void *ctx), void *ctx, int stack_size)

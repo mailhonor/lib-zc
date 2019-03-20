@@ -35,15 +35,15 @@ struct fd_to_fd_linker
 static void ___usage(char *parameter)
 {
 
-    printf("USAGE: %s -proxy host:port -dest host:port\n", zvar_progname);
-    printf("USAGE: %s -proxy host:port -ssl-dest host:port\n", zvar_progname);
-    printf("USAGE: %s -ssl-proxy host:port -dest host:port --ssl-cert filename -ssl-key filename\n", zvar_progname);
+    printf("USAGE: %s -O -proxy host:port -O -dest host:port\n", zvar_progname);
+    printf("USAGE: %s -O -proxy host:port -O -ssl-dest host:port\n", zvar_progname);
+    printf("USAGE: %s -O -ssl-proxy host:port -O -dest host:port -O -ssl-cert filename -O -ssl-key filename\n", zvar_progname);
     exit(1);
 }
 
 static void parameters_do(int argc, char **argv)
 {
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
 
     proxy_address = zconfig_get_str(zvar_default_config, "proxy", 0);
     if (zempty(proxy_address)) {

@@ -23,16 +23,16 @@ static void test(const char *src, int len)
 
 int main(int argc, char **argv)
 {
-    zmain_parameter_run(argc, argv);
-    if (zvar_main_parameter_argc < 1 ) {
+    zmain_argument_run(argc, argv, 0);
+    if (zvar_main_redundant_argc < 1 ) {
         const char *s =  "{\"errcode\": \"-801\", \"errmsg\": \"Domain Not Exist\"}\r\n";
         test(s, strlen(s));
         printf("USAGE: %s json_filename\n", argv[0]);
         exit(1);
     }
     zmmap_reader_t fmap;
-    if (zmmap_reader_init(&fmap, zvar_main_parameter_argv[0]) < 1) {
-        printf("ERR can not open %s (%m)\n", zvar_main_parameter_argv[0]);
+    if (zmmap_reader_init(&fmap, zvar_main_redundant_argv[0]) < 1) {
+        printf("ERR can not open %s (%m)\n", zvar_main_redundant_argv[0]);
         exit(1);
     }
 

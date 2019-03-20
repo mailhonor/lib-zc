@@ -10,13 +10,13 @@
 
 int main(int argc, char **argv)
 {
-    zmain_parameter_run(argc, argv);
-    char *url_string = zconfig_get_str(zvar_default_config, "url", 0);
-    if (zempty(url_string)) {
-        printf("USAGE: %s -url http_url_string\n", argv[0]);
+    zmain_argument_run(argc, argv, 0);
+
+    if (zvar_main_redundant_argc == 0) {
+        printf("USAGE: %s http_url_string\n", argv[0]);
         exit(1);
     }
-    zurl_t * url = zurl_parse(url_string);
+    zurl_t * url = zurl_parse(zvar_main_redundant_argv[0]);
     printf("############################### url parse result:\n");
     zurl_debug_show(url);
 

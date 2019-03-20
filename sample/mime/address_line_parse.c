@@ -11,7 +11,7 @@
 
 static void usage()
 {
-    fprintf(stderr, "USAGE: %s -f header_file [ -default-charset gb18030 ]\n", zvar_progname);
+    fprintf(stderr, "USAGE: %s header_file [ -default-charset gb18030 ]\n", zvar_progname);
     exit(1);
 }
 
@@ -34,11 +34,11 @@ static void show_decoded_line_utf8(zbuf_t *line)
 
 int main(int argc, char **argv)
 {
-    zmain_parameter_run(argc, argv);
-    char *fn = zconfig_get_str(zvar_default_config, "f", 0);
-    if (zempty(fn)) {
+    zmain_argument_run(argc, argv, 0);
+    if (zvar_main_redundant_argc < 1) {
         usage();
     }
+    char *fn = zvar_main_redundant_argv[0];
     default_charset = zconfig_get_str(zvar_default_config, "default-charset", "gb18030");
     result = zbuf_create(0);
     mime_header_line_walk_test(fn, show_decoded_line_utf8);

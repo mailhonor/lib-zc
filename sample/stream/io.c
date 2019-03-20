@@ -30,7 +30,7 @@ static void  write_line_read_line(zstream_t *fp, zbuf_t *tmpline, const char *qu
 
 int main(int argc, char **argv)
 {
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
     server = zconfig_get_str(zvar_default_config, "server", 0);
     ssl_mode = zconfig_get_bool(zvar_default_config, "ssl", 0);
     tls_mode = zconfig_get_bool(zvar_default_config, "tls", 0);

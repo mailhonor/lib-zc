@@ -57,9 +57,9 @@ static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t log_cond = PTHREAD_COND_INITIALIZER;
 
 
-static void log_write_file(int fd, const char *content, size_t clen)
+static void log_write_file(int fd, const char *content, int clen)
 {
-    size_t wrotelen = 0;
+    int wrotelen = 0;
     while (clen > wrotelen) {
         int ret = write(fd, content + wrotelen, clen - wrotelen);
         if (ret >= 0) {
@@ -114,9 +114,9 @@ static void log_save_content(char *logcontent)
     if (log_fd == -1) {
         char fpath[4096];
         if (log_timeunit == 1) {
-            snprintf(fpath, 4096, "%s/%d%02d%02d.log", log_path, tm.tm_year+1900, tm.tm_mon + 1, tm.tm_mday); 
-        } else {
             snprintf(fpath, 4096, "%s/%d%02d%02d%02d.log", log_path, tm.tm_year+1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour); 
+        } else {
+            snprintf(fpath, 4096, "%s/%d%02d%02d.log", log_path, tm.tm_year+1900, tm.tm_mon + 1, tm.tm_mday); 
         }
         while (((log_fd = open(fpath, O_CREAT|O_APPEND|O_RDWR|O_CLOEXEC, 0666))==-1) && (errno == EINTR)) {
         }
@@ -598,7 +598,7 @@ static void prepare_server_by_config(zconfig_t *cf)
         server->proc_limit = 1;
     }
     server->proc_count = 0;
-    if (fn && (*fn)) {
+    if (zempty(fn)) {
         zbuf_t *kk = zbuf_create(-1);
         ZDICT_WALK_BEGIN(cf, k, v) {
             if (!strcmp(k, "server-proc-count")) {
@@ -797,7 +797,13 @@ static void init_all(int argc, char **argv)
     }
     ___init_flag = 1;
 
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
+    int sl = zconfig_get_int(zvar_default_config, "sleep", 0, 0, 1000); 
+    if (sl > 0) {
+        zsleep_millisecond(sl);
+        exit(0);
+    }
+
     zvar_master_server_dev_mode = zconfig_get_bool(zvar_default_config, "dev-mode", zvar_master_server_dev_mode);
     zvar_master_server_log_debug_enable = zconfig_get_bool(zvar_default_config, "DEBUG", zvar_master_server_log_debug_enable);
     try_lock = zconfig_get_bool(zvar_default_config, "try-lock", 0); 
@@ -857,7 +863,9 @@ static void init_all(int argc, char **argv)
     zclose_on_exec(master_status_fd[0], 1);
 
     /* SELF LOG */
-    zmaster_log_use_inner(argv[0], zconfig_get_str(zvar_default_config, "server-log", 0));
+    if (zconfig_get_bool(zvar_default_config, "dev-mode", 0) == 0) {
+        zmaster_log_use_inner(argv[0], zconfig_get_str(zvar_default_config, "server-log", 0));
+    }
 }
 
 static void fini_all()
@@ -886,15 +894,12 @@ static void fini_all()
     zevent_base_free(zvar_default_event_base);
 }
 
-void zmaster_server_main(int argc, char **argv)
+int zmaster_server_main(int argc, char **argv)
 {
     init_all(argc, argv);
     reload_server();
     sighup_reload_on = 0;
     while (1) {
-        if (zvar_proc_stop) {
-            break;
-        }
         if (zvar_proc_stop) {
             break;
         }
@@ -912,6 +917,8 @@ void zmaster_server_main(int argc, char **argv)
         start_all_child();
     }
     fini_all();
+
+    return 0;
 }
 
 void zmaster_server_load_config_from_dirname(const char *config_path, zvector_t *cfs)

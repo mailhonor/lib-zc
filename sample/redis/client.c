@@ -63,7 +63,7 @@ static void _test_test(zredis_client_t *rc, const char *cmd, int cmd_ret, size_t
 
 int main(int argc, char **argv)
 {
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
     zredis_client_t *rc;
     char *server = zconfig_get_str(zvar_default_config, "server", "127.0.0.1:6379");
     int ex = zconfig_get_bool(zvar_default_config, "cluster", 0);
@@ -84,8 +84,8 @@ int main(int argc, char **argv)
         goto over;
     }
 
-    if (zvar_main_parameter_argc > 0 ) {
-        _test___json(zredis_client_get_json(rc, jval, "P", zvar_main_parameter_argv));
+    if (zvar_main_redundant_argc > 0 ) {
+        _test___json(zredis_client_get_json(rc, jval, "P", zvar_main_redundant_argv));
         goto over;
     }
 

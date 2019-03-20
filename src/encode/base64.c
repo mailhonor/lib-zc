@@ -46,7 +46,7 @@ static const unsigned char b64dec[256] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 };
 
-int zbase64_encode(const void *src, int src_size, zbuf_t *str, int mime_flag)
+void zbase64_encode(const void *src, int src_size, zbuf_t *str, int mime_flag)
 {
     unsigned char *src_c = (unsigned char *)src;
     char tmp[5]= {0,0,0,0,0};
@@ -90,18 +90,19 @@ int zbase64_encode(const void *src, int src_size, zbuf_t *str, int mime_flag)
             }
         }
     }
-
-    return zbuf_len(str);
+    zbuf_terminate(str);
 }
 
-int zbase64_decode(const void *src, int src_size, zbuf_t *str, int *dealed_size)
+void zbase64_decode(const void *src, int src_size, zbuf_t *str, int *dealed_size)
 {
     unsigned char *src_c = (unsigned char *)src;
     int src_pos = 0;
     unsigned char input[4], output[3];
     int ret = -1;
     unsigned char c0, c1, c2, c3;
+#if 0
     int illegal = 0;
+#endif
     int missing = 0;
     int dealed_size2 = 0;
 
@@ -110,7 +111,8 @@ int zbase64_decode(const void *src, int src_size, zbuf_t *str, int *dealed_size)
     c0123 = src_c[src_pos++]; \
     if(c0123==' ' || c0123 =='\r' || c0123 == '\n'){ continue; } \
     break; \
-}
+    }
+
 
     if (dealed_size) {
         *dealed_size = 0;
@@ -136,13 +138,17 @@ retry:
         }
         input[0] = b64dec[c0];
         if (input[0] == 0xff) {
+#if 0
             illegal = 1;
+#endif
             break;
         }
 
         input[1] = b64dec[c1];
         if (input[1] == 0xff) {
+#if 0
             illegal = 1;
+#endif
             break;
         }
         output[0] = (input[0] << 2) | (input[1] >> 4);
@@ -150,7 +156,9 @@ retry:
         input[2] = b64dec[c2];
         if (input[2] == 0xff) {
             if (c2 != '=' || c3 != '=') {
+#if 0
                 illegal = 1;
+#endif
                 break;
             }
             ZBUF_PUT(str, output[0]);
@@ -162,7 +170,9 @@ retry:
         input[3] = b64dec[c3];
         if (input[3] == 0xff) {
             if (c3 != '=') {
+#if 0
                 illegal = 1;
+#endif
                 break;
             }
             ZBUF_PUT(str, output[0]);
@@ -180,13 +190,9 @@ retry:
     if (ret == 1) {
         goto retry;
     }
-
 over:
-    if (illegal) {
-        return -1;
-    }
-
-    return zbuf_len(str);
+    zbuf_terminate(str);
+    return;
 }
 
 int zbase64_decode_get_valid_len(const void *src, int src_size)

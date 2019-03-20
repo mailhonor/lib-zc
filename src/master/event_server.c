@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <sys/prctl.h>
 
 void (*zevent_server_service_register) (const char *service, int fd, int fd_type) = 0;
 void (*zevent_server_before_service) (void) = 0;
@@ -23,6 +24,7 @@ void (*zevent_server_before_exit) (void) = 0;
 
 static zbool_t flag_run = 0;
 static zbool_t flag_stop = 0;
+static zbool_t flag_reload = 0;
 static char *stop_file = 0;
 static pid_t parent_pid = 0;
 static zeio_t *ev_status = 0;
@@ -32,6 +34,11 @@ static zetimer_t *stop_timer = 0;
 static zetimer_t *exit_after_timer = 0;
 
 static void sigterm_handler(int sig)
+{
+    zvar_proc_stop = 1;
+}
+
+static void sighup_handler(int sig)
 {
     zvar_proc_stop = 1;
 }
@@ -59,6 +66,7 @@ static void exit_after_check(zetimer_t *tm)
 
 static void on_master_reload(zeio_t *ev)
 {
+    flag_reload = 1;
     if (zevent_server_before_reload) {
         stop_timer = zetimer_create(zvar_default_event_base);
         zetimer_start(stop_timer, stop_now, 100);
@@ -74,6 +82,11 @@ static void ___inet_server_accept(zeio_t *ev)
 {
     int fd, listen_fd = zeio_get_fd(ev);
     void (*cb)(int) = (void(*)(int))zeio_get_context(ev);
+
+    if (flag_reload) {
+        zeio_free(ev, 0);
+        return;
+    }
 
     fd = zinet_accept(listen_fd);
     if (fd < 0) {
@@ -96,6 +109,11 @@ static void ___unix_server_accept(zeio_t *ev)
     int fd, listen_fd = zeio_get_fd(ev);
     void (*cb)(int) = (void(*)(int))zeio_get_context(ev);
 
+    if (flag_reload) {
+        zeio_free(ev, 0);
+        return;
+    }
+
     fd = zunix_accept(listen_fd);
     if (fd < 0) {
         int ec = errno;
@@ -116,6 +134,12 @@ static void ___fifo_server_accept(zeio_t *ev)
 {
     int listen_fd = zeio_get_fd(ev);
     void (*cb)(int) = (void(*)(int))zeio_get_context(ev);
+
+    if (flag_reload) {
+        zeio_free(ev, 0);
+        return;
+    }
+
     cb(listen_fd);
 }
 
@@ -218,6 +242,8 @@ static void zevent_server_init(int argc, char **argv)
 
     signal(SIGPIPE, SIG_IGN);
     signal(SIGTERM, sigterm_handler);
+    signal(SIGHUP, sighup_handler);
+    prctl(PR_SET_PDEATHSIG, SIGHUP);
     parent_pid = getppid();
 
     if (parent_pid == 1) {
@@ -229,7 +255,7 @@ static void zevent_server_init(int argc, char **argv)
     }
     char *attr;
 
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
 
     zvar_default_event_base = zevent_base_create();
 
@@ -244,7 +270,9 @@ static void zevent_server_init(int argc, char **argv)
 
     stop_file = zconfig_get_str(zvar_default_config, "stop-file", "");
 
-    zmaster_log_use_inner(argv[0], zconfig_get_str(zvar_default_config, "server-log", ""));
+    if (zconfig_get_bool(zvar_default_config, "dev-mode", 0) == 0) {
+        zmaster_log_use_inner(argv[0], zconfig_get_str(zvar_default_config, "server-log", ""));
+    }
 
     if (zconfig_get_bool(zvar_default_config, "MASTER", 0)) {
         zclose_on_exec(zvar_master_server_status_fd, 1);
@@ -316,6 +344,7 @@ static void zevent_server_fini()
 int zevent_server_main(int argc, char **argv)
 {
     zevent_server_init(argc, argv);
+    int loop = 0;
     while (1) {
         if (zvar_proc_stop || flag_stop) {
             break;
@@ -326,8 +355,11 @@ int zevent_server_main(int argc, char **argv)
         if (zvar_proc_stop || flag_stop) {
             break;
         }
-        if (getppid() != parent_pid) {
-            break;
+        if (loop++ == 10) {
+            if (getppid() != parent_pid) {
+                break;
+            }
+            loop = 0;
         }
     }
     zevent_server_fini();

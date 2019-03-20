@@ -44,6 +44,8 @@ typedef struct zlist_t zlist_t;
 typedef struct zlist_node_t zlist_node_t;
 typedef struct zrbtree_node_t zrbtree_node_t;
 typedef struct zrbtree_t zrbtree_t;
+typedef struct zdictlong_node_t zdictlong_node_t;
+typedef struct zdictlong_t zdictlong_t;
 typedef struct zdict_node_t zdict_node_t;
 typedef struct zdict_t zdict_t;
 typedef struct zmap_node_t zmap_node_t;
@@ -163,6 +165,16 @@ zinline unsigned zhash_djb(const void *buf, int len)
     return hash;
 }
 
+zinline unsigned zhash_djb_with_initial(const void *buf, int len, unsigned int initial)
+{
+    register const unsigned char *p = (const unsigned char *)buf;
+    register const unsigned char *end = p + len;
+    register unsigned hash = initial;  /* start value */
+    while (p < end) {
+        hash = (hash + (hash << 5)) ^ *p++;
+    }
+    return hash;
+}
 /* log ############################################################ */
 extern int zvar_log_fatal_catch;  /*= 0; */
 extern int zvar_log_debug_enable; /*= 0; */
@@ -617,6 +629,47 @@ zinline zbuf_t *zdict_value(const zdict_node_t *node) { return &(((zdict_node_t*
     for(var_your_node = zdict_first(dict); var_your_node; var_your_node = zdict_next(var_your_node)) {
 #define ZDICT_NODE_WALK_END    }}
 
+/* dictlong ############################################################ */
+struct zdictlong_t {
+    zrbtree_t rbtree;
+    int len;
+};
+struct zdictlong_node_t {
+    zrbtree_node_t rbnode;
+    long value;
+    char *key;
+};
+zdictlong_t *zdictlong_create(void);
+void zdictlong_free(zdictlong_t *dictlong);
+void zdictlong_reset(zdictlong_t *dictlong);
+zdictlong_node_t *zdictlong_update(zdictlong_t *dictlong, const char *key, long value);
+zdictlong_node_t *zdictlong_find(const zdictlong_t *dictlong, const char *key, long *value);
+zdictlong_node_t *zdictlong_find_near_prev(const zdictlong_t *dictlong, const char *key, long *value);
+zdictlong_node_t *zdictlong_find_near_next(const zdictlong_t *dictlong, const char *key, long *value);
+void zdictlong_delete_node(zdictlong_t *dictlong, zdictlong_node_t *n);
+zdictlong_node_t *zdictlong_first(const zdictlong_t *dictlong);
+zdictlong_node_t *zdictlong_last(const zdictlong_t *dictlong);
+zdictlong_node_t *zdictlong_prev(const zdictlong_node_t *node);
+zdictlong_node_t *zdictlong_next(const zdictlong_node_t *node);
+void zdictlong_debug_show(const zdictlong_t *dictlong);
+zinline int zdictlong_len(const zdictlong_t *dictlong) { return dictlong->len; }
+zinline char *zdictlong_key(const zdictlong_node_t *node) { return node->key; }
+zinline long zdictlong_value(const zdictlong_node_t *node) { return ((zdictlong_node_t*)node)->value; }
+#define zdictlong_len(dictlong)             ((dictlong)->len)
+#define zdictlong_node_key(n)               ((n)->key)
+#define zdictlong_node_value(n)             ((n)->value)
+#define zdictlong_node_set_value(n, v)      ((n)->value=(v))
+#define ZDICTLONG_WALK_BEGIN(dictlong, var_your_key, var_your_value)  { \
+    zdictlong_node_t *var_your_node; char *var_your_key; long var_your_value; \
+    for(var_your_node = zdictlong_first(dictlong); var_your_node; var_your_node = zdictlong_next(var_your_node)) { \
+        var_your_key=var_your_node->key; var_your_value=var_your_node->value; {
+#define ZDICTLONG_WALK_END    }}}
+
+#define ZDICTLONG_NODE_WALK_BEGIN(dictlong, var_your_node)  { \
+    zdictlong_node_t *var_your_node; \
+    for(var_your_node = zdictlong_first(dictlong); var_your_node; var_your_node = zdictlong_next(var_your_node)) {
+#define ZDICTLONG_NODE_WALK_END    }}
+
 /* map ############################################################## */
 struct zmap_t {
     zrbtree_t rbtree;
@@ -695,21 +748,22 @@ void *zmpool_memdupnull(zmpool_t * mp, const void *ptr, int n);
 void zmpool_reset(zmpool_t * mp);
 
 /* encode/decode ################################################### */
-int zbase64_encode(const void *src, int src_size, zbuf_t *str, int mime_flag);
-int zbase64_decode(const void *src, int src_size, zbuf_t *str, int *dealed_size);
+void zbase64_encode(const void *src, int src_size, zbuf_t *str, int mime_flag);
+void zbase64_decode(const void *src, int src_size, zbuf_t *str, int *dealed_size);
 int zbase64_decode_get_valid_len(const void *src, int src_size);
 int zbase64_encode_get_min_len(int in_len, int mime_flag);
 
-int zqp_decode_2045(const void *src, int src_size, zbuf_t *str);
-int zqp_decode_2047(const void *src, int src_size, zbuf_t *str);
+void zqp_decode_2045(const void *src, int src_size, zbuf_t *str);
+void zqp_decode_2047(const void *src, int src_size, zbuf_t *str);
 int zqp_decode_get_valid_len(const void *src, int src_size);
 
 extern char zhex_to_dec_table[];
-int zhex_encode(const void *src, int src_size, zbuf_t *dest);
-int zhex_decode(const void *src, int src_size, zbuf_t *dest);
-int zurl_hex_decode(const void *src, int src_size, zbuf_t *str);
+void zhex_encode(const void *src, int src_size, zbuf_t *dest);
+void zhex_decode(const void *src, int src_size, zbuf_t *dest);
+void zurl_hex_decode(const void *src, int src_size, zbuf_t *str);
 void zurl_hex_encode(const void *src, int src_size, zbuf_t *str, int strict_flag);
 
+/* 返回写入 wchar 的长度 */
 int zncr_decode(int ins, char *wchar);
 
 /* crc ############################################################# */
@@ -927,6 +981,8 @@ int ztimeout_left(long stamp);
 /* date ############################################################# */
 #define zvar_rfc1123_date_string_size 32
 char *zbuild_rfc1123_date_string(long t, char *buf);
+#define zvar_rfc822_date_string_size 38
+char *zbuild_rfc822_date_string(long t, char *buf);
 
 /* dns ############################################################## */
 int zget_localaddr(zargv_t *addrs);
@@ -978,9 +1034,10 @@ extern int zvar_proc_stop;
 extern int zvar_test_mode;
 extern int zvar_max_fd;
 
-extern char **zvar_main_parameter_argv;
-extern int zvar_main_parameter_argc;
-void zmain_parameter_run(int argc, char **argv);
+extern char **zvar_main_redundant_argv;
+extern int zvar_main_redundant_argc;
+void zmain_argument_run(int argc, char **argv, unsigned int (*self_argument_fn)(int argc, char **argv, int offset));
+
 /* not thread-safe */
 void zinner_atexit(void (*function)(void));
 
@@ -1094,10 +1151,11 @@ void zcoroutine_cond_signal(zcoroutine_cond_t *);
 void zcoroutine_cond_broadcast(zcoroutine_cond_t *);
 
 /* 启用limit个线程池, 用于文件io,和 block_do */
-void zcoroutine_set_block_pthread_limit(size_t limit);
+extern int zvar_coroutine_block_pthread_count_limit;
+/* 文件io是否用线程池模式, 前提是 zvar_coroutine_block_pthread_count_limit > 0 */
+extern zbool_t zvar_coroutine_fileio_use_block_pthread;
+/* 如果zvar_coroutine_block_pthread_count_limit > 0, 则 block_func(ctx) 在线程池执行, 否则本线程直接执行 */
 void *coroutine_block_do(void *(*block_func)(void *ctx), void *ctx);
-/* 文件io是否用线程池模式, 前提是 zcoroutine_set_block_pthread_limit(limit>0) */
-void zcoroutine_set_fileio_use_block_pthread(int flag);
 
 void zcoroutine_go_iopipe(int fd1, SSL *ssl1, int fd2, SSL *ssl2, void (*after_close)(void *ctx), void *ctx);
 
@@ -1110,7 +1168,7 @@ extern void (*zmaster_server_load_config)(zvector_t *cfs);
 extern void (*zmaster_server_before_service)();
 
 void zmaster_server_load_config_from_dirname(const char *config_dir_pathname, zvector_t *cfs);
-void zmaster_server_main(int argc, char **argv);
+int zmaster_server_main(int argc, char **argv);
 
 /* master_event_server */
 extern void (*zevent_server_service_register) (const char *service, int fd, int fd_type);
@@ -1132,6 +1190,16 @@ void zcoroutine_server_stop_notify(void);
 int zcoroutine_server_main(int argc, char **argv);
 
 /* charset ############################################################ */
+#ifdef ZC_USE_LIBICONV
+#include <iconv.h>
+typeof(iconv) libiconv;
+typeof(iconv_open) libiconv_open;
+typeof(iconv_close) libiconv_close;
+iconv_t iconv_open(const char *t, const char *f) { return libiconv_open(t, f); }
+size_t iconv(iconv_t cd, char **a, size_t *b, char **c, size_t *d) { return libiconv(cd, a, b, c, d); }
+int iconv_close(iconv_t cd) { return libiconv_close(cd); }
+#endif
+
 #define zvar_charset_name_max_size          32
 extern int zvar_charset_debug;
 extern const char *zvar_charset_chinese[];
@@ -1445,6 +1513,8 @@ zhttpd_t *zhttpd_open_ssl(SSL *ssl);
 void zhttpd_close(zhttpd_t *httpd, zbool_t close_fd_and_release_ssl);
 void zhttpd_run(zhttpd_t *httpd);
 void zhttpd_set_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
+void zhttpd_set_context(zhttpd_t *httpd, const void *context);
+void *zhttpd_get_context(zhttpd_t *httpd);
 
 /* set attribute */
 void zhttps_set_exception(zhttpd_t *httpd);
@@ -1542,12 +1612,12 @@ zcdb_t *zcdb_open(const char *cdb_pathname);
 zcdb_t *zcdb_open2(const char *cdb_pathname, zbuf_t *error_msg);
 int zcdb_get_count(zcdb_t *cdb);
 /* -1:出错, 0: 没找到, 1: 找到. 线程安全 */
-int zcdb_find(zcdb_t *cdb, const void *key, int klen, const void **val, int *vlen);
+int zcdb_find(zcdb_t *cdb, const void *key, int klen, void **val, int *vlen);
 void zcdb_close(zcdb_t *cdb);
 
 zcdb_walker_t *zcdb_walker_create(zcdb_t *cdb);
 /* -1:出错, 0: 没找到, 1: 找到. 非线程安全 */
-int zcdb_walker_walk(zcdb_walker_t *walker, const void **key, int *klen, const void **val, int *vlen);
+int zcdb_walker_walk(zcdb_walker_t *walker, void **key, int *klen, void **val, int *vlen);
 void zcdb_walker_reset(zcdb_walker_t *walker);
 void zcdb_walker_free(zcdb_walker_t *walker);
 

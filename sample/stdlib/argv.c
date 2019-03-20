@@ -37,6 +37,19 @@ static void test_split(void)
     zargv_split_append(ar, original, "et");
     zargv_debug_show(ar);
     zargv_free(ar);
+
+    zinfo("==========");
+    ar = zargv_create(1);
+    zargv_split_append(ar, original, "XXX");
+    zargv_debug_show(ar);
+    zargv_free(ar);
+
+    zinfo("==========");
+    ar = zargv_create(1);
+    zargv_split_append(ar, "", "et");
+    zargv_debug_show(ar);
+    printf("count:%d\n", zargv_len(ar));
+    zargv_free(ar);
 }
 
 int main(int argc, char **argv)

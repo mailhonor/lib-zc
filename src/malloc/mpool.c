@@ -70,7 +70,11 @@ void *zmpool_strdup(zmpool_t * mp, const char *ptr)
     int len;
     char *r;
 
-    len = strlen(ptr);
+    if (ptr) {
+        len = strlen(ptr);
+    } else {
+        len = 0;
+    }
     r = (char *)zmpool_malloc(mp, len + 1);
     if (len > 0) {
         memcpy(r, ptr, len);

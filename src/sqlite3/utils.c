@@ -10,7 +10,7 @@
 
 zbuf_t *zsqlite3_escape_append(zbuf_t *sql, const void *data, int size)
 {
-    size_t i;
+    int i;
     const char *s = (const char *)data;
     if (size < 0) {
         size = strlen(s);

@@ -108,15 +108,15 @@ static void do_parse(char *eml_fn)
 
 int main(int argc, char **argv)
 {
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
     enable_att = zconfig_get_bool(zvar_default_config, "att", 0);
 
-    if (zvar_main_parameter_argc == 0) {
+    if (zvar_main_redundant_argc == 0) {
         printf("USAGE: %s [--att] eml_fn...\n", zvar_progname);
         exit(0);
     }
-    for (int i = 0; i < zvar_main_parameter_argc; i++) {
-        do_parse(zvar_main_parameter_argv[i]);
+    for (int i = 0; i < zvar_main_redundant_argc; i++) {
+        do_parse(zvar_main_redundant_argv[i]);
     }
 
     return 0;

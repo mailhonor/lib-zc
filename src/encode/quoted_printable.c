@@ -17,7 +17,7 @@
     break; \
 }
 
-int zqp_decode_2045(const void *src, int src_size, zbuf_t *str)
+void zqp_decode_2045(const void *src, int src_size, zbuf_t *str)
 {
     unsigned char *src_c = (unsigned char *)src;
     int src_pos = 0;
@@ -45,12 +45,12 @@ int zqp_decode_2045(const void *src, int src_size, zbuf_t *str)
 append:
         ZBUF_PUT(str, addch);
     }
-over:
 
-    return zbuf_len(str);
+over:
+    zbuf_terminate(str);
 }
 
-int zqp_decode_2047(const void *src, int src_size, zbuf_t *str)
+void zqp_decode_2047(const void *src, int src_size, zbuf_t *str)
 {
     unsigned char *src_c = (unsigned char *)src;
     int src_pos = 0;
@@ -72,8 +72,9 @@ int zqp_decode_2047(const void *src, int src_size, zbuf_t *str)
         }
         ZBUF_PUT(str, addch);
     }
+
 over:
-    return zbuf_len(str);
+    zbuf_terminate(str);
 }
 
 int zqp_decode_get_valid_len(const void *src, int src_size)

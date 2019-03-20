@@ -20,7 +20,7 @@ int main(int argc, char **argv)
     char *fn = 0;
     int is_encode = 1;
 
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
 
     fn = zconfig_get_str(zvar_default_config, "encode", "");
     if (zempty(fn)) {
@@ -38,13 +38,13 @@ int main(int argc, char **argv)
     }
 
     zbuf_t *bf = zbuf_create(102400);
-    int result_len;
 
     if (is_encode) {
-        result_len = zbase64_encode(reader.data, reader.len, bf, 1);
+        zbase64_encode(reader.data, reader.len, bf, 1);
     } else {
-        result_len = zbase64_decode(reader.data, reader.len, bf, 0);
+        zbase64_decode(reader.data, reader.len, bf, 0);
     }
+    int result_len = zbuf_len(bf);
 
     printf("result: %d\n%s\n", result_len, zbuf_data(bf));
 

@@ -56,7 +56,7 @@ static char *hunman_size2(long a)
 
 int main(int argc, char **argv)
 {
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
     char *eml_fn = 0, *eml_data;
     int times = 1000, i, eml_size;
     zbuf_t *eml_data_buf = zbuf_create(102400);
@@ -65,10 +65,10 @@ int main(int argc, char **argv)
     times = zconfig_get_int(zvar_default_config, "loop", 1000, 1, 1000000);
     int onlymime = zconfig_get_bool(zvar_default_config, "onlymime", 0);
 
-    if (zvar_main_parameter_argc == 0) {
+    if (zvar_main_redundant_argc == 0) {
         ___usage();
     }
-    eml_fn = zvar_main_parameter_argv[0];
+    eml_fn = zvar_main_redundant_argv[0];
 
     if (zfile_get_contents_sample(eml_fn, eml_data_buf) < 0) {
         printf("ERR open %s(%m)\n", eml_fn);

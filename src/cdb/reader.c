@@ -103,7 +103,7 @@ zcdb_t *zcdb_open(const char *cdb_pathname)
     return zcdb_open2(cdb_pathname, 0);
 }
 
-int zcdb_find(zcdb_t *cdb, const void *key, int klen, const void **val, int *vlen)
+int zcdb_find(zcdb_t *cdb, const void *key, int klen, void **val, int *vlen)
 {
     char *data_begin = cdb->reader.data, *data;
     int offset, hash_vector_size, ncount;
@@ -245,7 +245,7 @@ zcdb_walker_t *zcdb_walker_create(zcdb_t *cdb)
     return walker;
 }
 
-static int zcdb_walker_get_next_ok(char *data_begin, char *data, int sn, int key_length, int val_length, const void **key, int *klen, const void **val, int *vlen)
+static int zcdb_walker_get_next_ok(char *data_begin, char *data, int sn, int key_length, int val_length, void **key, int *klen, void **val, int *vlen)
 {
     data += (key_length+((val_length==536870912)?4:val_length)) * sn;
 
@@ -294,7 +294,7 @@ static int zcdb_walker_get_next_ok(char *data_begin, char *data, int sn, int key
     return 1;
 }
 
-int zcdb_walker_walk(zcdb_walker_t *walker, const void **key, int *klen, const void **val, int *vlen)
+int zcdb_walker_walk(zcdb_walker_t *walker, void **key, int *klen, void **val, int *vlen)
 {
     if (walker->klen == -2) {
         return 0;

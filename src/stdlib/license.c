@@ -49,14 +49,23 @@ void zlicense_mac_build(const char *salt, const char *_mac, zbuf_t *result)
 
 int zlicense_mac_check_from_config_filename(const char *salt, const char *config_file, const char *key)
 {
+    int ret = -1;
     zconfig_t *cf = zconfig_create();
-    zconfig_load_from_filename(cf, config_file);
+    if (zconfig_load_from_filename(cf, config_file) < 0) {
+        ret = -1;
+        goto over;
+    }
     char *license = zconfig_get_str(cf, key, "");
     if (ZEMPTY(license)) {
-        return 0;
+        ret = 0;
+        goto over;
     }
     if (zlicense_mac_check(salt, license) == 0) {
-        return 0;
+        ret = 0;
+        goto over;
     }
-    return 1;
+    ret = 1;
+over:
+    zconfig_free(cf);
+    return ret;
 }

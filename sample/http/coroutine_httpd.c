@@ -244,10 +244,11 @@ static void *accept_incoming(void *arg)
 
 int main(int argc, char **argv)
 {
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
+
     char *listen = zconfig_get_str(zvar_default_config, "listen", "0:8899");
     if (zempty(listen)) {
-        printf("USAGE: %s -listen 0:8899\n", zvar_progname);
+        printf("USAGE: %s -O listen 0:8899\n", zvar_progname);
         exit(1);
     }
     explore_data_init();

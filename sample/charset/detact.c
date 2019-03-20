@@ -34,13 +34,13 @@ static void dorun(const char *fn)
 int main(int argc, char **argv)
 {
     zvar_charset_debug = 1;
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
 
-    if (zvar_main_parameter_argc==0) {
+    if (zvar_main_redundant_argc==0) {
         ___usage();
     }
-    for (int i = 0; i < zvar_main_parameter_argc; i++) {
-        dorun(zvar_main_parameter_argv[i]);
+    for (int i = 0; i < zvar_main_redundant_argc; i++) {
+        dorun(zvar_main_redundant_argv[i]);
     }
 
     return 0;

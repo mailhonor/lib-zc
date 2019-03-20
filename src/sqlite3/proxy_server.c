@@ -210,7 +210,7 @@ static void *pthread_log(void *arg)
 {
     pthread_detach(pthread_self());
     struct timespec timeout;
-    size_t cache_size = 0;
+    int cache_size = 0;
 
     while(1) {
         if (zvar_proc_stop) {

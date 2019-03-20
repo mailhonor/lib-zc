@@ -35,7 +35,7 @@ int main(int argc, char **argv)
     int klen, vlen;
     int ret;
     while(1) {
-        ret = zcdb_walker_walk(walker, (const void **)&key, &klen, (const void **)&val, &vlen);
+        ret = zcdb_walker_walk(walker, (void **)&key, &klen, (void **)&val, &vlen);
         if (ret < 0) {
             printf("ERR walker\n");
             exit(1);

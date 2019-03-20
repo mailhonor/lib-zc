@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <sys/prctl.h>
 
 void (*zcoroutine_server_service_register) (const char *service, int fd, int fd_type) = 0;
 void (*zcoroutine_server_before_service) (void) = 0;
@@ -21,6 +22,7 @@ void (*zcoroutine_server_before_reload) (void) = 0;
 void (*zcoroutine_server_before_exit) (void) = 0;
 
 static zbool_t flag_run = 0;
+static zbool_t flag_reload = 0;
 static char *stop_file = 0;
 static pid_t parent_pid = 0;
 
@@ -33,9 +35,10 @@ static void *after_monitor_reload_signal(void *arg)
 
 static void *monitor_reload_signal(void *arg)
 {
-    while(!ztimed_read_wait(zvar_master_server_status_fd, 0)) {
+    while(ztimed_read_wait(zvar_master_server_status_fd, 10) == 0) {
     }
 
+    flag_reload = 1;
     if (zcoroutine_server_before_reload) {
         zcoroutine_go(after_monitor_reload_signal, 0, -1);
         zcoroutine_server_before_reload();
@@ -67,7 +70,7 @@ static void *do_exit_after(void *arg)
 static void *ppid_check(void *arg)
 {
     while(1) {
-        zsleep_millisecond(100);
+        zsleep(10);
         if(getppid() != parent_pid) {
             break;
         }
@@ -77,6 +80,11 @@ static void *ppid_check(void *arg)
 }
 
 static void sigterm_handler(int sig)
+{
+    zvar_proc_stop = 1;
+}
+
+static void sighup_handler(int sig)
 {
     zvar_proc_stop = 1;
 }
@@ -161,6 +169,8 @@ static void zcoroutine_server_init(int argc, char ** argv)
 
     signal(SIGPIPE, SIG_IGN);
     signal(SIGTERM, sigterm_handler);
+    signal(SIGHUP, sighup_handler);
+    prctl(PR_SET_PDEATHSIG, SIGHUP);
     parent_pid = getppid();
     
     if (parent_pid == 1) {
@@ -172,7 +182,7 @@ static void zcoroutine_server_init(int argc, char ** argv)
     }
 
     char *attr;
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
 
     attr = zconfig_get_str(zvar_default_config, "server-config-path", "");
     if (!zempty(attr)) {
@@ -185,7 +195,9 @@ static void zcoroutine_server_init(int argc, char ** argv)
 
     stop_file = zconfig_get_str(zvar_default_config, "stop-file", "");
 
-    zmaster_log_use_inner(argv[0], zconfig_get_str(zvar_default_config, "server-log", ""));
+    if (zconfig_get_bool(zvar_default_config, "dev-mode", 0) == 0) {
+        zmaster_log_use_inner(argv[0], zconfig_get_str(zvar_default_config, "server-log", ""));
+    }
 
     zcoroutine_base_init();
 

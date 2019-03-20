@@ -378,9 +378,9 @@ void zmime_get_decoded_content_utf8(zmime_t *mime, zbuf_t *result)
     if ((!strcmp(enc, "base64")) || (!strcmp(enc, "quoted-printable"))) {
         tmp_cache_buf = zmail_zbuf_cache_require(mime->parser, in_len < 128?128:in_len);
         if (*enc == 'b') {
-            str_len = zbase64_decode(in_src, in_len, tmp_cache_buf, 0);
+            zbase64_decode(in_src, in_len, tmp_cache_buf, 0);
         } else {
-            str_len = zqp_decode_2045(in_src, in_len, tmp_cache_buf);
+            zqp_decode_2045(in_src, in_len, tmp_cache_buf);
         }
         str = zbuf_data(tmp_cache_buf);
         str_len = zbuf_len(tmp_cache_buf);

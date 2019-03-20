@@ -11,7 +11,7 @@
 static char *server_address=0;
 static void ___usage()
 {
-    printf("USAGE: %s -server address\n", zvar_progname);
+    printf("USAGE: %s -O server address\n", zvar_progname);
     exit(1);
 }
 
@@ -61,7 +61,7 @@ void *do_listen(void *context)
 
 int main(int argc, char **argv)
 {
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
     server_address = zconfig_get_str(zvar_default_config, "server", 0);
     if (zempty(server_address)) {
         ___usage();

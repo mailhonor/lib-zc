@@ -1137,7 +1137,7 @@ static void zaio_action(zaio_t * aio)
     } else if (action_type == zvar_aio_type_ssl_init) {
         zaio_ssl_init___inner(aio, aio->callback, aio->ret);
     } else {
-        zfatal("evbase: unknown cb");
+        zfatal("evbase: unknown action_type: %d", action_type);
     }
 }
 /* }}} */
@@ -1234,7 +1234,7 @@ void zaio_fetch_rbuf(zaio_t *aio, zbuf_t *bf, int strict_len)
 {
     zbuf_need_space(bf, strict_len+1);
     char *buf = zbuf_data(bf);
-    ___zaio_cache_shift(aio, &(aio->read_cache), buf, strict_len);
+    ___zaio_cache_shift(aio, &(aio->read_cache), buf + bf->len, strict_len);
     bf->len += strict_len;
     zbuf_terminate(bf);
 }
@@ -1353,7 +1353,7 @@ void zaio_cache_write(zaio_t *aio, const void *buf, int len)
 void zaio_cache_write_size_data(zaio_t *aio, const void *buf, int len)
 {
     char sbuf[32];
-    size_t ret = zsize_data_put_size(len, sbuf);
+    int ret = zsize_data_put_size(len, sbuf);
     zaio_cache_write(aio, sbuf, ret);
     zaio_cache_write(aio, buf, len);
 }

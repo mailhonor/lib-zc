@@ -43,11 +43,11 @@ void zmime_raw_header_line_unescape(const char *in_line, int in_len, zbuf_t *res
     zbuf_terminate(result);
 }
 
-int zmime_raw_header_line_unescape_inner(zmail_t *parser, const char *data, size_t size, char *dest, int dest_size)
+int zmime_raw_header_line_unescape_inner(zmail_t *parser, const char *data, int size, char *dest, int dest_size)
 {
     int ch;
     char *src = (char *)(void *)data;
-    size_t i, rlen = 0;
+    int i, rlen = 0;
 
     if (size > dest_size){
         size = dest_size;
@@ -279,7 +279,7 @@ void zmime_header_line_get_utf8(const char *src_charset_def, const char *in_line
                 break;
             }
             if (mtn->encode_type == 0) {
-                size_t j;
+                int j;
                 char c;
                 for (j = 0; j < mtn->dlen; j++) {
                     c = mtn->data[j];
@@ -309,10 +309,11 @@ void zmime_header_line_get_utf8(const char *src_charset_def, const char *in_line
         ret = 0;
         zbuf_reset(out_string);
         if (mt->encode_type == 'B') {
-            ret = zbase64_decode(p, plen, out_string, 0);
+            zbase64_decode(p, plen, out_string, 0);
         } else if (mt->encode_type == 'Q') {
-            ret = zqp_decode_2047(p, plen, out_string);
+            zqp_decode_2047(p, plen, out_string);
         }
+        ret = zbuf_len(out_string);
 
         if (ret < 1) {
             continue;
@@ -494,7 +495,7 @@ void zmime_header_line_get_utf8_inner(zmail_t *parser, const char *in_line, int 
                 break;
             }
             if (mtn->encode_type == 0) {
-                size_t j;
+                int j;
                 char c;
                 for (j = 0; j < mtn->dlen; j++) {
                     c = mtn->data[j];
@@ -524,10 +525,11 @@ void zmime_header_line_get_utf8_inner(zmail_t *parser, const char *in_line, int 
         ret = 0;
         zbuf_reset(out_string);
         if (mt->encode_type == 'B') {
-            ret = zbase64_decode(p, plen, out_string, 0);
+            zbase64_decode(p, plen, out_string, 0);
         } else if (mt->encode_type == 'Q') {
-            ret = zqp_decode_2047(p, plen, out_string);
+            zqp_decode_2047(p, plen, out_string);
         }
+        ret = zbuf_len(out_string);
 
         if (ret < 1) {
             continue;

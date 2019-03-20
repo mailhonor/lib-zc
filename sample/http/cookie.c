@@ -10,13 +10,12 @@
 
 int main(int argc, char **argv)
 {
-    zmain_parameter_run(argc, argv);
-    char *cookie_string = zconfig_get_str(zvar_default_config, "cookie", 0);
-    if (zempty(cookie_string)) {
-        printf("USAGE: %s -cookie http_cookie_string\n", argv[0]);
+    zmain_argument_run(argc, argv, 0);
+    if (zvar_main_redundant_argc == 0) {
+        printf("USAGE: %s http_cookie_string\n", argv[0]);
         exit(1);
     }
-    zdict_t *cookies = zhttp_cookie_parse(cookie_string, 0);
+    zdict_t *cookies = zhttp_cookie_parse(zvar_main_redundant_argv[0], 0);
     printf("############################### cookie parse result:\n");
     zdict_debug_show(cookies);
     zdict_free(cookies);

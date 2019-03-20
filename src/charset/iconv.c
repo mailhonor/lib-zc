@@ -193,3 +193,11 @@ int zcharset_iconv(const char *from_charset, const char *src, int src_len,
 
     return out_converted_len;
 }
+
+/*
+ * iconv static lib, missing libiconv and GCONV_PATH mismatched.
+ * 1, download latest libiconv; 
+ * 2, ./configure --enable-static=PKGS 
+ * 3, make 
+ * 4, ls lib/.libs/iconv.o lib/.libs/localcharset.o lib/.libs/relocatable.o 
+ */

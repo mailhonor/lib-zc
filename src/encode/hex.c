@@ -9,11 +9,11 @@
 #include "zc.h"
 #include <ctype.h>
 
-int zhex_encode(const void *src, int src_size, zbuf_t *str)
+void zhex_encode(const void *src, int src_size, zbuf_t *str)
 {
     unsigned char dec2hex[18] = "0123456789ABCDEF";
     unsigned char *src_c = (unsigned char *)src;
-    size_t src_pos;
+    int src_pos;
     int addch1, addch2;
     for (src_pos = 0; src_pos < src_size; src_pos++) {
         addch1 = dec2hex[src_c[src_pos] >> 4];
@@ -22,7 +22,6 @@ int zhex_encode(const void *src, int src_size, zbuf_t *str)
         ZBUF_PUT(str, addch2);
     }
     zbuf_terminate(str);
-    return zbuf_len(str);
 }
 
 char zhex_to_dec_table[256] = {
@@ -47,10 +46,10 @@ char zhex_to_dec_table[256] = {
     -1, -1, -1, -1, -1, -1, -1, -1, -1
 };
 
-int zhex_decode(const void *src, int src_size, zbuf_t *str)
+void zhex_decode(const void *src, int src_size, zbuf_t *str)
 {
     unsigned char *src_c = (unsigned char *)src;
-    size_t src_pos;
+    int src_pos;
     unsigned char h_l, h_r;
     int addch;
     for (src_pos = 0; src_pos + 1 < src_size; src_pos += 2) {
@@ -60,14 +59,13 @@ int zhex_decode(const void *src, int src_size, zbuf_t *str)
         ZBUF_PUT(str, addch);
     }
     zbuf_terminate(str);
-    return zbuf_len(str);
 }
 
-int zurl_hex_decode(const void *src, int src_size, zbuf_t *str)
+void zurl_hex_decode(const void *src, int src_size, zbuf_t *str)
 {
     int l, r;
     char *p = (char *)src;
-    for (size_t i = 0; i < src_size; i++) {
+    for (int i = 0; i < src_size; i++) {
         if (p[i] == '+') {
             ZBUF_PUT(str, ' ');
         } else if (p[i] == '%') {
@@ -85,7 +83,6 @@ int zurl_hex_decode(const void *src, int src_size, zbuf_t *str)
         }
     }
     zbuf_terminate(str);
-    return zbuf_len(str);
 }
 
 void zurl_hex_encode(const void *src, int src_size, zbuf_t *str, int strict_flag)
@@ -120,4 +117,5 @@ void zurl_hex_encode(const void *src, int src_size, zbuf_t *str, int strict_flag
         zbuf_put(str, dec2hex[ch>>4]);
         zbuf_put(str, dec2hex[ch&0X0F]);
     }
+    zbuf_terminate(str);
 }

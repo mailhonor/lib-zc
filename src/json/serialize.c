@@ -112,7 +112,7 @@ static char * ___fetch_string(char *ps, char *str_end, zbuf_t *str)
                     return ps; /* false */
                 }
                 int uval = 0;
-                for (size_t count = 4; count ;count --) {
+                for (int count = 4; count ;count --) {
                     int ch4 = zhex_to_dec_table[(unsigned char)(*ps++)];
                     if (ch4 == -1) {
                         return ps; /* false */
@@ -340,11 +340,11 @@ err:
     return ret;
 }
 
-static void ___serialize_string(zbuf_t *result, const char *data, size_t size)
+static void ___serialize_string(zbuf_t *result, const char *data, int size)
 {
     zbuf_put(result, '"');
     char *ps = (char *)data;
-    for (size_t i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++) {
         unsigned char ch = ps[i];
         if (ch == '\\') {
             zbuf_put(result, '\\');

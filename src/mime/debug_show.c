@@ -99,11 +99,11 @@ void zmail_debug_show(zmail_t *parser)
         char buf[128];
         sprintf(buf, "Mime (%d)", i+1);
         printf(fmt, buf, zmime_get_type(m));
-        zmail_get_raw_header_line(parser, "Content-Type", tmpstr, 0);
+        zmime_get_raw_header_line(m, "Content-Type", tmpstr, 0);
         printf(fmt, "Content-Type", zbuf_data(tmpstr));
-        zmail_get_raw_header_line(parser, "Content-Transfer-Encoding", tmpstr, 0);
+        zmime_get_raw_header_line(m, "Content-Transfer-Encoding", tmpstr, 0);
         printf(fmt, "Content-Transfer-Encoding", zbuf_data(tmpstr));
-        zmail_get_raw_header_line(parser, "Content-Disposition", tmpstr, 0);
+        zmime_get_raw_header_line(m, "Content-Disposition", tmpstr, 0);
         printf(fmt, "Content-Disposition", zbuf_data(tmpstr));
         printf(fmt, "disposition", zmime_get_disposition(m));
         printf(fmt, "name", zmime_get_name(m));

@@ -61,12 +61,13 @@ struct zhttpd_t {
     int request_header_timeout;
     int max_length_for_post;
     char *tmp_path_for_post;
-    char *gzip_file_suffix;
+    char gzip_file_suffix[8];
     void (*handler_304)(zhttpd_t * httpd, const char *etag);
     void (*handler_404)(zhttpd_t * httpd);
     void (*handler_500)(zhttpd_t * httpd);
     void (*handler_200)(zhttpd_t * httpd, const char *data, int size);
     void (*handler)(zhttpd_t * httpd);
+    void *context;
 };
 
 static void zhttpd_loop_clear(zhttpd_t *httpd);
@@ -183,7 +184,7 @@ static zhttpd_t * _zhttpd_malloc_struct_general()
     httpd->request_header_timeout = -1;
     httpd->max_length_for_post = -1;
     httpd->tmp_path_for_post = zblank_buffer;
-    httpd->gzip_file_suffix = zblank_buffer;
+    httpd->gzip_file_suffix[0] = 0;
 
     httpd->handler_304 = zhttpd_response_304;
     httpd->handler_404 = zhttpd_response_404;
@@ -224,7 +225,6 @@ void zhttpd_close(zhttpd_t *httpd, zbool_t close_fd_and_release_ssl)
     zdict_free(httpd->request_cookies);
 
     zfree(httpd->tmp_path_for_post);
-    zfree(httpd->gzip_file_suffix);
 
     ZVECTOR_WALK_BEGIN(httpd->request_uploaded_files, zhttpd_uploaded_file_t *, fo) {
         zfree(fo->name);
@@ -239,6 +239,16 @@ void zhttpd_close(zhttpd_t *httpd, zbool_t close_fd_and_release_ssl)
     }
 
     zfree(httpd);
+}
+
+void zhttpd_set_context(zhttpd_t *httpd, const void *context)
+{
+    httpd->context = (void *)context;
+}
+
+void *zhttpd_get_context(zhttpd_t *httpd)
+{
+    return httpd->context;
 }
 
 void zhttpd_set_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd))
@@ -269,8 +279,14 @@ void zhttpd_set_tmp_path_for_post(zhttpd_t *httpd, const char *tmp_path)
 
 void zhttpd_set_gzip_file_suffix(zhttpd_t *httpd, const char *suffix)
 {
-    zfree(httpd->gzip_file_suffix);
-    httpd->gzip_file_suffix = zstrdup(suffix);
+    httpd->gzip_file_suffix[0] = 0;
+    if (suffix) {
+        int len = strlen(suffix);
+        if (len > 7) {
+            zfatal("zhttpd_set_gzip_file_suffix: %s'length > 7", suffix);
+        }
+        strcpy(httpd->gzip_file_suffix, suffix);
+    }
 }
 
 void zhttpd_enable_form_data(zhttpd_t *httpd)
@@ -451,7 +467,7 @@ static void _zresponse_file_by_flag(zhttpd_t *httpd, const char *filename, const
         int times;
         for (times = 0; times < 2; times++) {
             if (times == 0) {
-                if (zempty(httpd->gzip_file_suffix)) {
+                if (httpd->gzip_file_suffix[0] == 0) {
                     continue;
                 }
                 if (!strcasestr(zdict_get_str(httpd->request_headers,"accept-encoding", ""), "gzip")) {
@@ -497,13 +513,6 @@ static void _zresponse_file_by_flag(zhttpd_t *httpd, const char *filename, const
 
     char *rwdata = (char *)zmalloc(4096+1);
 
-    if (httpd->response_max_age > 0) {
-        sprintf(rwdata, "max-age=%d", httpd->response_max_age);
-        zhttpd_response_header(httpd, "Cache-Control", rwdata);
-    }
-    if (httpd->response_expires > 0) {
-        zhttpd_response_header_date(httpd, "Expires", httpd->response_expires + 1 + time(0));
-    }
     char *old_etag = zdict_get_str(httpd->request_headers,"if-none-match", "");
     char *new_etag = rwdata;
     sprintf(new_etag, "%lx_%lx", st.st_size, st.st_mtime);
@@ -520,13 +529,20 @@ static void _zresponse_file_by_flag(zhttpd_t *httpd, const char *filename, const
     zhttpd_response_header_content_length(httpd, st.st_size);
     if (zvar_httpd_no_cache == 0) {
         zhttpd_response_header(httpd, "Etag", new_etag);
+        zhttpd_response_header_date(httpd, "Last-Modified", st.st_mtime);
+        if (httpd->response_max_age > 0) {
+            sprintf(rwdata, "max-age=%d", httpd->response_max_age);
+            zhttpd_response_header(httpd, "Cache-Control", rwdata);
+        }
+        if (httpd->response_expires > 0) {
+            zhttpd_response_header_date(httpd, "Expires", httpd->response_expires + 1 + time(0));
+        }
     }
 
     if (is_gzip) {
         zhttpd_response_header(httpd, "Content-Encoding", "gzip");
     }
 
-    zhttpd_response_header_date(httpd, "Last-Modified", st.st_mtime);
     if (httpd->request_keep_alive) {
         zhttpd_response_header(httpd, "Connection", "keep-alive");
     }

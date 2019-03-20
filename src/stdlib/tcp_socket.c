@@ -133,7 +133,6 @@ int zinet_listen(const char *sip, int port, int backlog, int nonblock_flag)
     int on = 1;
     struct sockaddr_in addr;
     int errno2;
-    struct linger linger;
 
     memset(&addr, 0, sizeof(struct sockaddr_in));
     addr.sin_family = AF_INET;
@@ -148,11 +147,14 @@ int zinet_listen(const char *sip, int port, int backlog, int nonblock_flag)
         goto err;
     }
 
+#if 0
+    struct linger linger;
     linger.l_onoff = 0;
     linger.l_linger = 1;
     if (setsockopt(sock, SOL_SOCKET, SO_LINGER, (char *)&linger, sizeof(linger)) < 0) {
         goto err;
     }
+#endif
 
     if (bind(sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0) {
         goto err;

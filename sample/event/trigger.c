@@ -114,9 +114,12 @@ int main(int argc, char **argv)
     zetimer_t *tm;
     char *server;
 
-    zmain_parameter_run(argc, argv);
-    printf("USAGE: %s -server 0:8899\n", zvar_progname);
+    zmain_argument_run(argc, argv, 0);
     server = zconfig_get_str(zvar_default_config, "server", "");
+    if (zempty(server)) {
+        printf("USAGE: %s -O server 0:8899\n", zvar_progname);
+        exit(1);
+    }
 
     sock = zlisten(server, 0, 1, 5);
     if (sock < 0) {

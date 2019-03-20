@@ -145,7 +145,7 @@ zbuf_t *zmail_zbuf_cache_require(zmail_t *parser, int len);
 void zmail_zbuf_cache_release(zmail_t *parser, zbuf_t *bf);
 void zmail_zbuf_cache_release_all(zmail_t *parser);
 
-int zmime_raw_header_line_unescape_inner(zmail_t *parser, const char *data, size_t size, char *dest, int dest_size);
+int zmime_raw_header_line_unescape_inner(zmail_t *parser, const char *data, int size, char *dest, int dest_size);
 
 int zmime_get_raw_header_line_ptr(zmime_t *mime, const char *header_name, char **result, int sn);
 int zmail_decode_mime_inner(zmail_t * parser);

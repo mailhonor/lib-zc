@@ -21,7 +21,7 @@ int main(int argc, char **argv)
     const char *to_charset = 0;
     int ignore_bytes = 0;
     int converted_len = 0;
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
     ignore_bytes = (zconfig_get_bool(zvar_default_config, "c", 0)?-1:0);
     from_charset = zconfig_get_str(zvar_default_config, "f", 0);
     to_charset = zconfig_get_str(zvar_default_config, "t", 0);

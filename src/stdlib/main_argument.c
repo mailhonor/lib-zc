@@ -9,13 +9,21 @@
 #include "zc.h"
 #include <signal.h>
 
-
 char *zvar_progname = 0;
 int zvar_proc_stop = 0;
 int zvar_test_mode = 0;
 int zvar_max_fd = 102400;
-char **zvar_main_parameter_argv = 0;
-int zvar_main_parameter_argc = 0;
+char **zvar_main_redundant_argv = 0;
+int zvar_main_redundant_argc = 0;
+static zvector_t *zvar_main_redundant_argument_vector = 0;
+
+static void main_redundant_argument_vector_fini(void)
+{
+    if (zvar_main_redundant_argument_vector) {
+        zvector_free(zvar_main_redundant_argument_vector);
+    }
+    zvar_main_redundant_argument_vector = 0;
+}
 
 static void ___timeout_do2(int pid)
 {
@@ -30,21 +38,29 @@ static void ___timeout_do(int pid)
     alarm(2);
 }
 
-void zmain_parameter_run(int argc, char **argv)
+void zmain_argument_run(int argc, char **argv, unsigned int (*self_argument_fn)(int argc, char **argv, int offset))
 {
-    long i;
+    int i, jump;
     char *optname, *optval;
     zconfig_t *cmd_cf = zconfig_create();
 
     zvar_progname = argv[0];
     zdefault_config_init();
+    zvar_main_redundant_argument_vector = zvector_create(3);
     for (i = 1; i < argc; i++) {
+        if (self_argument_fn) {
+            jump = self_argument_fn(argc, argv, i);
+            if (jump > 0) {
+                i += jump - 1;
+                continue;
+            }
+        }
         optname = argv[i];
         /* abc */
         if (optname[0] != '-') {
-            zvar_main_parameter_argv = argv + i;
-            zvar_main_parameter_argc = argc - i;
-            break;
+            zvector_push(zvar_main_redundant_argument_vector, optname);
+            jump = 1;
+            continue;
         }
 
         /* --abc */
@@ -76,6 +92,10 @@ void zmain_parameter_run(int argc, char **argv)
 
     zconfig_load_annother(zvar_default_config, cmd_cf);
     zconfig_free(cmd_cf);
+    
+    zvar_main_redundant_argv = (char **)zvector_data(zvar_main_redundant_argument_vector);
+    zvar_main_redundant_argc = zvector_len(zvar_main_redundant_argument_vector);
+    zinner_atexit(main_redundant_argument_vector_fini);
 
     if(!zvar_log_debug_enable) {
         if (zconfig_get_bool(zvar_default_config, "debug", 0)) {

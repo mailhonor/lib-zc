@@ -25,7 +25,7 @@ int main(int argc, char **argv)
     zbuf_free(error_msg);
     char *val;
     int vlen;
-    int ret = zcdb_find(cdb, key, -1, (const void **)&val, &vlen);
+    int ret = zcdb_find(cdb, key, -1, (void **)&val, &vlen);
     if (ret < 0){
         printf("ERR find\n");
     } else if (ret == 0) {

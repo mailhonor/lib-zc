@@ -16,7 +16,7 @@ static void usage()
 
 int main(int argc, char **argv)
 {
-    zmain_parameter_run(argc, argv);
+    zmain_argument_run(argc, argv, 0);
     char *server = zconfig_get_str(zvar_default_config, "server", 0);
     char *sentense = zconfig_get_str(zvar_default_config, "query", 0);
     int ret, op =  'q';

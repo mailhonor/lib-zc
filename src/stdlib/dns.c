@@ -65,7 +65,7 @@ int zget_hostaddr(const char *host, zargv_t *addrs)
     }
     if (htr) {
         addr_list_tmp = (struct in_addr **)htr->h_addr_list;
-        for (size_t i = 0; addr_list_tmp[i] != 0; i++) {
+        for (int i = 0; addr_list_tmp[i] != 0; i++) {
             inet_ntop(AF_INET, addr_list_tmp[i], ipbuf, 16);
             zargv_add(addrs, ipbuf);
             ret_count++;

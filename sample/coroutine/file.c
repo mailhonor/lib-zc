@@ -41,8 +41,9 @@ int main(int argc, char **argv)
 {
     int i;
     zcoroutine_base_init();
-    zcoroutine_set_block_pthread_limit(3);
-    zcoroutine_set_fileio_use_block_pthread(1);
+
+    zvar_coroutine_block_pthread_count_limit = 3;
+    zvar_coroutine_fileio_use_block_pthread = 1;
 
     co_count = 100;
     for (i=0;i<co_count;i++) {
