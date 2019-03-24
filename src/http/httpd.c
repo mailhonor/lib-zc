@@ -6,73 +6,14 @@
  * ================================
  */
 
-#include "zc.h"
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <time.h>
-
-struct zhttpd_uploaded_file_t {
-    zhttpd_t *httpd;
-    char *name;
-    char *filename;
-    int encoding;
-    int raw_len;
-    int offset;
-    int size;
-};
-
-zbool_t zvar_httpd_debug = 0;
-zbool_t zvar_httpd_no_cache = 0;
-static const int zvar_httpd_header_line_max_size = 10240;
-
-struct zhttpd_t {
-    zstream_t *fp;
-    char *method;
-    char *host;
-    char *uri;
-    char *version;
-    char *path;
-    int port;
-    int request_content_length;
-    zdict_t *request_query_vars;
-    zdict_t *request_post_vars;
-    zdict_t *request_headers;
-    zdict_t *request_cookies;
-    zvector_t *request_uploaded_files; /* <zhttpd_uploaded_file_t *> */
-    char *uploaded_tmp_mime_filename;
-    /* */
-    unsigned int stop:1;
-    unsigned int exception:1;
-    unsigned int unsupported_cmd:1;
-    unsigned int request_keep_alive:1;
-    unsigned int response_initialization:1;
-    unsigned int response_content_type:1;
-    unsigned int ssl_mode:1;
-    unsigned int enable_form_data:1;
-    unsigned int request_gzip:2;
-    unsigned int request_deflate:2;
-    /* */
-    int response_max_age;
-    int response_expires;
-    int keep_alive_timeout;
-    int request_header_timeout;
-    int max_length_for_post;
-    char *tmp_path_for_post;
-    char gzip_file_suffix[8];
-    void (*handler_304)(zhttpd_t * httpd, const char *etag);
-    void (*handler_404)(zhttpd_t * httpd);
-    void (*handler_500)(zhttpd_t * httpd);
-    void (*handler_200)(zhttpd_t * httpd, const char *data, int size);
-    void (*handler)(zhttpd_t * httpd);
-    void *context;
-};
+#include "httpd.h"
 
 static void zhttpd_loop_clear(zhttpd_t *httpd);
 static void zhttpd_request_header_do(zhttpd_t * httpd, int first, zbuf_t *linebuf);
 static void zhttpd_request_data_do(zhttpd_t *httpd, zbuf_t *linebuf);
+
+zbool_t zvar_httpd_debug = 0;
+zbool_t zvar_httpd_no_cache = 0;
 
 const char *zhttpd_uploaded_file_get_name(zhttpd_uploaded_file_t *fo)
 {
@@ -178,8 +119,6 @@ static zhttpd_t * _zhttpd_malloc_struct_general()
     httpd->request_gzip = 0;
     httpd->request_deflate = 0;
 
-    httpd->response_max_age = -1;
-    httpd->response_expires = -1;
     httpd->keep_alive_timeout = -1;
     httpd->request_header_timeout = -1;
     httpd->max_length_for_post = -1;
@@ -294,16 +233,6 @@ void zhttpd_enable_form_data(zhttpd_t *httpd)
     httpd->enable_form_data = 1;
 }
 
-void zhttpd_response_file_set_max_age(zhttpd_t *httpd, int left_second)
-{
-    httpd->response_max_age = left_second;
-}
-
-void zhttpd_response_file_set_expires(zhttpd_t *httpd, int left_second)
-{
-    httpd->response_expires = left_second;
-}
-
 void zhttps_set_exception(zhttpd_t *httpd)
 {
     httpd->exception = 1;
@@ -366,7 +295,7 @@ zbool_t zhttpd_request_is_gzip(zhttpd_t *httpd)
     if (httpd->request_gzip == 0) {
         httpd->request_gzip = (strcasestr(zdict_get_str(httpd->request_headers,"accept-encoding", ""), "gzip")?1:2);
     }
-    return (httpd->request_gzip==1);
+    return ((httpd->request_gzip==1)?1:0);
 }
 
 zbool_t zhttpd_request_is_deflate(zhttpd_t *httpd)
@@ -374,7 +303,7 @@ zbool_t zhttpd_request_is_deflate(zhttpd_t *httpd)
     if (httpd->request_deflate == 0) {
         httpd->request_deflate = (strcasestr(zdict_get_str(httpd->request_headers,"accept-encoding", ""), "deflate")?1:2);
     }
-    return (httpd->request_deflate==1);
+    return ((httpd->request_deflate==1)?1:0);
 }
 
 long zhttpd_request_get_content_length(zhttpd_t *httpd)
@@ -428,179 +357,6 @@ void zhttpd_set_200_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, c
     httpd->handler_200 = handler;
 }
 
-static const int response_file_flag_gzip = (1<<0);
-static const int response_file_flag_try_gzip = (1<<1);
-static const int response_file_flag_regular = (1<<2);
-static void _zresponse_file_by_flag(zhttpd_t *httpd, const char *filename, const char *content_type, int flag, zbool_t *catch_missing)
-{
-    if (catch_missing) {
-        *catch_missing = 0;
-    }
-    if (zempty(content_type)) {
-        content_type = zget_mime_type_from_filename(filename, zvar_mime_type_application_cotec_stream);
-    }
-    int fd;
-    struct stat st;
-    zbool_t is_gzip = 0;
-    if ((flag & response_file_flag_gzip) || (flag & response_file_flag_regular)) {
-        while (((fd = open(filename, O_RDONLY)) == -1) && (errno == EINTR)) {
-            continue;
-        }
-        if (fd == -1) {
-            if (catch_missing) {
-                *catch_missing = 1;
-            } else {
-                zhttpd_response_404(httpd);
-            }
-            return;
-        }
-
-        if (fstat(fd, &st) == -1) {
-            zclose(fd);
-            zhttpd_response_500(httpd);
-            return;
-        }
-        if (flag & response_file_flag_gzip) {
-            is_gzip = 1;
-        }
-    } else if (flag & response_file_flag_try_gzip) {
-        int times;
-        for (times = 0; times < 2; times++) {
-            if (times == 0) {
-                if (httpd->gzip_file_suffix[0] == 0) {
-                    continue;
-                }
-                if (!strcasestr(zdict_get_str(httpd->request_headers,"accept-encoding", ""), "gzip")) {
-                    continue;
-                }
-                zbuf_t *fn = zbuf_create(128);
-                zbuf_strcpy(fn, filename);
-                zbuf_put(fn, '.');
-                zbuf_puts(fn, httpd->gzip_file_suffix);
-                while (((fd = open(zbuf_data(fn), O_RDONLY)) == -1) && (errno == EINTR)) {
-                    continue;
-                }
-                zbuf_free(fn);
-                is_gzip = 1;
-            } else {
-                while (((fd = open(filename, O_RDONLY)) == -1) && (errno == EINTR)) {
-                    continue;
-                }
-                is_gzip = 0;
-            }
-            if (fd == -1) {
-                continue;
-            }
-
-            if (fstat(fd, &st) == -1) {
-                zclose(fd);
-                continue;
-            }
-            break;
-        }
-        if (times == 2) {
-            if (catch_missing) {
-                *catch_missing = 1;
-            } else {
-                zhttpd_response_404(httpd);
-            }
-            return;
-        }
-    } else {
-        zhttpd_response_500(httpd);
-        return;
-    }
-
-    char *rwdata = (char *)zmalloc(4096+1);
-
-    char *old_etag = zdict_get_str(httpd->request_headers,"if-none-match", "");
-    char *new_etag = rwdata;
-    sprintf(new_etag, "%lx_%lx", st.st_size, st.st_mtime);
-    if (!strcmp(old_etag, new_etag)) {
-        if (zvar_httpd_no_cache == 0) {
-            zhttpd_response_304(httpd, new_etag);
-            zclose(fd);
-            zfree(rwdata);
-            return;
-        }
-    }
-
-    zhttpd_response_header_content_type(httpd, content_type, 0);
-    zhttpd_response_header_content_length(httpd, st.st_size);
-    if (zvar_httpd_no_cache == 0) {
-        zhttpd_response_header(httpd, "Etag", new_etag);
-        zhttpd_response_header_date(httpd, "Last-Modified", st.st_mtime);
-        if (httpd->response_max_age > 0) {
-            sprintf(rwdata, "max-age=%d", httpd->response_max_age);
-            zhttpd_response_header(httpd, "Cache-Control", rwdata);
-        }
-        if (httpd->response_expires > 0) {
-            zhttpd_response_header_date(httpd, "Expires", httpd->response_expires + 1 + time(0));
-        }
-    }
-
-    if (is_gzip) {
-        zhttpd_response_header(httpd, "Content-Encoding", "gzip");
-    }
-
-    if (httpd->request_keep_alive) {
-        zhttpd_response_header(httpd, "Connection", "keep-alive");
-    }
-    zhttpd_response_header_over(httpd);
-
-    char *rwline = rwdata;
-    long rlen_sum = 0;
-    while(rlen_sum < st.st_size) {
-        int rlen = st.st_size - rlen_sum;
-        if (rlen > 4096) {
-            rlen = 4096;
-        }
-        rlen = read(fd, rwline, rlen);
-        if (rlen > 0) {
-            rlen_sum += rlen;
-            zstream_write(httpd->fp, rwline, rlen);
-            if (zstream_is_exception(httpd->fp)) {
-                break;
-            }
-            continue;
-        }
-        if (rlen == 0) {
-            break;
-        }
-        if (errno == EINTR) {
-            if (zvar_proc_stop) {
-                zhttpd_set_stop(httpd);
-                break;
-            }
-            continue;
-        }
-        break;
-    }
-    zclose(fd);
-    zstream_flush(httpd->fp);
-    if (rlen_sum != st.st_size) {
-        zhttpd_set_stop(httpd);
-    } else {
-        zstream_flush(httpd->fp);
-    }
-    zfree(rwdata);
-}
-
-void zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *filename, const char *content_type, zbool_t *catch_missing)
-{
-    _zresponse_file_by_flag(httpd, filename, content_type, response_file_flag_gzip, catch_missing);
-}
-
-void zhttpd_response_file(zhttpd_t *httpd, const char *filename, const char *content_type, zbool_t *catch_missing)
-{
-    _zresponse_file_by_flag(httpd, filename, content_type, response_file_flag_regular, catch_missing);
-}
-
-void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *filename, const char *content_type, zbool_t *catch_missing)
-{
-    _zresponse_file_by_flag(httpd, filename, content_type, response_file_flag_try_gzip, catch_missing);
-}
-
 void zhttpd_response_200(zhttpd_t *httpd, const char *data, int size)
 {
     zhttpd_response_header_content_length(httpd, size);
@@ -648,7 +404,7 @@ void zhttpd_response_500(zhttpd_t *httpd)
 void zhttpd_response_header_initialization(zhttpd_t *httpd, const char *initialization)
 {
     if (initialization == 0) {
-        initialization = "HTTP/1.1 200 LIBZC";
+        initialization = "HTTP/1.1 200 LIB-ZC";
     }
     zstream_puts(httpd->fp, initialization);
     zstream_puts_const(httpd->fp, "\r\n");

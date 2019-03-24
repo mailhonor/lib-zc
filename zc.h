@@ -806,7 +806,11 @@ typedef struct {
     long min;
     long max;
 } zconfig_long_table_t;
-#define zconfig_bool_table_t    zconfig_int_table_t
+typedef struct {
+    const char *name;
+    int defval;
+    int *target;
+} zconfig_bool_table_t;
 #define zconfig_second_table_t  zconfig_long_table_t
 #define zconfig_size_table_t    zconfig_long_table_t
 #define zconfig_get_str         zdict_get_str
@@ -999,7 +1003,7 @@ int zip_is_intranet(int ip);
 int zip_is_intranet2(const char *ip);
 
 /* mime type ######################################################## */
-extern const char *zvar_mime_type_application_cotec_stream;
+extern const char *zvar_mime_type_application_cotet_stream;
 const char *zget_mime_type_from_suffix(const char *suffix, const char *def);
 const char *zget_mime_type_from_filename(const char *filename, const char *def);
 
@@ -1517,13 +1521,12 @@ void zhttpd_set_context(zhttpd_t *httpd, const void *context);
 void *zhttpd_get_context(zhttpd_t *httpd);
 
 /* set attribute */
-void zhttps_set_exception(zhttpd_t *httpd);
-void zhttps_set_stop(zhttpd_t *httpd);
+void zhttpd_set_exception(zhttpd_t *httpd);
+void zhttpd_set_stop(zhttpd_t *httpd);
 void zhttpd_set_keep_alive_timeout(zhttpd_t *httpd, int timeout);
 void zhttpd_set_request_header_timeout(zhttpd_t *httpd, int timeout);
 void zhttpd_set_max_length_for_post(zhttpd_t *httpd, int max_length);
 void zhttpd_set_tmp_path_for_post(zhttpd_t *httpd, const char *tmp_path);
-void zhttpd_set_gzip_file_suffix(zhttpd_t *httpd, const char *suffix);
 void zhttpd_enable_form_data(zhttpd_t *httpd);
 
 const char *zhttpd_request_get_method(zhttpd_t *httpd);
@@ -1554,13 +1557,6 @@ void zhttpd_set_304_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, c
 void zhttpd_set_404_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 void zhttpd_set_500_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 
-/* response file */
-void zhttpd_response_file_set_max_age(zhttpd_t *httpd, int left_second);
-void zhttpd_response_file_set_expires(zhttpd_t *httpd, int left_second);
-void zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *filename, const char *content_type, zbool_t *catch_missing);
-void zhttpd_response_file(zhttpd_t *httpd, const char *filename, const char *content_type, zbool_t *catch_missing);
-void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *filename, const char *content_type, zbool_t *catch_missing);
-
 /* response header */
 void zhttpd_response_header_initialization(zhttpd_t *httpd, const char *initialization);
 void zhttpd_response_header(zhttpd_t *httpd, const char *name, const char *value);
@@ -1587,6 +1583,11 @@ const char *zhttpd_uploaded_file_get_name(zhttpd_uploaded_file_t *fo);
 int zhttpd_uploaded_file_get_size(zhttpd_uploaded_file_t *fo);
 int zhttpd_uploaded_file_save_to(zhttpd_uploaded_file_t *fo, const char *filename);
 int zhttpd_uploaded_file_get_data(zhttpd_uploaded_file_t *fo, zbuf_t *data);
+
+/* extend response file */
+void zhttpd_response_file(zhttpd_t *httpd, const char *filename, const char *content_type, int max_age);
+void zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *gzip_filename, const char *content_type, int max_age);
+void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *filename, const char *gzip_filename, const char *content_type, int max_age);
 
 /* sqlite3 ################################################## */
 /* zsqlite3_proxd based on zevent_server */

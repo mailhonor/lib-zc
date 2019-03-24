@@ -24,7 +24,7 @@ typedef void (*cmd_fn_t)(zhttpd_t * httpd);
 
 static void main_page(zhttpd_t *httpd)
 {
-    zhttpd_response_file(httpd, "resource_httpd/main.html", "text/html", 0);
+    zhttpd_response_file_try_gzip(httpd, "resource_httpd/main.html", "resource_httpd/main.html.gz", "text/html", 0);
 }
 
 static zbuf_t *explore_data_1, *explore_data_2;
