@@ -1159,8 +1159,16 @@ extern int zvar_coroutine_block_pthread_count_limit;
 /* 文件io是否用线程池模式, 前提是 zvar_coroutine_block_pthread_count_limit > 0 */
 extern zbool_t zvar_coroutine_fileio_use_block_pthread;
 /* 如果zvar_coroutine_block_pthread_count_limit > 0, 则 block_func(ctx) 在线程池执行, 否则本线程直接执行 */
-void *coroutine_block_do(void *(*block_func)(void *ctx), void *ctx);
+void *zcoroutine_block_do(void *(*block_func)(void *ctx), void *ctx);
 
+/* zcoroutine_block_XXX 基于 zcoroutine_block_do 机制 */
+int zcoroutine_block_pwrite(int fd, const void *data, int len, long offset);
+int zcoroutine_block_write(int fd, const void *data, int len);
+long zcoroutine_block_lseek(int fd, long offset, int whence);
+int zcoroutine_block_open(const char *pathname, int flags, ...);
+int zcoroutine_block_close(int fd);
+
+/* io 映射 */
 void zcoroutine_go_iopipe(int fd1, SSL *ssl1, int fd2, SSL *ssl2, void (*after_close)(void *ctx), void *ctx);
 
 /* master ############################################################# */
@@ -1534,6 +1542,7 @@ const char *zhttpd_request_get_host(zhttpd_t *httpd);
 const char *zhttpd_request_get_path(zhttpd_t *httpd);
 const char *zhttpd_request_get_uri(zhttpd_t *httpd);
 const char *zhttpd_request_get_version(zhttpd_t *httpd);
+int zhttpd_request_get_version_code(zhttpd_t *httpd);
 long zhttpd_request_get_content_length(zhttpd_t *httpd);
 zbool_t zhttpd_request_is_gzip(zhttpd_t *httpd);
 zbool_t zhttpd_request_is_deflate(zhttpd_t *httpd);
@@ -1558,7 +1567,7 @@ void zhttpd_set_404_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 void zhttpd_set_500_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 
 /* response header */
-void zhttpd_response_header_initialization(zhttpd_t *httpd, const char *initialization);
+void zhttpd_response_header_initialization(zhttpd_t *httpd, const char *version, const char *status);
 void zhttpd_response_header(zhttpd_t *httpd, const char *name, const char *value);
 void zhttpd_response_header_date(zhttpd_t *httpd, const char *name, long value);
 void zhttpd_response_header_content_type(zhttpd_t *httpd, const char *value, const char *charset);

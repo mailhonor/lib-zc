@@ -8,12 +8,26 @@
 
 #include "httpd.h"
 
+static void _response_416(zhttpd_t *httpd)
+{
+    char output[] = " 416 Request Range Not Satisfiable\r\n"
+        "Server: LIBZC HTTPD\r\n"
+        "Content-Type: text/html\r\n"
+        "Connection: close\r\n"
+        "Content-Length: 33\r\n"
+        "\r\n"
+        "416 Request Range Not Satisfiable";
+    zstream_puts(httpd->fp, httpd->version);
+    zstream_write(httpd->fp, output, sizeof(output) - 1);
+    zhttpd_response_flush(httpd);
+}
+
 static zbool_t _zhttpd_response_file(zhttpd_t *httpd, const char *filename, const char *content_type, int max_age, zbool_t is_gzip ) 
 {
-    int fd, rlen;
-    long rlen_sum;
+    int ret, fd = -1, do_ragne = 0;
+    long rlen_sum, rlen, offset1, offset2;
     struct stat st;
-    char *rwdata, *old_etag, *new_etag, *rwline;
+    char *rwdata = 0, *old_etag, *new_etag, *rwline, *range, *p;
 
     while (((fd = open(filename, O_RDONLY)) == -1) && (errno == EINTR)) {
         continue;
@@ -22,28 +36,82 @@ static zbool_t _zhttpd_response_file(zhttpd_t *httpd, const char *filename, cons
         return 0;
     }
 
+    ret = 1;
     if (fstat(fd, &st) == -1) {
-        zclose(fd);
         zhttpd_response_500(httpd);
-        return 1;
+        goto over;
+    }
+
+    range = zdict_get_str(httpd->request_headers,"range", "");
+    old_etag = zdict_get_str(httpd->request_headers,"if-none-match", "");
+    if (*range && *old_etag) {
+        _response_416(httpd);
+        goto over;
     }
 
     rwdata = (char *)zmalloc(4096+1);
-
-    old_etag = zdict_get_str(httpd->request_headers,"if-none-match", "");
-    new_etag = rwdata;
-    sprintf(new_etag, "%lx_%lx", st.st_size, st.st_mtime);
-    if (!strcmp(old_etag, new_etag)) {
-        if (zvar_httpd_no_cache == 0) {
-            zhttpd_response_304(httpd, new_etag);
-            zclose(fd);
-            zfree(rwdata);
-            return 1;
+    new_etag = rwdata + 3000;
+    *new_etag = 0;
+    if (*old_etag) {
+        sprintf(new_etag, "\"%lx_%lx\"", st.st_size, st.st_mtime);
+        if (!strcmp(old_etag, new_etag)) {
+            if (zvar_httpd_no_cache == 0) {
+                zhttpd_response_304(httpd, new_etag);
+                goto over;
+            }
         }
     }
 
+    if (*range && st.st_size && (is_gzip==0)) {
+        for (p = range; *p; p++) {
+            if (*p == '=') {
+                break;
+            }
+        }
+        if (*p++ != '=') {
+            _response_416(httpd);
+            goto over;
+        }
+        if (strchr(p, ',')) {
+            _response_416(httpd);
+            goto over;
+        }
+        strncpy(rwdata, p, 128);
+        p = strchr(rwdata, '-');
+        if (!p){
+            _response_416(httpd);
+            goto over;
+        }
+        *p++ = 0;
+        if (*rwdata) {
+            offset1 = atol(rwdata);
+            if (*p) {
+                offset2 = atol(p);
+            } else {
+                offset2 = st.st_size -1;
+            }
+        } else {
+            offset1 = st.st_size - atol(p);
+            offset2 = st.st_size -1;
+        }
+        if ((offset1>offset2) || (offset1<0) || (offset1+1>st.st_size)) {
+            _response_416(httpd);
+            goto over;
+        }
+        if (offset2+1 > st.st_size) {
+            offset2 = st.st_size - 1;
+        }
+        do_ragne = 1;
+    } else {
+        offset1 = 0;
+        offset2 = st.st_size - 1;
+    }
+    
+    if (do_ragne) {
+        zhttpd_response_header_initialization(httpd, 0, "206 Partial Content");
+    }
     zhttpd_response_header_content_type(httpd, content_type, 0);
-    zhttpd_response_header_content_length(httpd, st.st_size);
+    zhttpd_response_header_content_length(httpd, offset2-offset1+1);
     if (zvar_httpd_no_cache == 0) {
         zhttpd_response_header(httpd, "Etag", new_etag);
         zhttpd_response_header_date(httpd, "Last-Modified", st.st_mtime);
@@ -60,6 +128,11 @@ static zbool_t _zhttpd_response_file(zhttpd_t *httpd, const char *filename, cons
         zhttpd_response_header(httpd, "Content-Encoding", "gzip");
     }
 
+    if (do_ragne) {
+        sprintf(rwdata, "bytes %ld-%ld/%ld", offset1, offset2, st.st_size);
+        zhttpd_response_header(httpd, "Content-Range", rwdata);
+    }
+
     if (httpd->request_keep_alive) {
         zhttpd_response_header(httpd, "Connection", "keep-alive");
     }
@@ -67,8 +140,14 @@ static zbool_t _zhttpd_response_file(zhttpd_t *httpd, const char *filename, cons
 
     rwline = rwdata;
     rlen_sum = 0;
-    while(rlen_sum < st.st_size) {
-        rlen = st.st_size - rlen_sum;
+    if (offset1) {
+        if (lseek(fd, offset1, SEEK_SET) == (off_t) -1) {
+            zhttpd_set_exception(httpd);
+            goto over;
+        }
+    }
+    while(offset1 <= offset2) {
+        rlen = offset2 - offset1 + 1;
         if (rlen > 4096) {
             rlen = 4096;
         }
@@ -93,8 +172,6 @@ static zbool_t _zhttpd_response_file(zhttpd_t *httpd, const char *filename, cons
         }
         break;
     }
-    zclose(fd);
-    zfree(rwdata);
 
     if (zvar_proc_stop == 0) {
         zstream_flush(httpd->fp);
@@ -105,7 +182,12 @@ static zbool_t _zhttpd_response_file(zhttpd_t *httpd, const char *filename, cons
         }
     }
 
-    return 1;
+over:
+    if (fd !=-1) {
+        close(fd);
+    }
+    zfree(rwdata);
+    return ret;
 }
 
 void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *filename, const char *gzip_filename, const char *content_type, int max_age)

@@ -90,6 +90,11 @@ int zhttpd_uploaded_file_get_data(zhttpd_uploaded_file_t *fo, zbuf_t *data)
     return fo->size;
 }
 
+static void zhttpd_response_304_default(zhttpd_t *httpd, const char *etag);
+static void zhttpd_response_500_default(zhttpd_t *httpd);
+static void zhttpd_response_404_default(zhttpd_t *httpd);
+static void zhttpd_response_200_default(zhttpd_t *httpd, const char *data, int size);
+
 static zhttpd_t * _zhttpd_malloc_struct_general()
 {
     zhttpd_t * httpd = (zhttpd_t *)zcalloc(1, sizeof(zhttpd_t));
@@ -108,6 +113,7 @@ static zhttpd_t * _zhttpd_malloc_struct_general()
     httpd->request_uploaded_files = zvector_create(-1);
     httpd->uploaded_tmp_mime_filename = 0;
 
+    httpd->version_code = -1;
     httpd->stop = 0;
     httpd->exception = 0;
     httpd->unsupported_cmd = 0;
@@ -125,10 +131,10 @@ static zhttpd_t * _zhttpd_malloc_struct_general()
     httpd->tmp_path_for_post = zblank_buffer;
     httpd->gzip_file_suffix[0] = 0;
 
-    httpd->handler_304 = zhttpd_response_304;
-    httpd->handler_404 = zhttpd_response_404;
-    httpd->handler_500 = zhttpd_response_500;
-    httpd->handler_200 = zhttpd_response_200;
+    httpd->handler_304 = zhttpd_response_304_default;
+    httpd->handler_404 = zhttpd_response_404_default;
+    httpd->handler_500 = zhttpd_response_500_default;
+    httpd->handler_200 = zhttpd_response_200_default;
     httpd->handler = zhttpd_response_404;
 
     return httpd;
@@ -265,6 +271,11 @@ void zhttpd_set_stop(zhttpd_t *httpd)
     httpd->stop = 1;
 }
 
+void zhttpd_set_exception(zhttpd_t *httpd)
+{
+    httpd->exception = 1;
+}
+
 const char *zhttpd_request_get_method(zhttpd_t *httpd)
 {
     return httpd->method;
@@ -288,6 +299,18 @@ const char *zhttpd_request_get_path(zhttpd_t *httpd)
 const char *zhttpd_request_get_version(zhttpd_t *httpd)
 {
     return httpd->version;
+}
+
+int zhttpd_request_get_version_code(zhttpd_t *httpd)
+{
+    if (httpd->version_code == -1) {
+        if (strstr(httpd->version, "1.0")) {
+            httpd->version_code = 0;
+        } else {
+            httpd->version_code = 1;
+        }
+    }
+    return httpd->version_code;
 }
 
 zbool_t zhttpd_request_is_gzip(zhttpd_t *httpd)
@@ -339,27 +362,30 @@ const zvector_t *zhttpd_request_get_uploaded_files(zhttpd_t *httpd)
 /* response completely */
 void zhttpd_set_304_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *etag))
 {
-    httpd->handler_304 = handler;
+    httpd->handler_304 = (handler?handler:zhttpd_response_304_default);
 }
 
 void zhttpd_set_404_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd))
 {
-    httpd->handler_404 = handler;
+    httpd->handler_404 = (handler?handler:zhttpd_response_404_default);
 }
 
 void zhttpd_set_500_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd))
 {
-    httpd->handler_500 = handler;
+    httpd->handler_500 = (handler?handler:zhttpd_response_500_default);
 }
 
 void zhttpd_set_200_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *data, int size))
 {
-    httpd->handler_200 = handler;
+    httpd->handler_200 = (handler?handler:zhttpd_response_200_default);
 }
 
-void zhttpd_response_200(zhttpd_t *httpd, const char *data, int size)
+static void zhttpd_response_200_default(zhttpd_t *httpd, const char *data, int size)
 {
     zhttpd_response_header_content_length(httpd, size);
+    if (httpd->request_keep_alive) {
+        zhttpd_response_header(httpd, "Connection", "keep-alive");
+    }
     zhttpd_response_header_over(httpd);
     if (size > 0) {
         zstream_write(httpd->fp, data, size);
@@ -367,45 +393,62 @@ void zhttpd_response_200(zhttpd_t *httpd, const char *data, int size)
     zhttpd_response_flush(httpd);
 }
 
-void zhttpd_response_404(zhttpd_t *httpd)
+void zhttpd_response_200(zhttpd_t *httpd, const char *data, int size)
 {
-    char output[] = "HTTP/1.0 404 Not Found\r\n"
-        "Server: LIBZC HTTPD\r\n"
-        "Content-Type: text/html\r\n"
-        "Connection: close\r\n"
-        "Content-Length: 13\r\n"
-        "\r\n"
-        "404 Not Found ";
-    zstream_write(httpd->fp, output, sizeof(output) - 1);
+    httpd->handler_200(httpd, data, size);
+}
+
+static void zhttpd_response_304_default(zhttpd_t *httpd, const char *etag)
+{
+    zstream_puts_const(httpd->fp, "HTTP/1.1 304 Not Modified\r\nServer: LIBZC HTTPD\r\nEtag: ");
+    zstream_puts(httpd->fp, etag);
+    zstream_write(httpd->fp, "\r\n\r\n", 4);
     zhttpd_response_flush(httpd);
 }
 
 void zhttpd_response_304(zhttpd_t *httpd, const char *etag)
 {
-    zstream_puts_const(httpd->fp, "HTTP/1.1 304 Not Modified\r\nEtag: ");
-    zstream_puts(httpd->fp, etag);
-    zstream_write(httpd->fp, "\r\n", 2);
-    zhttpd_response_flush(httpd);
+    httpd->handler_304(httpd, etag);
+}
+
+static void zhttpd_response_404_default(zhttpd_t *httpd)
+{
+    zstream_puts(httpd->fp, httpd->version);
+    zstream_puts(httpd->fp, " 404 Not Found\r\nServer: LIBZC HTTPD\r\nContent-Type: text/html\r\n");
+    if (httpd->request_keep_alive) {
+        zstream_puts(httpd->fp, "Connection: keep-alive\r\n");
+    } else {
+        zstream_puts(httpd->fp, "Connection: close\r\n");
+    }
+    zstream_puts(httpd->fp, "Content-Length: 39\r\n\r\n404 Not Found. <A HREF=\"/\">homepage</A>");
+}
+
+void zhttpd_response_404(zhttpd_t *httpd)
+{
+    httpd->handler_404(httpd);
+}
+
+static void zhttpd_response_500_default(zhttpd_t *httpd)
+{
+    zstream_puts(httpd->fp, httpd->version);
+    zstream_puts(httpd->fp, " 500 Error\r\nServer: LIBZC HTTPD\r\nContent-Type: text/html\r\n");
+    if (httpd->request_keep_alive) {
+        zstream_puts(httpd->fp, "Connection: keep-alive\r\n");
+    } else {
+        zstream_puts(httpd->fp, "Connection: close\r\n");
+    }
+    zstream_puts(httpd->fp, "Content-Length: 51\r\n\r\n500 Internal Server Error. <A HREF=\"/\">homepage</A>");
 }
 
 void zhttpd_response_500(zhttpd_t *httpd)
 {
-    char output[] = "HTTP/1.0 500 Error\r\n"
-        "Server: LIBZC HTTPD\r\n"
-        "Content-Type: text/html\r\n"
-        "Connection: close\r\n"
-        "Content-Length: 25\r\n"
-        "\r\n"
-        "500 Internal Server Error ";
-    zstream_write(httpd->fp, output, sizeof(output) - 1);
-    zhttpd_response_flush(httpd);
+    httpd->handler_500(httpd);
 }
 
-void zhttpd_response_header_initialization(zhttpd_t *httpd, const char *initialization)
+void zhttpd_response_header_initialization(zhttpd_t *httpd, const char *version, const char *status)
 {
-    if (initialization == 0) {
-        initialization = "HTTP/1.1 200 LIB-ZC";
-    }
+    char initialization[128];
+    sprintf(initialization, "%s %s", version?version:httpd->version, status);
     zstream_puts(httpd->fp, initialization);
     zstream_puts_const(httpd->fp, "\r\n");
     httpd->response_initialization = 1;
@@ -414,14 +457,14 @@ void zhttpd_response_header_initialization(zhttpd_t *httpd, const char *initiali
 void zhttpd_response_header(zhttpd_t *httpd, const char *name, const char *value)
 {
     if (!httpd->response_initialization) {
-        zhttpd_response_header_initialization(httpd, 0);
+        zhttpd_response_header_initialization(httpd, httpd->version, "200 OK");
     }
     zstream_puts(httpd->fp, name);
     zstream_puts_const(httpd->fp, ": ");
     zstream_puts(httpd->fp, value);
     zstream_puts_const(httpd->fp, "\r\n");
     if (!httpd->response_content_type) {
-        if (!strcasecmp(name, "Content-Type")) {
+        if (ZSTR_CASE_EQ(name, "Content-Type")) {
             httpd->response_content_type = 1;
         }
     }
@@ -533,6 +576,7 @@ static void zhttpd_loop_clear(zhttpd_t *httpd)
 #undef ___FR
     httpd->port = -1;
 
+    httpd->version_code = -1;
     httpd->stop = 0;
     httpd->request_content_length = -1;
     zdict_reset(httpd->request_query_vars);
@@ -761,12 +805,9 @@ static zbool_t _zhttpd_request_data_do_prepare(zhttpd_t *httpd)
     }
 
     if (httpd->unsupported_cmd) {
-        char output[] = "HTTP/1.0 501 Not implemented\r\n"
-            "Server: LIBZC HTTPD\r\n"
-            "Connection: close\r\n"
-            "Content-Length: 19\r\n"
-            "\r\n"
-            "501 Not implemented ";
+        char output[] = " 501 Not implemented\r\nServer: LIBZC HTTPD\r\nConnection: close\r\n"
+            "Content-Length: 19\r\n\r\n501 Not implemented";
+        zstream_puts(httpd->fp, httpd->version);
         zstream_write(httpd->fp, output, sizeof(output) - 1);
         zhttpd_response_flush(httpd);
         return 0;
@@ -788,12 +829,10 @@ static void _zhttpd_request_data_do_x_www_form_urlencoded(zhttpd_t *httpd, zbuf_
 
 static void _zhttpd_request_data_do_disabled_form_data(zhttpd_t *httpd)
 {
-    char output[] = "HTTP/1.0 501 Not implemented\r\n"
-        "Server: LIBZC HTTPD\r\n"
-        "Connection: close\r\n"
-        "Content-Length: 95\r\n"
-        "\r\n"
-        "501 Not implemented, unsupport multipart/form-data<br>(for developers: zhttpd_enable_form_data) ";
+    char output[] = " 501 Not implemented\r\nServer: LIBZC HTTPD\r\nConnection: close\r\n"
+        "Content-Length: 95\r\n\r\n"
+        "501 Not implemented, unsupport multipart/form-data<br>(for developers: zhttpd_enable_form_data)";
+    zstream_puts(httpd->fp, httpd->version);
     zstream_write(httpd->fp, output, sizeof(output) - 1);
     zhttpd_response_flush(httpd);
 }

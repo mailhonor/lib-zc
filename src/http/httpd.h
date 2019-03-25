@@ -44,6 +44,7 @@ struct zhttpd_t {
     zvector_t *request_uploaded_files; /* <zhttpd_uploaded_file_t *> */
     char *uploaded_tmp_mime_filename;
     /* */
+    int version_code:3;
     unsigned int stop:1;
     unsigned int exception:1;
     unsigned int unsupported_cmd:1;
