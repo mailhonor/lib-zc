@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-12-04
  * ================================
  */
@@ -14,10 +14,10 @@
 #include <errno.h>
 
 
-int zfile_get_size(const char *filename)
+int zfile_get_size(const char *pathname)
 {
     struct stat st;
-    if (stat(filename, &st) == -1) {
+    if (stat(pathname, &st) == -1) {
         return -1;
     }
     return st.st_size;
@@ -25,14 +25,14 @@ int zfile_get_size(const char *filename)
 
 /* ################################################################## */
 /* file get/put contents */
-int zfile_put_contents(const char *filename, const void *data, int len)
+int zfile_put_contents(const char *pathname, const void *data, int len)
 {
     int fd;
     int ret;
     int wlen = 0;
     int errno2;
 
-    while (((fd = open(filename, O_CREAT | O_RDWR | O_TRUNC, 0777)) == -1) && (errno == EINTR)) {
+    while (((fd = open(pathname, O_CREAT | O_RDWR | O_TRUNC, 0777)) == -1) && (errno == EINTR)) {
         continue;
     }
 
@@ -60,7 +60,7 @@ int zfile_put_contents(const char *filename, const void *data, int len)
     return 1;
 }
 
-int zfile_get_contents(const char *filename, zbuf_t *bf)
+int zfile_get_contents(const char *pathname, zbuf_t *bf)
 {
     int fd;
     int errno2;
@@ -68,7 +68,7 @@ int zfile_get_contents(const char *filename, zbuf_t *bf)
     char buf[4096 + 1];
     int rlen = 0;
 
-    while (((fd = open(filename, O_RDONLY)) == -1) && (errno == EINTR)) {
+    while (((fd = open(pathname, O_RDONLY)) == -1) && (errno == EINTR)) {
         continue;
     }
     if (fd == -1) {
@@ -104,11 +104,11 @@ int zfile_get_contents(const char *filename, zbuf_t *bf)
     return rlen;
 }
 
-int zfile_get_contents_sample(const char *filename, zbuf_t *bf)
+int zfile_get_contents_sample(const char *pathname, zbuf_t *bf)
 {
-    int ret = zfile_get_contents(filename, bf);
+    int ret = zfile_get_contents(pathname, bf);
     if (ret < 0) {
-        zinfo("ERR load from %s (%m)", filename);
+        zinfo("ERR load from %s (%m)", pathname);
         exit(1);
     }
     return ret;
@@ -145,7 +145,7 @@ int zstdin_get_contents(zbuf_t *bf)
 }
 
 /* ################################################################## */
-int zmmap_reader_init(zmmap_reader_t * reader, const char *filename)
+int zmmap_reader_init(zmmap_reader_t * reader, const char *pathname)
 {
     int fd;
     int size;
@@ -157,7 +157,7 @@ int zmmap_reader_init(zmmap_reader_t * reader, const char *filename)
     reader->data = 0;
     reader->len = 0;
 
-    while (((fd = open(filename, O_RDONLY)) == -1) && (errno == EINTR)) {
+    while (((fd = open(pathname, O_RDONLY)) == -1) && (errno == EINTR)) {
         continue;
     }
     if (fd == -1) {

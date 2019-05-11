@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-12-09
  * ================================
  */
@@ -68,7 +68,7 @@ void zmime_header_line_get_utf8_2231(const char *src_charset_def, const char *in
         if (i+1 > start_len) {
             break;
         }
-        ch = (zhex_to_dec_table[(int)(start[i+1])]<<4) | (zhex_to_dec_table[(int)(start[i+2])]);
+        ch = (zchar_xdigitval_vector[(int)(start[i+1])]<<4) | (zchar_xdigitval_vector[(int)(start[i+2])]);
         ZBUF_PUT(tmps, ch);
         i += 2;
     }

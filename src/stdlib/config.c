@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-10-12
  * ================================
  */
@@ -27,13 +27,13 @@ void zdefault_config_fini(void)
 }
 
 /* ################################################################## */
-int zconfig_load_from_filename(zconfig_t * cf, const char *filename)
+int zconfig_load_from_pathname(zconfig_t * cf, const char *pathname)
 {
     FILE *fp;
     char *name, *value;
     char *line_buf;
 
-    fp = fopen(filename, "r");
+    fp = fopen(pathname, "r");
     if (!fp) {
         return -1;
     }

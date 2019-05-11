@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-10-12
  * ================================
  */
@@ -10,8 +10,8 @@
 #include <signal.h>
 
 char *zvar_progname = 0;
-int zvar_proc_stop = 0;
-int zvar_test_mode = 0;
+zbool_t zvar_proc_stop = 0;
+zbool_t zvar_test_mode = 0;
 int zvar_max_fd = 102400;
 char **zvar_main_redundant_argv = 0;
 int zvar_main_redundant_argc = 0;
@@ -81,7 +81,7 @@ void zmain_argument_run(int argc, char **argv, unsigned int (*self_argument_fn)(
         i++;
         optval = argv[i];
         if (!strcmp(optname, "-config")) {
-            if (zconfig_load_from_filename(zvar_default_config, optval) < 0) {
+            if (zconfig_load_from_pathname(zvar_default_config, optval) < 0) {
                 zinfo("ERR load config error from %s", optval);
                 exit(1);
             }

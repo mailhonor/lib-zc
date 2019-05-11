@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2018-01-22
  * ================================
  */
@@ -1778,7 +1778,11 @@ static void *do_accept(void *arg)
 
 static void ___service_register(const char *service_name, int fd, int fd_type)
 {
-    zcoroutine_go(do_accept, (void *)(long)fd, 0);
+    if (zempty(service_name) || (!strcmp(service_name, "redis")) || (!zredis_puny_server_service_register)) {
+        zcoroutine_go(do_accept, (void *)(long)fd, 0);
+    } else {
+        zredis_puny_server_service_register(service_name, fd, fd_type);
+    }
 }
 
 static void *do_timeout(void *arg)
@@ -1806,6 +1810,7 @@ static void *do_timeout(void *arg)
 void (*zredis_puny_server_before_service)() = 0;
 void (*zredis_puny_server_before_reload)() = 0;
 void (*zredis_puny_server_before_exit)() = 0;
+void (*zredis_puny_server_service_register) (const char *service, int fd, int fd_type) = 0;
 
 static void ___before_service_prepare_load(char *fn)
 {

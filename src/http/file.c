@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2017-04-05
  * ================================
  */
@@ -22,14 +22,14 @@ static void _response_416(zhttpd_t *httpd)
     zhttpd_response_flush(httpd);
 }
 
-static zbool_t _zhttpd_response_file(zhttpd_t *httpd, const char *filename, const char *content_type, int max_age, zbool_t is_gzip ) 
+static zbool_t _zhttpd_response_file(zhttpd_t *httpd, const char *pathname, const char *content_type, int max_age, zbool_t is_gzip ) 
 {
     int ret, fd = -1, do_ragne = 0;
     long rlen_sum, rlen, offset1, offset2;
     struct stat st;
     char *rwdata = 0, *old_etag, *new_etag, *rwline, *range, *p;
 
-    while (((fd = open(filename, O_RDONLY)) == -1) && (errno == EINTR)) {
+    while (((fd = open(pathname, O_RDONLY)) == -1) && (errno == EINTR)) {
         continue;
     }
     if (fd == -1) {
@@ -190,38 +190,38 @@ over:
     return ret;
 }
 
-void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *filename, const char *gzip_filename, const char *content_type, int max_age)
+void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *pathname, const char *gzip_pathname, const char *content_type, int max_age)
 {
     zbool_t ok = 0;
 
-    if (zempty(filename) && zempty(gzip_filename)) {
+    if (zempty(pathname) && zempty(gzip_pathname)) {
         zhttpd_response_500(httpd);
         return;
     }
-    if (zempty(content_type) && zempty(filename)) {
+    if (zempty(content_type) && zempty(pathname)) {
         zhttpd_response_500(httpd);
         return;
     }
 
     if (zempty(content_type)) {
-        content_type = zget_mime_type_from_filename(filename, zvar_mime_type_application_cotet_stream);
+        content_type = zget_mime_type_from_pathname(pathname, zvar_mime_type_application_cotet_stream);
     }
 
-    if ((!zempty(filename)) && (zempty(gzip_filename))) {
-        ok = _zhttpd_response_file(httpd, filename, content_type, max_age, 0);
-    } else if (zempty(filename) && (!zempty(gzip_filename))){
+    if ((!zempty(pathname)) && (zempty(gzip_pathname))) {
+        ok = _zhttpd_response_file(httpd, pathname, content_type, max_age, 0);
+    } else if (zempty(pathname) && (!zempty(gzip_pathname))){
         if (zhttpd_request_is_gzip(httpd) == 0) {
             zhttpd_response_500(httpd);
             ok = 1;
         } else {
-            ok = _zhttpd_response_file(httpd, gzip_filename, content_type, max_age, 1);
+            ok = _zhttpd_response_file(httpd, gzip_pathname, content_type, max_age, 1);
         }
     } else if (zhttpd_request_is_gzip(httpd) == 0) {
-        ok = _zhttpd_response_file(httpd, filename, content_type, max_age, 0);
+        ok = _zhttpd_response_file(httpd, pathname, content_type, max_age, 0);
     } else {
-        ok = _zhttpd_response_file(httpd, gzip_filename, content_type, max_age, 1);
+        ok = _zhttpd_response_file(httpd, gzip_pathname, content_type, max_age, 1);
         if (ok == 0) {
-            ok = _zhttpd_response_file(httpd, filename, content_type, max_age, 0);
+            ok = _zhttpd_response_file(httpd, pathname, content_type, max_age, 0);
         }
     }
 
@@ -232,12 +232,12 @@ void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *filename, const 
     return;
 }
 
-void zhttpd_response_file(zhttpd_t *httpd, const char *filename, const char *content_type, int max_age)
+void zhttpd_response_file(zhttpd_t *httpd, const char *pathname, const char *content_type, int max_age)
 {
-    zhttpd_response_file_try_gzip(httpd, filename, 0, content_type, max_age);
+    zhttpd_response_file_try_gzip(httpd, pathname, 0, content_type, max_age);
 }
 
-void zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *gzip_filename, const char *content_type, int max_age)
+void zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *gzip_pathname, const char *content_type, int max_age)
 {
-    zhttpd_response_file_try_gzip(httpd, 0, gzip_filename, content_type, max_age);
+    zhttpd_response_file_try_gzip(httpd, 0, gzip_pathname, content_type, max_age);
 }

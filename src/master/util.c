@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-11-20
  * ================================
  */
@@ -34,7 +34,7 @@ void zmaster_load_global_config_from_dir_inner(zconfig_t *cf, const char *config
             continue;
         }
         snprintf(pn, 4096, "%s/%s", config_path, fn);
-        zconfig_load_from_filename(cf, pn);
+        zconfig_load_from_pathname(cf, pn);
     }
     closedir(dir);
 }

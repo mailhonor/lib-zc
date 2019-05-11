@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-10-21
  * ================================
  */
@@ -10,7 +10,7 @@
 
 void usage(void)
 {
-    printf("USAGE: %s config_filename\n", zvar_progname);
+    printf("USAGE: %s config_pathname\n", zvar_progname);
     exit(0);
 }
 
@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     /* load config */
     for (i = 1; i < argc; i++) {
         fn = argv[i];
-        if (zconfig_load_from_filename(config, fn) < 0) {
+        if (zconfig_load_from_pathname(config, fn) < 0) {
             exit(-1);
         }
     }

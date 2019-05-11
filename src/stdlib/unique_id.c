@@ -60,3 +60,22 @@ long zget_time_from_unique_id(char *buf)
     }
     return r;
 }
+
+zbool_t zis_unique_id(char *buf)
+{
+    int i=0, ch;
+    for(i=0;i<zvar_unique_id_size+1;i++) {
+        ch = buf[i];
+        if (ch == 0) {
+            return 1;
+        }
+        if ((ch >= '0') &&  (ch <= '9')) {
+            continue;
+        }
+        if ((ch >= 'a') &&  (ch <= 'f')) {
+            continue;
+        }
+        return 0;
+    }
+    return 1;
+}

@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2017-04-05
  * ================================
  */
@@ -142,13 +142,13 @@ static void upload_do(zhttpd_t *httpd)
     ZVECTOR_WALK_BEGIN(files, zhttpd_uploaded_file_t *, fo) {
         zjson_t *tmpjs = zjson_create();
         zjson_object_update(tmpjs, "name", zjson_create_string(zhttpd_uploaded_file_get_name(fo), -1), 0);
-        zjson_object_update(tmpjs, "filename", zjson_create_string(zhttpd_uploaded_file_get_filename(fo), -1), 0);
+        zjson_object_update(tmpjs, "pathname", zjson_create_string(zhttpd_uploaded_file_get_pathname(fo), -1), 0);
         zjson_object_update(tmpjs, "size", zjson_create_long(zhttpd_uploaded_file_get_size(fo)), 0);
-        char saved_filename[1024];
-        sprintf(saved_filename, "uploaded_files/%d.dat", file_id++);
-        zjson_object_update(tmpjs, "saved_filename", zjson_create_string(saved_filename, -1), 0);
+        char saved_pathname[1024];
+        sprintf(saved_pathname, "uploaded_files/%d.dat", file_id++);
+        zjson_object_update(tmpjs, "saved_pathname", zjson_create_string(saved_pathname, -1), 0);
         zjson_array_push(files_js, tmpjs);
-        zhttpd_uploaded_file_save_to(fo, saved_filename);
+        zhttpd_uploaded_file_save_to(fo, saved_pathname);
     } ZVECTOR_WALK_END;
 
     zbuf_t *bf = zbuf_create(-1);

@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2016-09-09
  * ================================
  */
@@ -47,11 +47,11 @@ void zlicense_mac_build(const char *salt, const char *_mac, zbuf_t *result)
     zbuf_free(builder);
 }
 
-int zlicense_mac_check_from_config_filename(const char *salt, const char *config_file, const char *key)
+int zlicense_mac_check_from_config_pathname(const char *salt, const char *config_file, const char *key)
 {
     int ret = -1;
     zconfig_t *cf = zconfig_create();
-    if (zconfig_load_from_filename(cf, config_file) < 0) {
+    if (zconfig_load_from_pathname(cf, config_file) < 0) {
         ret = -1;
         goto over;
     }

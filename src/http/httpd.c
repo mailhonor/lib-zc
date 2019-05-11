@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2017-04-05
  * ================================
  */
@@ -9,7 +9,7 @@
 #include "httpd.h"
 
 static void zhttpd_loop_clear(zhttpd_t *httpd);
-static void zhttpd_request_header_do(zhttpd_t * httpd, int first, zbuf_t *linebuf);
+static void zhttpd_request_header_do(zhttpd_t * httpd, zbuf_t *linebuf);
 static void zhttpd_request_data_do(zhttpd_t *httpd, zbuf_t *linebuf);
 
 zbool_t zvar_httpd_debug = 0;
@@ -20,9 +20,9 @@ const char *zhttpd_uploaded_file_get_name(zhttpd_uploaded_file_t *fo)
     return fo->name;
 }
 
-const char *zhttpd_uploaded_file_get_filename(zhttpd_uploaded_file_t *fo)
+const char *zhttpd_uploaded_file_get_pathname(zhttpd_uploaded_file_t *fo)
 {
-    return fo->filename;
+    return fo->pathname;
 }
 
 int zhttpd_uploaded_file_get_size(zhttpd_uploaded_file_t *fo)
@@ -33,7 +33,7 @@ int zhttpd_uploaded_file_get_size(zhttpd_uploaded_file_t *fo)
 
     zhttpd_t *httpd = fo->httpd;
     zmmap_reader_t reader;
-    if (zmmap_reader_init(&reader, httpd->uploaded_tmp_mime_filename) < 1){
+    if (zmmap_reader_init(&reader, httpd->uploaded_tmp_mime_pathname) < 1){
         return -1;
     }
     zbuf_t *data = zbuf_create(4096);
@@ -50,11 +50,11 @@ int zhttpd_uploaded_file_get_size(zhttpd_uploaded_file_t *fo)
     return fo->size;
 }
 
-int zhttpd_uploaded_file_save_to(zhttpd_uploaded_file_t *fo, const char *filename)
+int zhttpd_uploaded_file_save_to(zhttpd_uploaded_file_t *fo, const char *pathname)
 {
     zhttpd_t *httpd = fo->httpd;
     zmmap_reader_t reader;
-    if (zmmap_reader_init(&reader, httpd->uploaded_tmp_mime_filename) < 1){
+    if (zmmap_reader_init(&reader, httpd->uploaded_tmp_mime_pathname) < 1){
         return -1;
     }
     zbuf_t *data = zbuf_create(4096);
@@ -66,7 +66,7 @@ int zhttpd_uploaded_file_save_to(zhttpd_uploaded_file_t *fo, const char *filenam
         zbuf_memcpy(data, reader.data + fo->offset, fo->size);
     }
     zmmap_reader_fini(&reader);
-    int ret = zfile_put_contents(filename, zbuf_data(data), zbuf_len(data));
+    int ret = zfile_put_contents(pathname, zbuf_data(data), zbuf_len(data));
     zbuf_free(data);
     return ret;
 }
@@ -76,7 +76,7 @@ int zhttpd_uploaded_file_get_data(zhttpd_uploaded_file_t *fo, zbuf_t *data)
     zhttpd_t *httpd = fo->httpd;
     zbuf_reset(data);
     zmmap_reader_t reader;
-    if (zmmap_reader_init(&reader, httpd->uploaded_tmp_mime_filename) < 1){
+    if (zmmap_reader_init(&reader, httpd->uploaded_tmp_mime_pathname) < 1){
         return -1;
     }
     if (fo->encoding == 'B') {
@@ -92,6 +92,7 @@ int zhttpd_uploaded_file_get_data(zhttpd_uploaded_file_t *fo, zbuf_t *data)
 
 static void zhttpd_response_304_default(zhttpd_t *httpd, const char *etag);
 static void zhttpd_response_500_default(zhttpd_t *httpd);
+static void zhttpd_response_501_default(zhttpd_t *httpd);
 static void zhttpd_response_404_default(zhttpd_t *httpd);
 static void zhttpd_response_200_default(zhttpd_t *httpd, const char *data, int size);
 
@@ -111,11 +112,12 @@ static zhttpd_t * _zhttpd_malloc_struct_general()
     httpd->request_headers = zdict_create();
     httpd->request_cookies = zdict_create();
     httpd->request_uploaded_files = zvector_create(-1);
-    httpd->uploaded_tmp_mime_filename = 0;
+    httpd->uploaded_tmp_mime_pathname = 0;
 
     httpd->version_code = -1;
     httpd->stop = 0;
     httpd->exception = 0;
+    httpd->first = 1;
     httpd->unsupported_cmd = 0;
     httpd->request_keep_alive = 0;
     httpd->response_initialization = 0;
@@ -134,8 +136,13 @@ static zhttpd_t * _zhttpd_malloc_struct_general()
     httpd->handler_304 = zhttpd_response_304_default;
     httpd->handler_404 = zhttpd_response_404_default;
     httpd->handler_500 = zhttpd_response_500_default;
+    httpd->handler_501 = zhttpd_response_501_default;
     httpd->handler_200 = zhttpd_response_200_default;
     httpd->handler = zhttpd_response_404;
+    httpd->handler_HEAD = zhttpd_response_501;
+    httpd->handler_OPTIONS = zhttpd_response_501;
+    httpd->handler_DELETE = zhttpd_response_501;
+    httpd->handler_TRACE = zhttpd_response_501;
 
     return httpd;
 }
@@ -173,14 +180,14 @@ void zhttpd_close(zhttpd_t *httpd, zbool_t close_fd_and_release_ssl)
 
     ZVECTOR_WALK_BEGIN(httpd->request_uploaded_files, zhttpd_uploaded_file_t *, fo) {
         zfree(fo->name);
-        zfree(fo->filename);
+        zfree(fo->pathname);
         zfree(fo);
     } ZVECTOR_WALK_END;
     zvector_free(httpd->request_uploaded_files);
 
-    if (!zempty(httpd->uploaded_tmp_mime_filename)){
-        zunlink(httpd->uploaded_tmp_mime_filename);
-        zfree(httpd->uploaded_tmp_mime_filename);
+    if (!zempty(httpd->uploaded_tmp_mime_pathname)){
+        zunlink(httpd->uploaded_tmp_mime_pathname);
+        zfree(httpd->uploaded_tmp_mime_pathname);
     }
 
     zfree(httpd);
@@ -196,9 +203,34 @@ void *zhttpd_get_context(zhttpd_t *httpd)
     return httpd->context;
 }
 
+void zhttpd_set_HEAD_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd))
+{
+    httpd->handler_HEAD = (handler?handler:zhttpd_response_501);
+}
+
+void zhttpd_set_OPTIONS_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd))
+{
+    httpd->handler_OPTIONS = (handler?handler:zhttpd_response_501);
+}
+
+void zhttpd_set_DELETE_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd))
+{
+    httpd->handler_DELETE = (handler?handler:zhttpd_response_501);
+}
+
+void zhttpd_set_TRACE_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd))
+{
+    httpd->handler_TRACE = (handler?handler:zhttpd_response_501);
+}
+
+void zhttpd_set_PATCH_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd))
+{
+    httpd->handler_TRACE = (handler?handler:zhttpd_response_501);
+}
+
 void zhttpd_set_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd))
 {
-    httpd->handler = handler;
+    httpd->handler = (handler?handler:zhttpd_response_404);
 }
 
 void zhttpd_set_keep_alive_timeout(zhttpd_t *httpd, int timeout)
@@ -246,23 +278,21 @@ void zhttps_set_exception(zhttpd_t *httpd)
 
 void zhttpd_run(zhttpd_t *httpd)
 {
-    int first = 1;
+    zbuf_t *linebuf = zbuf_create(1024);
     while(1) {
         zhttpd_loop_clear(httpd);
-        zbuf_t *linebuf = zbuf_create(1024);
-        zhttpd_request_header_do(httpd, first, linebuf);
-        first = 0;
+        zhttpd_request_header_do(httpd, linebuf);
         zhttpd_request_data_do(httpd, linebuf);
-        zbuf_free(linebuf);
         if (httpd->exception) {
             break;
         }
-        httpd->handler(httpd);
+        httpd->handler_protocal(httpd);
         zhttpd_response_flush(httpd);
-        if (httpd->stop || httpd->exception || httpd->request_keep_alive) {
+        if (httpd->stop || httpd->exception || (httpd->request_keep_alive==0)) {
             break;
         }
     }
+    zbuf_free(linebuf);
     return;
 }
 
@@ -375,6 +405,11 @@ void zhttpd_set_500_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd))
     httpd->handler_500 = (handler?handler:zhttpd_response_500_default);
 }
 
+void zhttpd_set_501_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd))
+{
+    httpd->handler_501 = (handler?handler:zhttpd_response_501_default);
+}
+
 void zhttpd_set_200_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *data, int size))
 {
     httpd->handler_200 = (handler?handler:zhttpd_response_200_default);
@@ -443,6 +478,19 @@ static void zhttpd_response_500_default(zhttpd_t *httpd)
 void zhttpd_response_500(zhttpd_t *httpd)
 {
     httpd->handler_500(httpd);
+}
+
+static void zhttpd_response_501_default(zhttpd_t *httpd)
+{
+    char output[] = " 501 Not implemented\r\nServer: LIBZC HTTPD\r\nConnection: close\r\n"
+        "Content-Length: 19\r\n\r\n501 Not implemented";
+    zstream_puts(httpd->fp, httpd->version);
+    zstream_write(httpd->fp, output, sizeof(output) - 1);
+}
+
+void zhttpd_response_501(zhttpd_t *httpd)
+{
+    httpd->handler_501(httpd);
 }
 
 void zhttpd_response_header_initialization(zhttpd_t *httpd, const char *version, const char *status)
@@ -586,15 +634,15 @@ static void zhttpd_loop_clear(zhttpd_t *httpd)
 
     ZVECTOR_WALK_BEGIN(httpd->request_uploaded_files, zhttpd_uploaded_file_t *, fo) {
         zfree(fo->name);
-        zfree(fo->filename);
+        zfree(fo->pathname);
         zfree(fo);
     } ZVECTOR_WALK_END;
     zvector_reset(httpd->request_uploaded_files);
 
-    if (!zempty(httpd->uploaded_tmp_mime_filename)){
-        zunlink(httpd->uploaded_tmp_mime_filename);
-        zfree(httpd->uploaded_tmp_mime_filename);
-        httpd->uploaded_tmp_mime_filename = 0;
+    if (!zempty(httpd->uploaded_tmp_mime_pathname)){
+        zunlink(httpd->uploaded_tmp_mime_pathname);
+        zfree(httpd->uploaded_tmp_mime_pathname);
+        httpd->uploaded_tmp_mime_pathname = 0;
     }
 
     httpd->unsupported_cmd = 0;
@@ -603,14 +651,15 @@ static void zhttpd_loop_clear(zhttpd_t *httpd)
     httpd->response_content_type = 0;
 }
 
-static void zhttpd_request_header_do(zhttpd_t * httpd, int first, zbuf_t *linebuf)
+static void zhttpd_request_header_do(zhttpd_t * httpd, zbuf_t *linebuf)
 {
     char *p, *ps;
     int ret, llen;
 
     /* read first header line */
-    if (first) {
+    if (httpd->first) {
         ret = zstream_timed_read_wait(httpd->fp, httpd->request_header_timeout);
+        httpd->first = 0;
     } else {
         ret = zstream_timed_read_wait(httpd->fp, httpd->keep_alive_timeout);
     }
@@ -635,15 +684,21 @@ static void zhttpd_request_header_do(zhttpd_t * httpd, int first, zbuf_t *linebu
     *p = 0;
     zstr_toupper(ps);
     if (ZSTR_EQ(ps, "GET")) {
+        httpd->handler_protocal = httpd->handler;
     } else if (ZSTR_EQ(ps, "POST")) {
-    } else if (ZSTR_EQ(ps, "HEAD")) {
-        httpd->unsupported_cmd = 1;
-    } else if (ZSTR_EQ(ps, "PUT")) {
-        httpd->unsupported_cmd = 1;
-    } else if (ZSTR_EQ(ps, "TRACE")) {
-        httpd->unsupported_cmd = 1;
+        httpd->handler_protocal = httpd->handler;
     } else if (ZSTR_EQ(ps, "OPTIONS")) {
-        httpd->unsupported_cmd = 1;
+        httpd->handler_protocal = httpd->handler_OPTIONS;
+    } else if (ZSTR_EQ(ps, "HEAD")) {
+        httpd->handler_protocal = httpd->handler_HEAD;
+    } else if (ZSTR_EQ(ps, "PUT")) {
+        httpd->handler_protocal = httpd->handler;
+    } else if (ZSTR_EQ(ps, "TRACE")) {
+        httpd->handler_protocal = httpd->handler_TRACE;
+    } else if (ZSTR_EQ(ps, "DELETE")) {
+        httpd->handler_protocal = httpd->handler_DELETE;
+    } else if (ZSTR_EQ(ps, "PATCH")) {
+        httpd->handler_protocal = httpd->handler_PATCH;
     } else {
         httpd->exception = 1;
         return;
@@ -751,12 +806,12 @@ static char *_zhttpd_request_data_do_save_tmpfile(zhttpd_t *httpd, zbuf_t *lineb
     }
     zbuf_need_space(linebuf, zvar_unique_id_size);
     zbuild_unique_id(zbuf_data(linebuf)+zbuf_len(linebuf));
-    char *data_filename = zstrdup(zbuf_data(linebuf));
+    char *data_pathname = zstrdup(zbuf_data(linebuf));
 
-    zstream_t *tmp_fp = zstream_open_file(data_filename, "w+");
+    zstream_t *tmp_fp = zstream_open_file(data_pathname, "w+");
     if (!tmp_fp) {
         httpd->exception = 1;
-        zfree(data_filename);
+        zfree(data_pathname);
         return 0;
     }
     zstream_puts_const(tmp_fp, "Content-Type: "); 
@@ -784,11 +839,11 @@ static char *_zhttpd_request_data_do_save_tmpfile(zhttpd_t *httpd, zbuf_t *lineb
     }
     zstream_close(tmp_fp, 1);
     if (httpd->exception) {
-        zunlink(data_filename);
-        zfree(data_filename);
+        zunlink(data_pathname);
+        zfree(data_pathname);
         return 0;
     }
-    return data_filename;
+    return data_pathname;
 }
 
 static zbool_t _zhttpd_request_data_do_prepare(zhttpd_t *httpd)
@@ -801,15 +856,6 @@ static zbool_t _zhttpd_request_data_do_prepare(zhttpd_t *httpd)
     }
     if ((httpd->max_length_for_post) > 0 && (httpd->request_content_length > httpd->max_length_for_post)) {
         httpd->exception = 1;
-        return 0;
-    }
-
-    if (httpd->unsupported_cmd) {
-        char output[] = " 501 Not implemented\r\nServer: LIBZC HTTPD\r\nConnection: close\r\n"
-            "Content-Length: 19\r\n\r\n501 Not implemented";
-        zstream_puts(httpd->fp, httpd->version);
-        zstream_write(httpd->fp, output, sizeof(output) - 1);
-        zhttpd_response_flush(httpd);
         return 0;
     }
 
@@ -837,7 +883,7 @@ static void _zhttpd_request_data_do_disabled_form_data(zhttpd_t *httpd)
     zhttpd_response_flush(httpd);
 }
 
-static void _zhttpd_uploaded_dump_file(zhttpd_t *httpd, zmime_t *mime, zbuf_t *linebuf, zbuf_t *tmpbf, const char *name, const char *filename)
+static void _zhttpd_uploaded_dump_file(zhttpd_t *httpd, zmime_t *mime, zbuf_t *linebuf, zbuf_t *tmpbf, const char *name, const char *pathname)
 {
 
     int wlen = 0, raw_len = 0;
@@ -852,7 +898,7 @@ static void _zhttpd_uploaded_dump_file(zhttpd_t *httpd, zmime_t *mime, zbuf_t *l
     zhttpd_uploaded_file_t *fo = (zhttpd_uploaded_file_t *)zcalloc(1, sizeof(zhttpd_uploaded_file_t));
     fo->httpd = httpd;
     fo->name = zstrdup(name);
-    fo->filename = zstrdup(filename);
+    fo->pathname = zstrdup(pathname);
     fo->size = wlen;
     fo->offset = zmime_get_body_offset(mime);
     fo->raw_len = raw_len;
@@ -886,14 +932,14 @@ static void _zhttpd_request_data_do_form_data_one_mime(zhttpd_t *httpd, zmime_t 
     }
     const char *ctype = zmime_get_type(mime);
     if (strncmp(ctype, "multipart/", 10)) {
-        char *filename = zdict_get_str(params, "filename", "");
-        if (zempty(filename)) {
+        char *pathname = zdict_get_str(params, "pathname", "");
+        if (zempty(pathname)) {
             if (!zempty(name)) {
                 zmime_get_decoded_content(mime, tmp_bf);
                 zdict_update(httpd->request_post_vars, name, tmp_bf);
             }
         } else {
-            _zhttpd_uploaded_dump_file(httpd, mime, linebuf, tmp_bf, name, filename);
+            _zhttpd_uploaded_dump_file(httpd, mime, linebuf, tmp_bf, name, pathname);
         }
     } else {
         name = zstrdup(name);
@@ -911,8 +957,8 @@ static void _zhttpd_request_data_do_form_data_one_mime(zhttpd_t *httpd, zmime_t 
             }
             zmime_header_line_get_params(zbuf_data(linebuf), zbuf_len(linebuf), tmp_bf, params);
             zbuf_reset(tmp_bf);
-            char *filename = zdict_get_str(params, "filename", "");
-            _zhttpd_uploaded_dump_file(httpd, child, linebuf, tmp_bf, name, filename);
+            char *pathname = zdict_get_str(params, "pathname", "");
+            _zhttpd_uploaded_dump_file(httpd, child, linebuf, tmp_bf, name, pathname);
             if (httpd->exception) {
                 break;
             }
@@ -930,14 +976,14 @@ static void _zhttpd_request_data_do_form_data(zhttpd_t *httpd, zbuf_t *linebuf, 
         return;
     }
 
-    char *data_filename = _zhttpd_request_data_do_save_tmpfile(httpd, linebuf, content_type_raw);
+    char *data_pathname = _zhttpd_request_data_do_save_tmpfile(httpd, linebuf, content_type_raw);
     zmail_t *mime_parser = 0;
-    if (data_filename) {
-        mime_parser = zmail_create_parser_from_filename(data_filename, "");
+    if (data_pathname) {
+        mime_parser = zmail_create_parser_from_pathname(data_pathname, "");
     }
     if (!mime_parser) {
         httpd->exception = 1;
-        zinfo("error open tmp file %s(%m)", data_filename);
+        zinfo("error open tmp file %s(%m)", data_pathname);
         goto over;
     }
 
@@ -952,7 +998,7 @@ over:
     if (mime_parser) {
         zmail_free(mime_parser);
     }
-    httpd->uploaded_tmp_mime_filename = data_filename;
+    httpd->uploaded_tmp_mime_pathname = data_pathname;
 }
 
 static void zhttpd_request_data_do(zhttpd_t *httpd, zbuf_t *linebuf)

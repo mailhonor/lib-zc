@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-10-12
  * ================================
  */
@@ -14,8 +14,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-int zvar_log_fatal_catch = 0;
-int zvar_log_debug_enable = 0;
+zbool_t zvar_log_fatal_catch = 0;
+zbool_t zvar_log_debug_enable = 0;
 
 static void zvprintf_default(const char *source_fn, size_t line_number, const char *fmt, va_list ap);
 

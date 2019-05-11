@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-11-26
  * ================================
  */
@@ -164,8 +164,70 @@ int zget_readable_count(int fd)
     int ret; \
     do { \
         ret = exp; \
-    } while((ret<0) && (errno==EINTR)); \
+    } while((ret<0) && (errno==EINTR) && (zvar_proc_stop==0)); \
     return ret;
+
+int zopen(const char *pathname, int flags, mode_t mode)
+{
+    ___ROBUST_DO(open(pathname, flags, mode));
+}
+
+ssize_t zread(int fd, void *buf, size_t count)
+{
+    ssize_t ret;
+    int ec;
+    for (;;) {
+        if ((ret = read(fd, buf, count)) < 0) {
+            ec = errno;
+            if (ec == EINTR) {
+                if (zvar_proc_stop) {
+                    return -1;
+                }
+                continue;
+            }
+            return -1;
+        }
+        return ret;
+    }
+    return -1;
+}
+
+ssize_t zwrite(int fd, const void *buf, size_t count)
+{
+    ssize_t ret;
+    int ec, is_closed = 0;
+    const char *ptr = (const char *)buf;
+    long left = count;
+    for (;;) {
+        ret = write(fd, ptr, left);
+        if (ret < 0) {
+            ec = errno;
+            if (ec == EINTR) {
+                if (zvar_proc_stop) {
+                    break;
+                }
+                continue;
+            }
+            if (ec == EPIPE) {
+                is_closed = 1;
+                break;
+            }
+            break;
+        } else if (ret == 0) {
+            continue;
+        } else {
+            left -= ret;
+            ptr += ret;
+        }
+    }
+    if (count > left) {
+        return count - left;
+    }
+    if (is_closed) {
+        return 0;
+    }
+    return -1;
+}
 
 int zclose(int fd)
 {

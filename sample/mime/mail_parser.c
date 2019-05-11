@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-12-11
  * ================================
  */
@@ -92,7 +92,7 @@ static int save_all_attachments(zmail_t *parser)
 
 static void do_parse(char *eml_fn)
 {
-    zmail_t *parser = zmail_create_parser_from_filename(eml_fn, "");
+    zmail_t *parser = zmail_create_parser_from_pathname(eml_fn, "");
     if (parser == 0) {
         printf("ERR open %s (%m)\n", eml_fn);
         exit(1);

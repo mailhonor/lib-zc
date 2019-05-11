@@ -17,7 +17,7 @@
 struct zhttpd_uploaded_file_t {
     zhttpd_t *httpd;
     char *name;
-    char *filename;
+    char *pathname;
     int encoding;
     int raw_len;
     int offset;
@@ -42,10 +42,11 @@ struct zhttpd_t {
     zdict_t *request_headers;
     zdict_t *request_cookies;
     zvector_t *request_uploaded_files; /* <zhttpd_uploaded_file_t *> */
-    char *uploaded_tmp_mime_filename;
+    char *uploaded_tmp_mime_pathname;
     /* */
     int version_code:3;
     unsigned int stop:1;
+    unsigned int first:1;
     unsigned int exception:1;
     unsigned int unsupported_cmd:1;
     unsigned int request_keep_alive:1;
@@ -66,7 +67,14 @@ struct zhttpd_t {
     void (*handler_304)(zhttpd_t * httpd, const char *etag);
     void (*handler_404)(zhttpd_t * httpd);
     void (*handler_500)(zhttpd_t * httpd);
+    void (*handler_501)(zhttpd_t * httpd);
     void (*handler_200)(zhttpd_t * httpd, const char *data, int size);
+    void (*handler_HEAD)(zhttpd_t * httpd);
+    void (*handler_OPTIONS)(zhttpd_t * httpd);
+    void (*handler_DELETE)(zhttpd_t * httpd);
+    void (*handler_TRACE)(zhttpd_t * httpd);
+    void (*handler_PATCH)(zhttpd_t * httpd);
     void (*handler)(zhttpd_t * httpd);
+    void (*handler_protocal)(zhttpd_t * httpd);
     void *context;
 };

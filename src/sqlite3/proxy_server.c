@@ -1,11 +1,12 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2017-03-15
  * ================================
  */
 
+#ifdef _LIB_ZC_SQLITE3_
 
 #include "zc.h"
 #include <pthread.h>
@@ -15,13 +16,11 @@
 #include <signal.h>
 #include <sqlite3.h>
 
-#ifdef _LIB_ZC_SQLITE3_
-
 #define zpthread_lock(l)    {if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
 #define zpthread_unlock(l)  {if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
 
 static void after_response(zaio_t *aio);
-static char *sqlite3_proxy_filename = 0;
+static char *sqlite3_proxy_pathname = 0;
 static int sqlite3_fd = 0;
 static sqlite3 *sqlite3_handler = 0;
 static pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -308,10 +307,15 @@ static void do_slqite3_service(int fd)
 void (*zsqlite3_proxy_server_before_service)() = 0;
 void (*zsqlite3_proxy_server_before_reload)() = 0;
 void (*zsqlite3_proxy_server_before_exit)() = 0;
+void (*zsqlite3_proxy_server_service_register) (const char *service, int fd, int fd_type) = 0;
 
 static void ___service_register(const char *service_name, int fd, int fd_type)
 {
-    zevent_server_general_aio_register(zvar_default_event_base, fd, fd_type, do_slqite3_service);
+    if (zempty(service_name)||(!strcmp(service_name, "sqlite3"))||(!zsqlite3_proxy_server_service_register)) {
+        zevent_server_general_aio_register(zvar_default_event_base, fd, fd_type, do_slqite3_service);
+    } else {
+        zsqlite3_proxy_server_service_register(service_name, fd, fd_type);
+    }
 }
 
 static void ___before_service()
@@ -323,19 +327,19 @@ static void ___before_service()
     } while(0);
 
     do {
-        sqlite3_proxy_filename = zconfig_get_str(zvar_default_config, "sqlite3-proxy-filename", "");
-        if(zempty(sqlite3_proxy_filename)) {
-            zfatal("FATAL must set sqlite3-proxy-filename'value");
+        sqlite3_proxy_pathname = zconfig_get_str(zvar_default_config, "sqlite3-proxy-pathname", "");
+        if(zempty(sqlite3_proxy_pathname)) {
+            zfatal("FATAL must set sqlite3-proxy-pathname'value");
         }
-        sqlite3_fd = open(sqlite3_proxy_filename, O_CREAT|O_RDWR, 0666);
+        sqlite3_fd = open(sqlite3_proxy_pathname, O_CREAT|O_RDWR, 0666);
         if (sqlite3_fd == -1) {
-            zfatal("FATAL open %s(%m)", sqlite3_proxy_filename);
+            zfatal("FATAL open %s(%m)", sqlite3_proxy_pathname);
         }
         zflock_exclusive(sqlite3_fd);
-        if (SQLITE_OK != sqlite3_open(sqlite3_proxy_filename, &sqlite3_handler)) {
-            zfatal("FATAL dbopen %s(%m)", sqlite3_proxy_filename);
+        if (SQLITE_OK != sqlite3_open(sqlite3_proxy_pathname, &sqlite3_handler)) {
+            zfatal("FATAL dbopen %s(%m)", sqlite3_proxy_pathname);
         }
-        zinfo("sqlite3_proxy open %s", sqlite3_proxy_filename);
+        zinfo("sqlite3_proxy open %s", sqlite3_proxy_pathname);
     } while(0);
 
     do {
@@ -353,7 +357,7 @@ static void ___before_exit()
     zpthread_lock(&global_mutex);
     if (sqlite3_handler) {
         if (sqlite3_close(sqlite3_handler) != SQLITE_OK) {
-            zfatal("FATAL close sqlite %s(%s)", sqlite3_proxy_filename, sqlite3_errmsg(sqlite3_handler));
+            zfatal("FATAL close sqlite %s(%s)", sqlite3_proxy_pathname, sqlite3_errmsg(sqlite3_handler));
         }
     }
     sqlite3_handler = 0;

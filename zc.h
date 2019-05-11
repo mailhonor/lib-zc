@@ -1,7 +1,7 @@
 /* 
  *================================
  *eli960@qq.com
- *http://www.mailhonor.com/
+ *https://blog.csdn.net/eli960
  *2017-02-18
  *================================
  */
@@ -86,18 +86,32 @@ zinline int zempty(const void *ptr) { return ((!ptr)||(!(*(const char *)(ptr))))
 #define ZCONVERT_CHAR_PTR(const_void_ptr)   (char *)(void*)(const_void_ptr)
 
 union ztype_convert_t {
-    const void *ptr_const_void;
-    const char *ptr_const_char;
-    void *ptr_void;
-    char *ptr_char;
-    long i_long;
-    int i_int;
+    const void *CONST_VOID_PTR;
+    void *VOID_PTR;
+    const char *CONST_CHAR_PTR;
+    char *CHAR_PTR;
+    const unsigned char *CONST_UCHAR_PTR;
+    unsigned char *UCHAR_PTR;
+    long LONG;
+    unsigned long ULONG;
+    int INT;
+    unsigned int UINT;
+    short int SHORT_INT;
+    unsigned short int USHORT_INT;
+    char CHAR;
+    unsigned char UCHAR;
+    size_t SIZE_T;
+    ssize_t SSIZE_T;
+    mode_t MODE_T;
+    off_t OFF_T;
+    uid_t UID_T;
+    gid_t GID_T;
 };
 
 #define ZCHAR_PTR_TO_INT(_ptr, _int)    {ztype_convert_t _ct;_ct.ptr_char=(_ptr);_int=_ct.i_int;}
 #define ZINT_TO_CHAR_PTR(_int, _ptr)    {ztype_convert_t _ct;_ct.i_int=(_int);_ptr=_ct.ptr_char;}
 
-#define ZSTR_N_CASE_EQ(a, b, n)       ((ztoupper(a[0]) == ztoupper(b[0])) && (!strncasecmp(a,b,n)))
+#define ZSTR_N_CASE_EQ(a, b, n)       ((ztoupper((int)a[0]) == ztoupper((int)b[0])) && (!strncasecmp(a,b,n)))
 #define ZSTR_CASE_EQ(a, b)            ((ztoupper(a[0]) == ztoupper(b[0])) && (!strcasecmp(a,b)))
 #define ZSTR_N_EQ(a, b, n)            ((a[0] == b[0]) && (!strncmp(a,b,n)))
 #define ZSTR_EQ(a, b)                 ((a[0] == b[0]) && (!strcmp(a,b)))
@@ -176,8 +190,8 @@ zinline unsigned zhash_djb_with_initial(const void *buf, int len, unsigned int i
     return hash;
 }
 /* log ############################################################ */
-extern int zvar_log_fatal_catch;  /*= 0; */
-extern int zvar_log_debug_enable; /*= 0; */
+extern zbool_t zvar_log_fatal_catch;
+extern zbool_t zvar_log_debug_enable;
 extern void (*zlog_vprintf) (const char *source_fn, size_t line_number, const char *fmt, va_list ap);
 void __attribute__((format(printf,3,4))) zlog_fatal(const char *source_fn, size_t line_number, const char *fmt, ...);
 void __attribute__((format(printf,3,4))) zlog_info(const char *source_fn, size_t line_number, const char *fmt, ...);
@@ -234,7 +248,7 @@ zinline int zbuf_put(zbuf_t *bf, int ch) { int ret = ZBUF_PUT(bf, ch); bf->data[
 zinline void zbuf_reset(zbuf_t *bf) { bf->len=0, bf->data[0]=0; }
 zinline void zbuf_terminate(zbuf_t *bf) { bf->data[bf->len]=0; }
 zinline void zbuf_truncate(zbuf_t *bf, int new_len) {
-    if ((bf->len>new_len) && (new_len>1)) { bf->len=new_len; bf->data[bf->len] = 0; }
+    if ((bf->len>new_len) && (new_len>-1)) { bf->len=new_len; bf->data[bf->len] = 0; }
 }
 int zbuf_strncpy(zbuf_t *bf, const char *src, int len);
 int zbuf_strcpy(zbuf_t *bf, const char *src);
@@ -253,14 +267,15 @@ int zbuf_trim_right_rn(zbuf_t *bf);
     name = &name ## _ZSTACT_BUF_; \
     char name ## _databuf_STACK [_size+1]; \
     name->size = _size; name->len = 0; \
-    name->data = name ## _databuf_STACK; \
+    name->data = name ## _databuf_STACK; name->data[0] = 0; \
     name->static_mode = 1;
 
 #define ZSTACK_BUF_FROM(name, _data, _size)    \
     zbuf_t name ## _ZSTACT_BUF_, *name; \
     name = &name ## _ZSTACT_BUF_; \
     name->size = _size; name->len = 0; \
-    name->data = (char *)(_data); \
+    name->data = (char *)(_data); name->data[0] = 0; \
+    name->static_mode = 1;
 
 /* size_data ####################################################### */
 struct zsize_data_t {
@@ -277,10 +292,28 @@ void zsize_data_escape_pp(zbuf_t * zb, const char **pp, int size);
 int zsize_data_put_size(int size, char *buf);
 
 /* char string ###################################################### */
-extern const unsigned char zchar_lowercase_list[];
-extern const unsigned char zchar_uppercase_list[];
-#define ztolower(c)    ((int)zchar_lowercase_list[(unsigned char )(c)])
-#define ztoupper(c)    ((int)zchar_uppercase_list[(unsigned char )(c)])
+extern unsigned const char zchar_lowercase_vector[];
+extern unsigned const char zchar_uppercase_vector[];
+extern unsigned const char zchar_isalnum_vector[];
+extern unsigned const char zchar_isalpha_vector[];
+extern unsigned const char zchar_islower_vector[];
+extern unsigned const char zchar_isupper_vector[];
+extern unsigned const char zchar_isdigit_vector[];
+extern unsigned const char zchar_isxdigit_vector[];
+extern unsigned const char zchar_xdigitval_vector[];
+extern unsigned const char zchar_istrim_vector[];
+
+#define ztolower(c)    ((int)zchar_lowercase_vector[(unsigned char)(c)])
+#define ztoupper(c)    ((int)zchar_uppercase_vector[(unsigned char)(c)])
+#define zisalnum(c)    (zchar_isalnum_vector[(unsigned char)(c)])
+#define zisalpha(c)    (zchar_isalpha_vector[(unsigned char)(c)])
+#define zislower(c)    (zchar_islower_vector[(unsigned char)(c)])
+#define zisupper(c)    (zchar_isupper_vector[(unsigned char)(c)])
+#define zisdigit(c)    (zchar_isdigit_vector[(unsigned char)(c)])
+#define zisxdigit(c)   (zchar_isxdigit_vector[(unsigned char)(c)])
+#define zhexval(c)     (zchar_xdigitval_vector[(unsigned char)(c)])
+#define zistrim(c)     (zchar_istrim_vector[(unsigned char)(c)])
+
 char *zstr_tolower(char *str);
 char *zstr_toupper(char *str);
 
@@ -309,10 +342,6 @@ int zstr_to_bool(const char *s, int def);
 long zstr_to_long(const char *s, long def);
 long zstr_to_second(const char *s, long def);
 long zstr_to_size(const char *s, long def);
-
-/* find */
-char *zmemstr(const void *s, const char *needle, size_t len);
-char *zmemcasestr(const void *s, const char *needle, size_t len);
 
 /* argv ############################################################# */
 struct zargv_t {
@@ -757,7 +786,6 @@ void zqp_decode_2045(const void *src, int src_size, zbuf_t *str);
 void zqp_decode_2047(const void *src, int src_size, zbuf_t *str);
 int zqp_decode_get_valid_len(const void *src, int src_size);
 
-extern char zhex_to_dec_table[];
 void zhex_encode(const void *src, int src_size, zbuf_t *dest);
 void zhex_decode(const void *src, int src_size, zbuf_t *dest);
 void zurl_hex_decode(const void *src, int src_size, zbuf_t *str);
@@ -783,7 +811,7 @@ void zdefault_config_fini(void);
 #define zconfig_debug_show    zdict_debug_show
 
 /* config load */
-int zconfig_load_from_filename(zconfig_t *cf, const char *filename);
+int zconfig_load_from_pathname(zconfig_t *cf, const char *pathname);
 void zconfig_load_annother(zconfig_t *cf, zconfig_t *another);
 
 /* config value */
@@ -840,6 +868,9 @@ int znonblocking(int fd, int no);
 int zclose_on_exec(int fd, int on);
 int zget_readable_count(int fd);
 
+int zopen(const char *pathname, int flags, mode_t mode);
+ssize_t zread(int fd, void *buf, size_t count);
+ssize_t zwrite(int fd, const void *buf, size_t count);
 int zclose(int fd);
 int zflock(int fd, int operation);
 int zflock_share(int fd);
@@ -882,7 +913,7 @@ int zhost_connect(const char *host, int port, int nonblock_flag, int timeout);
 int zconnect(const char *netpath, int nonblock_flag, int timeout);
 
 /* openssl ########################################################## */
-extern int zvar_openssl_debug;
+extern zbool_t zvar_openssl_debug;
 void zopenssl_init(void);
 void zopenssl_fini(void);
 void zopenssl_phtread_fini(void);
@@ -991,7 +1022,7 @@ char *zbuild_rfc822_date_string(long t, char *buf);
 /* dns ############################################################## */
 int zget_localaddr(zargv_t *addrs);
 int zget_hostaddr(const char *host, zargv_t *addrs);
-int zget_peername(int sockfd, int *host, int *port);
+zbool_t zget_peername(int sockfd, int *host, int *port);
 char *zget_ipstring(int ip, char *ipstr);
 int zget_ipint(const char *ipstr);
 int zget_network(int ip, int masklen);
@@ -1005,20 +1036,21 @@ int zip_is_intranet2(const char *ip);
 /* mime type ######################################################## */
 extern const char *zvar_mime_type_application_cotet_stream;
 const char *zget_mime_type_from_suffix(const char *suffix, const char *def);
-const char *zget_mime_type_from_filename(const char *filename, const char *def);
+const char *zget_mime_type_from_pathname(const char *pathname, const char *def);
 
 /* unique id ######################################################## */
 #define zvar_unique_id_size 22
 char *zbuild_unique_id(char *buf);
 long zget_time_from_unique_id(char *buf);
+zbool_t zis_unique_id(char *buf);
 
 /* system ########################################################### */
 int zchroot_user(const char *root_dir, const char *user_name);
 /* file */
-int zfile_get_size(const char *filename);
-int zfile_put_contents(const char *filename, const void *data, int len);
-int zfile_get_contents(const char *filename, zbuf_t *result);
-int zfile_get_contents_sample(const char *filename, zbuf_t *result);
+int zfile_get_size(const char *pathname);
+int zfile_put_contents(const char *pathname, const void *data, int len);
+int zfile_get_contents(const char *pathname, zbuf_t *result);
+int zfile_get_contents_sample(const char *pathname, zbuf_t *result);
 int zstdin_get_contents(zbuf_t *bf);
 /* mmap reader */
 struct zmmap_reader_t {
@@ -1026,7 +1058,7 @@ struct zmmap_reader_t {
     int len;
     char *data;
 };
-int zmmap_reader_init(zmmap_reader_t *reader, const char *filename);
+int zmmap_reader_init(zmmap_reader_t *reader, const char *pathname);
 int zmmap_reader_fini(zmmap_reader_t *reader);
 
 /* mac */
@@ -1034,8 +1066,8 @@ int zget_mac_address(zargv_t *mac_list);
 
 /* main main_parameter ################################################## */
 extern char *zvar_progname;
-extern int zvar_proc_stop;
-extern int zvar_test_mode;
+extern zbool_t zvar_proc_stop;
+extern zbool_t zvar_test_mode;
 extern int zvar_max_fd;
 
 extern char **zvar_main_redundant_argv;
@@ -1048,7 +1080,7 @@ void zinner_atexit(void (*function)(void));
 /* license ############################################################## */
 int zlicense_mac_check(const char *salt, const char *license);
 void zlicense_mac_build(const char *salt, const char *_mac, zbuf_t *result);
-int zlicense_mac_check_from_config_filename(const char *salt, const char *config_file, const char *key);
+int zlicense_mac_check_from_config_pathname(const char *salt, const char *config_file, const char *key);
 
 /* event ############################################################### */
 /* event io based on zevent_base_t */
@@ -1156,24 +1188,29 @@ void zcoroutine_cond_broadcast(zcoroutine_cond_t *);
 
 /* 启用limit个线程池, 用于文件io,和 block_do */
 extern int zvar_coroutine_block_pthread_count_limit;
-/* 文件io是否用线程池模式, 前提是 zvar_coroutine_block_pthread_count_limit > 0 */
+
+/* 如果 zvar_coroutine_block_pthread_count_limit > 0 且 zvar_coroutine_fileio_use_block_pthread == 1, 则
+ * 文件io在线程池执行. */
 extern zbool_t zvar_coroutine_fileio_use_block_pthread;
-/* 如果zvar_coroutine_block_pthread_count_limit > 0, 则 block_func(ctx) 在线程池执行, 否则本线程直接执行 */
+
+/* 如果 zvar_coroutine_block_pthread_count_limit > 0, 则 block_func(ctx) 在线程池执行, 否则在本线程直接执行 */
 void *zcoroutine_block_do(void *(*block_func)(void *ctx), void *ctx);
 
 /* zcoroutine_block_XXX 基于 zcoroutine_block_do 机制 */
 int zcoroutine_block_pwrite(int fd, const void *data, int len, long offset);
 int zcoroutine_block_write(int fd, const void *data, int len);
 long zcoroutine_block_lseek(int fd, long offset, int whence);
-int zcoroutine_block_open(const char *pathname, int flags, ...);
+int zcoroutine_block_open(const char *pathname, int flags, mode_t mode);
 int zcoroutine_block_close(int fd);
+int zcoroutine_block_rename(const char *oldpath, const char *newpath);
+int zcoroutine_block_unlink(const char *pathname);
 
 /* io 映射 */
 void zcoroutine_go_iopipe(int fd1, SSL *ssl1, int fd2, SSL *ssl2, void (*after_close)(void *ctx), void *ctx);
 
 /* master ############################################################# */
 /* master_server */
-extern int zvar_master_server_log_debug_enable;
+extern zbool_t zvar_master_server_log_debug_enable;
 extern int zvar_master_server_reload_signal; /* SIGHUP */
 
 extern void (*zmaster_server_load_config)(zvector_t *cfs);
@@ -1213,7 +1250,7 @@ int iconv_close(iconv_t cd) { return libiconv_close(cd); }
 #endif
 
 #define zvar_charset_name_max_size          32
-extern int zvar_charset_debug;
+extern zbool_t zvar_charset_debug;
 extern const char *zvar_charset_chinese[];
 extern const char *zvar_charset_japanese[];
 extern const char *zvar_charset_korean[];
@@ -1287,14 +1324,16 @@ zmime_t *zmime_next(zmime_t *mime);
 zmime_t *zmime_child(zmime_t *mime);
 zmime_t *zmime_parent(zmime_t *mime);
 const zvector_t *zmime_get_raw_header_line_vector(zmime_t *mime); /* zsize_data_t* */
+/* return, -1: no, >= 0: lenght of result */
 int zmime_get_raw_header_line(zmime_t *mime, const char *header_name, zbuf_t *result, int sn);
+/* return, -1: no, >= 0: lenght of result */
 int zmime_get_header_line_value(zmime_t *mime, const char *header_name, zbuf_t *result, int sn);
 void zmime_get_decoded_content(zmime_t *mime, zbuf_t *result);
 void zmime_get_decoded_content_utf8(zmime_t *mime, zbuf_t *result);
 zbool_t zmime_is_tnef(zmime_t *mime);
 
 zmail_t *zmail_create_parser_from_data(const char *mail_data, int mail_data_len, const char *default_charset);
-zmail_t *zmail_create_parser_from_filename(const char *filename, const char *default_charset);
+zmail_t *zmail_create_parser_from_pathname(const char *pathname, const char *default_charset);
 void zmail_free(zmail_t *parser);
 void zmail_debug_show(zmail_t *parser);
 const char *zmail_get_data(zmail_t *parser);
@@ -1329,8 +1368,11 @@ const zvector_t *zmail_get_text_mimes(zmail_t *parser);
 const zvector_t *zmail_get_show_mimes(zmail_t *parser);
 const zvector_t *zmail_get_attachment_mimes(zmail_t *parser);
 const zvector_t *zmail_get_raw_header_line_vector(zmail_t *parser); /* zsize_data_t* */
-zbool_t zmail_get_raw_header_line(zmail_t *parser, const char *header_name, zbuf_t *result, int sn); /* 0:first, 1:second, -1:last */
-zbool_t zmail_get_header_line_value(zmail_t *parser, const char *header_name, zbuf_t *result, int sn);
+/* return, -1: no, >= 0: lenght of result */
+/* @sn    0:first, 1:second, -1:last */
+int zmail_get_raw_header_line(zmail_t *parser, const char *header_name, zbuf_t *result, int sn);
+/* return, -1: no, >= 0: lenght of result */
+int zmail_get_header_line_value(zmail_t *parser, const char *header_name, zbuf_t *result, int sn);
 
 /* tnef */
 const char *ztnef_mime_get_type(ztnef_mime_t *mime);
@@ -1344,7 +1386,7 @@ int ztnef_mime_get_body_len(ztnef_mime_t *mime);
 ztnef_t *ztnef_create_parser();
 void ztnef_set_default_charset(ztnef_t *parser, const char *charset);
 void ztnef_parse_from_data(ztnef_t *parser, const char *tnef_data, int tnef_data_len);
-zbool_t ztnef_parse_from_filename(ztnef_t *parser, const char *filename);
+zbool_t ztnef_parse_from_pathname(ztnef_t *parser, const char *pathname);
 void ztnef_free(ztnef_t *parser);
 const char *ztnef_get_data(ztnef_t *parser);
 int ztnef_get_len(ztnef_t *parser);
@@ -1386,7 +1428,7 @@ zjson_t *zjson_create_string(const void *s, int len);
 void zjson_free(zjson_t *j);
 void zjson_reset(zjson_t *j);
 /* */
-zbool_t zjson_load_from_filename(zjson_t *j, const char *filename);
+zbool_t zjson_load_from_pathname(zjson_t *j, const char *pathname);
 zbool_t zjson_unserialize(zjson_t *j, const char *s, int len);
 void zjson_serialize(zjson_t *j, zbuf_t *result, int strict);
 /* */
@@ -1421,7 +1463,7 @@ zjson_t *zjson_array_unshift(zjson_t *j, zjson_t *element);
 zbool_t zjson_array_shift(zjson_t *j, zjson_t **element);
 
 /* 已知 json = [1, {}, "ss" "aaa"]
-  1, zjson_array_update 给键idx设置成员element. 返回element
+ * 1, zjson_array_update 给键idx设置成员element. 返回element
  * 2, 如果键idx不存在, 则直接赋值
  *    2.1, 例子: zjson_array_update(json, 6, element, 0)
  *         结果: [1, {}, "ss", "aaa", null, null, 6]
@@ -1492,6 +1534,7 @@ int zredis_client_fetch_channel_message(zredis_client_t *rc, zvector_t *vector_r
 extern void (*zredis_puny_server_before_service)(void);
 extern void (*zredis_puny_server_before_reload)(void);
 extern void (*zredis_puny_server_before_exit)(void);
+extern void (*zredis_puny_server_service_register) (const char *service, int fd, int fd_type);
 int zredis_puny_server_main(int argc, char **argv);
 void zredis_puny_server_exec_cmd(zvector_t *cmd);
 
@@ -1525,6 +1568,11 @@ zhttpd_t *zhttpd_open_ssl(SSL *ssl);
 void zhttpd_close(zhttpd_t *httpd, zbool_t close_fd_and_release_ssl);
 void zhttpd_run(zhttpd_t *httpd);
 void zhttpd_set_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
+void zhttpd_set_HEAD_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
+void zhttpd_set_OPTIONS_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
+void zhttpd_set_DELETE_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
+void zhttpd_set_TRACE_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
+void zhttpd_set_PATCH_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 void zhttpd_set_context(zhttpd_t *httpd, const void *context);
 void *zhttpd_get_context(zhttpd_t *httpd);
 
@@ -1559,12 +1607,13 @@ void zhttpd_response_200(zhttpd_t *httpd, const char *data, int size);
 void zhttpd_response_304(zhttpd_t *httpd, const char *etag);
 void zhttpd_response_404(zhttpd_t *httpd);
 void zhttpd_response_500(zhttpd_t *httpd);
+void zhttpd_response_501(zhttpd_t *httpd);
 
-void zhttpd_set_200_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *data, int size));
 void zhttpd_set_200_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *data, int size));
 void zhttpd_set_304_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *etag));
 void zhttpd_set_404_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 void zhttpd_set_500_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
+void zhttpd_set_501_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 
 /* response header */
 void zhttpd_response_header_initialization(zhttpd_t *httpd, const char *version, const char *status);
@@ -1587,22 +1636,23 @@ void zhttpd_response_flush(zhttpd_t *httpd);
 zstream_t *zhttpd_get_stream(zhttpd_t *httpd);
 
 /* zhttpd_uploaded_file_t */
-const char *zhttpd_uploaded_file_get_filename(zhttpd_uploaded_file_t *fo);
+const char *zhttpd_uploaded_file_get_pathname(zhttpd_uploaded_file_t *fo);
 const char *zhttpd_uploaded_file_get_name(zhttpd_uploaded_file_t *fo);
 int zhttpd_uploaded_file_get_size(zhttpd_uploaded_file_t *fo);
-int zhttpd_uploaded_file_save_to(zhttpd_uploaded_file_t *fo, const char *filename);
+int zhttpd_uploaded_file_save_to(zhttpd_uploaded_file_t *fo, const char *pathname);
 int zhttpd_uploaded_file_get_data(zhttpd_uploaded_file_t *fo, zbuf_t *data);
 
 /* extend response file */
-void zhttpd_response_file(zhttpd_t *httpd, const char *filename, const char *content_type, int max_age);
-void zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *gzip_filename, const char *content_type, int max_age);
-void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *filename, const char *gzip_filename, const char *content_type, int max_age);
+void zhttpd_response_file(zhttpd_t *httpd, const char *pathname, const char *content_type, int max_age);
+void zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *gzip_pathname, const char *content_type, int max_age);
+void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *pathname, const char *gzip_pathname, const char *content_type, int max_age);
 
 /* sqlite3 ################################################## */
 /* zsqlite3_proxd based on zevent_server */
 extern void (*zsqlite3_proxy_server_before_service)(void);
 extern void (*zsqlite3_proxy_server_before_reload)(void);
 extern void (*zsqlite3_proxy_server_before_exit)(void);
+extern void (*zsqlite3_proxy_server_service_register) (const char *service, int fd, int fd_type);
 int zsqlite3_proxy_server_main(int argc, char **argv);
 
 /* client */

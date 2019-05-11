@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2017-06-22
  * ================================
  */
@@ -55,10 +55,10 @@ const char *zget_mime_type_from_suffix(const char *suffix, const char *def)
     return def;
 }
 
-const char *zget_mime_type_from_filename(const char *filename, const char *def)
+const char *zget_mime_type_from_pathname(const char *pathname, const char *def)
 {
     def = (zempty(def)?zvar_mime_type_application_cotet_stream:def);
-    const char *p = strrchr(filename, '.');
+    const char *p = strrchr(pathname, '.');
     if (!p) {
         return def;
     }

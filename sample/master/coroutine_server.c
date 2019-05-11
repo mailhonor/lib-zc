@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-11-24
  * ================================
  */
@@ -21,8 +21,8 @@ void *do_log_test(void *arg)
 void * do_echo(void *arg)
 {
     ztype_convert_t ct;
-    ct.ptr_void = arg;
-    int fd = ct.i_int;
+    ct.VOID_PTR = arg;
+    int fd = ct.INT;
     zstream_t *fp = zstream_open_fd(fd);
 
     zstream_puts(fp, "welcome coroutine\n");
@@ -54,8 +54,8 @@ void * do_echo(void *arg)
 static void * do_accept(void *arg)
 {
     ztype_convert_t ct;
-    ct.ptr_void = arg;
-    int sock = ct.i_int;
+    ct.VOID_PTR = arg;
+    int sock = ct.INT;
     while(!zvar_proc_stop) {
         int fd = zinet_accept(sock);
         if (fd < 0) {
@@ -68,8 +68,8 @@ static void * do_accept(void *arg)
             }
             zfatal("accept(%m)");
         }
-        ct.i_int = fd;
-        zcoroutine_go(do_echo, ct.ptr_void, -1);
+        ct.INT = fd;
+        zcoroutine_go(do_echo, ct.VOID_PTR, -1);
     }
     return 0;
 }
@@ -77,8 +77,8 @@ static void * do_accept(void *arg)
 static void service_register(const char *service_name, int fd, int fd_type)
 {
     ztype_convert_t ct;
-    ct.i_int = fd;
-    zcoroutine_go(do_accept, ct.ptr_void, -1);
+    ct.INT = fd;
+    zcoroutine_go(do_accept, ct.VOID_PTR, -1);
 }
 
 int main(int argc, char **argv)

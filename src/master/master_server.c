@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-11-10
  * ================================
  */
@@ -30,7 +30,7 @@
 #define zpthread_unlock(l)  {if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
 
 int zvar_master_server_reload_signal = SIGHUP;
-int zvar_master_server_log_debug_enable = 0;
+zbool_t zvar_master_server_log_debug_enable = 0;
 int zvar_master_server_dev_mode = 0;
 
 void (*zmaster_server_load_config)(zvector_t *cfs) = 0;
@@ -505,7 +505,7 @@ static void start_one_child(server_info_t *server)
             cmdname = server->cmd;
         }
         zargv_add(exec_argv, cmdname);
-        zargv_add(exec_argv, "--MASTER");
+        zargv_add(exec_argv, "MASTER");
 
         if (config_path && (*config_path)) {
             zargv_add(exec_argv, "-server-config-path");
@@ -945,7 +945,7 @@ void zmaster_server_load_config_from_dirname(const char *config_path, zvector_t 
 
         zconfig_t *cf = zconfig_create();
         snprintf(pn, 4096, "%s/%s", config_path, fn);
-        zconfig_load_from_filename(cf, pn);
+        zconfig_load_from_pathname(cf, pn);
         zconfig_update_string(cf, "___Z_20181216_fn", fn, -1);
         zvector_push(cfs, cf);
 #if 0

@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-12-10
  * ================================
  */
@@ -238,16 +238,42 @@ static int zmail_decode_mime_get_all_boundary(zmail_t *parser, boundary_line_t *
     int bls_size = 100, bls_len = 0, len;
     boundary_line_t *bls, *bls_ptr = (boundary_line_t *)zmalloc((bls_size+1)*sizeof(boundary_line_t));
     char *ps = parser->mail_data, *pend = parser->mail_data + parser->mail_size, *p;
+
+    if (parser->mail_size > 0) {
+        if (ps[0] == '\n') {
+            return 0;
+        }
+    }
+    if (parser->mail_size > 1) {
+        if ((ps[0] == '\r') && (ps[1] == '\n')) {
+            return 0;
+        }
+    }
+
     while(ps < pend) {
-        ps = my_find_boundary_prefix(ps, pend - ps); 
-        if (!ps) {
-            break;
-        }
         len = pend - ps;
-        if (len < 1) {
+        if (len < 3) {
             break;
         }
-        ps+=3;
+        if (ps[1]!='-') {
+            p = memchr(ps+1, '\n', len);
+            if (p) {
+                ps = p + 1;
+            } else {
+                ps += len;
+            }
+            continue;
+        }
+        if (ps[0]!='-') {
+            p = memchr(ps, '\n', len);
+            if (p) {
+                ps = p + 1;
+            } else {
+                ps += len;
+            }
+            continue;
+        }
+
         if (bls_len == bls_size) {
             bls_size *= 2;
             bls_ptr = (boundary_line_t *)zrealloc(bls_ptr, (bls_size+1)*sizeof(boundary_line_t));
@@ -257,16 +283,11 @@ static int zmail_decode_mime_get_all_boundary(zmail_t *parser, boundary_line_t *
         p = memchr(ps, '\n', len);
         if (p) {
             len = p - ps + 1;
-        } else {
         }
-        bls->offset = (ps - 2 - parser->mail_data);
-        bls->len = len + 2;
+        bls->offset = (ps - parser->mail_data);
+        bls->len = len;
         bls->part_offset = (ps + len - parser->mail_data);
-        if (p) {
-            ps = ps + len - 1;
-        } else {
-            break;
-        }
+        ps += len;
     }
     *_bls_ptr = bls_ptr;
     return bls_len;
@@ -312,7 +333,10 @@ int zmail_decode_mime_inner(zmail_t * parser)
         /* header */
         cmime->header_offset = cnode->mail_data - parser->mail_data;
         while (zmail_decode_mime_read_header_line(parser, ctx));
-
+        if (cmime->type_flag == 0) {
+            cmime->type = zmpool_strdup(parser->mpool, "text/plain");
+            cmime->type_flag = 1;
+        }
         /* body */
         cmime->body_len = cnode->mail_data + cnode->mail_size - parser->mail_data - cmime->body_offset;
         if (!cmime->is_multipart) {
@@ -363,7 +387,7 @@ int zmail_decode_mime_inner(zmail_t * parser)
         int len = bls2->len - 2;
         char *boundary = parser->mail_data + bls2->offset + 2;
         if (len - 2 >= cmime->boundary_len) {
-            if ((boundary[len] == '-') && (boundary[len+1] == '-')) {
+            if ((boundary[len-2] == '-') && (boundary[len-1] == '-')) {
                 continue;
             }
         }

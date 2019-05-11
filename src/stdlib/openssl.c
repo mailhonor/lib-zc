@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-10-18
  * ================================
  */
@@ -16,7 +16,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-int zvar_openssl_debug = 0;
+zbool_t zvar_openssl_debug = 0;
 
 /* {{{ pthread safe */
 static pthread_mutex_t *var_pthread_safe_lock_vec = 0;

@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-12-08
  * ================================
  */
@@ -10,7 +10,7 @@
 #include <iconv.h>
 #include <errno.h>
 
-int zvar_charset_debug = 0;
+zbool_t zvar_charset_debug = 0;
 
 #define ZCHARSET_ICONV_ERROR_OPEN       (-2016)
 

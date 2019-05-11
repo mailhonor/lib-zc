@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-11-20
  * ================================
  */
@@ -25,6 +25,7 @@ void (*zevent_server_before_exit) (void) = 0;
 static zbool_t flag_run = 0;
 static zbool_t flag_stop = 0;
 static zbool_t flag_reload = 0;
+static zbool_t master_mode = 0;
 static char *stop_file = 0;
 static pid_t parent_pid = 0;
 static zeio_t *ev_status = 0;
@@ -233,6 +234,23 @@ zeio_t *zevent_server_general_aio_register(zevent_base_t *eb, int fd, int fd_typ
     return ev;
 }
 
+static unsigned int deal_argument(int argc, char **argv, int offset)
+{
+    if (offset == 1) {
+        char *s = argv[1];
+        if (!strcmp(s, "MASTER")) {
+            master_mode = 1;
+        } else if (!strcmp(s, "alone")) {
+            master_mode = 0;
+        } else {
+            printf("ERR USAGE: %s alone ...\n", argv[0]);
+            zfatal("ERR USAGE: %s alone ...\n", argv[0]);
+        }
+        return 1;
+    }
+    return 0;
+}
+
 static void zevent_server_init(int argc, char **argv)
 {
     if (flag_run) {
@@ -255,7 +273,7 @@ static void zevent_server_init(int argc, char **argv)
     }
     char *attr;
 
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv, deal_argument);
 
     zvar_default_event_base = zevent_base_create();
 
@@ -274,7 +292,7 @@ static void zevent_server_init(int argc, char **argv)
         zmaster_log_use_inner(argv[0], zconfig_get_str(zvar_default_config, "server-log", ""));
     }
 
-    if (zconfig_get_bool(zvar_default_config, "MASTER", 0)) {
+    if (master_mode) {
         zclose_on_exec(zvar_master_server_status_fd, 1);
         znonblocking(zvar_master_server_status_fd, 1);
         ev_status = zeio_create(zvar_master_server_status_fd, zvar_default_event_base);
@@ -289,7 +307,7 @@ static void zevent_server_init(int argc, char **argv)
         zevent_server_before_service();
     }
 
-    if (!zconfig_get_bool(zvar_default_config, "MASTER", 0)) {
+    if (master_mode == 0) {
         alone_register(zconfig_get_str(zvar_default_config, "server-service", ""));
     } else {
         master_register(zconfig_get_str(zvar_default_config, "server-service", ""));

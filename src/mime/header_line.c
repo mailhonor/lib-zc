@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-12-09
  * ================================
  */
@@ -134,7 +134,7 @@ const zvector_t *zmime_header_line_get_element_vector(const char *in_line, int i
         return 0;
     }
     char *ps = (char *)(void *)in_line, *in_end = ps + in_len;
-    char *p1, *p2, *p3, *p, *pf, *pf_e, *pch, *pch_e, *pen, *pdata, *pdata_e;
+    char *p1, *p3, *p, *pf, *pf_e, *pch, *pch_e, *pen, *pdata, *pdata_e;
     zmime_header_line_element_t *mt;
     int tmp_len;
 
@@ -149,19 +149,31 @@ const zvector_t *zmime_header_line_get_element_vector(const char *in_line, int i
 }
     mt = 0;
     while (in_end > ps) {
-        p = zmemstr(ps, "=?", in_end - ps);
+        p = (char *)memmem(ps, in_end - ps, "=?", 2);
         pf = ps;
         pf_e = p - 1;
         while (p) {
             pch = p + 2;
-            p1 = zmemcasestr(pch, "?B?", in_end - pch);
-            p2 = zmemcasestr(pch, "?Q?", in_end - pch);
-            if (p1 && p2) {
-                p3 = (p1 < p2 ? p1 : p2);
-            } else if (p1 == 0) {
-                p3 = p2;
-            } else {
+            p1 = pch;
+            p3 = 0;
+            while(p1 < in_end) {
+                p1 = memchr(p1, '?', in_end-p1);
+                if (!p1) {
+                    break;
+                }
+                if (in_end - p1 < 3) {
+                    break;
+                }
+                if (p1[2]!='?') {
+                    p1++;
+                    continue;
+                }
+                if ((p1[1]!='b') && (p1[1]!='B') && (p1[1]!='q') && (p1[1]!='Q')) {
+                    p1++;
+                    continue;
+                }
                 p3 = p1;
+                break;
             }
             if (!p3) {
                 p = 0;
@@ -170,7 +182,7 @@ const zvector_t *zmime_header_line_get_element_vector(const char *in_line, int i
             pch_e = p3 - 1;
             pen = p3 + 1;
             pdata = p3 + 3;
-            p = zmemstr(pdata, "?=", in_end - pdata);
+            p = (char *)memmem(pdata, in_end - pdata, "?=", 2);
             if (!p) {
                 break;
             }
@@ -183,7 +195,7 @@ const zvector_t *zmime_header_line_get_element_vector(const char *in_line, int i
             mt = 0;
             element_vector_add_one_element(mt);
             {
-                char c = ztoupper(*pen);
+                char c = (int)ztoupper(*pen);
                 if (c == 'B') {
                     mt->encode_type = 'B';
                 } else if ( c == 'Q') {
@@ -347,25 +359,37 @@ static int zmime_header_line_get_element_vector_inner(const char *in_line, int i
         return 0;
     }
     char *ps = (char *)(void *)in_line, *in_end = ps + in_len;
-    char *p1, *p2, *p3, *p, *pf, *pf_e, *pch, *pch_e, *pen, *pdata, *pdata_e;
+    char *p1, *p3, *p, *pf, *pf_e, *pch, *pch_e, *pen, *pdata, *pdata_e;
     zmime_header_line_element2_t *mt;
     int count=0, tmp_len;
 
     mt = 0;
     while (in_end > ps) {
-        p = zmemstr(ps, "=?", in_end - ps);
+        p = (char *)memmem(ps, in_end - ps, "=?", 2);
         pf = ps;
         pf_e = p - 1;
         while (p) {
             pch = p + 2;
-            p1 = zmemcasestr(pch, "?B?", in_end - pch);
-            p2 = zmemcasestr(pch, "?Q?", in_end - pch);
-            if (p1 && p2) {
-                p3 = (p1 < p2 ? p1 : p2);
-            } else if (p1 == 0) {
-                p3 = p2;
-            } else {
+            p1 = pch;
+            p3 = 0;
+            while(p1 < in_end) {
+                p1 = memchr(p1, '?', in_end-p1);
+                if (!p1) {
+                    break;
+                }
+                if (in_end - p1 < 3) {
+                    break;
+                }
+                if (p1[2]!='?') {
+                    p1++;
+                    continue;
+                }
+                if ((p1[1]!='b') && (p1[1]!='B') && (p1[1]!='q') && (p1[1]!='Q')) {
+                    p1++;
+                    continue;
+                }
                 p3 = p1;
+                break;
             }
             if (!p3) {
                 p = 0;
@@ -374,7 +398,7 @@ static int zmime_header_line_get_element_vector_inner(const char *in_line, int i
             pch_e = p3 - 1;
             pen = p3 + 1;
             pdata = p3 + 3;
-            p = zmemstr(pdata, "?=", in_end - pdata);
+            p = (char *)memmem(pdata, in_end - pdata, "?=", 2);
             if (!p) {
                 break;
             }
@@ -394,7 +418,7 @@ static int zmime_header_line_get_element_vector_inner(const char *in_line, int i
                 return count - 1;
             }
             {
-                char c = ztoupper(*pen);
+                char c = (int)ztoupper(*pen);
                 if (c == 'B') {
                     mt->encode_type = 'B';
                 } else if ( c == 'Q') {

@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2017-08-11
  * ================================
  */
@@ -11,11 +11,11 @@
 #include "zc.h"
 #include <ctype.h>
 
-zbool_t zjson_load_from_filename(zjson_t *j, const char *filename)
+zbool_t zjson_load_from_pathname(zjson_t *j, const char *pathname)
 {
     zbool_t r = 0;
     zbuf_t *content = zbuf_create(-1);
-    if (zfile_get_contents(filename, content) < 0) {
+    if (zfile_get_contents(pathname, content) < 0) {
         r = zjson_unserialize(j, zbuf_data(content), zbuf_len(content));
     }
     zbuf_free(content);
@@ -113,7 +113,7 @@ static char * ___fetch_string(char *ps, char *str_end, zbuf_t *str)
                 }
                 int uval = 0;
                 for (int count = 4; count ;count --) {
-                    int ch4 = zhex_to_dec_table[(unsigned char)(*ps++)];
+                    int ch4 = zchar_xdigitval_vector[(unsigned char)(*ps++)];
                     if (ch4 == -1) {
                         return ps; /* false */
                     }

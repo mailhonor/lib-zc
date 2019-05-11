@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-12-02
  * ================================
  */
@@ -9,7 +9,7 @@
 #include "zc.h"
 
 /* should check c1 and c2 are hex */
-#define ___hex_val(ccc) { ccc = zhex_to_dec_table[(unsigned char)ccc];}
+#define ___hex_val(ccc) { ccc = zchar_xdigitval_vector[(unsigned char)ccc];}
 
 #define ___get_next_ch(c0123)    while(1){ \
     if(src_pos >= src_size){ goto over; } \

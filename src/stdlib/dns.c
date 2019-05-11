@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://www.mailhonor.com/
+ * https://blog.csdn.net/eli960
  * 2015-10-13
  * ================================
  */
@@ -82,7 +82,7 @@ int zget_peername(int sockfd, int *host, int *port)
     socklen_t sa_length = sizeof(struct sockaddr);
 
     if (getpeername(sockfd, (struct sockaddr *)&sa, &sa_length) < 0) {
-        return -1;
+        return 0;
     }
 
     if (host) {
@@ -93,7 +93,7 @@ int zget_peername(int sockfd, int *host, int *port)
         *port = ntohs(sa.sin_port);
     }
 
-    return 0;
+    return 1;
 }
 
 char *zget_ipstring(int ip, char *ipstr)
