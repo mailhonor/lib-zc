@@ -1,6 +1,9 @@
 # libzc
 C extend library
 
+仓库迁移到新网址 https://gitee.com/eli960/lib-zc
+
+
 memory pool, greedy pool, common pool
 
 buf, argv, vector, list, rbtree, dict
