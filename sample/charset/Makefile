@@ -1,2 +1,2 @@
-SUFFIX_LIBS = -lcrypto -lssl
+SUFFIX_LIBS = 
 include ../../makefiles/sample.makefile

@@ -89,7 +89,7 @@ static void *zmem_greedy_pool_calloc(zmpool_t * mp, int nmemb, int len)
 
 static void *zmem_greedy_pool_realloc(zmpool_t * mp, const void *ptr, int len)
 {
-    zfatal("zmem_greedy_pool_realloc: unsupported");
+    zfatal("FATAL zmem_greedy_pool_realloc: unsupported");
     return 0;
 }
 

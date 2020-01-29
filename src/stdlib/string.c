@@ -271,7 +271,7 @@ void zstrtok_init(zstrtok_t * k, const char *sstr)
 {
     k->sstr = (char *)sstr;
     k->len = 0;
-    k->str = NULL;
+    k->str = 0;
 }
 
 zstrtok_t *zstrtok(zstrtok_t * k, const char *delim)
@@ -281,10 +281,10 @@ zstrtok_t *zstrtok(zstrtok_t * k, const char *delim)
     r = k->sstr;
     r += strspn(k->sstr, delim);
     if (*r == 0)
-        return (NULL);
+        return 0;
     k->len = strcspn(r, delim);
     if (k->len == 0)
-        return (NULL);
+        return 0;
     k->sstr = r + k->len;
     k->str = r;
 
@@ -331,46 +331,45 @@ char *zskip_left(const char *str, const char *ignores)
     char ch;
     int i = 0;
 
-    while((ch = str[i++])) {
-        const char *ignore_p = ignores;
-        while(*ignore_p) {
-            if (ch == (*ignore_p)) {
-                break;
-            }
-            ignore_p ++;
+    while((ch = str[i])) {
+        if (strchr(ignores, ch)) {
+            i++;
+            continue;
         }
-        if (!*ignore_p) {
-            return (char *)str + i;
-        }
+        return (char *)str + i;
     }
-    return (NULL);
+    return 0;
 }
 
-char *zskip_right(const char *str, int size, const char *ignores)
+int zskip_right(const char *str, int len, const char *ignores)
 {
     int i = 0;
-    if (size < 1)
-        return (NULL);
-    for (i = 0; i < size; i++) {
-        const char ch = str[size - i - 1];
-        const char *ignore_p = ignores;
-        while(*ignore_p) {
-            if (ch == (*ignore_p)) {
-                break;
-            }
-            ignore_p ++;
-        }
-        if (!*ignore_p) {
-            return (char *)str + i;
-        }
+    if (len < 0) {
+        len = strlen(str);
     }
-    return (NULL);
+    for (i = len - 1; i >= 0; i--) {
+        if (strchr(ignores, str[i])) {
+            continue;
+        }
+        break;
+    }
+#if 0
+    if (i < 0 /* i == -1 */) {
+        return 0;
+    }
+#endif
+    return i+1;
 }
 
 int zskip(const char *line, int len, const char *ignores_left, const char *ignores_right, char **start)
 {
-    const char *ps,  *pend = line + len;
+    const char *ps,  *pend;
     int i, ch;
+
+    if (len < 0) {
+        len = strlen(line);
+    }
+    pend = line + len;
 
     for (i = 0; i < len; i++) {
         ch = line[i];
@@ -405,27 +404,10 @@ int zskip(const char *line, int len, const char *ignores_left, const char *ignor
 
 }
 
-char *zfind_delim(const char *str, const char *delims)
-{
-    char ch;
-    int i = 0;
-
-    while((ch = str[i++])) {
-        const char *ignore_p = delims;
-        while(*ignore_p) {
-            if (ch == (*ignore_p)) {
-                return (char *)str + i;
-            }
-            ignore_p ++;
-        }
-    }
-    return (NULL);
-}
-
 /* ################################################################## */
 /* unit convert */
 
-int zstr_to_bool(const char *s, int def)
+zbool_t zstr_to_bool(const char *s, int def)
 {
     if (!strcmp(s, "1") || !strcasecmp(s, "y") || !strcasecmp(s, "yes") || !strcasecmp(s, "true"))
         return 1;

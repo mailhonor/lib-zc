@@ -38,7 +38,7 @@ static void builder_table_reset_hash_node_size(builder_table_t *table, int _hash
             for (node = hv[thash]; node; node_last = node, node = node->next) {
                 int r = memcmp(key, zbuf_data(&(node->key)), klen);
                 if (!r) {
-                    zfatal("ERR it is impossible\n");
+                    zfatal("FATAL it is impossible\n");
                 }
                 if (r < 0) {
                     break;
@@ -158,7 +158,7 @@ void zcdb_builder_update(zcdb_builder_t *builder, const void *key, int klen, con
         klen = strlen((const char *)key);
     }
     if (klen > zvar_zcdb_max_key_len) {
-        zfatal("zcdb_builder_update, key'len(%d) > zvar_zcdb_max_key_len(%d)", klen, zvar_zcdb_max_key_len);
+        zfatal("FATAL zcdb_builder_update, key'len(%d) > zvar_zcdb_max_key_len(%d)", klen, zvar_zcdb_max_key_len);
     }
     if (klen > builder->max_klen) {
         builder->max_klen = klen;
@@ -275,7 +275,7 @@ int zcdb_builder_build(zcdb_builder_t *builder, const char *dest_db_pathname)
                     }
                     fseek(fp, 0, SEEK_END);
                     unsigned int offset4 = ftell(fp);
-                    int slen = zsize_data_put_size(vlen, (char *)intbuf);
+                    int slen = zcint_put(vlen, (char *)intbuf);
                     fwrite(intbuf, 1, slen, fp);
                     fwrite(zbuf_data(&(node->val)), 1, vlen, fp);
                     fseek(fp, (offset3 + (tbi+4)*ni) + tbi, SEEK_SET);

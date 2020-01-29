@@ -24,10 +24,15 @@ int main(int argc, char **argv)
     license = zconfig_get_str(zvar_default_config, "license", 0);
 
     if (zempty(mac)) {
-        if (zlicense_mac_check(salt, license)) {
+        int ret = zlicense_mac_check(salt, license);
+        if (ret == 1) {
             printf("OK\n");
-        } else {
+        } else if (ret == 0) {
+            printf("NO\n");
+        } else if (ret < 0) {
             printf("ERR\n");
+        } else {
+            printf("UNKNOWN\n");
         }
     } else {
         zbuf_t *nlicense = zbuf_create(0);

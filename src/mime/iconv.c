@@ -17,12 +17,12 @@ void zmime_iconv(const char *from_charset, const char *data, int size, zbuf_t *r
 
     ZSTACK_BUF(f_charset_buf, zvar_charset_name_max_size);
     const char *f_charset;
-    int detacted = 0;
+    int detected = 0;
 
     zbuf_reset(result);
     f_charset = from_charset;
     if (ZEMPTY(f_charset)) {
-        detacted = 1;
+        detected = 1;
         zbuf_reset(f_charset_buf);
         if (zcharset_detect_cjk(data, size, f_charset_buf)) {
             f_charset = zbuf_data(f_charset_buf);
@@ -40,7 +40,7 @@ void zmime_iconv(const char *from_charset, const char *data, int size, zbuf_t *r
         return;
     }
 
-    if(detacted) {
+    if(detected) {
         zbuf_memcpy(result, data, size);
         zmail_clear_null_inner(zbuf_data(result), zbuf_len(result));
         return;

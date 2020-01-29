@@ -18,8 +18,8 @@ zbuf_t *zsqlite3_escape_append(zbuf_t *sql, const void *data, int size)
     int ch;
     for(i = 0; i < size; i++) {
         ch = s[i];
-        if (ch == '\'' || ch == '\\') {
-            zbuf_put(sql, '\\');
+        if (ch == '\'') {
+            zbuf_put(sql, ch);
             zbuf_put(sql, ch);
             continue;
         }

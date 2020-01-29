@@ -14,6 +14,8 @@
     fp->read_buf_p1 = 0; \
     fp->read_buf_p2 = 0; \
     fp->write_buf_len = 0; \
+    fp->read_wait_timeout = -1; \
+    fp->write_wait_timeout = -1; \
     fp->error = 0; \
     fp->eof = 0; \
     fp->ssl_mode = 0; \
@@ -23,7 +25,6 @@ zstream_t *zstream_open_fd(int fd)
 {
     zstream_t *fp = (zstream_t *)zmalloc(sizeof(zstream_t));
     _ZSTREAM_INIT(fp);
-    fp->cutoff_time = 999999999999L;
     fp->ioctx.fd = fd;
     return fp;
 }
@@ -32,7 +33,6 @@ zstream_t *zstream_open_ssl(SSL *ssl)
 {
     zstream_t *fp = (zstream_t *)zmalloc(sizeof(zstream_t));
     _ZSTREAM_INIT(fp);
-    fp->cutoff_time = 999999999999L;
     fp->ioctx.ssl = ssl;
     fp->ssl_mode = 1;
     return fp;
@@ -40,10 +40,11 @@ zstream_t *zstream_open_ssl(SSL *ssl)
 
 zstream_t *zstream_open_destination(const char *destination, int timeout)
 {
-    int fd = zconnect(destination, 1, timeout);
-    if (fd == -1) {
+    int fd = zconnect(destination, timeout);
+    if (fd < 0) {
         return 0;
     }
+    znonblocking(fd, 1);
     return zstream_open_fd(fd);
 }
 
@@ -74,7 +75,6 @@ zstream_t *zstream_open_file(const char *pathname, const char *mode)
     }
     zstream_t *fp = (zstream_t *)zmalloc(sizeof(zstream_t));
     _ZSTREAM_INIT(fp);
-    fp->cutoff_time = 999999999999L;
     fp->ioctx.fd = fd;
     fp->file_mode = 1;
     return fp;
@@ -98,9 +98,14 @@ int zstream_close(zstream_t *fp, int close_fd_and_release_ssl)
     return ret;
 }
 
-void zstream_set_timeout(zstream_t *fp, int timeout)
+void zstream_set_read_wait_timeout(zstream_t *fp, int read_wait_timeout)
 {
-    fp->cutoff_time = ztimeout_set(timeout);
+    fp->read_wait_timeout = read_wait_timeout;
+}
+
+void zstream_set_write_wait_timeout(zstream_t *fp, int write_wait_timeout)
+{
+    fp->write_wait_timeout = write_wait_timeout;
 }
 
 int zstream_get_fd(zstream_t *fp)
@@ -144,18 +149,14 @@ int zstream_tls_connect(zstream_t *fp, SSL_CTX *ctx)
     if (!_ssl) {
         return -1;
     }
-    int timeout = ztimeout_left(fp->cutoff_time);
-    if (timeout < 1) {
-        return -1;
-    }
-    if (zopenssl_timed_connect(_ssl, timeout) < 0) {
+    if (zopenssl_timed_connect(_ssl, fp->read_wait_timeout, fp->write_wait_timeout) < 0) {
         zopenssl_SSL_free(_ssl);
         fp->error = 1;
         return -1;
     }
     fp->ssl_mode = 1;
     fp->ioctx.ssl = _ssl;
-    return 0;
+    return 1;
 }
 
 int zstream_tls_accept(zstream_t *fp, SSL_CTX *ctx)
@@ -168,18 +169,14 @@ int zstream_tls_accept(zstream_t *fp, SSL_CTX *ctx)
     if (!_ssl) {
         return -1;
     }
-    int timeout = ztimeout_left(fp->cutoff_time);
-    if (timeout < 1) {
-        return -1;
-    }
-    if (zopenssl_timed_accept(_ssl, timeout) < 0) {
+    if (zopenssl_timed_accept(_ssl, fp->read_wait_timeout, fp->write_wait_timeout) < 0) {
         zopenssl_SSL_free(_ssl);
         fp->error = 1;
         return -1;
     }
     fp->ssl_mode = 1;
     fp->ioctx.ssl = _ssl;
-    return 0;
+    return 1;
 }
 
 /* read */
@@ -201,58 +198,18 @@ int zstream_getc_do(zstream_t *fp)
 
     fp->read_buf_p1 = fp->read_buf_p2 = 0;
 
-    int ret = -1, ec;
+    int ret = -1;
+
     if (fp->file_mode) {
-        for (;;) {
-            ret = read(fp->ioctx.fd, fp->read_buf, zvar_stream_rbuf_size);
-            if (ret < 0) {
-                ec = errno;
-                if (ec == EINTR) {
-                    if (zvar_proc_stop) {
-                        break;
-                    }
-                    continue;
-                }
-                if (ec == EAGAIN) {
-                    zfatal("zfstream_t: can not use nonblocking fd");
-                    ret = -1;
-                    break;
-                }
-                break;
-            } else if (ret == 0) {
-                break;
-            } else {
-                break;
-            }
+        ret = ztimed_read(fp->ioctx.fd, fp->read_buf, zvar_stream_rbuf_size, 0);
+        if (errno == EAGAIN) {
+            zfatal("FATAL zstream_t: can not use nonblocking fd in file mode");
         }
-    } else if (fp->ssl_mode) {
-        int timeout = ztimeout_left(fp->cutoff_time);
-        if (timeout < 1) {
-            return -1;
-        }
-        ret = zopenssl_timed_read(fp->ioctx.ssl, fp->read_buf, zvar_stream_rbuf_size, timeout);
     } else {
-        long cutoff_time = fp->cutoff_time * 1000, left_time = ztimeout_left_millisecond(cutoff_time);
-        for (;left_time>0;left_time=ztimeout_left_millisecond(cutoff_time)) {
-            if (ztimed_read_wait_millisecond(fp->ioctx.fd, left_time) < 1) {
-                ret = -1;
-                break;
-            }
-            if ((ret = read(fp->ioctx.fd, fp->read_buf, zvar_stream_rbuf_size)) < 0) {
-                ec = errno;
-                if (ec == EINTR) {
-                    if (zvar_proc_stop) {
-                        break;
-                    }
-                    continue;
-                }
-                if (ec == EAGAIN) {
-                    continue;
-                }
-                ret = -1;
-                break;
-            }
-            break;
+        if (fp->ssl_mode) {
+            ret = zopenssl_timed_read(fp->ioctx.ssl, fp->read_buf, zvar_stream_rbuf_size, fp->read_wait_timeout, fp->write_wait_timeout);
+        } else {
+            ret = ztimed_read(fp->ioctx.fd, fp->read_buf, zvar_stream_rbuf_size, fp->read_wait_timeout);
         }
     }
 
@@ -275,7 +232,7 @@ void zstream_ungetc(zstream_t *fp)
     if (fp->read_buf_p1 > 0) {
         fp->read_buf_p1--;
     } else {
-        zfatal("zstream_ungetc too much");
+        zfatal("FATAL zstream_ungetc too much");
     }
 }
 
@@ -353,7 +310,7 @@ int zstream_readn(zstream_t *fp, zbuf_t *bf, int strict_len)
     return -1;
 }
 
-int zstream_gets_delimiter(zstream_t *fp, zbuf_t *bf, int delimiter, int max_len)
+int zstream_read_delimiter(zstream_t *fp, zbuf_t *bf, int delimiter, int max_len)
 {
     if (max_len < 1) {
         return 0;
@@ -401,7 +358,7 @@ int zstream_gets_delimiter(zstream_t *fp, zbuf_t *bf, int delimiter, int max_len
     return -1;
 }
 
-int zstream_size_data_get_size(zstream_t *fp)
+int zstream_get_cint(zstream_t *fp)
 {
     int ch, size = 0, shift = 0;
     while (1) {
@@ -424,70 +381,28 @@ int zstream_flush(zstream_t *fp)
     if (fp->error) {
         return -1;
     }
-    int ret, left = fp->write_buf_len, ec;
+    int ret, left = fp->write_buf_len;
     char *data = (char *)(fp->write_buf);
-    if (fp->file_mode) {
-        while(left > 0) {
-            ret = write(fp->ioctx.fd, data, left);
-            if (ret < 0) {
-                ec = errno;
-                if (ec == EINTR) {
-                    if (zvar_proc_stop) {
-                        break;
-                    }
-                    continue;
-                }
-                if (ec == EPIPE) {
-                    break;
-                }
-                break;
-            } else if (ret == 0) {
-                continue;
+
+    while(left > 0) {
+        if (fp->file_mode) {
+            ret = ztimed_write(fp->ioctx.fd, data, left, 0);
+            if (errno == EAGAIN) {
+                zfatal("FATAL zstream_t: can not use nonblocking fd in file mode");
+            }
+        } else {
+            if (fp->ssl_mode) {
+                ret = zopenssl_timed_write(fp->ioctx.ssl, data, left, fp->read_wait_timeout, fp->write_wait_timeout);
             } else {
-                left -= ret;
-                data += ret;
+                ret = ztimed_write(fp->ioctx.fd, data, left, fp->write_wait_timeout);
             }
         }
-    } else if (fp->ssl_mode) {
-        while(left > 0) {
-            int timeout = ztimeout_left(fp->cutoff_time);
-            if (timeout < 1) {
-                break;
-            }
-            ret = zopenssl_timed_write(fp->ioctx.ssl, data+(fp->write_buf_len-left), left, timeout);
-            if (ret < 1) {
-                break;
-            }
-            left -= ret;
+
+        if (ret < 0) {
+            break;
         }
-    } else {
-        long cutoff_time = fp->cutoff_time * 1000, left_time = left_time=ztimeout_left_millisecond(cutoff_time);
-        for (;(left>0) && (left_time>0);left_time=ztimeout_left_millisecond(cutoff_time)) {
-            if (ztimed_write_wait_millisecond(fp->ioctx.fd, left_time) < 1) {
-                break;
-            }
-            ret = write(fp->ioctx.fd, data, left);
-            if (ret < 0) {
-                ec = errno;
-                if (ec == EINTR) {
-                    if (zvar_proc_stop) {
-                        break;
-                    }
-                    continue;
-                }
-                if (ec == EAGAIN) {
-                    continue;
-                }
-                if (ec == EPIPE) {
-                }
-                break;
-            } else if (ret == 0) {
-                continue;
-            } else {
-                left -= ret;
-                data += ret;
-            }
-        }
+        left -= ret;
+        data += ret;
     }
 
     fp->write_buf_len = 0;
@@ -572,7 +487,7 @@ int zstream_printf_1024(zstream_t *fp, const char *format, ...)
     return zstream_write(fp, buf, len);
 }
 
-int zstream_write_size_data_size(zstream_t *fp, int size)
+int zstream_write_cint(zstream_t *fp, int size)
 {
     int ch, left = size, len = 0;
 	do {
@@ -586,49 +501,48 @@ int zstream_write_size_data_size(zstream_t *fp, int size)
     return len;
 }
 
-int zstream_write_size_data(zstream_t *fp, const void *buf, int len)
+int zstream_write_cint_and_data(zstream_t *fp, const void *buf, int len)
 {
     if (len < 0) {
-        len = strlen((const char *)buf);
+        len = strlen((char *)(void *)buf);
     }
-    zstream_write_size_data_size(fp, len);
+    zstream_write_cint(fp, len);
     zstream_write(fp, buf, len);
     return len;
 }
 
-int zstream_write_size_data_int(zstream_t *fp, int i)
+int zstream_write_cint_and_int(zstream_t *fp, int i)
 {
 	char buf[32];
 	int len;
 	len = sprintf(buf, "%d", i);
-    zstream_write_size_data_size(fp, len);
+    zstream_write_cint(fp, len);
     zstream_write(fp, buf, len);
     return len;
 }
 
-int zstream_write_size_data_long(zstream_t *fp, long i)
+int zstream_write_cint_and_long(zstream_t *fp, long i)
 {
 	char buf[64];
 	int len;
 	len = sprintf(buf, "%lu", i);
-    zstream_write_size_data_size(fp, len);
-    zstream_write(fp, buf, len);
+    zstream_write_cint_and_data(fp, buf, len);
     return len;
 }
 
-int zstream_write_size_data_dict(zstream_t *fp, zdict_t * zd)
+int zstream_write_cint_and_dict(zstream_t *fp, zdict_t * zd)
 {
 	ZDICT_WALK_BEGIN(zd, k, v) {
-        zstream_write_size_data(fp, k, 1);
-        zstream_write_size_data(fp, zbuf_data(v), zbuf_len(v));
+        zstream_write_cint_and_data(fp, k, -1);
+        zstream_write_cint_and_data(fp, zbuf_data(v), zbuf_len(v));
     } ZDICT_WALK_END;
     return 1;
 }
 
-int zstream_write_size_data_pp(zstream_t *fp, const char **pp, int size)
+int zstream_write_cint_and_pp(zstream_t *fp, const char **pp, int size)
 {
     for (int i = 0;i<size;i++) {
-        zstream_write_size_data(fp, pp[i], -1);
+        zstream_write_cint_and_data(fp, pp[i], -1);
     }
     return 1;
 }

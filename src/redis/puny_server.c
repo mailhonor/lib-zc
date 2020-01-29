@@ -7,6 +7,7 @@
  */
 
 #include "zc.h"
+#include <errno.h>
 
 /* {{{ structure */
 typedef struct main_db_t main_db_t;
@@ -1697,18 +1698,9 @@ static int get_query_data(zvector_t *cmd_vector, zbuf_t *strbuf, connection_cont
 static int do_one_query(connection_context_t *context, zvector_t *cmd_vector, zbuf_t *strbuf)
 {
     zstream_t *fp = context->fp;
-    int ret;
     zbuf_vector_reset(cmd_vector);
     zbuf_reset(strbuf);
-    while(1) {
-        ret = zstream_timed_read_wait(fp, 10);
-        if (ret > 0) {
-            break;
-        }
-        if (ret < 0) {
-            return ret;
-        }
-    }
+    while(zstream_timed_read_wait(fp, 10) == 0);
     /* do not care about too much long line */
     zstream_gets(fp, strbuf, 1024 * 1024);
     if (zstream_is_exception(fp)) {
@@ -1739,9 +1731,11 @@ static int do_one_query(connection_context_t *context, zvector_t *cmd_vector, zb
 
 static void *do_job(void *arg)
 {
+    ztype_convert_t ct;
+    ct.VOID_PTR = arg;
     connection_context_t context;
     memset(&context, 0, sizeof(connection_context_t));
-    context.fp = zstream_open_fd((int)(long)arg);
+    context.fp = zstream_open_fd(ct.fdinfo.fd);
     context.current_db = &default_db;
     zvector_t *cmd_vector = zvector_create(-1);
     zbuf_t *strbuf = zbuf_create(-1);
@@ -1758,20 +1752,17 @@ static void *do_job(void *arg)
 
 static void *do_accept(void *arg)
 {
-    int sock = (int)(long)arg, fd, ret;
+    ztype_convert_t ct;
+    ct.VOID_PTR = arg;
+    int sock = ct.fdinfo.fd;
+    int sock_type = ct.fdinfo.fd_type;
     while(1) {
-        ret = ztimed_read_wait(sock, 10);
-        if (ret < 0) {
-            zfatal("redis_puny_server, socket fd error");
-        }
-        if (ret == 0) {
-            continue;
-        }
-        fd = zinet_accept(sock);
+        int fd = zaccept(sock, sock_type);
         if (fd < 0) {
-            continue;
+            zfatal("FATAL redis_puny_server, socket fd error");
         }
-        zcoroutine_go(do_job, (void *)(long)fd, 0);
+        ct.fdinfo.fd = fd;
+        zcoroutine_go(do_job, ct.VOID_PTR, 0);
     }
     return arg;
 }
@@ -1779,7 +1770,10 @@ static void *do_accept(void *arg)
 static void ___service_register(const char *service_name, int fd, int fd_type)
 {
     if (zempty(service_name) || (!strcmp(service_name, "redis")) || (!zredis_puny_server_service_register)) {
-        zcoroutine_go(do_accept, (void *)(long)fd, 0);
+        ztype_convert_t ct;
+        ct.fdinfo.fd = fd;
+        ct.fdinfo.fd_type = fd_type;
+        zcoroutine_go(do_accept, ct.VOID_PTR, 16);
     } else {
         zredis_puny_server_service_register(service_name, fd, fd_type);
     }
@@ -1808,8 +1802,7 @@ static void *do_timeout(void *arg)
 }
 
 void (*zredis_puny_server_before_service)() = 0;
-void (*zredis_puny_server_before_reload)() = 0;
-void (*zredis_puny_server_before_exit)() = 0;
+void (*zredis_puny_server_before_softstop)() = 0;
 void (*zredis_puny_server_service_register) (const char *service, int fd, int fd_type) = 0;
 
 static void ___before_service_prepare_load(char *fn)
@@ -1823,7 +1816,7 @@ static void ___before_service_prepare_load(char *fn)
     ctx.fp = zstream_open_file("/dev/null", "w");
     zstream_t *fp = zstream_open_file(fn, "r");
     if (!fp) {
-        zfatal("can not open %s(%m)", fn);
+        zfatal("FATAL can not open %s(%m)", fn);
     }
     zbuf_t *linebuf = zbuf_create(4096);
     zvector_t *cmds = zvector_create(-1);
@@ -1843,7 +1836,7 @@ static void ___before_service_prepare_load(char *fn)
         for (int i=0;i < zvector_len(jvec); i++) {
             zjson_t *js = (zjson_t *)(zvector_data(jvec)[i]);
             if (!zjson_is_string(js)) {
-                zfatal("all element must be string: %s", zbuf_data(linebuf));
+                zfatal("FATAL all element must be string: %s", zbuf_data(linebuf));
             }
             zbuf_t *bf, *bf2 = *zjson_get_string_value(js);
             bf = zbuf_create(zbuf_len(bf2));
@@ -1857,7 +1850,7 @@ static void ___before_service_prepare_load(char *fn)
         zstr_toupper(cmd_name);
         do_cmd_fn_t cmdfn = 0;
         if (!zmap_find(redis_cmd_tree, cmd_name, (void **)&cmdfn)) {
-            zfatal("unknown cmd: %s", cmd_name);
+            zfatal("FATAL unknown cmd: %s", cmd_name);
         }
         cmdfn(&ctx, cmds);
     }
@@ -1894,11 +1887,8 @@ int zredis_puny_server_main(int argc, char **argv)
 {
     zcoroutine_server_service_register = ___service_register;
     zcoroutine_server_before_service = ___before_service;
-    if (zredis_puny_server_before_reload) {
-        zcoroutine_server_before_reload = zredis_puny_server_before_reload;
-    }
-    if (zredis_puny_server_before_exit) {
-        zcoroutine_server_before_exit = zredis_puny_server_before_exit;
+    if (zredis_puny_server_before_softstop) {
+        zcoroutine_server_before_softstop = zredis_puny_server_before_softstop;
     }
     int ret = zcoroutine_server_main(argc, argv);
     zmap_free(redis_cmd_tree);

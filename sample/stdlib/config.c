@@ -41,10 +41,7 @@ int main(int argc, char **argv)
     /* ouput config */
     zconfig_debug_show(config);
 
-    zbuf_t *bf = zbuf_create(0);
-    zbuf_put(bf, 'a');
-    zbuf_strcat(bf, "aaaaaaaaaaa");
-    printf("bf: %s\n", bf->data);
+    zconfig_free(config);
 
     return 0;
 }

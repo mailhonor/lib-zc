@@ -16,19 +16,6 @@ struct zvector_mpool_t {
     zmpool_t *mpool;
 };
 
-zvector_t *zvector_create(int size)
-{
-    zvector_t *v = (zvector_t *) zmalloc(sizeof(zvector_t));
-    zvector_init(v, size);
-    return (v);
-}
-
-void zvector_free(zvector_t * v)
-{
-    zvector_fini(v);
-    zfree(v);
-}
-
 void zvector_init(zvector_t *v, int size)
 {
     if (size < 0) {
@@ -71,6 +58,19 @@ void zvector_fini(zvector_t *v)
         zfree((v->data)-(v->offset));
     }
     memset(v, 0, sizeof(zvector_t));
+}
+
+zvector_t *zvector_create(int size)
+{
+    zvector_t *v = (zvector_t *) zmalloc(sizeof(zvector_t));
+    zvector_init(v, size);
+    return (v);
+}
+
+void zvector_free(zvector_t * v)
+{
+    zvector_fini(v);
+    zfree(v);
 }
 
 void zvector_push(zvector_t * v, const void *val)
@@ -193,7 +193,7 @@ void zvector_insert(zvector_t *v, int idx, void *val)
         zvector_push(v, 0);
         char **data = v->data;
         for (i=len;i>idx;i--) {
-            data[i-1] = data[i];
+            data[i] = data[i-1];
         }
         data[idx] = val;
         data[v->len] = 0;

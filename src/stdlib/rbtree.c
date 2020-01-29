@@ -17,6 +17,8 @@
 #include "zc.h"
 #include <sys/types.h>
 
+#define zinline inline __attribute__((always_inline))
+
 void __zrbtree_insert_augmented(zrbtree_t * root, zrbtree_node_t * node, void (*augment_rotate) (zrbtree_node_t * old, zrbtree_node_t * new_node));
 void __zrbtree_erase_color(zrbtree_t * root, zrbtree_node_t * parent, void (*augment_rotate) (zrbtree_node_t * old, zrbtree_node_t * new_node));
 
@@ -42,14 +44,14 @@ struct zrbtree_augment_callbacks {
     void (*rotate) (zrbtree_node_t * old, zrbtree_node_t * new_node);
 };
 
-static inline void zrbtree_insert_augmented(zrbtree_node_t * node, zrbtree_t * root, const struct zrbtree_augment_callbacks *augment)
+zinline static void zrbtree_insert_augmented(zrbtree_node_t * node, zrbtree_t * root, const struct zrbtree_augment_callbacks *augment)
 {
     __zrbtree_insert_augmented(root, node, augment->rotate);
 }
 
 #define RB_DECLARE_CALLBACKS(rbstatic, rbname, rbstruct, rbfield,    \
                  rbtype, rbaugmented, rbcompute)        \
-static inline void                            \
+zinline static void                            \
 rbname ## _propagate(zrbtree_node_t *rb, zrbtree_node_t *stop)        \
 {                                    \
     while (rb != stop) {                        \
@@ -61,7 +63,7 @@ rbname ## _propagate(zrbtree_node_t *rb, zrbtree_node_t *stop)        \
         rb = ZRBTREE_PARENT(&node->rbfield);                \
     }                                \
 }                                    \
-static inline void                            \
+zinline static void                            \
 rbname ## _copy(zrbtree_node_t *zrbtree_old, zrbtree_node_t *zrbtree_new)        \
 {                                    \
     rbstruct *old = zrbtree_entry(zrbtree_old, rbstruct, rbfield);        \
@@ -92,17 +94,17 @@ rbstatic const struct zrbtree_augment_callbacks rbname = {            \
 #define zrbtree_is_red(rb)      __zrbtree_is_red((rb)->__zrbtree_parent_color)
 #define zrbtree_is_black(rb)    __zrbtree_is_black((rb)->__zrbtree_parent_color)
 
-static inline void zrbtree_set_parent(zrbtree_node_t * rb, zrbtree_node_t * p)
+zinline static void zrbtree_set_parent(zrbtree_node_t * rb, zrbtree_node_t * p)
 {
     rb->__zrbtree_parent_color = zrbtree_color(rb) | (unsigned long)p;
 }
 
-static inline void zrbtree_set_parent_color(zrbtree_node_t * rb, zrbtree_node_t * p, int color)
+zinline static void zrbtree_set_parent_color(zrbtree_node_t * rb, zrbtree_node_t * p, int color)
 {
     rb->__zrbtree_parent_color = (unsigned long)p | color;
 }
 
-static inline void __zrbtree_change_child(zrbtree_node_t * old, zrbtree_node_t * new_node, zrbtree_node_t * parent, zrbtree_t * root)
+zinline static void __zrbtree_change_child(zrbtree_node_t * old, zrbtree_node_t * new_node, zrbtree_node_t * parent, zrbtree_t * root)
 {
     if (parent) {
         if (parent->zrbtree_left == old)
@@ -218,12 +220,12 @@ static __always_inline void zrbtree_erase_augmented(zrbtree_node_t * node, zrbtr
         __zrbtree_erase_color(root, rebalance, augment->rotate);
 }
 
-static inline void zrbtree_set_black(zrbtree_node_t * rb)
+zinline static void zrbtree_set_black(zrbtree_node_t * rb)
 {
     rb->__zrbtree_parent_color |= RB_BLACK;
 }
 
-static inline zrbtree_node_t *zrbtree_red_parent(zrbtree_node_t * red)
+zinline static zrbtree_node_t *zrbtree_red_parent(zrbtree_node_t * red)
 {
     return (zrbtree_node_t *) red->__zrbtree_parent_color;
 }
@@ -233,7 +235,7 @@ static inline zrbtree_node_t *zrbtree_red_parent(zrbtree_node_t * red)
  * - old's parent and color get assigned to new_node
  * - old gets assigned new_node as a parent and 'color' as a color.
  */
-static inline void __zrbtree_rotate_set_parents(zrbtree_node_t * old, zrbtree_node_t * new_node, zrbtree_t * root, int color)
+zinline static void __zrbtree_rotate_set_parents(zrbtree_node_t * old, zrbtree_node_t * new_node, zrbtree_t * root, int color)
 {
     zrbtree_node_t *parent = ZRBTREE_PARENT(old);
     new_node->__zrbtree_parent_color = old->__zrbtree_parent_color;
@@ -241,7 +243,7 @@ static inline void __zrbtree_rotate_set_parents(zrbtree_node_t * old, zrbtree_no
     __zrbtree_change_child(old, new_node, parent, root);
 }
 
-static __always_inline void __zrbtree_insert(zrbtree_node_t * node, zrbtree_t * root, void (*augment_rotate) (zrbtree_node_t * old, zrbtree_node_t * new_node))
+zinline static void __zrbtree_insert(zrbtree_node_t * node, zrbtree_t * root, void (*augment_rotate) (zrbtree_node_t * old, zrbtree_node_t * new_node))
 {
     zrbtree_node_t *parent = zrbtree_red_parent(node), *gparent, *tmp;
 
@@ -366,7 +368,7 @@ static __always_inline void __zrbtree_insert(zrbtree_node_t * node, zrbtree_t * 
  * Inline version for zrbtree_erase() use - we want to be able to inline
  * and eliminate the dummy_rotate callback there
  */
-static __always_inline void ____zrbtree_erase_color(zrbtree_node_t * parent, zrbtree_t * root, void (*augment_rotate) (zrbtree_node_t * old, zrbtree_node_t * new_node))
+zinline static void ____zrbtree_erase_color(zrbtree_node_t * parent, zrbtree_t * root, void (*augment_rotate) (zrbtree_node_t * old, zrbtree_node_t * new_node))
 {
     zrbtree_node_t *node = NULL, *sibling, *tmp1, *tmp2;
 
@@ -531,15 +533,15 @@ void __zrbtree_erase_color(zrbtree_t * root, zrbtree_node_t * parent, void (*aug
  * out of the zrbtree_insert_color() and zrbtree_erase() function definitions.
  */
 
-static inline void dummy_propagate(zrbtree_node_t * node, zrbtree_node_t * stop)
+zinline static void dummy_propagate(zrbtree_node_t * node, zrbtree_node_t * stop)
 {
 }
 
-static inline void dummy_copy(zrbtree_node_t * old, zrbtree_node_t * new_node)
+zinline static void dummy_copy(zrbtree_node_t * old, zrbtree_node_t * new_node)
 {
 }
 
-static inline void dummy_rotate(zrbtree_node_t * old, zrbtree_node_t * new_node)
+zinline static void dummy_rotate(zrbtree_node_t * old, zrbtree_node_t * new_node)
 {
 }
 

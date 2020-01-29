@@ -41,9 +41,50 @@ void test_password(void)
     zlist_free(list);
 }
 
+
+typedef struct mystruct mystruct;
+struct mystruct {
+    int a;
+    int b;
+};
+
+static void test_mystruct()
+{
+    zlist_t *list = zlist_create();
+    mystruct *ms;
+
+    ms = (mystruct *)malloc(sizeof(mystruct)); ms->a = 1;
+    zlist_push(list, ms);
+
+    ms = (mystruct *)malloc(sizeof(mystruct)); ms->a = 2;
+    zlist_push(list, ms);
+
+    ms = (mystruct *)malloc(sizeof(mystruct)); ms->a = 8;
+    zlist_unshift(list, ms);
+
+
+    ZLIST_WALK_BEGIN(list, mystruct *, ptr) {
+        printf("walk a: %d\n", ptr->a);
+    } ZLIST_WALK_END;
+
+    while (zlist_len(list)) {
+        if (zlist_pop(list, (void **)&ms)) {
+            printf("pop: %d\n", ms->a);
+        }
+        free(ms);
+    }
+
+    zlist_pop(list, (void **)&ms);
+    zlist_pop(list, 0);
+
+    zlist_free(list);
+}
+
 int main(int argc, char **argv)
 {
     test_password();
+
+    test_mystruct();
 
     return 0;
 }

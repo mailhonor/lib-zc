@@ -37,17 +37,23 @@ static int sane_accept(int sock, struct sockaddr *sa, socklen_t * len)
     int fd;
     int errno2;
 
-    if ((fd = accept(sock, sa, len)) < 0) {
-        errno2 = errno;
-        for (count = 0; (err = accept_ok_errors[count]) != 0; count++) {
-            if (errno2 == err) {
-                errno = EAGAIN;
-                break;
+    while (1 ) {
+        if ((fd = accept(sock, sa, len)) < 0) {
+            errno2 = errno;
+            if (errno2 == EINTR) {
+                continue;
             }
+            for (count = 0; (err = accept_ok_errors[count]) != 0; count++) {
+                if (errno2 == err) {
+                    errno = EAGAIN;
+                    break;
+                }
+            }
+        } else if (sa && (sa->sa_family == AF_INET || sa->sa_family == AF_INET6)) {
+            int on = 1;
+            (void)setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char *)&on, sizeof(on));
         }
-    } else if (sa && (sa->sa_family == AF_INET || sa->sa_family == AF_INET6)) {
-        int on = 1;
-        (void)setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char *)&on, sizeof(on));
+        break;
     }
 
     return (fd);
@@ -73,13 +79,13 @@ int zaccept(int sock, int type)
     } else if (type == zvar_tcp_listen_type_unix) {
         fd = zunix_accept(sock);
     } else  {
-        zfatal("accept only support inet/unix");
+        zfatal("FATAL accept only support inet/unix");
     }
     return fd;
 }
 
 /* listen */
-int zunix_listen(char *addr, int backlog, int nonblock_flag)
+int zunix_listen(char *addr, int backlog)
 {
     struct sockaddr_un sun;
     int len = strlen(addr);
@@ -100,17 +106,13 @@ int zunix_listen(char *addr, int backlog, int nonblock_flag)
     }
 
     if (unlink(addr) < 0 && errno != ENOENT) {
-        zfatal("unlink: %s(%m)", addr);
+        zfatal("FATAL unlink: %s(%m)", addr);
     }
 
     if (bind(sock, (struct sockaddr *)&sun, sizeof(struct sockaddr_un)) < 0) {
         goto err;
     }
     
-    if (nonblock_flag) {
-        znonblocking(sock, nonblock_flag);
-    }
-
     if (listen(sock, backlog) < 0) {
         goto err;
     }
@@ -127,7 +129,7 @@ err:
     return -1;
 }
 
-int zinet_listen(const char *sip, int port, int backlog, int nonblock_flag)
+int zinet_listen(const char *sip, int port, int backlog)
 {
     int sock;
     int on = 1;
@@ -160,10 +162,6 @@ int zinet_listen(const char *sip, int port, int backlog, int nonblock_flag)
         goto err;
     }
 
-    if (nonblock_flag) {
-        znonblocking(sock, nonblock_flag);
-    }
-
     if (listen(sock, backlog) < 0) {
         goto err;
     }
@@ -178,7 +176,7 @@ err:
     return -1;
 }
 
-int zlisten(const char *netpath, int *type, int backlog, int nonblock_flag)
+int zlisten(const char *netpath, int *type, int backlog)
 {
     char _netpath[1024], *path, *host, *p;
     int fd = -1, port, tp;
@@ -212,9 +210,9 @@ int zlisten(const char *netpath, int *type, int backlog, int nonblock_flag)
         return -1;
     }
     if (tp == zvar_tcp_listen_type_inet) {
-        fd = zinet_listen(host, port, backlog, nonblock_flag);
+        fd = zinet_listen(host, port, backlog);
     } else if (tp == zvar_tcp_listen_type_unix) {
-        fd = zunix_listen(path, backlog, nonblock_flag);
+        fd = zunix_listen(path, backlog);
     } else if (tp == zvar_tcp_listen_type_fifo) {
         fd = zfifo_listen(path);
     }
@@ -275,9 +273,25 @@ static int sane_connect(int sock, struct sockaddr *sa, int len)
         int on = 1;
         (void)setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (char *)&on, sizeof(on));
     }
+#if 1
+    while(1) {
+        if (connect(sock, sa, len) == 0) {
+            break;
+        }
+        int ec = errno;
+        if (ec == EINTR) {
+            continue;
+        }
+        if (ec == EINPROGRESS) {
+            break;
+        }
+        return -1;
+    }
+#else
     if ((connect(sock, sa, len) < 0) && (errno != EINPROGRESS)) {
         return (-1);
     }
+#endif
 
     return (0);
 }
@@ -322,7 +336,7 @@ static int connect_and_wait_ok(int sock, struct sockaddr *sa, int len, int timeo
     return -1;
 }
 
-int zunix_connect(const char *addr, int nonblock_flag, int timeout)
+int zunix_connect(const char *addr, int timeout)
 {
     struct sockaddr_un sun;
     int len = strlen(addr);
@@ -354,13 +368,8 @@ int zunix_connect(const char *addr, int nonblock_flag, int timeout)
             errno = errno2;
             return (-1);
         }
-        if (nonblock_flag != 1) {
-            znonblocking(sock, 0);
-        }
+        znonblocking(sock, 0);
     } else {
-        if (nonblock_flag) {
-            znonblocking(sock, nonblock_flag);
-        }
         if (sane_connect(sock, (struct sockaddr *)&sun, sizeof(sun)) <0) {
             errno2 = errno;
             zclose(sock);
@@ -372,7 +381,7 @@ int zunix_connect(const char *addr, int nonblock_flag, int timeout)
     return (sock);
 }
 
-int zinet_connect(const char *dip, int port, int nonblock_flag, int timeout)
+int zinet_connect(const char *dip, int port, int timeout)
 {
     int sock;
     struct sockaddr_in addr;
@@ -399,13 +408,8 @@ int zinet_connect(const char *dip, int port, int nonblock_flag, int timeout)
             errno = errno2;
             return (-1);
         }
-        if (nonblock_flag != 1) {
-            znonblocking(sock, 0);
-        }
+        znonblocking(sock, 0);
     } else {
-        if (nonblock_flag) {
-            znonblocking(sock, nonblock_flag);
-        }
         if (sane_connect(sock, (struct sockaddr *)&addr, sizeof(addr)) <0) {
             errno2 = errno;
             zclose(sock);
@@ -417,14 +421,14 @@ int zinet_connect(const char *dip, int port, int nonblock_flag, int timeout)
     return (sock);
 }
 
-int zhost_connect(const char *host, int port, int nonblock_flag, int timeout)
+int zhost_connect(const char *host, int port, int timeout)
 {
     int sock = -1;
     zargv_t *addrs = zargv_create(0);
 
     zget_hostaddr(host, addrs);
     ZARGV_WALK_BEGIN(addrs, ip) {
-        sock = zinet_connect(ip, port, nonblock_flag, timeout);
+        sock = zinet_connect(ip, port, timeout);
         if (sock > -1) {
             break;
         }
@@ -435,7 +439,7 @@ int zhost_connect(const char *host, int port, int nonblock_flag, int timeout)
 }
 
 static int ___zconnect_offset_idx = 0;
-int zconnect(const char *netpath, int nonblock_flag, int timeout)
+int zconnect(const char *netpath, int timeout)
 {
     int fd = -1, count, port, i, offset= ___zconnect_offset_idx++;
     char *np, *p;
@@ -449,9 +453,9 @@ int zconnect(const char *netpath, int nonblock_flag, int timeout)
         if (p) {
             *p = 0;
             port = atoi(p + 1);
-            fd = zhost_connect(np, port, nonblock_flag, timeout);
+            fd = zhost_connect(np, port, timeout);
         } else {
-            fd = zunix_connect(np, nonblock_flag, timeout);
+            fd = zunix_connect(np, timeout);
         }
         if (fd > -1) {
             break;

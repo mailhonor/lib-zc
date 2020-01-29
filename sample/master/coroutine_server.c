@@ -38,8 +38,12 @@ void * do_echo(void *arg)
                 break;
             }
             if (!strncmp(zbuf_data(line), "EXIT", 4)) {
-                zvar_proc_stop = 1;
+                zcoroutine_base_stop_notify(0);
                 break;
+            }
+            if (!strncmp(zbuf_data(line), "DETACH", 6)) {
+                zcoroutine_server_detach_from_master();
+                continue;
             }
         }
     }
@@ -56,16 +60,9 @@ static void * do_accept(void *arg)
     ztype_convert_t ct;
     ct.VOID_PTR = arg;
     int sock = ct.INT;
-    while(!zvar_proc_stop) {
+    while(1) {
         int fd = zinet_accept(sock);
         if (fd < 0) {
-            if (errno == EINTR) {
-                continue;
-            }
-            if (errno == EAGAIN) {
-                zfatal("accept should not get EAGAIN");
-                continue;
-            }
             zfatal("accept(%m)");
         }
         ct.INT = fd;

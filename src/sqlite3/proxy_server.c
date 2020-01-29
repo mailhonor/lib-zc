@@ -16,9 +16,10 @@
 #include <signal.h>
 #include <sqlite3.h>
 
-#define zpthread_lock(l)    {if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
-#define zpthread_unlock(l)  {if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
+#define zpthread_lock(l)    {if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}}
+#define zpthread_unlock(l)  {if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}}
 
+static int flag_stop = 0;
 static void after_response(zaio_t *aio);
 static char *sqlite3_proxy_pathname = 0;
 static int sqlite3_fd = 0;
@@ -64,8 +65,8 @@ static void proxy_exec(zaio_t *aio)
     } else {
         zbuf_put(bf, 'O');
     }
-    zaio_cache_write_size_data(aio, zbuf_data(bf), zbuf_len(bf));
-    zaio_cache_flush(aio, after_response, -1);
+    zaio_cache_write_cint_and_data(aio, zbuf_data(bf), zbuf_len(bf));
+    zaio_cache_flush(aio, after_response);
 }
 
 static void proxy_query(zaio_t *aio)
@@ -84,7 +85,7 @@ static void proxy_query(zaio_t *aio)
         zbuf_reset(bf);
         ncolumn = sqlite3_column_count(sql_stmt);
         zbuf_printf_1024(bf, "O%d", ncolumn);
-        zaio_cache_write_size_data(aio, zbuf_data(bf), zbuf_len(bf));
+        zaio_cache_write_cint_and_data(aio, zbuf_data(bf), zbuf_len(bf));
 
         zbuf_reset(bf);
         while ((status = sqlite3_step(sql_stmt)) != SQLITE_DONE) {
@@ -98,9 +99,9 @@ static void proxy_query(zaio_t *aio)
             for (coi=0;coi<ncolumn;coi++) {
                 char *d = (char *)sqlite3_column_blob(sql_stmt, coi);
                 int l = sqlite3_column_bytes(sql_stmt, coi);
-                zsize_data_escape(bf, d, l);
+                zcint_data_escape(bf, d, l);
             }
-            zaio_cache_write_size_data(aio, zbuf_data(bf), zbuf_len(bf));
+            zaio_cache_write_cint_and_data(aio, zbuf_data(bf), zbuf_len(bf));
         }
         if (err) {
             break;
@@ -112,11 +113,11 @@ static void proxy_query(zaio_t *aio)
     if (err) {
         zbuf_puts(bf, sqlite3_errmsg(sqlite3_handler));
     }
-    zaio_cache_write_size_data(aio, zbuf_data(bf), zbuf_len(bf));
+    zaio_cache_write_cint_and_data(aio, zbuf_data(bf), zbuf_len(bf));
     if (sql_stmt) {
         sqlite3_finalize(sql_stmt);
     }
-    zaio_cache_flush(aio, after_response, -1);
+    zaio_cache_flush(aio, after_response);
 }
 
 static void *pthread_proxy(void *arg)
@@ -126,15 +127,15 @@ static void *pthread_proxy(void *arg)
     zaio_t *aio;
 
     while(1) {
-        if (zvar_proc_stop) {
+        if (flag_stop) {
             return 0;
         }
         zpthread_lock(&proxy_mutex);
-        while(zbuf_len(proxy_list) == 0) {
+        while(zlist_len(proxy_list) == 0) {
             timeout.tv_sec = time(0) + 1;
             timeout.tv_nsec = 0;
             pthread_cond_timedwait(&proxy_cond, &proxy_mutex, &timeout);
-            if (zvar_proc_stop) {
+            if (flag_stop) {
                 zpthread_unlock(&proxy_mutex);
                 return 0;
             }
@@ -166,7 +167,7 @@ static pthread_cond_t log_cond = PTHREAD_COND_INITIALIZER;
 
 static void proxy_log()
 {
-    if (zvar_proc_stop) {
+    if (flag_stop) {
         return;
     }
     zpthread_lock(&global_mutex);
@@ -212,7 +213,7 @@ static void *pthread_log(void *arg)
     int cache_size = 0;
 
     while(1) {
-        if (zvar_proc_stop) {
+        if (flag_stop) {
             return 0;
         }
         zpthread_lock(&log_mutex);
@@ -221,7 +222,7 @@ static void *pthread_log(void *arg)
             timeout.tv_sec = time(0) + 1;
             timeout.tv_nsec = 0;
             pthread_cond_timedwait(&log_cond, &log_mutex, &timeout);
-            if (zvar_proc_stop) {
+            if (flag_stop) {
                 zpthread_unlock(&log_mutex);
                 return 0;
             }
@@ -252,6 +253,7 @@ static void *pthread_log(void *arg)
 /* {{{ server */
 static void release_aio(zaio_t *aio)
 {
+    zaio_disable(aio);
     zaio_free(aio, 1);
 }
 
@@ -263,9 +265,10 @@ static void do_request(zaio_t *aio)
         return;
     }
     zbuf_t *bf = zbuf_create(ret);
-    zaio_fetch_rbuf(aio, bf, ret);
+    zaio_get_read_cache(aio, bf, ret);
     char *ptr = zbuf_data(bf);
     if ((ptr[0] =='E') || (ptr[0] == 'Q')) {
+        zaio_disable(aio);
         zaio_set_context(aio, bf);
         zpthread_lock(&proxy_mutex);
         zlist_push(proxy_list, aio);
@@ -277,7 +280,7 @@ static void do_request(zaio_t *aio)
         zlist_push(log_list, bf);
         zpthread_unlock(&log_mutex);
         pthread_cond_signal(&log_cond);
-        zaio_read_size_data(aio, do_request, -1);
+        zaio_get_cint_and_data(aio, do_request);
         return;
     } else {
         zbuf_free(bf);
@@ -293,33 +296,42 @@ static void after_response(zaio_t *aio)
         release_aio(aio);
         return;
     }
-    zaio_read_size_data(aio, do_request, -1);
+    zaio_get_cint_and_data(aio, do_request);
 }
 
 
 static void do_slqite3_service(int fd)
 {
     znonblocking(fd, 1);
-    zaio_t *aio = zaio_create(fd, zvar_default_event_base);
-    zaio_read_size_data(aio, do_request, 100);
+    zaio_t *aio = zaio_create(fd, zvar_default_aio_base);
+    zaio_get_cint_and_data(aio, do_request);
 }
 
 void (*zsqlite3_proxy_server_before_service)() = 0;
-void (*zsqlite3_proxy_server_before_reload)() = 0;
-void (*zsqlite3_proxy_server_before_exit)() = 0;
+void (*zsqlite3_proxy_server_before_softstop)() = 0;
 void (*zsqlite3_proxy_server_service_register) (const char *service, int fd, int fd_type) = 0;
 
 static void ___service_register(const char *service_name, int fd, int fd_type)
 {
     if (zempty(service_name)||(!strcmp(service_name, "sqlite3"))||(!zsqlite3_proxy_server_service_register)) {
-        zevent_server_general_aio_register(zvar_default_event_base, fd, fd_type, do_slqite3_service);
+        zaio_server_general_aio_register(zvar_default_aio_base, fd, fd_type, do_slqite3_service);
     } else {
         zsqlite3_proxy_server_service_register(service_name, fd, fd_type);
     }
 }
 
+static void signal_stop_handler(int sig)
+{
+    zaio_server_stop_notify();
+}
+
 static void ___before_service()
 {
+    do {
+        signal(SIGTERM, signal_stop_handler);
+        signal(SIGHUP, signal_stop_handler);
+    } while(0);
+
     do {
         proxy_list = zlist_create();
         log_list = zlist_create();
@@ -339,7 +351,6 @@ static void ___before_service()
         if (SQLITE_OK != sqlite3_open(sqlite3_proxy_pathname, &sqlite3_handler)) {
             zfatal("FATAL dbopen %s(%m)", sqlite3_proxy_pathname);
         }
-        zinfo("sqlite3_proxy open %s", sqlite3_proxy_pathname);
     } while(0);
 
     do {
@@ -352,8 +363,19 @@ static void ___before_service()
     }
 }
 
-static void ___before_exit()
+static void ___before_softstop()
 {
+    flag_stop = 1;
+    if (zsqlite3_proxy_server_before_softstop) {
+        zsqlite3_proxy_server_before_softstop();
+    } else {
+        zaio_server_stop_notify();
+    }
+}
+
+static void all_fini()
+{
+    flag_stop = 1;
     zpthread_lock(&global_mutex);
     if (sqlite3_handler) {
         if (sqlite3_close(sqlite3_handler) != SQLITE_OK) {
@@ -365,21 +387,16 @@ static void ___before_exit()
     zlist_free(log_list);
     zlist_free(log_list_tmp);
     zpthread_unlock(&global_mutex);
-
-    if (zsqlite3_proxy_server_before_exit) {
-        zsqlite3_proxy_server_before_exit();
-    }
 }
 
 int zsqlite3_proxy_server_main(int argc, char **argv)
 {
-    zevent_server_service_register = ___service_register;
-    zevent_server_before_service = ___before_service;
-    if (zsqlite3_proxy_server_before_reload) {
-        zevent_server_before_reload = zsqlite3_proxy_server_before_reload;
-    }
-    zevent_server_before_exit = ___before_exit;
-    return zevent_server_main(argc, argv);
+    zaio_server_service_register = ___service_register;
+    zaio_server_before_service = ___before_service;
+    zaio_server_before_softstop = ___before_softstop;
+    zaio_server_main(argc, argv);
+    all_fini();
+    return 0;
 }
 
 /* }}} */

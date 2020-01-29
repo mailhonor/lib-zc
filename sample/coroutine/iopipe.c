@@ -26,9 +26,9 @@ static SSL_CTX * ssl_dest_ctx = 0;
 static void ___usage()
 {
 
-    printf("USAGE: %s -O proxy host:port -O dest host:port\n", zvar_progname);
-    printf("USAGE: %s -O proxy host:port -O ssl-dest host:port\n", zvar_progname);
-    printf("USAGE: %s -O ssl-proxy host:port -O dest host:port -O ssl-cert filename -O ssl-key filename\n", zvar_progname);
+    printf("USAGE: %s -proxy host:port -dest host:port [ -times 9999991 ]\n", zvar_progname);
+    printf("USAGE: %s -proxy host:port -ssl-dest host:port\n", zvar_progname);
+    printf("USAGE: %s -ssl-proxy host:port -dest host:port -ssl-cert filename -ssl-key filename\n", zvar_progname);
     exit(1);
 }
 
@@ -41,7 +41,7 @@ static void after_close(void *ctx)
     fprintf(stderr, "times: %d\n", ___times);
     if (___times == times) {
         ___stop = 1;
-        zcoroutine_base_stop_notify();
+        zcoroutine_base_stop_notify(0);
         fprintf(stderr, "... stop\n");
     }
 }
@@ -64,7 +64,7 @@ static void parameters_do(int argc, char **argv)
 
     ssl_key = zconfig_get_str(zvar_default_config, "ssl-key", 0);
     ssl_cert = zconfig_get_str(zvar_default_config, "ssl-cert", 0);
-    times = zconfig_get_int(zvar_default_config, "times", 3, 0, 10);
+    times = zconfig_get_int(zvar_default_config, "times", 9999991, 0, 9999999);
 
     if (proxy_is_ssl && dest_is_ssl) {
         proxy_is_ssl = 0;
@@ -84,8 +84,6 @@ static void ssl_do()
 {
     zopenssl_init();
 
-    ssl_proxy_ctx = zopenssl_SSL_CTX_create_server();
-
     ssl_dest_ctx = zopenssl_SSL_CTX_create_client();
 
     if (proxy_is_ssl) {
@@ -93,7 +91,8 @@ static void ssl_do()
             printf("ERR ssl-proxy mode, need -ssl-key, -ssl-cert\n");
             ___usage();
         }
-        if (zopenssl_SSL_CTX_set_cert(ssl_proxy_ctx, ssl_cert, ssl_key) < 1) {
+        ssl_proxy_ctx = zopenssl_SSL_CTX_create_server(ssl_cert, ssl_key);
+        if (!ssl_proxy_ctx) {
             printf("ERR can load ssl err: %s, %s\n", ssl_cert, ssl_key);
             exit(1);
         }
@@ -118,21 +117,22 @@ void * do_after_accept(void *arg)
     do {
         if (proxy_is_ssl) {
             proxy_ssl = zopenssl_SSL_create(ssl_proxy_ctx, proxy_fd);
-            if (zopenssl_timed_accept(proxy_ssl, 10) < 1) {
+            if (zopenssl_timed_accept(proxy_ssl, 10, 10) < 1) {
                 printf("ERR openssl_accept error\n");
                 err = 1;
                 break;
             }
         }
-        dest_fd = zconnect(dest_address, 1, 3);
+        dest_fd = zconnect(dest_address, 10);
         if (dest_fd == -1) {
             printf("ERR can not connect %s\n", dest_address);
             err = 1;
             break;
         }
+        znonblocking(dest_fd, 1);
         if (dest_is_ssl) {
             dest_ssl = zopenssl_SSL_create(ssl_dest_ctx, dest_fd);
-            if (zopenssl_timed_connect(dest_ssl, 10) < 1) {
+            if (zopenssl_timed_connect(dest_ssl, 10, 10) < 1) {
                 printf("ERR openssl_connect error\n");
                 err = 1;
                 break;
@@ -163,7 +163,7 @@ void * do_after_accept(void *arg)
 static void *do_listen(void * arg)
 {
     int sock_type;
-    int listen_fd = zlisten(proxy_address, &sock_type, 10, 1);
+    int listen_fd = zlisten(proxy_address, &sock_type, 10);
     if (listen_fd < 0) {
         printf("ERR: can not open %s (%m), proxy_address\n", proxy_address);
         exit(1);
@@ -197,7 +197,7 @@ int main(int argc, char **argv)
 
     zcoroutine_go(do_listen, 0, 0);
 
-    zcoroutine_base_run();
+    zcoroutine_base_run(0);
     zcoroutine_base_fini();
 
     ssl_fini();

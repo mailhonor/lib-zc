@@ -11,67 +11,61 @@
 #include <errno.h>
 
 /* timed read/write wait */
-int ztimed_read_write_wait_millisecond(int fd, long timeout, int *readable, int *writeable)
+int ztimed_read_write_wait_millisecond(int fd, long read_write_wait_timeout, int *readable, int *writeable)
 {
     struct pollfd pollfd;
-    long critical_time = 0, left_time;
+    long left_timeout = read_write_wait_timeout;
+    int timeout;
     *readable = *writeable = 0;
-    if (timeout < 0) {
-        left_time = zvar_max_timeout_millisecond;
-    } else {
-        left_time = timeout;
-    }
-    for (;left_time>=0;left_time=ztimeout_left_millisecond(critical_time)) {
-        if (critical_time == 0) {
-            critical_time = ztimeout_set_millisecond(left_time);
-        }
-        int ccc = 0;
-        if (left_time > 1000 * 3600) {
-            left_time = 1000 * 3600;
-            ccc = 1;
-        }
+
+    for (;;) {
         pollfd.fd = fd;
         pollfd.events = POLLIN | POLLOUT;
-        switch (poll(&pollfd, 1, left_time)) {
+        if (read_write_wait_timeout < 0) {
+            timeout = -1;
+        } else if (read_write_wait_timeout == 0) {
+            timeout = 0;
+        } else {
+            if( left_timeout < 1) {
+                return 0;
+            } else if (left_timeout > 1000 * 3600) {
+                timeout = 1000 * 3600;
+            } else {
+                timeout = left_timeout;
+            }
+        }
+        switch (poll(&pollfd, 1, timeout)) {
         case -1:
             if (errno != EINTR) {
-                zfatal("poll error (%m)");
-            }
-            if (zvar_proc_stop) {
-                return 0;
+                zfatal("FATAL poll error (%m)");
             }
             continue;
         case 0:
-            if (ccc) {
-                continue;
+            if (read_write_wait_timeout <= 0) {
+                return 0;
             }
-            return 0;
+            left_timeout -= 1000 * 3600;
+            continue;
         default:
+            if (pollfd.revents & POLLNVAL) {
+                return -1;
+            }
             if (pollfd.revents & POLLIN) {
                 *readable = 1;
             }
             if (pollfd.revents & POLLOUT) {
                 *writeable = 1;
             }
-            if (pollfd.revents & (POLLIN | POLLOUT)) {
-                return 1;
-            }
-            if (pollfd.revents & (POLLNVAL | POLLERR | POLLHUP)) {
-                return -1;
-            }
-            if (pollfd.revents & POLLRDHUP) {
-                return -1;
-            }
-            return -1;
+            return 1;
         }
     }
 
     return 0;
 }
 
-int ztimed_read_write_wait(int fd, int timeout, int *readable, int *writeable)
+int ztimed_read_write_wait(int fd, int read_write_wait_timeout, int *readable, int *writeable)
 {
-    return ztimed_read_write_wait_millisecond(fd, 1000L * timeout, readable, writeable);
+    return ztimed_read_write_wait_millisecond(fd, 1000L * read_write_wait_timeout, readable, writeable);
 }
 
 /* read */
@@ -79,42 +73,45 @@ int ztimed_read_write_wait(int fd, int timeout, int *readable, int *writeable)
  *                 2, peer closed.
  * when receive POLLRDHUP, maybe have some readable data.
  */
-int ztimed_read_wait_millisecond(int fd, long timeout)
+int ztimed_read_wait_millisecond(int fd, long read_wait_timeout)
 {
     struct pollfd pollfd;
-    long critical_time = 0, left_time;
+    long left_timeout = read_wait_timeout;
+    int timeout;
 
-    if (timeout < 0) {
-        left_time = zvar_max_timeout_millisecond;
-    } else {
-        left_time = timeout;
-    }
-    for (;left_time>=0;left_time=ztimeout_left_millisecond(critical_time)) {
-        if (critical_time == 0) {
-            critical_time = ztimeout_set_millisecond(left_time);
-        }
-        int ccc = 0;
-        if (left_time > 1000 * 3600) {
-            left_time = 1000 * 3600;
-            ccc = 1;
-        }
+    for (;;) {
         pollfd.fd = fd;
         pollfd.events = POLLIN;
-        switch (poll(&pollfd, 1, left_time)) {
+        if (read_wait_timeout < 0) {
+            timeout = -1;
+        } else if (read_wait_timeout == 0) {
+            timeout = 0;
+        } else {
+            if( left_timeout < 1) {
+                return 0;
+            } else if (left_timeout > 1000 * 3600) {
+                timeout = 1000 * 3600;
+            } else {
+                timeout = left_timeout;
+            }
+        }
+        switch (poll(&pollfd, 1, timeout)) {
         case -1:
             if (errno != EINTR) {
-                zfatal("poll error (%m)");
-            }
-            if (zvar_proc_stop) {
-                return 0;
+                zfatal("FATAL poll error (%m)");
             }
             continue;
         case 0:
-            if (ccc) {
-                continue;
+            if (read_wait_timeout <= 0) {
+                return 0;
             }
-            return 0;
+            left_timeout -= 1000 * 3600;
+            continue;
         default:
+            if (pollfd.revents & POLLNVAL) {
+                return -1;
+            }
+            return 1;
             if (pollfd.revents & POLLIN) {
                 return 1;
             }
@@ -131,186 +128,87 @@ int ztimed_read_wait_millisecond(int fd, long timeout)
     return 0;
 }
 
-int ztimed_read_wait(int fd, int timeout)
+int ztimed_read_wait(int fd, int read_wait_timeout)
 {
-    return ztimed_read_wait_millisecond(fd, 1000L * timeout);
+    return ztimed_read_wait_millisecond(fd, 1000L * read_wait_timeout);
 }
 
-int ztimed_read(int fd, void *buf, int size, int timeout)
+int ztimed_read(int fd, void *buf, int size, int read_wait_timeout)
 {
-    int ret;
-    long critical_time = 0, left_time;
+    int ret, ec;
 
-    if (timeout == 0) {
+    if (read_wait_timeout == 0) {
         for (;;) {
             if ((ret = read(fd, buf, size)) < 0) {
-                int ec = errno;
-                if (ec == EINTR) {
-                    if (zvar_proc_stop) {
-                        break;
-                    }
+                if (errno == EINTR) {
                     continue;
                 }
-                if (zvar_proc_stop) {
-                    return 0;
-                }
-                return -1;
             }
             return ret;
         }
-        return -1;
     }
 
-    if (timeout < 0) {
-        left_time = zvar_max_timeout_millisecond;
-    } else {
-        left_time = timeout;
-    }
-    for (;left_time>=0;left_time=ztimeout_left_millisecond(critical_time)) {
-        if (critical_time == 0) {
-            critical_time = ztimeout_set_millisecond(left_time);
-        }
-        if (ztimed_read_wait_millisecond(fd, left_time) < 1) {
-            return (-1);
-        }
-        if ((ret = read(fd, buf, size)) < 0) {
-            int ec = errno;
-            if (ec == EINTR) {
-                if (zvar_proc_stop) {
-                    break;
-                }
-                continue;
-            }
-            if (ec == EAGAIN) {
-                continue;
-            }
+    for (;;) {
+        if ((ret = ztimed_read_wait_millisecond(fd, 1000L * read_wait_timeout)) == 0) {
+            errno = ETIMEDOUT;
             return -1;
         }
-        return (ret);
-    }
-
-    return -1;
-}
-
-int ztimed_readn(int fd, void *buf, int size, int timeout)
-{
-    int is_closed = 0;
-    int ret;
-    int left;
-    char *ptr;
-    long critical_time = 0, left_time;
-
-    left = size;
-    ptr = (char *)buf;
-
-    if (timeout == 0) {
-        for (;;) {
-            ret = read(fd, ptr, left);
-            if (ret < 0) {
-                int ec = errno;
-                if (ec == EINTR) {
-                    if (zvar_proc_stop) {
-                        break;
-                    }
-                    continue;
-                }
-                break;
-            } else if (ret == 0) {
-                is_closed = 1;
-                break;
-            } else {
-                left -= ret;
-                ptr += ret;
-            }
-        }
-        if (size > left) {
-            return size - left;
-        }
-        if (is_closed) {
-            return 0;
-        }
-        return -1;
-    }
-    if (timeout < 0) {
-        left_time = zvar_max_timeout_millisecond;
-    } else {
-        left_time = timeout;
-    }
-    for (;(left>=0) && (left_time>=0);left_time=ztimeout_left_millisecond(critical_time)) {
-        if (critical_time == 0) {
-            critical_time = ztimeout_set_millisecond(left_time);
-        }
-        if (ztimed_read_wait_millisecond(fd, left_time) < 1) {
-            break;
-        }
-        ret = read(fd, ptr, left);
-        if (ret < 0) {
-            int ec = errno;
+        if ((ret = read(fd, buf, size)) < 0) {
+            ec = errno;
             if (ec == EINTR) {
-                if (zvar_proc_stop) {
-                    break;
-                }
                 continue;
             }
             if (ec == EAGAIN) {
                 continue;
             }
-            break;
-        } else if (ret == 0) {
-            is_closed = 1;
-            break;
-        } else {
-            left -= ret;
-            ptr += ret;
         }
+        return ret;
     }
 
-    if (size > left) {
-        return size - left;
-    }
-    if (is_closed) {
-        return 0;
-    }
+    errno = ETIMEDOUT;
     return -1;
 }
 
 /* write */
-int ztimed_write_wait_millisecond(int fd, long timeout)
+int ztimed_write_wait_millisecond(int fd, long write_wait_timeout)
 {
     struct pollfd pollfd;
-    long critical_time = 0, left_time;
+    long left_timeout = write_wait_timeout;
+    int timeout;
 
-    if (timeout < 0) {
-        left_time = zvar_max_timeout_millisecond;
-    } else {
-        left_time = timeout;
-    }
-    for (;left_time>=0;left_time=ztimeout_left_millisecond(critical_time)) {
-        if (critical_time == 0) {
-            critical_time = ztimeout_set_millisecond(left_time);
-        }
-        int ccc = 0;
-        if (left_time > 1000 * 3600) {
-            left_time = 1000 * 3600;
-            ccc = 1;
-        }
+    for (;;) {
         pollfd.fd = fd;
         pollfd.events = POLLOUT;
-        switch (poll(&pollfd, 1, left_time)) {
+        if (write_wait_timeout < 0) {
+            timeout = -1;
+        } else if (write_wait_timeout == 0) {
+            timeout = 0;
+        } else {
+            if( left_timeout < 1) {
+                return 0;
+            } else if (left_timeout > 1000 * 3600) {
+                timeout = 1000 * 3600;
+            } else {
+                timeout = left_timeout;
+            }
+        }
+        switch (poll(&pollfd, 1, timeout)) {
         case -1:
             if (errno != EINTR) {
-                zfatal("poll error (%m)");
-            }
-            if (zvar_proc_stop) {
-                return 0;
+                zfatal("FATAL poll error (%m)");
             }
             continue;
         case 0:
-            if (ccc) {
-                continue;
+            if (write_wait_timeout <= 0) {
+                return 0;
             }
-            return 0;
+            left_timeout -= 1000 * 3600;
+            continue;
         default:
+            if (pollfd.revents & POLLNVAL) {
+                return -1;
+            }
+            return 1;
             if (pollfd.revents & POLLOUT) {
                 return 1;
             }
@@ -332,90 +230,42 @@ int ztimed_write_wait(int fd, int timeout)
     return ztimed_write_wait_millisecond(fd, 1000L * timeout);
 }
 
-int ztimed_write(int fd, const void *buf, int size, int timeout)
+int ztimed_write(int fd, const void *buf, int size, int write_wait_timeout)
 {
-    int is_closed = 0;
-    int ret;
-    int left;
-    char *ptr;
-    long critical_time = 0, left_time;
+    int ret, ec;
 
-    left = size;
-    ptr = (char *)(void *)buf;
-
-    if (timeout == 0) {
+    if (write_wait_timeout == 0) {
         for (;;) {
-            ret = write(fd, ptr, left);
+            ret = write(fd, buf, size);
             if (ret < 0) {
-                int ec = errno;
-                if (ec == EINTR) {
-                    if (zvar_proc_stop) {
-                        break;
-                    }
+                if (errno == EINTR) {
                     continue;
                 }
-                if (ec == EPIPE) {
-                    is_closed = 1;
-                    break;
-                }
-                break;
-            } else if (ret == 0) {
-                continue;
-            } else {
-                left -= ret;
-                ptr += ret;
             }
+            return ret;
         }
-        if (size > left) {
-            return size - left;
-        }
-        if (is_closed) {
-            return 0;
-        }
-        return -1;
     }
-    if (timeout < 0) {
-        left_time = zvar_max_timeout_millisecond;
-    } else {
-        left_time = timeout;
-    }
-    for (;(left>=0) && (left_time>=0);left_time=ztimeout_left_millisecond(critical_time)) {
-        if (critical_time == 0) {
-            critical_time = ztimeout_set_millisecond(left_time);
+    for (;;) {
+        if (ztimed_write_wait_millisecond(fd, 1000L * write_wait_timeout) == 0) {
+            errno = ETIMEDOUT;
+            return -1;
         }
-        if (ztimed_write_wait_millisecond(fd, left_time) < 1) {
-            break;
-        }
-        ret = write(fd, ptr, left);
+        ret = write(fd, buf, size);
         if (ret < 0) {
-            int ec = errno;
+            ec = errno;
             if (ec == EINTR) {
-                if (zvar_proc_stop) {
-                    break;
-                }
                 continue;
             }
             if (ec == EAGAIN) {
                 continue;
             }
-            if (ec == EPIPE) {
-                is_closed = 1;
-                break;
-            }
-            break;
+            return -1;
         } else if (ret == 0) {
             continue;
-        } else {
-            left -= ret;
-            ptr += ret;
         }
+        return ret;
     }
 
-    if (size > left) {
-        return size - left;
-    }
-    if (is_closed) {
-        return 0;
-    }
+    errno = ETIMEDOUT;
     return -1;
 }

@@ -16,7 +16,9 @@ struct zmemcache_client_t {
     char *destination;
     int fd:31;
     unsigned int auto_reconnect;
-    int timeout;
+    int connect_timeout;
+    int read_wait_timeout;
+    int write_wait_timeout;
 };
 
 static zbool_t is_valid_key(const char *key)
@@ -49,26 +51,40 @@ static void zmemcache_client_connect_inner(zmemcache_client_t *mc)
     if (mc->fd != -1) {
         return;
     }
-    mc->fd = zconnect(mc->destination, 1, mc->timeout);
+    mc->fd = zconnect(mc->destination, mc->connect_timeout);
+    znonblocking(mc->fd, 1);
 }
 
-zmemcache_client_t *zmemcache_client_connect(const char *destination, int cmd_timeout, zbool_t auto_reconnect)
+zmemcache_client_t *zmemcache_client_connect(const char *destination, int connect_timeout, zbool_t auto_reconnect)
 {
-    int fd = zconnect(destination, 1, cmd_timeout);
+    int fd = zconnect(destination, connect_timeout);
     if (fd < 0) {
         return 0;
     }
+    znonblocking(fd, 1);
     zmemcache_client_t *mc = (zmemcache_client_t *)zcalloc(1, sizeof(zmemcache_client_t));
     mc->destination = zstrdup(destination);
     mc->fd = fd;
-    mc->timeout = cmd_timeout;
+    mc->connect_timeout = connect_timeout;
+    mc->read_wait_timeout = -1;
+    mc->write_wait_timeout = -1;
     mc->auto_reconnect = auto_reconnect;
     return mc;
 }
 
-void zmemcache_client_set_cmd_timeout(zmemcache_client_t *mc, int timeout)
+void zmemcache_client_set_connect_timeout(zmemcache_client_t *mc, int connect_timeout)
 {
-    mc->timeout = timeout;
+    mc->connect_timeout = connect_timeout;
+}
+
+void zmemcache_client_set_read_wait_timeout(zmemcache_client_t *mc, int read_wait_timeout)
+{
+    mc->read_wait_timeout = read_wait_timeout;
+}
+
+void zmemcache_client_set_write_wait_timeout(zmemcache_client_t *mc, int write_wait_timeout)
+{
+    mc->write_wait_timeout = write_wait_timeout;
 }
 
 void zmemcache_client_set_auto_reconnect(zmemcache_client_t *mc, zbool_t auto_reconnect)
@@ -93,7 +109,8 @@ int zmemcache_client_get(zmemcache_client_t *mc, const char *key, int *flag, zbu
     ___check_status();
     ___check_key();
     zstream_t *fp = zstream_open_fd(mc->fd);
-    zstream_set_timeout(fp, mc->timeout);
+    zstream_set_read_wait_timeout(fp, mc->read_wait_timeout);
+    zstream_set_write_wait_timeout(fp, mc->write_wait_timeout);
     zstream_printf_1024(fp, "get %s\r\n", key);
     int have_val = 0;
     int protocol_error = 0;
@@ -161,7 +178,8 @@ static int zmemcache_client_asrpa(zmemcache_client_t *mc, const char *op, const 
     ___check_key();
     ZSTACK_BUF(str, 1024);
     zstream_t *fp = zstream_open_fd(mc->fd);
-    zstream_set_timeout(fp, mc->timeout);
+    zstream_set_read_wait_timeout(fp, mc->read_wait_timeout);
+    zstream_set_write_wait_timeout(fp, mc->write_wait_timeout);
     zstream_printf_1024(fp, "%s %s %d %ld %zd\r\n", op, key, flag, timeout, len);
     zstream_write(fp, data, len);
     zstream_write(fp, "\r\n", 2);
@@ -221,7 +239,8 @@ static long zmemcache_client_incr_decr(zmemcache_client_t *mc, const char *op, c
     ___check_key();
     ZSTACK_BUF(str, 1024);
     zstream_t *fp = zstream_open_fd(mc->fd);
-    zstream_set_timeout(fp, mc->timeout);
+    zstream_set_read_wait_timeout(fp, mc->read_wait_timeout);
+    zstream_set_write_wait_timeout(fp, mc->write_wait_timeout);
     zstream_printf_1024(fp, "%s %s %zd\r\n", op, key, n);
     int ret = zstream_gets(fp, str, 1024);
     zstream_close(fp, 0);
@@ -255,7 +274,8 @@ int zmemcache_client_del(zmemcache_client_t *mc, const char *key)
     ___check_key();
     ZSTACK_BUF(str, 1024);
     zstream_t *fp = zstream_open_fd(mc->fd);
-    zstream_set_timeout(fp, mc->timeout);
+    zstream_set_read_wait_timeout(fp, mc->read_wait_timeout);
+    zstream_set_write_wait_timeout(fp, mc->write_wait_timeout);
     zstream_printf_1024(fp, "delete %s\r\n", key);
     if (zstream_gets(fp, str, 1024) < 1) {
         ret = -1;
@@ -284,7 +304,8 @@ int zmemcache_client_flush_all(zmemcache_client_t *mc, long after_second)
     ___check_status();
     ZSTACK_BUF(str, 1024);
     zstream_t *fp = zstream_open_fd(mc->fd);
-    zstream_set_timeout(fp, mc->timeout);
+    zstream_set_read_wait_timeout(fp, mc->read_wait_timeout);
+    zstream_set_write_wait_timeout(fp, mc->write_wait_timeout);
     if (after_second > 0) {
         zstream_printf_1024(fp, "flush_all %ld\r\n", after_second);
     } else {
@@ -316,7 +337,8 @@ int zmemcache_client_version(zmemcache_client_t *mc, zbuf_t *version)
     ___check_status();
     ZSTACK_BUF(str, 1024);
     zstream_t *fp = zstream_open_fd(mc->fd);
-    zstream_set_timeout(fp, mc->timeout);
+    zstream_set_read_wait_timeout(fp, mc->read_wait_timeout);
+    zstream_set_write_wait_timeout(fp, mc->write_wait_timeout);
     zstream_puts(fp, "version\r\n");
     if (zstream_gets(fp, str, 1024) < 1) {
         ret = -1;

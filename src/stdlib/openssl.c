@@ -8,8 +8,8 @@
 
 #pragma GCC diagnostic ignored "-Wunused-function"
 
-#define zpthread_lock(l)    if(l){if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
-#define zpthread_unlock(l)  if(l){if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
+#define zpthread_lock(l)    if(l){if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}}
+#define zpthread_unlock(l)  if(l){if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}}
 
 #include "zc.h"
 #include <pthread.h>
@@ -101,11 +101,21 @@ void zopenssl_init(void)
         return;
     }
     ___openssl_init = 1;
-    SSL_library_init();
+#if (OPENSSL_VERSION_NUMBER >= 0x10100003L)
+    OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL);
     pthread_safe_setup();
+    SSL_library_init();
+    OpenSSL_add_all_ciphers();
     OpenSSL_add_all_algorithms();
+    OpenSSL_add_all_digests();
     ERR_load_crypto_strings();
     SSL_load_error_strings();
+#else
+    OPENSSL_config(NULL);
+    SSL_library_init();
+    SSL_load_error_strings();
+    OpenSSL_add_all_algorithms();
+#endif
 }
 
 void zopenssl_fini(void)
@@ -135,67 +145,81 @@ void zopenssl_fini(void)
 #endif
 }
 
-void zopenssl_phtread_fini(void)
+SSL_CTX *zopenssl_SSL_CTX_create_client(void)
 {
-    if (___openssl_init == 0) {
-        return;
-    }
-#if 0
-    /* Deprecated */
-    ERR_remove_state(0);
+#if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+    const SSL_METHOD *method = TLS_client_method();
+#else
+    const SSL_METHOD *method = SSLv23_client_method();
 #endif
-}
-
-static SSL_CTX *zopenssl_SSL_CTX_create_by_method(const SSL_METHOD *method, int server_or_client)
-{
     SSL_CTX *ctx = SSL_CTX_new(method);
     if (!ctx) {
-        zfatal("SSL_CTX_new");
+        zfatal("FATAL SSL_CTX_new");
     }
+
     SSL_CTX_set_options(ctx, SSL_OP_ALL);
-    SSL_CTX_set_options(ctx, SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);
-    SSL_CTX_set_options(ctx, SSL_OP_NO_COMPRESSION);
 
-    SSL_CTX_clear_options(ctx, SSL_OP_NO_SSLv2);
-    SSL_CTX_clear_options(ctx, SSL_OP_NO_SSLv3);
-    SSL_CTX_clear_options(ctx, SSL_OP_NO_TLSv1);
-    SSL_CTX_clear_options(ctx, SSL_OP_NO_TLSv1_1);
-    SSL_CTX_clear_options(ctx, SSL_OP_NO_TLSv1_2);
+#ifdef SSL_CTX_set_min_proto_version
+    SSL_CTX_set_min_proto_version(ctx, TLS1_1_VERSION);
+    SSL_CTX_set_max_proto_version(ctx, TLS_MAX_VERSION);
+#endif
 
-    SSL_CTX_set_read_ahead(ctx, 1);
-
-#if OPENSSL_VERSION_NUMBER > 0x10100080L
+#if OPENSSL_VERSION_NUMBER > 0x10100003L
     SSL_CTX_set_security_level(ctx, 1);
 #endif
-    SSL_CTX_set_cipher_list(ctx, "HIGH:SSLv3:SSLv2:SSLv1:TLSv1.3:TLSv1.2:TLSv1.1:TLSv1.0:!aNULL:!eNULL");
-    
+
     return ctx;
 }
 
-SSL_CTX *zopenssl_SSL_CTX_create_server(void)
+SSL_CTX *zopenssl_SSL_CTX_create_server(const char *cert_file, const char *key_file)
 {
-     return zopenssl_SSL_CTX_create_by_method(SSLv23_server_method(), 1);
-}
+#if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+    const SSL_METHOD *method = TLS_server_method();
+#else
+    const SSL_METHOD *method = SSLv23_server_method();
+#endif
+    SSL_CTX *ctx = SSL_CTX_new(method);
+    if (!ctx) {
+        zfatal("FATAL SSL_CTX_new");
+    }
+    SSL_CTX_set_options(ctx, SSL_OP_ALL);
 
-SSL_CTX *zopenssl_SSL_CTX_create_client(void)
-{
-     return zopenssl_SSL_CTX_create_by_method(SSLv23_client_method(), 0);
-}
+#ifdef SSL_CTX_set_min_proto_version
+    SSL_CTX_set_min_proto_version(ctx, TLS1_1_VERSION);
+    SSL_CTX_set_max_proto_version(ctx, TLS_MAX_VERSION);
+#endif
 
-int zopenssl_SSL_CTX_set_cert(SSL_CTX *ctx, const char *cert_file, const char *key_file)
-{
     ERR_clear_error();
-    if ((!cert_file) || (SSL_CTX_use_certificate_chain_file(ctx, cert_file) <= 0)) {
-        return (-1);
-    }
-    if ((!key_file) || (SSL_CTX_use_PrivateKey_file(ctx, key_file, SSL_FILETYPE_PEM) <= 0)) {
-        return (-1);
-    }
-    if (!SSL_CTX_check_private_key(ctx)) {
-        return (-1);
+    if ((!cert_file) || (!key_file)) {
+        zinfo("ERR cert_file or key_file is null");
+        goto err;
     }
 
-    return 1;
+    if (SSL_CTX_load_verify_locations(ctx, cert_file, NULL) != 1) {
+        zinfo("ERR SSL_CTX_load_verify_locations");
+        goto err;
+    }
+
+    if ((SSL_CTX_use_certificate_chain_file(ctx, cert_file) != 1) && (SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM) != 1)) {
+        zinfo("ERR SSL_CTX_use_certificate_chain_file AND SSL_CTX_use_certificate_file");
+        goto err;
+    }
+
+    if (SSL_CTX_use_PrivateKey_file(ctx, key_file, SSL_FILETYPE_PEM) != 1) {
+        zinfo("ERR SSL_CTX_use_PrivateKey_file");
+        goto err;
+    }
+
+    if (SSL_CTX_check_private_key(ctx) != 1) {
+        zinfo("ERR SSL_CTX_check_private_key");
+        goto err;
+    }
+
+    return ctx;
+
+err:
+    SSL_CTX_free(ctx);
+    return 0;
 }
 
 void zopenssl_SSL_CTX_free(SSL_CTX * ctx)
@@ -237,60 +261,57 @@ int zopenssl_SSL_get_fd(SSL *ssl)
     return SSL_get_fd(ssl);
 }
 
-#define ___Z_SSL_TIMED_DO(excute_sentence)  \
-    if (timeout < 0) { \
-        timeout = zvar_max_timeout; \
-    } \
-    if (timeout == 0) { \
+#define ___Z_SSL_TIMED_DO(excute_sentence, need_check_read_close)  \
+    if ((read_wait_timeout == 0) || (write_wait_timeout == 0)) { \
         return excute_sentence; \
     } \
     int _fd = SSL_get_fd(ssl); \
     int ret, err; \
-    long cirtical_time, left_time; \
-    cirtical_time = zmillisecond()+(timeout)*1000; \
     for (;;) { \
         ret = excute_sentence; \
         if (ret > 0) { break; } \
         err = SSL_get_error(ssl, ret); \
         if (err == SSL_ERROR_WANT_WRITE) { \
-            if ((left_time = (cirtical_time-zmillisecond()+1)) < 1) { ret = -1; break; } \
-            if (ztimed_write_wait_millisecond(_fd, left_time) < 1) { ret=-1; break; }\
+            if (ztimed_write_wait(_fd, write_wait_timeout) == 0) { ret=-1; break; }\
         } else if (err == SSL_ERROR_WANT_READ) { \
-            if ((left_time = (cirtical_time-zmillisecond()+1)) < 1) { ret = -1; break;} \
-            if (ztimed_read_wait_millisecond(_fd, left_time) < 1) { ret = -1; break; } \
+            if (ztimed_read_wait(_fd, read_wait_timeout) == 0) { ret = -1; break; } \
         } else { \
+            /* FIXME 这里有问题 */ \
+            if (need_check_read_close && (ret == 0) /* && (err == SSL_ERROR_ZERO_RETURN) */) { \
+                {ret = 0; break; } \
+            } \
             if (zvar_openssl_debug) { zinfo("openssl: found error ret=%d, status=%d", ret, err); } \
             { ret = -1; break; } \
         } \
     } 
 
-int zopenssl_timed_connect(SSL * ssl, int timeout)
+int zopenssl_timed_connect(SSL * ssl, int read_wait_timeout, int write_wait_timeout)
 {
-    ___Z_SSL_TIMED_DO(SSL_connect(ssl));
+    ___Z_SSL_TIMED_DO(SSL_connect(ssl), 0);
     return (ret==1?1:-1);
 }
 
-int zopenssl_timed_accept(SSL * ssl, int timeout)
+int zopenssl_timed_accept(SSL * ssl, int read_wait_timeout, int write_wait_timeout)
 {
-    ___Z_SSL_TIMED_DO(SSL_accept(ssl));
+    ___Z_SSL_TIMED_DO(SSL_accept(ssl), 0);
     return (ret==1?1:-1);
 }
 
-int zopenssl_timed_shutdown(SSL * ssl, int timeout)
+int zopenssl_timed_shutdown(SSL * ssl, int read_wait_timeout, int write_wait_timeout)
 {
-    ___Z_SSL_TIMED_DO(SSL_shutdown(ssl));
+    ___Z_SSL_TIMED_DO(SSL_shutdown(ssl), 0);
     return (ret==1?1:-1);
 }
 
-int zopenssl_timed_read(SSL * ssl, void *buf, int len, int timeout)
+int zopenssl_timed_read(SSL * ssl, void *buf, int len, int read_wait_timeout, int write_wait_timeout)
 {
-    ___Z_SSL_TIMED_DO(SSL_read(ssl, buf, len));
+    ___Z_SSL_TIMED_DO(SSL_read(ssl, buf, len), 1);
     return ret;
 }
 
-int zopenssl_timed_write(SSL * ssl, const void *buf, int len, int timeout)
+int zopenssl_timed_write(SSL * ssl, const void *buf, int len, int read_wait_timeout, int write_wait_timeout)
 {
-    ___Z_SSL_TIMED_DO(SSL_write(ssl, buf, len));
+    ___Z_SSL_TIMED_DO(SSL_write(ssl, buf, len), 0);
     return ret;
 }
 

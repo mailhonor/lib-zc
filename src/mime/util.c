@@ -15,6 +15,9 @@ char *zmail_clear_null_inner(const void *data, int size)
 {
     char *p = (char *)(void *)data;
     int i;
+    if (size < 0) {
+        size = strlen(p);
+    }
     for (i=0;i<size;i++) {
         if (p[i] == '\0') {
             p[i] = ' ';

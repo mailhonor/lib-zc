@@ -86,27 +86,7 @@ static char * ___fetch_string(char *ps, char *str_end, zbuf_t *str)
         if (ch == '\\') {
             ch2 = *ps ++;
             ch3 = 0;
-            if (ch2 == '\\') {
-                ch3 = '\\';
-            } else if (ch2 == '/') {
-                ch3 = '/';
-            } else if (ch2 == '"') {
-                ch3 = '"';
-            } else if (ch2 == '\'') {
-                ch3 = '\'';
-            } else if (ch2 == 'b') {
-                ch3 = '\b';
-            } else if (ch2 == 'f') {
-                ch3 = '\f';
-            } else if (ch2 == 'r') {
-                ch3 = '\r';
-            } else if (ch2 == 'n') {
-                ch3 = '\n';
-            } else if (ch2 == 't') {
-                ch3 = '\t';
-            } else if (ch2 == '0') {
-                ch3 = '\0';
-            } else if (ch2 == 'u') {
+            if (ch2 == 'u') {
                 ch3 = 'u';
                 if (ps + 4 > str_end) {
                     return ps; /* false */
@@ -123,6 +103,39 @@ static char * ___fetch_string(char *ps, char *str_end, zbuf_t *str)
                 int len = ___ncr_decode((size_t)uval, buf);
                 zbuf_memcat(str, buf, len);
                 continue;
+            } else {
+                switch (ch2) {
+                case '\\':
+                    ch3 = '\\';
+                    break;
+                case '/':
+                    ch3 = '/';
+                    break;
+                case '"':
+                    ch3 = '"';
+                    break;
+                case '\'':
+                    ch3 = '\'';
+                    break;
+                case 'b':
+                    ch3 = '\b';
+                    break;
+                case 'f':
+                    ch3 = '\f';
+                    break;
+                case 'r':
+                    ch3 = '\r';
+                    break;
+                case 'n':
+                    ch3 = '\n';
+                    break;
+                case 't':
+                    ch3 = '\t';
+                    break;
+                case '0':
+                    ch3 = '\0';
+                    break;
+                }
             }
             if (ch3) {
                 zbuf_put(str, ch3);

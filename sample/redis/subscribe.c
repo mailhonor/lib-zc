@@ -38,7 +38,6 @@ int main(int argc, char **argv)
 
     for (int i = 0; i < 100; i++) {
         zbuf_vector_reset(msg_vec);
-        zredis_client_set_cmd_timeout(rc, 1);
         int ret = zredis_client_fetch_channel_message(rc, msg_vec);
         if (ret < 0) {
             printf("ERR network or protocal\n");

@@ -9,36 +9,67 @@
 #include "zc.h"
 #include <time.h>
 
-static void timer_cb(zetimer_t * zt)
+typedef struct info_t info_t;
+struct info_t {
+    int id;
+    int count;
+};
+
+static char *get_current_time(char *tbuf)
 {
     time_t t = time(0);
-    zinfo("go: %s", ctime(&t));
-    zetimer_start(zt, timer_cb, 1);
+    ctime_r(&t, tbuf);
+    char *p = strchr(tbuf, '\n');
+    if (p) {
+        *p = 0;
+    }
+    return tbuf;
 }
 
-static int count = 0;
-static void timer_cb2(zetimer_t * zt)
+static zaio_t *tm2;
+static void timer_cb(zaio_t *tm)
 {
-    if (count++ > 2) {
-        zinfo("count == 2");
-        zetimer_free(zt);
+    info_t *info = (info_t *)zaio_get_context(tm);
+    info->count ++;
+    char tbuf[128];
+    zinfo("go%d count:%02d, time:%s", info->id, info->count, get_current_time(tbuf));
+    if (info->id==1 && info->count == 20) {
+        zinfo("count == 20, exit");
+        zaio_base_stop_notify(zaio_get_aio_base(tm));
+        zfree(zaio_get_context(tm));
+        zaio_free(tm, 1);
+        zfree(zaio_get_context(tm2));
+        zaio_free(tm2, 1);
         return;
     }
-    time_t t = time(0);
-    zinfo("GO: %s", ctime(&t));
-    zetimer_start(zt, timer_cb2, 2);
+    zaio_sleep(tm, timer_cb, info->id);
 }
 
 int main(int argc, char **argv)
 {
-    zevent_base_t *evbase = zevent_base_create();
+    zmain_argument_run(argc, argv, 0);
 
-    zetimer_start(zetimer_create(evbase), timer_cb, 1);
+    zaio_base_t *base = zaio_base_create();
 
-    zetimer_start(zetimer_create(evbase), timer_cb2, 1);
-
-    while(zevent_base_dispatch(evbase)) {
+    {
+        zaio_t *tm = zaio_create(-1, base);
+        info_t *info = (info_t *)zcalloc(1, sizeof(info_t));
+        info->id = 1;
+        zaio_set_context(tm, info);
+        zaio_sleep(tm, timer_cb, 1);
     }
+
+    {
+        zaio_t *tm = zaio_create(-1, base);
+        info_t *info = (info_t *)zcalloc(1, sizeof(info_t));
+        info->id = 2;
+        zaio_set_context(tm, info);
+        zaio_sleep(tm, timer_cb, 1);
+        tm2 = tm;
+    }
+
+    zaio_base_run(base, 0);
+    zaio_base_free(base);
 
     return 0;
 }

@@ -50,7 +50,7 @@ void fd_attrs_prepare_get_data(fd_attrs_t *fa, struct pollfd *pf)
     } else if (fa->want_write) {
         pf->events = POLLOUT;
     } else {
-        zfatal("unknown want event");
+        zfatal("FATAL unknown event");
     }
     pf->revents = 0;
 }
@@ -258,5 +258,5 @@ void zcoroutine_go_iopipe(int fd1, SSL *ssl1, int fd2, SSL *ssl2, void (*after_c
     fgo->after_close = after_close;
     fgo->ctx = ctx;
 
-    zcoroutine_go(coroutine_go_iopipe_go, fgo, 16 * 1024);
+    zcoroutine_go(coroutine_go_iopipe_go, fgo, 16);
 }

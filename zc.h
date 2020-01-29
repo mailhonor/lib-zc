@@ -10,7 +10,6 @@
 
 #ifndef ___ZC_LIB_INCLUDE___
 #define ___ZC_LIB_INCLUDE___
-#pragma pack(push, 4)
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
@@ -23,12 +22,14 @@
 #include <string.h>
 #include <unistd.h>
 
-typedef struct ssl_st SSL;
-typedef struct ssl_ctx_st SSL_CTX;
+#pragma pack(push, 4)
 
 #ifdef  __cplusplus
 extern "C" {
 #endif
+
+typedef struct ssl_st SSL;
+typedef struct ssl_ctx_st SSL_CTX;
 
 /* ################################################################## */
 typedef int zbool_t;
@@ -54,11 +55,9 @@ typedef struct zmpool_t zmpool_t;
 typedef struct zstream_t zstream_t;
 #define zconfig_t zdict_t
 typedef struct zmmap_reader_t zmmap_reader_t;
-typedef struct zeio_t zeio_t;
 typedef struct zaio_t zaio_t;
-typedef struct zetimer_t zetimer_t;
-typedef struct zevent_base_t zevent_base_t;
-typedef struct ziopipe_base_t ziopipe_base_t;
+typedef struct zaio_base_t zaio_base_t;
+typedef struct zcoroutine_base_t zcoroutine_base_t;
 typedef struct zcoroutine_t zcoroutine_t;
 typedef struct zcoroutine_mutex_t zcoroutine_mutex_t;
 typedef struct zcoroutine_cond_t zcoroutine_cond_t;
@@ -106,6 +105,11 @@ union ztype_convert_t {
     off_t OFF_T;
     uid_t UID_T;
     gid_t GID_T;
+    struct {
+        int fd:30;
+        int is_ssl:2;
+        int fd_type:8;
+    } fdinfo;
 };
 
 #define ZCHAR_PTR_TO_INT(_ptr, _int)    {ztype_convert_t _ct;_ct.ptr_char=(_ptr);_int=_ct.i_int;}
@@ -168,6 +172,7 @@ zinline void zint_pack2(unsigned int num, void *buf)
     num >>= 8; p[0] = num & 255;
 }
 
+/* 最经典的hash函数, 需要更高级的可以考虑 crc16, crc32, crc64, 甚至md5 等*/
 zinline unsigned zhash_djb(const void *buf, int len)
 {
     register const unsigned char *p = (const unsigned char *)buf;
@@ -189,77 +194,130 @@ zinline unsigned zhash_djb_with_initial(const void *buf, int len, unsigned int i
     }
     return hash;
 }
-/* log ############################################################ */
+/* 日志, src/stdlib/log.c ########################################## */
+
+/* 见 zlog_fatal */
 extern zbool_t zvar_log_fatal_catch;
+
+/* 见 zdebug */
 extern zbool_t zvar_log_debug_enable;
+
+/* 可自定义 zlog_vprintf, 定制日志输出 */
 extern void (*zlog_vprintf) (const char *source_fn, size_t line_number, const char *fmt, va_list ap);
-void __attribute__((format(printf,3,4))) zlog_fatal(const char *source_fn, size_t line_number, const char *fmt, ...);
+
+/* 日志输出 */
 void __attribute__((format(printf,3,4))) zlog_info(const char *source_fn, size_t line_number, const char *fmt, ...);
+
+/* 日志输出后, 进程退出, 如果 zvar_log_fatal_catch==1, 则 激活段错误 */
+void __attribute__((format(printf,3,4))) zlog_fatal(const char *source_fn, size_t line_number, const char *fmt, ...);
 
 #define zfatal(fmt, args...) { zlog_fatal(__FILE__, __LINE__, fmt, ##args); }
 #define zinfo(fmt, args...) { zlog_info(__FILE__, __LINE__, fmt, ##args); }
 #define zdebug(fmt,args...) { if(zvar_log_debug_enable){zinfo(fmt, ##args);} }
 
+/* 使用syslog, identity/facility 参考 syslog  */
 void zlog_use_syslog(const char *identity, int facility);
+
+/* 转换字符串facility, 如: "LOG_MAIL" => LOG_MAIL */
 int zlog_get_facility_from_str(const char *facility);
 
+/* 使用 masterlog, master-server 提供的服务 */
+/* identity: 程序名; dest: master-server提供的服务地址, domain_socket, udp */
 void zlog_use_masterlog(const char *identity, const char *dest);
 
-/* malloc ########################################################### */
+/* 内存分配, src/malloc/malloc.c ###################################### */
 extern char *zblank_buffer;
 #define ZFREE(a)                     (zfree(a),a=0)
-#define zmalloc         zmalloc_20160308
-#define zcalloc         zcalloc_20160308
-#define zrealloc        zrealloc_20160308
-#define zfree           zfree_20160308
-#define zstrdup         zstrdup_20160308
-#define zstrndup        zstrndup_20160308
-#define zmemdup         zmemdup_20160308
-#define zmemdupnull     zmemdupnull_20160308
+
+/* LIB-ZC, 内部开发都使用如下内存操作函数, 理论上 zmalloc等价于malloc, 其他类似 */
+#define zmalloc                      zmalloc_20160308
+#define zcalloc                      zcalloc_20160308
+#define zrealloc                     zrealloc_20160308
+#define zfree                        zfree_20160308
+#define zstrdup                      zstrdup_20160308
+#define zstrndup                     zstrndup_20160308
+#define zmemdup                      zmemdup_20160308
+#define zmemdupnull                  zmemdupnull_20160308
 void *zmalloc(int len);
 void *zcalloc(int nmemb, int size);
 void *zrealloc(const void *ptr, int len);
 void zfree(const void *ptr);
 char *zstrdup(const char *ptr);
 char *zstrndup(const char *ptr, int n);
+
+/* 复制ptr指向的内存并返回, 长度是n */
 char *zmemdup(const void *ptr, int n);
+
+/* 复制ptr指向的内存并返回, 长度是n+1, 复制后追加 '\0' */
 char *zmemdupnull(const void *ptr, int n);
 
-/* buf ############################################################## */
+/* buf, src/stdlib/buf.c ################################## */
 struct zbuf_t {
     char *data;
     int len:31;
     unsigned int static_mode:1;
     int size:31;
     unsigned int unused_flag1:1;
-};
-#define zbuf_data(b)            ((b)->data)
-#define zbuf_len(b)             ((b)->len)
+}; 
+
+/* 创建buf, 初始容量为size */
+zbuf_t *zbuf_create(int size);
+
+/* 释放 */
+void zbuf_free(zbuf_t *bf);
+
+/* 返回数据指针 */
+zinline char *zbuf_data(const zbuf_t *bf) { return bf->data; }
+
+/* 返回长度 */
+zinline int zbuf_len(const zbuf_t *bf) { return bf->len; }
+
+/* 初始化bf指向的内容为 buf, 初始容量为size */
+void zbuf_init(zbuf_t *bf, int size);
+
+/* zbuf_init 的反操作 */
+void zbuf_fini(zbuf_t *bf);
+
+/* 调整容量,使剩余容量大于need, 返回实际剩余容量 */
+int zbuf_need_space(zbuf_t *bf, int need);
+
+/* 追加字节ch到bf. 返回ch */
+/* 不推荐使用zbuf_put_do, 建议使用 zbuf_put */
+int zbuf_put_do(zbuf_t *bf, int ch);
+
+/* 追加字节c到b, 建议使用 zbuf_put(b, c) */
 #define ZBUF_PUT(b, c)  \
     (((b)->len<(b)->size)?((int)(((unsigned char *)((b)->data))[(b)->len++]=(int)(c))):(((b)->static_mode?0:zbuf_put_do((b), (c)))))
 
-zbuf_t *zbuf_create(int size);
-void zbuf_free(zbuf_t *bf);
-void zbuf_init(zbuf_t *bf, int size);
-void zbuf_fini(zbuf_t *bf);
-int zbuf_need_space(zbuf_t *bf, int need);
-int zbuf_put_do(zbuf_t *bf, int ch);
-zinline int zbuf_put(zbuf_t *bf, int ch) { int ret = ZBUF_PUT(bf, ch); bf->data[bf->len] = 0; return ret; }
+/* 追加写字节ch到bf. 返回ch */
+zinline void zbuf_put(zbuf_t *bf, int ch) { ZBUF_PUT(bf, ch); bf->data[bf->len] = 0; }
+
+/* 重置 */
 zinline void zbuf_reset(zbuf_t *bf) { bf->len=0, bf->data[0]=0; }
+
+/* 结尾置 0 */
 zinline void zbuf_terminate(zbuf_t *bf) { bf->data[bf->len]=0; }
+
+/* 截短 */
 zinline void zbuf_truncate(zbuf_t *bf, int new_len) {
     if ((bf->len>new_len) && (new_len>-1)) { bf->len=new_len; bf->data[bf->len] = 0; }
 }
-int zbuf_strncpy(zbuf_t *bf, const char *src, int len);
-int zbuf_strcpy(zbuf_t *bf, const char *src);
-int zbuf_strncat(zbuf_t *bf, const char *src, int len);
-int zbuf_strcat(zbuf_t *bf, const char *src);
+
+/* 这几个函数, 顾名思义即可 */
+void zbuf_strncpy(zbuf_t *bf, const char *src, int len);
+void zbuf_strcpy(zbuf_t *bf, const char *src);
+void zbuf_strncat(zbuf_t *bf, const char *src, int len);
+void zbuf_strcat(zbuf_t *bf, const char *src);
 #define zbuf_puts zbuf_strcat
-int zbuf_memcpy(zbuf_t *bf, const void *src, int len);
-int zbuf_memcat(zbuf_t *bf, const void *src, int len);
-zinline int zbuf_append(zbuf_t *bf, zbuf_t *bf2) { return zbuf_memcat(bf, zbuf_data(bf2), zbuf_len(bf2)); }
-int zbuf_printf_1024(zbuf_t *bf, const char *format, ...);
-int zbuf_trim_right_rn(zbuf_t *bf);
+void zbuf_memcpy(zbuf_t *bf, const void *src, int len);
+void zbuf_memcat(zbuf_t *bf, const void *src, int len);
+zinline void zbuf_append(zbuf_t *bf, zbuf_t *bf2) { return zbuf_memcat(bf, zbuf_data(bf2), zbuf_len(bf2)); }
+
+/* zbuf_printf_1024 意思 { char buf[1024+1], snprintf(buf, 1024, format, ...); zbuf_cat(bf, buf); } */
+void zbuf_printf_1024(zbuf_t *bf, const char *format, ...);
+
+/* 删除右侧的\r\n */
+void zbuf_trim_right_rn(zbuf_t *bf);
 
 /* STACK_BUF */
 #define ZSTACK_BUF(name, _size)    \
@@ -278,20 +336,23 @@ int zbuf_trim_right_rn(zbuf_t *bf);
     name->static_mode = 1;
 
 /* size_data ####################################################### */
+/* size data 可以用于描述内存buffer */
 struct zsize_data_t {
     int size;
     char *data;
 };
-int zsize_data_unescape(const void *src_data, int src_size, void **result_data, int *result_len);
-int zsize_data_unescape_all(const void *src_data, int src_size, zsize_data_t *vec, int vec_size);
-void zsize_data_escape(zbuf_t * zb, const void *data, int len);
-void zsize_data_escape_int(zbuf_t * zb, int i);
-void zsize_data_escape_long(zbuf_t * zb, long i);
-void zsize_data_escape_dict(zbuf_t * zb, zdict_t * zd);
-void zsize_data_escape_pp(zbuf_t * zb, const char **pp, int size);
-int zsize_data_put_size(int size, char *buf);
 
-/* char string ###################################################### */
+/* 下面这些函数,在存储或传输格式化数据时可以减少空间占用. src/stdlib/size_data.c */
+int zcint_data_unescape(const void *src_data, int src_size, void **result_data, int *result_len);
+int zcint_data_unescape_all(const void *src_data, int src_size, zsize_data_t *vec, int vec_size);
+void zcint_data_escape(zbuf_t * zb, const void *data, int len);
+void zcint_data_escape_int(zbuf_t * zb, int i);
+void zcint_data_escape_long(zbuf_t * zb, long i);
+void zcint_data_escape_dict(zbuf_t * zb, zdict_t * zd);
+void zcint_data_escape_pp(zbuf_t * zb, const char **pp, int size);
+int zcint_put(int size, char *buf);
+
+/* char, src/stdlib/string.c ######################################## */
 extern unsigned const char zchar_lowercase_vector[];
 extern unsigned const char zchar_uppercase_vector[];
 extern unsigned const char zchar_isalnum_vector[];
@@ -303,6 +364,7 @@ extern unsigned const char zchar_isxdigit_vector[];
 extern unsigned const char zchar_xdigitval_vector[];
 extern unsigned const char zchar_istrim_vector[];
 
+/* 在locale 为 "C" 的情况下, ztolower 和 tolower 等价, 其他类似 */
 #define ztolower(c)    ((int)zchar_lowercase_vector[(unsigned char)(c)])
 #define ztoupper(c)    ((int)zchar_uppercase_vector[(unsigned char)(c)])
 #define zisalnum(c)    (zchar_isalnum_vector[(unsigned char)(c)])
@@ -314,19 +376,33 @@ extern unsigned const char zchar_istrim_vector[];
 #define zhexval(c)     (zchar_xdigitval_vector[(unsigned char)(c)])
 #define zistrim(c)     (zchar_istrim_vector[(unsigned char)(c)])
 
+
+/* 把字符串str转换为小写并返回, 直接在str指向内存替换 */
 char *zstr_tolower(char *str);
+/* 大写, 同上 */
 char *zstr_toupper(char *str);
 
-/* trim */
+/* trim, 设 str = "\r \t\n \f ABC \r\n"; src/stdlib/string.c ############# */
+
+/* ztrim_left(str) 返回 str+8 */
 char *ztrim_left(char *str);
+
+/* ztrim_right(str) 返回 str, 且 str[11]=0; */
 char *ztrim_right(char *str);
+
+/* ztrim(str) 返回 str+8, 且 str[11]=0; */
 char *ztrim(char *str);
 
-/* skip */
+/* skip, 设 str = "\r \t\n \f ABC \r\n", ignores="\r\n \t\f", src/stdlib/string.c ### */
+
+/* zskip_left(str, ignores) 返回 str+8 */
 char *zskip_left(const char *str, const char *ignores);
-char *zskip_right(const char *str, int size, const char *ignores);
-int zskip(const char *line, int len, const char *ignores_left, const char *ignores_right, char **start);
-char *zfind_delim(const char *str, const char *delims);
+
+/* zskip_right(str, -1, ignores) 返回 10 */
+int zskip_right(const char *str, int len, const char *ignores);
+
+/* zskip(str, -1, ignores, ignores, str) 返回 3, 且 *start = str+8 */
+int zskip(const char *str, int len, const char *ignores_left, const char *ignores_right, char **start);
 
 /* strtok */
 struct zstrtok_t {
@@ -338,12 +414,22 @@ void zstrtok_init(zstrtok_t *k, const char *sstr);
 zstrtok_t *zstrtok(zstrtok_t *k, const char *delim);
 
 /* convert to unit */
-int zstr_to_bool(const char *s, int def);
-long zstr_to_long(const char *s, long def);
+
+/* s 是 "0", "n", "N", "no", "NO", "false", "FALSE" 返回 0 */
+/* s 是 "1", "y", "Y", "yes", "YES", "true", "TRUE" 返回 1 */
+/* 否则 返回 def */
+zbool_t zstr_to_bool(const char *s, int def);
+
+/* 转换字符串为秒, 支持 h(小时), m(分), s(秒), d(天), w(周) */
+/* 如 "1026S" = > 1026, "8h" => 8 * 3600, "" = > def  */
 long zstr_to_second(const char *s, long def);
+
+/* 转换字符串为大小, 支持 g(G), m(兆), k千), b */
+/* 如 "9M" = > 9 * 1024 * 1024  */
 long zstr_to_size(const char *s, long def);
 
-/* argv ############################################################# */
+/* argv, src/stdlib/argv.c ########################################## */
+/* argv 是 一组字符串, 例子见 sample/stdlib/argv.c */
 struct zargv_t {
     char **argv;
     int argc:31;
@@ -351,41 +437,67 @@ struct zargv_t {
     int size:31;
     int mpool_used:1;
 };
-#define zargv_len(ar)           ((ar)->argc)
-#define zargv_argc(ar)          ((ar)->argc)
-#define zargv_argv(ar)          ((ar)->argv)
-#define zargv_data(ar)          ((ar)->argv)
-#define zargv_reset(ar)          (zargv_truncate((ar), 0))
-#define ZARGV_WALK_BEGIN(ar, var_your_chp)   {\
-    int  zargv_tmpvar_i; const zargv_t *___ar_tmp_ptr = ar; char *var_your_chp; \
-        for(zargv_tmpvar_i=0;zargv_tmpvar_i<(___ar_tmp_ptr)->argc;zargv_tmpvar_i++){ \
-            var_your_chp = (___ar_tmp_ptr)->argv[zargv_tmpvar_i];
-#define ZARGV_WALK_END                       }}
 
+/* 创建argv, 初始容量为size */
 zargv_t *zargv_create(int size);
-void zargv_init(zargv_t *argvp, int size);
-void zargv_fini(zargv_t *argvp);
+
+/* 释放 */
 void zargv_free(zargv_t *argvp);
+
+/* 个数 */
+zinline int zargv_len(const zargv_t *argvp) { return argvp->argc; }
+zinline int zargv_argc(const zargv_t *argvp) { return argvp->argc; }
+
+/* 数据指针 */
+zinline char **zargv_argv(const zargv_t *argvp) { return argvp->argv; }
+zinline char **zargv_data(const zargv_t *argvp) { return argvp->argv; }
+
+/* 把strdup(ns)追加到尾部*/
 void zargv_add(zargv_t *argvp, const char *ns);
+
+/* 把strndup(ns, nlen)追加到为尾部 */
 void zargv_addn(zargv_t *argvp, const char *ns, int nlen);
+
+/* 把argvp的长度截短为len */
 void zargv_truncate(zargv_t *argvp, int len);
-void zargv_rest(zargv_t *argvp);
+
+/* 重置, 既把argvp的长度截短为 0 */
+zinline void zargv_reset(zargv_t *argvp) { zargv_truncate(argvp,0); }
+
+/* 用delim分割string, 并追加到argvp */
 zargv_t *zargv_split_append(zargv_t *argvp, const char *string, const char *delim);
+
+/* debug 输出 */
 void zargv_debug_show(zargv_t *argvp);
 
+#define ZARGV_WALK_BEGIN(ar, var_your_ptr)   {\
+    int zargv_tmpvar_i; const zargv_t *___ar_tmp_ptr = (ar); char *var_your_ptr; \
+        for(zargv_tmpvar_i=0;zargv_tmpvar_i<(___ar_tmp_ptr)->argc;zargv_tmpvar_i++){ \
+            var_your_ptr = (___ar_tmp_ptr)->argv[zargv_tmpvar_i];
+#define ZARGV_WALK_END                       }}
+
 /* mlink ############################################################ */
+/* 一组宏, 可实现, 栈, 链表等, 例子见 src/stdlib/list.c */
+
+/* head: 头; tail: 尾; node:节点变量; prev:head/tail 指向的struct成员的属性"前一个" */
+
+/* 追加node到尾部 */
 #define ZMLINK_APPEND(head, tail, node, prev, next) {\
     typeof(head) _head_1106=head, _tail_1106=tail, _node_1106 = node;\
     if(_head_1106 == 0){_node_1106->prev=_node_1106->next=0;_head_1106=_tail_1106=_node_1106;}\
     else {_tail_1106->next=_node_1106;_node_1106->prev=_tail_1106;_node_1106->next=0;_tail_1106=_node_1106;}\
     head = _head_1106; tail = _tail_1106; \
 }
+
+/* 追加node到首部 */
 #define ZMLINK_PREPEND(head, tail, node, prev, next) {\
     typeof(head) _head_1106=head, _tail_1106=tail, _node_1106 = node;\
     if(_head_1106 == 0){_node_1106->prev=_node_1106->next=0;_head_1106=_tail_1106=_node_1106;}\
     else {_head_1106->prev=_node_1106;_node_1106->next=_head_1106;_node_1106->prev=0;_head_1106=_node_1106;}\
     head = _head_1106; tail = _tail_1106; \
 }
+
+/* 插入node到before前 */
 #define ZMLINK_ATTACH_BEFORE(head, tail, node, prev, next, before) {\
     typeof(head) _head_1106=head, _tail_1106=tail, _node_1106 = node, _before_1106 = before;\
     if(_head_1106 == 0){_node_1106->prev=_node_1106->next=0;_head_1106=_tail_1106=_node_1106;}\
@@ -394,6 +506,8 @@ void zargv_debug_show(zargv_t *argvp);
     else {_node_1106->prev=_before_1106->prev; _node_1106->next=_before_1106; _before_1106->prev->next=_node_1106; _before_1106->prev=_node_1106;}\
     head = _head_1106; tail = _tail_1106; \
 }
+
+/* 去掉节点node */
 #define ZMLINK_DETACH(head, tail, node, prev, next) {\
     typeof(head) _head_1106=head, _tail_1106=tail, _node_1106 = node;\
     if(_node_1106->prev){ _node_1106->prev->next=_node_1106->next; }else{ _head_1106=_node_1106->next; }\
@@ -401,7 +515,15 @@ void zargv_debug_show(zargv_t *argvp);
     head = _head_1106; tail = _tail_1106; \
 }
 
-/* link ############################################################# */
+#define ZMLINK_CONCAT(head_1, tail_1, head_2, tail_2, prev, next) {\
+    typeof(head_1) _head_1106=head_1,_tail_1106=tail_1,_head_2206=head_2,_tail_2206=tail_2; if(_head_2206){ \
+        if(_head_1106){_tail_1106->next=_head_2206;_head_2206->prev=_tail_1106; }else{_head_1106=_head_2206;} \
+        _tail_1106=_tail_2206; \
+    } head_1 = _head_1106; tail_1 = _tail_1106; \
+}
+/* link, src/stdlib/link.c ########################################## */
+/* 数据结构, 可实现链表等 */
+
 struct zlink_t {
     zlink_node_t *head;
     zlink_node_t *tail;
@@ -410,18 +532,47 @@ struct zlink_node_t {
     zlink_node_t *prev;
     zlink_node_t *next;
 };
-void zlink_init(zlink_t *link);
-zlink_node_t *zlink_attach_before(zlink_t *link, zlink_node_t *node, zlink_node_t *before);
-zlink_node_t *zlink_detach(zlink_t *link, zlink_node_t *node);
-zlink_node_t *zlink_push(zlink_t *link, zlink_node_t *node);
-zlink_node_t *zlink_unshift(zlink_t *link, zlink_node_t *node);
-zlink_node_t *zlink_pop(zlink_t *link);
-#define zlink_head(link)          ((link)->head)
-#define zlink_tail(link)          ((link)->tail)
-#define zlink_node_prev(node)     ((node)->prev)
-#define zlink_node_next(node)     ((node)->next)
 
-/* vector ########################################################### */
+/* 初始化link指向的指针 */
+zinline void zlink_init(zlink_t *link) { link->head = 0; link->tail = 0; }
+
+/* 反初始化link指向的指针 */
+zinline void zlink_fini(zlink_t *link) { }
+
+/* 把node插到before前 */
+zlink_node_t *zlink_attach_before(zlink_t *link, zlink_node_t *node, zlink_node_t *before);
+
+/* 把节点node从link中移除 */
+zlink_node_t *zlink_detach(zlink_t *link, zlink_node_t *node);
+
+/* 把节点追加到尾部 */
+zlink_node_t *zlink_push(zlink_t *link, zlink_node_t *node);
+
+/* 把尾部节点弹出并返回 */
+zlink_node_t *zlink_pop(zlink_t *link);
+
+/* 把首部节点弹出并返回 */
+zlink_node_t *zlink_unshift(zlink_t *link, zlink_node_t *node);
+
+/* 把节点追加到首部 */
+zlink_node_t *zlink_shift(zlink_t *link);
+
+/* 返回首部节点 */
+zinline zlink_node_t *zlink_head(const zlink_t *link) { return link->head; }
+
+/* 返回尾部节点 */
+zinline zlink_node_t *zlink_tail(const zlink_t *link) { return link->tail; }
+
+/* 前一个节点 */
+zinline zlink_node_t *zlink_node_prev(const zlink_node_t *node) { return node->prev; }
+
+/* 后一个节点 */
+zinline zlink_node_t *zlink_node_next(const zlink_node_t *node) { return node->next; }
+
+/* vector, src/stdlib/vector.c ###################################### */
+/* 一列指针 */
+/* 推荐使用 zvector_push, zvector_pop */
+/* 不推荐使用 zvector_unshift, zvector_shift, zvector_insert, zvector_delete */
 struct zvector_t {
     char **data;
     int len;
@@ -429,31 +580,56 @@ struct zvector_t {
     int offset:31;
     unsigned int mpool_used:1;
 };
-#define zvector_data(v)        ((v)->data)
-#define zvector_len(v)         ((v)->len)
+
+/* 创建vector, 初始容量为size */
 zvector_t *zvector_create(int size);
+
+/* 释放, 释放自身, 忽略成员的数据 */
 void zvector_free(zvector_t *v);
-void zvector_init(zvector_t *v, int size);
-void zvector_fini(zvector_t *v);
+
+/* 数据指针 */
+zinline char **zvector_data(const zvector_t *v) { return v->data; }
+
+/* 个数 */
+zinline int zvector_len(const zvector_t *v) { return v->len; }
+
 #define zvector_add zvector_push
+/* 追加一个指针val到v的尾部 */
 void zvector_push(zvector_t *v, const void *val);
-void zvector_unshift(zvector_t *v, const void *val);
+
+/* 弹出尾部指针并赋值给*val, 存在则返回1, 否则返回 0 */
 zbool_t zvector_pop(zvector_t *v, void **val);
+
+/* 追加一个指针val到v的首部 */
+void zvector_unshift(zvector_t *v, const void *val);
+
+/* 弹出首部指针并赋值给*val, 存在则返回1, 否则返回 0 */
 zbool_t zvector_shift(zvector_t *v, void **val);
+
+/* 把val插到idx处, 远idx及其后元素顺序后移 */
 void zvector_insert(zvector_t *v, int idx, void *val);
+
+/* 弹出idx处的指针并赋值给*val, 存在则返回1, 否则返回 0 */
 zbool_t zvector_delete(zvector_t *v, int idx, void **val);
+
+/* 重置 */
 void zvector_reset(zvector_t *v);
+
+/* 截短到 new_len */
 void zvector_truncate(zvector_t *v, int new_len);
-#define ZVECTOR_WALK_BEGIN(arr, you_chp_type, var_your_chp)    {\
-    int  zvector_tmpvar_i; you_chp_type var_your_chp;\
-    for(zvector_tmpvar_i=0;zvector_tmpvar_i<(arr)->len;zvector_tmpvar_i++){\
-        var_your_chp = (you_chp_type)((arr)->data[zvector_tmpvar_i]);
+
+/* 宏,遍历 */
+#define ZVECTOR_WALK_BEGIN(arr, you_chp_type, var_your_ptr)    {\
+     int zvector_tmpvar_i; const zvector_t * _arr_tmp_ptr = (arr); you_chp_type var_your_ptr;\
+    for(zvector_tmpvar_i=0;zvector_tmpvar_i<_arr_tmp_ptr->len;zvector_tmpvar_i++){\
+        var_your_ptr = (you_chp_type)(_arr_tmp_ptr->data[zvector_tmpvar_i]);
 #define ZVECTOR_WALK_END                }}
 
 void zbuf_vector_reset(zvector_t *v);
 void zbuf_vector_free(zvector_t *v);
 
 /* list ############################################################# */
+/* 双向链表 */
 struct zlist_t {
     zlist_node_t *head;
     zlist_node_t *tail;
@@ -462,38 +638,73 @@ struct zlist_t {
 struct zlist_node_t {
     zlist_node_t *prev;
     zlist_node_t *next;
-    char *value;
+    void *value;
 };
-#define zlist_head(c)   ((c)->head)
-#define zlist_tail(c)   ((c)->tail)
-#define zlist_len(c)    ((c)->len)
-#define zlist_node_next(n)   ((n)->next)
-#define zlist_node_prev(n)   ((n)->prev)
-#define zlist_node_value(n)  ((n)->value)
-zlist_t *zlist_create(void);
-void zlist_free(zlist_t *list);
-void zlist_init(zlist_t *list);
-void zlist_fini(zlist_t *list);
-void zlist_reset(zlist_t *list);
-void zlist_attach_before(zlist_t *list, zlist_node_t *n, zlist_node_t *before);
-void zlist_detach(zlist_t *list, zlist_node_t *n);
-zlist_node_t *zlist_add_before(zlist_t *list, const void *value, zlist_node_t *before);
-int zlist_delete(zlist_t *list, zlist_node_t *n, void **value);
-zinline zlist_node_t *zlist_push(zlist_t *l,const void *v){return zlist_add_before(l,v,0);}
-zinline zlist_node_t *zlist_unshift(zlist_t *l,const void *v){return zlist_add_before(l,v,l->head);}
-zinline int zlist_pop(zlist_t *l, void **v){return zlist_delete(l,l->tail,v);}
-zinline int zlist_shift(zlist_t *l, void **v){return zlist_delete(l,l->head,v);}
 
+/* 创建链表 */
+zlist_t *zlist_create(void);
+
+/* 释放 */
+void zlist_free(zlist_t *list);
+
+/* 重置, 忽略成员数据 */
+void zlist_reset(zlist_t *list);
+
+/* 个数 */ 
+zinline int zlist_len(const zlist_t *list) { return list->len; }
+
+/* 头部(第一个)节点 */
+zinline zlist_node_t *zlist_head(const zlist_t *list) { return list->head; }
+
+/* 尾部(最有一个)节点 */
+zinline zlist_node_t *zlist_tail(const zlist_t *list) { return list->tail; }
+
+/* 下一个节点 */
+zinline zlist_node_t *zlist_node_next(const zlist_node_t *node) { return node->next; }
+
+/* 上一个节点 */
+zinline zlist_node_t *zlist_node_prev(const zlist_node_t *node) { return node->prev; }
+
+/* 节点的值 */
+zinline void *zlist_node_value(const zlist_node_t *node) { return node->value; }
+
+/* 把节点node插到before前 */
+void zlist_attach_before(zlist_t *list, zlist_node_t *n, zlist_node_t *before);
+
+/* 移除节点 n, 并没有释放n的资源 */
+void zlist_detach(zlist_t *list, zlist_node_t *n);
+
+/* 创建一个值为value的节点,插到before前, 并返回 */
+zlist_node_t *zlist_add_before(zlist_t *list, const void *value, zlist_node_t *before);
+
+/* 删除节点n, 把n的值赋值给*value, 释放n的资源, 如果n==0返回0, 否则返回1 */
+zbool_t zlist_delete(zlist_t *list, zlist_node_t *n, void **value);
+
+/* 创建值为v的节点, 追加到链表尾部, 并返回 */
+zinline zlist_node_t *zlist_push(zlist_t *l,const void *v){return zlist_add_before(l,v,0);}
+
+/* 创建值为v的节点, 追加到链表首部部, 并返回 */
+zinline zlist_node_t *zlist_unshift(zlist_t *l,const void *v){return zlist_add_before(l,v,l->head);}
+
+/* 弹出尾部节点, 把值赋值给*v, 释放这个节点, 如果存在则返回1, 否则返回 0 */
+zinline zbool_t zlist_pop(zlist_t *l, void **v){return zlist_delete(l,l->tail,v);}
+
+/* 弹出首部节点, 把值赋值给*v, 释放这个节点, 如果存在则返回1, 否则返回 0 */
+zinline zbool_t zlist_shift(zlist_t *l, void **v){return zlist_delete(l,l->head,v);}
+
+/* 宏, 遍历 */
 #define ZLIST_WALK_BEGIN(list, var_your_type, var_your_ptr)  { \
     zlist_node_t *list_current_node=(list)->head; var_your_type var_your_ptr; \
     for(;list_current_node;list_current_node=list_current_node->next){ \
         var_your_ptr = (var_your_type)(void *)(list_current_node->value);
 #define ZLIST_WALK_END                          }}
 
+/* 宏, 遍历 */
 #define ZLIST_NODE_WALK_BEGIN(list, var_your_node)  { \
     zlist_node_t *var_your_node=(list)->head;\
     for(;var_your_node;var_your_node=var_your_node->next){
 #define ZLIST_NODE_WALK_END                          }}
+
 /* rbtree ########################################################### */
 typedef int (*zrbtree_cmp_t) (zrbtree_node_t *node1, zrbtree_node_t *node2);
 struct zrbtree_t {
@@ -611,54 +822,105 @@ void zrbtree_link_node(zrbtree_node_t *node, zrbtree_node_t *parent, zrbtree_nod
     for (var_your_node = zrbtree_last(root); var_your_node; var_your_node = zrbtree_prev(var_your_node)) {
 #define ZRBTREE_WALK_BACK_END                }}
 
-/* dict ############################################################# */
+/* dict, src/stdlib/dict.c ########################################## */
+/* 词典, 例子见 sample/rbtree/dict_account.c */
 struct zdict_t {
     zrbtree_t rbtree;
-    int len;
+    int len; /* 节点个数 */
 };
 struct zdict_node_t {
     zrbtree_node_t rbnode;
-    zbuf_t value;
-    char *key;
-};
+    zbuf_t value; /* 值 */
+    char *key; /* 键 */
+} __attribute__ ((aligned(8)));
+
+/* 创建词典 */
 zdict_t *zdict_create(void);
+
+/* 释放 */
 void zdict_free(zdict_t *dict);
+
+/* 重置 */
 void zdict_reset(zdict_t *dict);
-zdict_node_t *zdict_update(zdict_t *dict, const char *key, const zbuf_t *value);
-zdict_node_t *zdict_update_string(zdict_t *dict, const char *key, const char *value, int len);
-zdict_node_t *zdict_find(const zdict_t *dict, const char *key, zbuf_t **value);
-zdict_node_t *zdict_find_near_prev(const zdict_t *dict, const char *key, zbuf_t **value);
-zdict_node_t *zdict_find_near_next(const zdict_t *dict, const char *key, zbuf_t **value);
-void zdict_delete_node(zdict_t *dict, zdict_node_t *n);
-zdict_node_t *zdict_first(const zdict_t *dict);
-zdict_node_t *zdict_last(const zdict_t *dict);
-zdict_node_t *zdict_prev(const zdict_node_t *node);
-zdict_node_t *zdict_next(const zdict_node_t *node);
-char *zdict_get_str(const zdict_t *dict, const char *name, const char *def);
-int zdict_get_bool(const zdict_t *dict, const char *name, int def);
-int zdict_get_int(const zdict_t *dict, const char *name, int def, int min, int max);
-long zdict_get_long(const zdict_t *dict, const char *name, long def, long min, long max);
-long zdict_get_second(const zdict_t *dict, const char *name, long def, long min, long max);
-long zdict_get_size(const zdict_t *dict, const char *name, long def, long min, long max);
-void zdict_debug_show(const zdict_t *dict);
+
+/* 个数 */
 zinline int zdict_len(const zdict_t *dict) { return dict->len; }
-zinline char *zdict_key(const zdict_node_t *node) { return node->key; }
-zinline zbuf_t *zdict_value(const zdict_node_t *node) { return &(((zdict_node_t*)node)->value); }
-#define zdict_len(dict)            ((dict)->len)
-#define zdict_node_key(n)               ((n)->key)
-#define zdict_node_value(n)             (&((n)->value))
+
+/* 节点的键 */
+zinline char *zdict_node_key(const zdict_node_t *node) { return node->key; }
+
+/* 节点的值 */
+zinline zbuf_t *zdict_node_value(const zdict_node_t *node) { return (zbuf_t *)(&(node->value)); }
+
+/* 增加或更新节点,并返回此节点.  此节点键为key, 值为 dup_foo(value) */
+zdict_node_t *zdict_update(zdict_t *dict, const char *key, const zbuf_t *value);
+
+/* 增加或更新节点,并返回此节点.  此节点键为key, 值为(len<0?strdup(value):strndup(value, len)) */
+zdict_node_t *zdict_update_string(zdict_t *dict, const char *key, const char *value, int len);
+
+/* 查找键为key的节点,并返回. 如果存在则节点的值赋值给 *value */
+zdict_node_t *zdict_find(const zdict_t *dict, const char *key, zbuf_t **value);
+
+/* 查找键值小于key且最接近key的节点, 并... */
+zdict_node_t *zdict_find_near_prev(const zdict_t *dict, const char *key, zbuf_t **value);
+
+/* 查找键值大于key且最接近key的节点, 并... */
+zdict_node_t *zdict_find_near_next(const zdict_t *dict, const char *key, zbuf_t **value);
+
+/* 删除并释放键为key的节点 */
+void zdict_delete(zdict_t *dict, const char *key);
+
+/* 移除节点n */
+void zdict_delete_node(zdict_t *dict, zdict_node_t *n);
+
+/* 第一个节点 */
+zdict_node_t *zdict_first(const zdict_t *dict);
+
+/* 最后一个节点 */
+zdict_node_t *zdict_last(const zdict_t *dict);
+
+/* 前一个节点 */
+zdict_node_t *zdict_prev(const zdict_node_t *node);
+
+/* 后一个节点 */
+zdict_node_t *zdict_next(const zdict_node_t *node);
+
+/* 查找键为name的节点, 如果存在则返回其值, 否则返回def */
+char *zdict_get_str(const zdict_t *dict, const char *name, const char *def);
+
+/* 查找键为name的节点, 如果存在则返回zstr_to_bool(其值), 否则返回def */
+int zdict_get_bool(const zdict_t *dict, const char *name, int def);
+
+/* 查找键为name的节点, 如果存在且{ min < foo(其值) < max }则返回foo(其值), 否则返回def; foo 为 atoi */
+int zdict_get_int(const zdict_t *dict, const char *name, int def, int min, int max);
+
+/* 如上, foo 为 atol */
+long zdict_get_long(const zdict_t *dict, const char *name, long def, long min, long max);
+
+/* 如上, foo 为 zstr_to_second */
+long zdict_get_second(const zdict_t *dict, const char *name, long def, long min, long max);
+
+/* 如上, foo 为 zstr_to_size */
+long zdict_get_size(const zdict_t *dict, const char *name, long def, long min, long max);
+
+/* debug输出 */
+void zdict_debug_show(const zdict_t *dict);
+
+/* 宏, 遍历1 */
 #define ZDICT_WALK_BEGIN(dict, var_your_key, var_your_value)  { \
     zdict_node_t *var_your_node; char *var_your_key; zbuf_t *var_your_value; \
     for(var_your_node = zdict_first(dict); var_your_node; var_your_node = zdict_next(var_your_node)) { \
         var_your_key=var_your_node->key; var_your_value=&(var_your_node->value); {
 #define ZDICT_WALK_END    }}}
 
+/* 宏, 遍历2 */
 #define ZDICT_NODE_WALK_BEGIN(dict, var_your_node)  { \
     zdict_node_t *var_your_node; \
     for(var_your_node = zdict_first(dict); var_your_node; var_your_node = zdict_next(var_your_node)) {
 #define ZDICT_NODE_WALK_END    }}
 
-/* dictlong ############################################################ */
+/* dictlong, src/stdlib/dictlong.c ##################################### */
+/* 参考 dict, 和dict的区别是值的类型是long */
 struct zdictlong_t {
     zrbtree_t rbtree;
     int len;
@@ -667,10 +929,14 @@ struct zdictlong_node_t {
     zrbtree_node_t rbnode;
     long value;
     char *key;
-};
+} __attribute__ ((aligned(8)));
 zdictlong_t *zdictlong_create(void);
 void zdictlong_free(zdictlong_t *dictlong);
 void zdictlong_reset(zdictlong_t *dictlong);
+zinline int zdictlong_len(const zdictlong_t *dictlong) { return dictlong->len; }
+zinline char *zdictlong_node_key(const zdictlong_node_t *node) { return node->key; }
+zinline long zdictlong_node_value(const zdictlong_node_t *node) { return node->value; }
+zinline void zdictlong_node_set_value(zdictlong_node_t *node, long value) { node->value = value; }
 zdictlong_node_t *zdictlong_update(zdictlong_t *dictlong, const char *key, long value);
 zdictlong_node_t *zdictlong_find(const zdictlong_t *dictlong, const char *key, long *value);
 zdictlong_node_t *zdictlong_find_near_prev(const zdictlong_t *dictlong, const char *key, long *value);
@@ -681,13 +947,7 @@ zdictlong_node_t *zdictlong_last(const zdictlong_t *dictlong);
 zdictlong_node_t *zdictlong_prev(const zdictlong_node_t *node);
 zdictlong_node_t *zdictlong_next(const zdictlong_node_t *node);
 void zdictlong_debug_show(const zdictlong_t *dictlong);
-zinline int zdictlong_len(const zdictlong_t *dictlong) { return dictlong->len; }
-zinline char *zdictlong_key(const zdictlong_node_t *node) { return node->key; }
-zinline long zdictlong_value(const zdictlong_node_t *node) { return ((zdictlong_node_t*)node)->value; }
-#define zdictlong_len(dictlong)             ((dictlong)->len)
-#define zdictlong_node_key(n)               ((n)->key)
-#define zdictlong_node_value(n)             ((n)->value)
-#define zdictlong_node_set_value(n, v)      ((n)->value=(v))
+
 #define ZDICTLONG_WALK_BEGIN(dictlong, var_your_key, var_your_value)  { \
     zdictlong_node_t *var_your_node; char *var_your_key; long var_your_value; \
     for(var_your_node = zdictlong_first(dictlong); var_your_node; var_your_node = zdictlong_next(var_your_node)) { \
@@ -699,41 +959,74 @@ zinline long zdictlong_value(const zdictlong_node_t *node) { return ((zdictlong_
     for(var_your_node = zdictlong_first(dictlong); var_your_node; var_your_node = zdictlong_next(var_your_node)) {
 #define ZDICTLONG_NODE_WALK_END    }}
 
-/* map ############################################################## */
+/* map, src/stdlib/map.c ############################################ */
+/* 映射, 例子见 sample/rbtree/map_account.c */
 struct zmap_t {
     zrbtree_t rbtree;
     int len;
 };
 struct zmap_node_t {
-    char *key;
-    void *value;
+    char *key; /* 键 */
+    void *value; /* 值 */
     zrbtree_node_t rbnode;
-};
+} __attribute__ ((aligned(8)));
+
+/* 创建 */
 zmap_t *zmap_create(void);
-zmap_node_t *zmap_update(zmap_t *map, const char *key, const void *value, void **old_value);
-zmap_node_t *zmap_find(const zmap_t *map, const char *key, void **value);
-zmap_node_t *zmap_find_near_prev(const zmap_t *map, const char *key, void **value);
-zmap_node_t *zmap_find_near_next(const zmap_t *map, const char *key, void **value);
-zbool_t zmap_delete(zmap_t * map, const char *key, void **old_value);
-void zmap_delete_node(zmap_t *map, zmap_node_t *n, void **old_value);
-void zmap_node_update(zmap_node_t *n, const void *value, void **old_value);
-zmap_node_t *zmap_first(const zmap_t *map);
-zmap_node_t *zmap_last(const zmap_t *map);
-zmap_node_t *zmap_prev(const zmap_node_t *node);
-zmap_node_t *zmap_next(const zmap_node_t *node);
 void zmap_free(zmap_t *map);
-zinline int zmap_len(const zmap_t *map) { return map->len; }
-zinline char *zmap_key(const zmap_node_t *node) { return node->key; }
-zinline void *zmap_value(const zmap_node_t *node) { return node->value; }
+
+/* 重置 */
 void zmap_reset(zmap_t *map);
-#define zmap_len(map)            ((map)->len)
-#define zmap_node_key(n)              ((n)->key)
-#define zmap_node_value(n)            ((n)->value)
+
+/* 新增或更新节点并返回, 这个节点的键为key, 新值为value, 如果旧值存在则赋值给 *old_value */
+zmap_node_t *zmap_update(zmap_t *map, const char *key, const void *value, void **old_value);
+
+/* 查找键为key的节点,并返回. 如果存在则节点的值赋值给 *value */
+zmap_node_t *zmap_find(const zmap_t *map, const char *key, void **value);
+
+/* 查找键值小于key且最接近key的节点, 并... */
+zmap_node_t *zmap_find_near_prev(const zmap_t *map, const char *key, void **value);
+
+/* 查找键值大于key且最接近key的节点, 并... */
+zmap_node_t *zmap_find_near_next(const zmap_t *map, const char *key, void **value);
+
+/* 删除并释放键为key的节点, 节点的值赋值给 *old_value */
+zbool_t zmap_delete(zmap_t * map, const char *key, void **old_value);
+
+/* 删除并释放节点n, 节点的值赋值给 *old_value */
+void zmap_delete_node(zmap_t *map, zmap_node_t *n, void **old_value);
+
+/* 更新节点的值, 节点的旧值赋值给 *old_value */
+void zmap_node_update(zmap_node_t *n, const void *value, void **old_value);
+
+/* 第一个 */
+zmap_node_t *zmap_first(const zmap_t *map);
+
+/* 最后一个 */
+zmap_node_t *zmap_last(const zmap_t *map);
+
+/* 前一个 */
+zmap_node_t *zmap_prev(const zmap_node_t *node);
+
+/* 后一个 */
+zmap_node_t *zmap_next(const zmap_node_t *node);
+
+/* 节点个数 */
+zinline int zmap_len(const zmap_t *map) { return map->len; }
+
+/* 节点的键 */
+zinline char *zmap_node_key(const zmap_node_t *node) { return node->key; }
+
+/* 节点的值 */
+zinline void *zmap_node_value(const zmap_node_t *node) { return node->value; }
+
+/* 宏, 遍历1 */
 #define ZMAP_NODE_WALK_BEGIN(map, var_your_node)  { \
     zmap_node_t *var_your_node; \
     for(var_your_node = zmap_first(map); var_your_node; var_your_node = zmap_next(var_your_node)) {
 #define ZMAP_NODE_WALK_END    }}
 
+/* 宏, 遍历2 */
 #define ZMAP_WALK_BEGIN(map, var_your_key, var_your_value_type, var_your_value)  { \
     zmap_node_t *var_your_node; char *var_your_key; var_your_value_type var_your_value; \
     (void)var_your_key; (void)var_your_value; \
@@ -741,7 +1034,8 @@ void zmap_reset(zmap_t *map);
         var_your_key=var_your_node->key; var_your_value=(var_your_value_type)(void *)var_your_node->value; {
 #define ZMAP_WALK_END    }}}
 
-/* mpool ############################################################# */
+/* mpool, src/malloc/ ################################################ */
+/* 内存池, 不推荐使用 */
 typedef struct zmpool_method_t zmpool_method_t;
 struct zmpool_method_t {
     void *(*malloc) (zmpool_t *, int);
@@ -755,9 +1049,16 @@ struct zmpool_t {
     zmpool_method_t *method;
 };
 extern zmpool_t *zvar_system_mpool;
+
+/* 创建通用型内存池 */
 zmpool_t *zmpool_create_common_pool(int *register_size_list);
+
+/* 创建贪婪型内存池 */
 zmpool_t *zmpool_create_greedy_pool(int single_buf_size, int once_malloc_max_size);
+
+/* 释放 */
 void zmpool_free_pool(zmpool_t * mp);
+
 zinline void *zmpool_malloc(zmpool_t * mp, int len) { return mp->method->malloc(mp, len); }
 zinline void *zmpool_calloc(zmpool_t * mp, int nmemb, int size)
 {
@@ -776,33 +1077,52 @@ void *zmpool_memdup(zmpool_t * mp, const void *ptr, int n);
 void *zmpool_memdupnull(zmpool_t * mp, const void *ptr, int n);
 void zmpool_reset(zmpool_t * mp);
 
-/* encode/decode ################################################### */
+/* encode/decode, src/encode/ ###################################### */
+/* 请注意, src_size < 0, 则 src_size = strlen(src) */
+/* 函数内部重置 str, zbuf_reset(str) */
+
+/* base64 */
 void zbase64_encode(const void *src, int src_size, zbuf_t *str, int mime_flag);
 void zbase64_decode(const void *src, int src_size, zbuf_t *str, int *dealed_size);
 int zbase64_decode_get_valid_len(const void *src, int src_size);
 int zbase64_encode_get_min_len(int in_len, int mime_flag);
 
+/* quoted-printable */
 void zqp_decode_2045(const void *src, int src_size, zbuf_t *str);
 void zqp_decode_2047(const void *src, int src_size, zbuf_t *str);
 int zqp_decode_get_valid_len(const void *src, int src_size);
 
+/* hex */
 void zhex_encode(const void *src, int src_size, zbuf_t *dest);
 void zhex_decode(const void *src, int src_size, zbuf_t *dest);
+
+/* url */
 void zurl_hex_decode(const void *src, int src_size, zbuf_t *str);
 void zurl_hex_encode(const void *src, int src_size, zbuf_t *str, int strict_flag);
 
 /* 返回写入 wchar 的长度 */
 int zncr_decode(int ins, char *wchar);
 
-/* crc ############################################################# */
+/* crc, src/hash ################################################### */
+/* crc16, crc32, crc64, init_value 默认应该为 0 */
 unsigned short int zcrc16(const void *data, int size, unsigned short int init_value);
 unsigned int zcrc32(const void *data, int size, unsigned int init_value);
 unsigned long zcrc64(const void *data, int size, unsigned long init_value);
 
-/* config ########################################################## */
+/* config, src/stdlib/config.c ##################################### */
+/* 一个简单的通用配置文件风格
+ * 推荐使用, 不强制使用. 一些内嵌服务和master/server使用此配置风格 
+ * 行首第一个非空字符是#, 则忽略本行
+ * 每配置行以 "=" 为分隔符
+ * 配置项和配置值都需要过滤掉两侧的空白
+ * 不支持任何转义
+ * 相同配置项, 以后一个为准
+ */
+
 extern zconfig_t *zvar_default_config;
 zconfig_t *zdefault_config_init(void);
 void zdefault_config_fini(void);
+
 #define zconfig_create  zdict_create
 #define zconfig_free    zdict_free
 #define zconfig_update  zdict_update
@@ -810,11 +1130,13 @@ void zdefault_config_fini(void);
 #define zconfig_delete   zdict_delete
 #define zconfig_debug_show    zdict_debug_show
 
-/* config load */
+/* 从文件pathname加载配置到cf, 同名则覆盖 */
 int zconfig_load_from_pathname(zconfig_t *cf, const char *pathname);
+
+/* 从配置another中加载配置到cf, 同名则覆盖 */
 void zconfig_load_annother(zconfig_t *cf, zconfig_t *another);
 
-/* config value */
+/* 快速处理大批配置 */
 typedef struct {
     const char *name;
     const char *defval;
@@ -853,6 +1175,8 @@ void zconfig_get_long_table(zconfig_t *cf, zconfig_long_table_t *table);
 void zconfig_get_bool_table(zconfig_t *cf, zconfig_bool_table_t *table);
 void zconfig_get_second_table(zconfig_t *cf, zconfig_second_table_t *table);
 void zconfig_get_size_table(zconfig_t *cf, zconfig_size_table_t *table);
+
+/* 宏, 遍历. zconfig_t *cf; char *key; zbuf_t *value;  */
 #define ZCONFIG_WALK_BEGIN(cf, key, value) { \
     zdict_node_t *___nd; char *key; zbuf_t *value; \
     for (___nd = zdict_first(cf);___nd;___nd=zdict_next(___nd)) { \
@@ -860,14 +1184,23 @@ void zconfig_get_size_table(zconfig_t *cf, zconfig_size_table_t *table);
 #define ZCONFIG_WALK_END }}}
 
 /* io ############################################################# */
-/* return , -1: error, 0: not, 1: yes */
+/* -1: 出错  0: 不可读写, 1: 可读写或socket异常  */
 int zrwable(int fd);
 int zreadable(int fd);
 int zwriteable(int fd);
+
+/* 设置fd非阻塞, 或 阻塞 */
+/* 返回 -1: 出错, 0: 现在是阻塞, 1: 现在是非阻塞 */
 int znonblocking(int fd, int no);
+
+/* 设置 close_on_exec */
+/* 返回 -1: 出错, 0: 没设置, 1: 已经设置 */
 int zclose_on_exec(int fd, int on);
+
+/* 检查fd有多少可读字节 */
 int zget_readable_count(int fd);
 
+/* 下面这些, 忽略信号EINTR的封装 */
 int zopen(const char *pathname, int flags, mode_t mode);
 ssize_t zread(int fd, void *buf, size_t count);
 ssize_t zwrite(int fd, const void *buf, size_t count);
@@ -879,59 +1212,104 @@ int zfunlock(int fd);
 int zrename(const char *oldpath, const char *newpath);
 int zunlink(const char *pathname);
 
+/* 进程间传递fd, 返回 -1: 错, >-1: 成功 */
+int zsend_fd(int fd, int sendfd);
+
+/* 进程间接受fd, 返回 -1: 错, 其他: 接受到的fd */
+int zrecv_fd(int fd);
+
 /* timed_io ######################################################## */
-/* -1: error, 0: not, 1: yes */
-int ztimed_read_write_wait(int fd, int timeout, int *readable, int *writeable);
-int ztimed_read_write_wait_millisecond(int fd, long timeout, int *readable, int *writeable);
-/* -1: error, 0: not, 1: yes */
-int ztimed_read_wait_millisecond(int fd, long timeout);
-int ztimed_read_wait(int fd, int timeout);
-/* < 0: error, >=0: bytes of read */
-int ztimed_read(int fd, void *buf, int size, int timeout);
-/* strictly read n bytes */
-int ztimed_readn(int fd, void *buf, int size, int timeout);
-/* -1: error, 0: not, 1: yes */
-int ztimed_write_wait_millisecond(int fd, long timeout);
-int ztimed_write_wait(int fd, int timeout);
-/* strictly write n btyes */
-int ztimed_write(int fd, const void *buf, int size, int timeout);
+/* 除非函数名或其他特别标注, 所有timeout单位都是秒, -1表示无限长 */
+
+/* <0: 出错  0: 不可读写, 1: 可读写或socket异常 */
+int ztimed_read_write_wait(int fd, int read_write_wait_timeout, int *readable, int *writeable);
+int ztimed_read_write_wait_millisecond(int fd, long read_write_wait_timeout, int *readable, int *writeable);
+
+/* <0: 出错  0: 不可读, 1: 可读或socket异常 */
+int ztimed_read_wait_millisecond(int fd, long read_wait_timeout);
+int ztimed_read_wait(int fd, int read_wait_timeout);
+
+/* < 0: 出错, >0: 正常, 0: 不可读 */
+int ztimed_read(int fd, void *buf, int size, int read_wait_timeout);
+
+/* <-: 出错  0: 不可写, 1: 可写或socket异常 */
+int ztimed_write_wait_millisecond(int fd, long write_wait_timeout);
+int ztimed_write_wait(int fd, int write_wait_timeout);
+
+/* < 0: 出错, >0: 正常, 0: 不可写 */
+int ztimed_write(int fd, const void *buf, int size, int write_wait_timeout);
 
 /* tcp socket ##################################################### */
 #define zvar_tcp_listen_type_inet  'i'
 #define zvar_tcp_listen_type_unix  'u'
 #define zvar_tcp_listen_type_fifo  'f'
+/* accept domain socket, 忽略EINTR */
 int zunix_accept(int fd);
-int zinet_accept(int fd);
-int zaccept(int sock, int type);
-int zunix_listen(char *addr, int backlog, int nonblock_flag);
-int zinet_listen(const char *sip, int port, int backlog, int nonblock_flag);
-int zlisten(const char *netpath, int *type, int backlog, int nonblock_flag);
-int zfifo_listen(const char *path);
-int zunix_connect(const char *addr, int nonblock_flag, int timeout);
-int zinet_connect(const char *dip, int port, int nonblock_flag, int timeout);
-int zhost_connect(const char *host, int port, int nonblock_flag, int timeout);
-int zconnect(const char *netpath, int nonblock_flag, int timeout);
 
-/* openssl ########################################################## */
+/* accept socket, 忽略EINTR */
+int zinet_accept(int fd);
+
+/* accept, 忽略EINTR */
+int zaccept(int sock, int type);
+
+/* listen */
+int zunix_listen(char *addr, int backlog);
+int zinet_listen(const char *sip, int port, int backlog);
+int zlisten(const char *netpath, int *type, int backlog);
+
+int zfifo_listen(const char *path);
+
+/* connect, 忽略EINTR */
+int zunix_connect(const char *addr, int timeout);
+int zinet_connect(const char *dip, int port, int timeout);
+int zhost_connect(const char *host, int port, int timeout);
+int zconnect(const char *netpath, int timeout);
+
+/* openssl, src/stdlib/openssl.c #################################### */
 extern zbool_t zvar_openssl_debug;
+
+/* zopenssl_init, 初始化openssl环境, 支持线程安全openssl环境 */
 void zopenssl_init(void);
 void zopenssl_fini(void);
-void zopenssl_phtread_fini(void);
-SSL_CTX *zopenssl_SSL_CTX_create_server(void);
+
+/* 创建服务端 SSL_CTX */
+/* cert_file: 证书文件, key_file: 私钥文件 */
+SSL_CTX *zopenssl_SSL_CTX_create_server(const char *cert_file, const char *key_file);
+
+/* 创建客户端 SSL_CTX */
 SSL_CTX *zopenssl_SSL_CTX_create_client(void);
-int zopenssl_SSL_CTX_set_cert(SSL_CTX *ctx, const char *cert_file, const char *key_file);
+
+/* 释放 SSL_CTX */
 void zopenssl_SSL_CTX_free(SSL_CTX *ctx);
+
+/* 获取错误, *ecode: 错误码, buf: 错误信息, buf_len: 错误信息buf长度 */
 void zopenssl_get_error(unsigned long *ecode, char *buf, int buf_len);
+
+/* 创建 SSL */
 SSL *zopenssl_SSL_create(SSL_CTX *ctx, int fd);
 void zopenssl_SSL_free(SSL *ssl);
-int zopenssl_SSL_get_fd(SSL *ssl);
-int zopenssl_timed_connect(SSL *ssl, int timeout);
-int zopenssl_timed_accept(SSL *ssl, int timeout);
-int zopenssl_timed_shutdown(SSL *ssl, int timeout);
-int zopenssl_timed_read(SSL *ssl, void *buf, int len, int timeout);
-int zopenssl_timed_write(SSL *ssl, const void *buf, int len, int timeout);
 
-/* stream ########################################################### */
+/* 获取 fd */
+int zopenssl_SSL_get_fd(SSL *ssl);
+
+/* 带超时的ssl connect, timeout: 秒, 下同, 返回 -1:错/超时, 1:成功 */
+int zopenssl_timed_connect(SSL *ssl, int read_wait_timeout, int write_wait_timeout);
+
+/* 带超时的ssl accept, 返回 -1:错/超时, 1:成功 */
+int zopenssl_timed_accept(SSL *ssl, int read_wait_timeout, int write_wait_timeout);
+
+/* 带超时的ssl shutdown, 返回 -1:错/超时, 1:成功 */
+int zopenssl_timed_shutdown(SSL *ssl, int read_wait_timeout, int write_wait_timeout);
+
+/* 带超时的ssl read, 返回 和 -1:错/超时, 其他请看 ssl_read 帮助文档 */
+int zopenssl_timed_read(SSL *ssl, void *buf, int len, int read_wait_timeout, int write_wait_timeout);
+
+/* 带超时的ssl write, 返回 和 -1:错/超时, 其他请看 ssl_write 帮助文档 */
+int zopenssl_timed_write(SSL *ssl, const void *buf, int len, int read_wait_timeout, int write_wait_timeout);
+
+/* stream, src/stream/ ############################################## */
+/* fd/ssl流实现, 例子见 sample/stream/ */
+
 #define zvar_stream_rbuf_size           4096
 #define zvar_stream_wbuf_size           4096
 
@@ -945,255 +1323,535 @@ struct zstream_t {
     unsigned short int file_mode:1;
     unsigned char read_buf[zvar_stream_rbuf_size];
     unsigned char write_buf[zvar_stream_wbuf_size];
-    long cutoff_time;
+    int read_wait_timeout;
+    int write_wait_timeout;
     union { int fd; SSL *ssl; } ioctx;
 };
 
+/* 宏, 返回读取的下一个字符, -1:错 */
 #define ZSTREAM_GETC(fp)            (((fp)->read_buf_p1<(fp)->read_buf_p2)?((int)((fp)->read_buf[(fp)->read_buf_p1++])):(zstream_getc_do(fp)))
+
+/* 宏, 写一个字符ch到fp, -1:错 */
 #define ZSTREAM_PUTC(fp, ch)        (((fp)->write_buf_len<zvar_stream_wbuf_size)?((fp)->write_buf[(fp)->write_buf_len++]=(int)(ch),(int)(ch)):(zstream_putc_do(fp, ch)))
 
-#define zstream_is_error(fp)        ((fp)->error)
-#define zstream_is_eof(fp)          ((fp)->eof)
-#define zstream_is_exception(fp)    ((fp)->eof||(fp)->error)
-#define zstream_get_read_cache_len(fp) ((fp)->read_buf_p2-(fp)->read_buf_p1)
+/* 是否出错 */
+zinline zbool_t zstream_is_error(zstream_t *fp) { return fp->error; }
 
+/* 是否读到结尾 */
+zinline zbool_t zstream_is_eof(zstream_t *fp) { return fp->eof; }
+
+/* 是否异常(错或读到结尾) */
+zinline zbool_t zstream_is_exception(zstream_t *fp) { return (fp->eof)||(fp->error); }
+
+/* 可读缓存的长度 */
+zinline int zstream_get_read_cache_len(zstream_t *fp) { return ((fp)->read_buf_p2-(fp)->read_buf_p1); }
+
+/* 基于文件描述符fd创建stream */
 zstream_t *zstream_open_fd(int fd);
+
+/* 基于ssl创建stream */ 
 zstream_t *zstream_open_ssl(SSL *ssl);
+
+/* 打开本地文件, mode: "r", "r+", "w", "w+", "a", "a+" */
 zstream_t *zstream_open_file(const char *pathname, const char *mode);
+
+/* 打开地址destination, timeout:是超时, 单位秒. destination: 见 zconnect */
 zstream_t *zstream_open_destination(const char *destination, int timeout);
-int zstream_close(zstream_t *fp, zbool_t close_fd_and_release_ssl);
 
+/* 关闭stream, close_fd_and_release_ssl: 是否同时关闭相关fd */
+int zstream_close(zstream_t *fp, zbool_t release);
+
+/* 返回 fd */
 int zstream_get_fd(zstream_t *fp);
+
+/* 返回ssl */
 SSL *zstream_get_ssl(zstream_t *fp);
+
+/* 发起tls_connect, 返回 -1:错 */
 int zstream_tls_connect(zstream_t *fp, SSL_CTX *ctx);
+
+/* 发起tls_accept, 返回 -1:错 */
 int zstream_tls_accept(zstream_t *fp, SSL_CTX *ctx);
-void zstream_set_timeout(zstream_t *fp, int timeout);
-int zstream_timed_read_wait(zstream_t *fp, int timeout);
-int zstream_timed_write_wait(zstream_t *fp, int timeout);
 
+/* 通用超时等待可读, 单位秒, timeout<0: 表示无限长 */
+void zstream_set_read_wait_timeout(zstream_t *fp, int read_wait_timeout);
+
+/* 通用超时等待可写, 单位秒 */
+void zstream_set_write_wait_timeout(zstream_t *fp, int write_wait_timeout);
+
+/* 超时等待可读, 单位秒, timeout<0: 表示无限长 */
+/* -1: 出错  0: 不可读, 1: 可读或socket异常 */
+int zstream_timed_read_wait(zstream_t *fp, int read_wait_timeout);
+
+/* 超时等待可写, 单位秒 */
+/* <0: 出错  0: 不可写, 1: 可写或socket异常 */
+int zstream_timed_write_wait(zstream_t *fp, int write_wait_timeout);
+
+/* 读取一个字符, -1: 错误 */
+/* 不应该使用这个函数 */
 int zstream_getc_do(zstream_t *fp);
-zinline int zstream_getc(zstream_t *fp) { return ZSTREAM_GETC(fp); }
-void zstream_ungetc(zstream_t *fp);
-int zstream_read(zstream_t *fp, zbuf_t *bf, int max_len);
-int zstream_readn(zstream_t *fp, zbuf_t *bf, int strict_len);
-int zstream_gets_delimiter(zstream_t *fp, zbuf_t *bf, int delimiter, int max_len);
-zinline int zstream_gets(zstream_t *fp, zbuf_t *bf, int max_len)
-{
-    return zstream_gets_delimiter(fp, bf, '\n', max_len);
-}
-int zstream_size_data_get_size(zstream_t *fp);
 
+/* 读取一个字符, -1: 错误 */
+zinline int zstream_getc(zstream_t *fp) { return ZSTREAM_GETC(fp); }
+
+/* 使用条件太苛刻, 不推荐使用 */
+void zstream_ungetc(zstream_t *fp);
+
+/* 读 max_len个字节到bf, -1: 错, 0: 不可读, >0: 读取字节数 */
+int zstream_read(zstream_t *fp, zbuf_t *bf, int max_len);
+
+/* 严格读取strict_len个字符 */
+int zstream_readn(zstream_t *fp, zbuf_t *bf, int strict_len);
+
+/* 读取最多max_len个字符到bf, 读取到delimiter为止 */
+int zstream_read_delimiter(zstream_t *fp, zbuf_t *bf, int delimiter, int max_len);
+
+/* 读取一行 */
+zinline int zstream_gets(zstream_t *fp, zbuf_t *bf, int max_len) {
+    return zstream_read_delimiter(fp, bf, '\n', max_len);
+}
+
+int zstream_get_cint(zstream_t *fp);
+
+/* 写一个字节ch, 返回-1:错, 返回ch:成功 */
+/* 不推荐使用zstream_putc_do, 而是使用 zstream_putc */
 int zstream_putc_do(zstream_t *fp, int ch);
+
+/* 写一个字节ch, 返回-1:错, 返回ch:成功 */
 zinline int zstream_putc(zstream_t *fp, int c) { return ZSTREAM_PUTC(fp, c); }
+
+/* 写长度为len的buf到fp, 返回-1:失败, 其他:成功 */
 int zstream_write(zstream_t *fp, const void *buf, int len);
+
+/* 写一行s 到fp, 返回-1:失败, 其他:成功 */
 int zstream_puts(zstream_t *fp, const char *s);
+
 #define zstream_puts_const(fp, s) zstream_write(fp, s, sizeof(s)-1)
+
+/* 写bf到fp, 返回-1:失败, 其他:成功 */
 zinline int zstream_append(zstream_t *fp, zbuf_t *bf) {
     return zstream_write(fp, zbuf_data(bf), zbuf_len(bf));
 }
+
+/* zstream_printf_1024, 意思是:
+ * char buf[1024+1]; sprintf(buf, format, ...); zstream_puts(fp, buf); */
 int zstream_printf_1024(zstream_t *fp, const char *format, ...);
-int zstream_write_size_data_size(zstream_t *fp, int len);
-int zstream_write_size_data(zstream_t *fp, const void *buf, int len);
-int zstream_write_size_data_int(zstream_t *fp, int i);
-int zstream_write_size_data_long(zstream_t *fp, long i);
-int zstream_write_size_data_dict(zstream_t *fp, zdict_t * zd);
-int zstream_write_size_data_pp(zstream_t *fp, const char **pp, int size);
+
+int zstream_write_cint(zstream_t *fp, int len);
+int zstream_write_cint_and_int(zstream_t *fp, int i);
+int zstream_write_cint_and_long(zstream_t *fp, long l);
+int zstream_write_cint_and_data(zstream_t *fp, const void *buf, int len);
+int zstream_write_cint_and_dict(zstream_t *fp, zdict_t * zd);
+int zstream_write_cint_and_pp(zstream_t *fp, const char **pp, int size);
+
+/* flush, 返回-1:错 */
 int zstream_flush(zstream_t *fp);
 
-/* time ############################################################# */
+/* time, src/stdlib/time.c ########################################## */
 #define zvar_max_timeout_millisecond (3600L * 24 * 365 * 10 * 1000)
+
+/* 返回当前毫秒精度的时间 */
 long zmillisecond(void);
+
+/* 睡眠delay毫秒 */
 void zsleep_millisecond(int delay);
+
+/* 返回 zmillisecond(void) + timeout */
 long ztimeout_set_millisecond(long timeout);
+
+/* 返回 stamp - zmillisecond(void) */
 long ztimeout_left_millisecond(long stamp);
 
 #define zvar_max_timeout (3600 * 24 * 365 * 10)
+
+/* 返回当前秒精度的时间 */
 long zsecond(void);
+
+/* 睡眠delay秒 */
 void zsleep(int delay);
+
+/* 返回 zsecond(void) + timeout */
 long ztimeout_set(int timeout);
+
+/* 返回 stamp - zsecond(void) */
 int ztimeout_left(long stamp);
 
-/* date ############################################################# */
+/* date, src/stdlib/date.c ########################################## */
+
 #define zvar_rfc1123_date_string_size 32
+/* 根据t(秒)生成rfc1123格式的时间字符串,存储在buf, 并返回, buf的长度不小于 zvar_rfc1123_date_string_size */
 char *zbuild_rfc1123_date_string(long t, char *buf);
+
 #define zvar_rfc822_date_string_size 38
+/* 根据t(秒)生成rfc822格式的时间字符,存储在buf并, 返回, buf的长度不小于 zvar_rfc822_date_string_size */
 char *zbuild_rfc822_date_string(long t, char *buf);
 
-/* dns ############################################################## */
+/* dns, src/stdlib/dns.c ############################################ */
+
+/* 获取本机ip地址, 返回ip地址个数 */
 int zget_localaddr(zargv_t *addrs);
+
+/* 获取host对应的ip地址, 返回ip地址个数 */
 int zget_hostaddr(const char *host, zargv_t *addrs);
+
+/* 获取socket文件描述符sockfd,另一端的ip和端口信息; host: struct in_addr */
 zbool_t zget_peername(int sockfd, int *host, int *port);
+
+/* ip(struct in_addr)转ip地址(1.1.1.1), 结果存储在ipstr, 并返回 */
 char *zget_ipstring(int ip, char *ipstr);
+
+/* zget_ipstring 的反操作 */
 int zget_ipint(const char *ipstr);
+
+/* 返回ip的网络地址, masklen是掩码长度(下同) */
 int zget_network(int ip, int masklen);
+
+/* 返回子网掩码 */
 int zget_netmask(int masklen);
+
+/* 返回ip的广播地址 */
 int zget_broadcast(int ip, int masklen);
+
+/* 返回ip所在网段的最小地址 */
 int zget_ip_min(int ip, int masklen);
+
+/* 返回ip所在网段的最大地址 */
 int zget_ip_max(int ip, int masklen);
+
+/* 是否保留地址 */
 int zip_is_intranet(int ip);
+
+/* 是否保留地址 */
 int zip_is_intranet2(const char *ip);
 
 /* mime type ######################################################## */
-extern const char *zvar_mime_type_application_cotet_stream;
+extern const char *zvar_mime_type_application_cotet_stream /* = "application/octet-stream" */;
+
+/* 返回mime类型, 如 txt => text/plain */
 const char *zget_mime_type_from_suffix(const char *suffix, const char *def);
 const char *zget_mime_type_from_pathname(const char *pathname, const char *def);
 
 /* unique id ######################################################## */
+/* 唯一id */
 #define zvar_unique_id_size 22
 char *zbuild_unique_id(char *buf);
+
+/* 从唯一id中获得时间戳(秒)并返回 */
 long zget_time_from_unique_id(char *buf);
+
+/* 检测是不是唯一id格式 */
 zbool_t zis_unique_id(char *buf);
 
 /* system ########################################################### */
+/* 如果user_name非空, 则改变实际用户为user_name */
+/* 如果root_dir非空, 改变根(chroot)到root_dir */
+/* 返回 -1: 失败, >=0: 成功 */
 int zchroot_user(const char *root_dir, const char *user_name);
-/* file */
+
+/* file, src/stdlib/file.c ########################################## */
+/* -1: 错, >=0: 文件大小 */
 int zfile_get_size(const char *pathname);
+
+/* 保存data 到文件pathname, 覆盖pathname -1: 错, 1: 成功 */
 int zfile_put_contents(const char *pathname, const void *data, int len);
+
+/* 从文件pathname获取文件内容, 存储到(覆盖)result, -1:错, >= 文件长度 */
 int zfile_get_contents(const char *pathname, zbuf_t *result);
+/* 同上, 出错exit */
 int zfile_get_contents_sample(const char *pathname, zbuf_t *result);
+
+/* 从标准输入读取内容到(覆盖)bf */
 int zstdin_get_contents(zbuf_t *bf);
+
 /* mmap reader */
 struct zmmap_reader_t {
     int fd;
-    int len;
-    char *data;
+    int len; /* 映射后, 长度 */
+    char *data; /* 映射后, 指针 */
 };
+
+/* mmap 只读方式映射一个文件, -1: 错, 1: 成功  */
 int zmmap_reader_init(zmmap_reader_t *reader, const char *pathname);
 int zmmap_reader_fini(zmmap_reader_t *reader);
 
-/* mac */
+/* 获取mac地址; 返回个数, -1: 错; src/stdlib/mac_address.c */
 int zget_mac_address(zargv_t *mac_list);
 
-/* main main_parameter ################################################## */
+/* main_parameter, src/stdlib/main_argument.c ########################### */
 extern char *zvar_progname;
-extern zbool_t zvar_proc_stop;
-extern zbool_t zvar_test_mode;
-extern int zvar_max_fd;
+extern int zvar_memleak_check;
+extern int zvar_sigint_flag;
 
 extern char **zvar_main_redundant_argv;
 extern int zvar_main_redundant_argc;
+/* 处理 main函数 argc,argv, 和 config无缝结合, 很方便. 默认参数风格如下:
+ * ./cmd -name1 val1 arg1 -name2 val2 --bool1 --bool2 ... arg2 arg3
+   执行 zmain_argument_run(argc, argv, 0) 后, 会自动创建一个全局配置文件
+   zconfigt_t *zvar_default_config;
+  
+ * 而且, 逻辑上
+   zvar_default_config[name1] = val1
+   zvar_default_config[name2] = val2
+   zvar_default_config[bool1] = "yes"
+   zvar_default_config[bool2] = "yes"
+   zvar_main_redundant_argc = 3
+   zvar_main_redundant_argv[0] = arg1
+   zvar_main_redundant_argv[1] = arg2
+   zvar_main_redundant_argv[3] = arg3
+
+ * main_argument_run 最后处理
+   如果 zconfig_get_bool(zvar_default_config, "debug", 0) == 1, 则 zvar_log_debug_enable = 1
+   如果 zconfig_get_bool(zvar_default_config, "fatal-catch", 0) == 1, 则 zvar_log_fatal_catch = 1
+
+ * 如果参数项是 -config somepath.cf , 则
+   会立即加载配置文件somepath.cf到zvar_default_config
+
+ * 遵循规则
+   后加载的配置项覆盖先加载的配置项
+   命令行上的配置项覆盖配置文件中的配置项
+ */
 void zmain_argument_run(int argc, char **argv, unsigned int (*self_argument_fn)(int argc, char **argv, int offset));
 
-/* not thread-safe */
+/* 注册函数, 系统退出前执行, 按照注册顺序执行; 非线程安全 */
 void zinner_atexit(void (*function)(void));
 
-/* license ############################################################## */
+/* license, src/stdlib/license.c ####################################### */
+/* -1: 系统错, 0: 不匹配, 1: 匹配 */
 int zlicense_mac_check(const char *salt, const char *license);
 void zlicense_mac_build(const char *salt, const char *_mac, zbuf_t *result);
 int zlicense_mac_check_from_config_pathname(const char *salt, const char *config_file, const char *key);
 
-/* event ############################################################### */
-/* event io based on zevent_base_t */
-zeio_t *zeio_create(int fd, zevent_base_t *evbase);
-void zeio_free(zeio_t *eio, int close_fd);
-void zeio_set_local(zeio_t *eio);
-int zeio_get_result(zeio_t *eio);
-int zeio_get_fd(zeio_t *eio);
-void zeio_enable_read(zeio_t *eio, void (*callback)(zeio_t *eio));
-void zeio_enable_write(zeio_t *eio, void (*callback)(zeio_t *eio));
-void zeio_disable(zeio_t *eio);
-void zeio_set_context(zeio_t *eio, const void *ctx);
-void *zeio_get_context(zeio_t *eio);
-zevent_base_t *zeio_get_event_base(zeio_t *eio);
+/* event, src/event/ ################################################### */
+/* 基于epoll的高并发io模型, 包括 事件, 异步io, 定时器, io映射. 例子见 sample/event/  */
 
-/* async io based on zevent_base_t */
-zaio_t *zaio_create(int fd, zevent_base_t *evbase);
+/* 创建 aio */
+#define zaio_create zaio_create_by_fd
+zaio_t *zaio_create_by_fd(int fd, zaio_base_t *aiobase);
+zaio_t *zaio_create_by_ssl(SSL *ssl, zaio_base_t *aiobase);
 void zaio_free(zaio_t *aio, int close_fd_and_release_ssl);
-void zaio_set_local(zaio_t *aio);
+
+/* 设置可读超时 */
+void zaio_set_read_wait_timeout(zaio_t *aio, int read_wait_timeout);
+
+/* 设置可写超时 */
+void zaio_set_write_wait_timeout(zaio_t *aio, int write_wait_timeout);
+
+/* 重新绑定 aio_base */
+void zaio_rebind_aio_base(zaio_t *aio, zaio_base_t *aiobase);
+
+/* 停止 aio, 只能在所属aio_base运行的线程执行 */
+void zaio_disable(zaio_t *aio);
+
+/* 获取结果, -2:超时(且没有任何数据), <0: 错, >0: 写成功,或可读的字节数 */
+/* 如果是 read cint, >=0: 表示 cint的值 */
 int zaio_get_result(zaio_t *aio);
+
+/* 获取 fd */
 int zaio_get_fd(zaio_t *aio);
+
+/* 获取 SSL 句柄 */
 SSL *zaio_get_ssl(zaio_t *aio);
-void zaio_tls_connect(zaio_t *aio, SSL_CTX * ctx, void (*callback)(zaio_t *aio), int timeout);
-void zaio_tls_accept(zaio_t *aio, SSL_CTX * ctx, void (*callback)(zaio_t *aio), int timeout);
-void zaio_fetch_rbuf(zaio_t *aio, zbuf_t *bf, int strict_len);
-void zaio_fetch_rbuf_data(zaio_t *aio, void *data, int strict_len);
-void zaio_read(zaio_t *aio, int max_len, void (*callback)(zaio_t *aio), int timeout);
-void zaio_readn(zaio_t *aio, int strict_len, void (*callback)(zaio_t *aio), int timeout);
-void zaio_read_size_data(zaio_t *aio, void (*callback)(zaio_t *aio), int timeout);
-void zaio_gets_delimiter(zaio_t *aio, int delimiter, int max_len, void (*callback)(zaio_t *aio), int timeout);
-void zaio_gets(zaio_t *aio, int max_len, void (*callback)(zaio_t *aio), int timeout);
+
+/* 设置可读超时 */
+void zaio_set_read_wait_timeout(zaio_t *aio, int read_wait_timeout);
+
+/* 设置可写超时 */
+void zaio_set_write_wait_timeout(zaio_t *aio, int read_write_timeout);
+
+/* 发起tls连接, 成功/失败/超时后回调执行callback */
+void zaio_tls_connect(zaio_t *aio, SSL_CTX * ctx, void (*callback)(zaio_t *aio));
+
+/* 发起tls接受, 成功/失败/超时后回调执行callback */
+void zaio_tls_accept(zaio_t *aio, SSL_CTX * ctx, void (*callback)(zaio_t *aio));
+
+/* 从缓存中获取数据 */
+int zaio_get_read_cache_size(zaio_t *aio);
+void zaio_get_read_cache(zaio_t *aio, zbuf_t *bf, int strict_len);
+
+/* 获取缓存数据的长度 */
+int zaio_get_write_cache_size(zaio_t *aio);
+void zaio_get_write_cache(zaio_t *aio, zbuf_t *bf, int strict_len);
+
+/* 如果可读(或出错)则回调执行函数 callback */
+void zaio_readable(zaio_t *aio, void (*callback)(zaio_t *aio));
+
+/* 如果可写(或出错)则回调执行函数 callback */
+void zaio_writeable(zaio_t *aio, void (*callback)(zaio_t *aio));
+
+/* 请求读, 最多读取max_len个字节, 成功/失败/超时后回调执行callback */
+void zaio_read(zaio_t *aio, int max_len, void (*callback)(zaio_t *aio));
+
+/* 请求读, 严格读取strict_len个字节, 成功/失败/超时后回调执行callback */
+void zaio_readn(zaio_t *aio, int strict_len, void (*callback)(zaio_t *aio));
+
+/* */
+void zaio_get_cint(zaio_t *aio, void (*callback)(zaio_t *aio));
+void zaio_get_cint_and_data(zaio_t *aio, void (*callback)(zaio_t *aio));
+
+/* 请求读, 读到delimiter为止, 最多读取max_len个字节, 成功/失败/超时后回调执行callback */
+void zaio_read_delimiter(zaio_t *aio, int delimiter, int max_len, void (*callback)(zaio_t *aio));
+
+/* 如上, 读行 */
+zinline void zaio_gets(zaio_t *aio, int max_len, void (*callback)(zaio_t *aio))
+{
+    zaio_read_delimiter(aio, '\n', max_len, callback);
+}
+
+/* 向缓存写数据, (fmt, ...)不能超过1024个字节 */
 void zaio_cache_printf_1024(zaio_t *aio, const char *fmt, ...);
+
+/* 向缓存写数据 */
 void zaio_cache_puts(zaio_t *aio, const char *s);
+
+/* 向缓存写数据 */
 void zaio_cache_write(zaio_t *aio, const void *buf, int len);
-void zaio_cache_write_size_data(zaio_t *aio, const void *buf, int len);
+
+/* */
+void zaio_cache_write_cint(zaio_t *aio, int len);
+void zaio_cache_write_cint_and_data(zaio_t *aio, const void *data, int len);
+
+/* 向缓存写数据, 不复制buf */
 void zaio_cache_write_direct(zaio_t *aio, const void *buf, int len);
-void zaio_cache_flush(zaio_t *aio, void (*callback)(zaio_t *aio), int timeout);
+
+/* 请求写, 成功/失败/超时后回调执行callback */
+void zaio_cache_flush(zaio_t *aio, void (*callback)(zaio_t *aio));
+
+/* */
 int zaio_get_cache_size(zaio_t *aio);
+
+/* 请求sleep, sleep秒后回调执行callback */
 void zaio_sleep(zaio_t *aio, void (*callback)(zaio_t *aio), int timeout);
+
+/* 设置/获取上下文 */
 void zaio_set_context(zaio_t *aio, const void *ctx);
 void *zaio_get_context(zaio_t *aio);
-zevent_base_t *zaio_get_event_base(zaio_t *aio);
 
+/* 获取 zaio_base_t */
+zaio_base_t *zaio_get_aio_base(zaio_t *aio);
+
+/* */
 void zaio_list_append(zaio_t **list_head, zaio_t **list_tail, zaio_t *aio);
 void zaio_list_detach(zaio_t **list_head, zaio_t **list_tail, zaio_t *aio);
 
-/* event timer based on zevent_base_t */
-zetimer_t *zetimer_create(zevent_base_t *evbase);
-void zetimer_free(zetimer_t *et);
-void zetimer_start(zetimer_t *et, void (*callback)(zetimer_t *et), int timeout);
-void zetimer_stop(zetimer_t *et);
-void zetimer_set_local(zetimer_t *et);
-void zetimer_set_context(zetimer_t *et, const void *ctx);
-void *zetimer_get_context(zetimer_t *et);
-zevent_base_t *zetimer_get_event_base(zetimer_t *et);
+/* event/epoll 运行框架 */
 
-/* event base */
-extern zevent_base_t *zvar_default_event_base;
-zevent_base_t *zevent_base_create();
-void zevent_base_free(zevent_base_t *eb);
-zbool_t zevent_base_dispatch(zevent_base_t *eb);
-void zevent_base_notify(zevent_base_t *eb);
-void zevent_base_set_local(zevent_base_t *eb);
-void zevent_base_set_context(zevent_base_t *eb, const void *ctx);
-void *zevent_base_get_context(zevent_base_t *eb);
+/* 默认aio_base */
+extern zaio_base_t *zvar_default_aio_base;
 
-/* iopipe ########################################################### */
-typedef void (*ziopipe_after_close_fn_t) (void *);
-ziopipe_base_t *ziopipe_base_create();
-void ziopipe_base_free(ziopipe_base_t *iopb);
-int ziopipe_base_get_count(ziopipe_base_t *iopb);
-void ziopipe_base_stop_notify(ziopipe_base_t *iopb);
-void ziopipe_base_after_peer_closed_timeout(ziopipe_base_t *iopb, int timeout);
-void ziopipe_base_run(ziopipe_base_t *iopb);
-void ziopipe_enter(ziopipe_base_t * iopb, int client_fd, SSL *client_ssl, int server_fd, SSL *server_ssl, ziopipe_after_close_fn_t after_close, const void *context);
+/* 创建 aio_base */
+zaio_base_t *zaio_base_create();
+void zaio_base_free(zaio_base_t *eb);
 
-/* coroutine ########################################################## */
-void zcoroutine_base_init();
-void zcoroutine_base_run();
-void zcoroutine_base_stop_notify();
+/* 获取当前线程运行的 aio_base */
+zaio_base_t *zaio_base_get_current_pthread_aio_base();
+
+/* 运行 aio_base */
+void zaio_base_run(zaio_base_t *eb, void (*loop_fn)());
+
+/* 通知 aio_base 停止, 既 zaio_base_run 返回 */
+void zaio_base_stop_notify(zaio_base_t *eb);
+
+/* 通知 aio_base, 手动打断 epoll_wait */
+void zaio_base_touch(zaio_base_t *eb);
+
+/* 设置/获取上下文 */
+void zaio_base_set_context(zaio_base_t *eb, const void *ctx);
+void *zaio_base_get_context(zaio_base_t *eb);
+
+/* iopipe 管道 */
+void zaio_iopipe_enter(zaio_t *client, zaio_t *server, zaio_base_t *aiobase, void (*after_close)(void *ctx), void *ctx);
+
+#ifndef ___ZC_LIB_INCLUDE_COROUTINE___
+#define ___ZC_LIB_INCLUDE_COROUTINE___
+
+/* coroutine, src/coroutine/ ########################################## */
+/* 协程框架, 本协程不得跨线程操作 例子见 sample/coroutine/ */
+
+extern int zvar_coroutine_max_fd; /* 10240 */
+
+/* 在线程内初始化协程基础环境 */
+zcoroutine_base_t *zcoroutine_base_init();
+
+/* 获取当前协程环境 */
+zcoroutine_base_t *zcoroutine_base_get_current();
+
+/* 在线程内运行当前协程框架 */
+void zcoroutine_base_run(void (*loop_fn)());
+
+/* 通知协程环境(cobs==0,表示当前)退出, 既 zcoroutine_base_run() 返回 */
+void zcoroutine_base_stop_notify(zcoroutine_base_t *cobs);
+
+/* 回收协程框架资源 */
 void zcoroutine_base_fini();
 
-void zcoroutine_go(void *(*start_job)(void *ctx), void *ctx, int stack_size);
+/* 进入协程, 然后, 执行 start_job, 参数为ctx */
+/* stack_size: 协程栈大小(单位K), 建议不小于16 */
+void zcoroutine_go(void *(*start_job)(void *ctx), void *ctx, int stack_kilobyte);
+/* 同 zcoroutine_go, 指定协程环境 */
+void zcoroutine_advanced_go(zcoroutine_base_t *cobs, void *(*start_job)(void *ctx), void *ctx, int stack_kilobyte);
 
+/* 返回当前协程 */
 zcoroutine_t * zcoroutine_self();
+
+/* 放弃当前协程使用权 */
 void zcoroutine_yield();
+
+/* 主动结束协程 */
 void zcoroutine_exit();
+
+/* 返回当前协程ID */
+long zcoroutine_getid();
+
+/* 睡眠 */
 #define zcoroutine_sleep zsleep
 #define zcoroutine_sleep_millisecond zsleep_millisecond
+
+/* 获取当前协程上下文 */
 void *zcoroutine_get_context();
+
+/* 设置当前协程上下文 */
 void zcoroutine_set_context(const void *ctx);
+
+/* 主动设置fd支持协程切换 */
 void zcoroutine_enable_fd(int fd);
+
+/* 主动设置fd不支持协程切换 */
 void zcoroutine_disable_fd(int fd);
 
+/* 创建携程锁 */
 zcoroutine_mutex_t * zcoroutine_mutex_create();
 void zcoroutine_mutex_free(zcoroutine_mutex_t *);
+
+/* 锁 */
 void zcoroutine_mutex_lock(zcoroutine_mutex_t *);
+
+/* 解锁 */
 void zcoroutine_mutex_unlock(zcoroutine_mutex_t *);
 
+/* 创建条件 */
 zcoroutine_cond_t * zcoroutine_cond_create();
 void zcoroutine_cond_free(zcoroutine_cond_t *);
+
+/* 条件等待, 参考 pthread_cond_wait */
 void zcoroutine_cond_wait(zcoroutine_cond_t *, zcoroutine_mutex_t *);
+
+/* 条件信号, 参考 pthread_cond_signal */
 void zcoroutine_cond_signal(zcoroutine_cond_t *);
+
+/* 条件广播, 参考 pthread_cond_broadcast */
 void zcoroutine_cond_broadcast(zcoroutine_cond_t *);
 
 /* 启用limit个线程池, 用于文件io,和 block_do */
 extern int zvar_coroutine_block_pthread_count_limit;
 
-/* 如果 zvar_coroutine_block_pthread_count_limit > 0 且 zvar_coroutine_fileio_use_block_pthread == 1, 则
- * 文件io在线程池执行. */
+/* 如果
+      zvar_coroutine_block_pthread_count_limit > 0 且
+      zvar_coroutine_fileio_use_block_pthread == 1
+   则 文件io在线程池执行, 否则在当前线程执行 */
 extern zbool_t zvar_coroutine_fileio_use_block_pthread;
 
-/* 如果 zvar_coroutine_block_pthread_count_limit > 0, 则 block_func(ctx) 在线程池执行, 否则在本线程直接执行 */
+/* 如果 zvar_coroutine_block_pthread_count_limit > 0
+   则 block_func(ctx) 在线程池执行, 否则在当前程直接执行 */
 void *zcoroutine_block_do(void *(*block_func)(void *ctx), void *ctx);
 
 /* zcoroutine_block_XXX 基于 zcoroutine_block_do 机制 */
@@ -1205,40 +1863,120 @@ int zcoroutine_block_close(int fd);
 int zcoroutine_block_rename(const char *oldpath, const char *newpath);
 int zcoroutine_block_unlink(const char *pathname);
 
+#endif
+
 /* io 映射 */
 void zcoroutine_go_iopipe(int fd1, SSL *ssl1, int fd2, SSL *ssl2, void (*after_close)(void *ctx), void *ctx);
 
-/* master ############################################################# */
-/* master_server */
+/* master, src/master/ ################################################ */
+/* master/server 进程服务管理框架, 例子见 sample/master/ */
+
 extern zbool_t zvar_master_server_log_debug_enable;
 extern int zvar_master_server_reload_signal; /* SIGHUP */
 
+/* master 重新加载各服务配置函数 */
+/* zvector_t *cfs, 是 zconfig_t *的vector, 一个zconfig_t 对应一个服务 */
 extern void (*zmaster_server_load_config)(zvector_t *cfs);
+
+/* master进入服务管理前执行的函数 */
 extern void (*zmaster_server_before_service)();
 
+/* 一个通用的加载一个目录下所有服务配置的函数 */
 void zmaster_server_load_config_from_dirname(const char *config_dir_pathname, zvector_t *cfs);
+
+/* master程序主函数 */
 int zmaster_server_main(int argc, char **argv);
 
-/* master_event_server */
-extern void (*zevent_server_service_register) (const char *service, int fd, int fd_type);
-extern void (*zevent_server_before_service) (void);
-extern void (*zevent_server_before_reload) (void);
-extern void (*zevent_server_before_exit) (void);
+/* 基于事件(zaio_base_t 模型)的服务模型 #################  */
+/* 主线程运行在 zaio_base_t 框架下, event_hase 为 zvar_default_aio_base */
 
-void zevent_server_stop_notify(void);
-zeio_t *zevent_server_general_aio_register(zevent_base_t *eb, int fd, int fd_type, void (*callback) (int));
-int zevent_server_main(int argc, char **argv);
+/* 注册服务, service 是服务名, fd继承自master, fd_type: inet/unix/fifo 见(zvar_tcp_listen_type_inter ...) */
+extern void (*zaio_server_service_register) (const char *service, int fd, int fd_type);
 
-/* master_coroutine_server */
+/* 进入主服务前执行函数 */
+extern void (*zaio_server_before_service) (void);
+
+/* 接到master重启之前后执行的函数 */
+extern void (*zaio_server_before_softstop) (void);
+
+/* 手动通知主程序循环退出 */
+void zaio_server_stop_notify(void);
+
+/* 和master服务分离, master程序会以为此进程已经终止 */
+/* master 发起reload时, 不会在在通知此进程 reload */
+/* 1小时候后, 此进程强制退出 */
+void zaio_server_detach_from_master();
+
+/* 通用的服务注册函数 */
+/* fd2 = accept(fd); callback(fd2) */
+zaio_t *zaio_server_general_aio_register(zaio_base_t *eb, int fd, int fd_type, void (*callback) (int));
+
+/* 主函数 */
+int zaio_server_main(int argc, char **argv);
+
+/* 基于协程(zcoroutine_base_init)的服务模型 #################  */
+/* 主线程运行在协程框架下 */
+
+/* 注册服务, service 是服务名, fd继承自master, fd_type: inet/unix/fifo 见(zvar_tcp_listen_type_inet ...) */
 extern void (*zcoroutine_server_service_register) (const char *service, int fd, int fd_type);
-extern void (*zcoroutine_server_before_service) (void);
-extern void (*zcoroutine_server_before_reload) (void);
-extern void (*zcoroutine_server_before_exit) (void);
 
+/* 进入主服务前执行函数 */
+extern void (*zcoroutine_server_before_service) (void);
+
+/* 接到master重启之前后执行的函数 */
+extern void (*zcoroutine_server_before_softstop) (void);
+
+/* 手动通知主程序循环退出 */
 void zcoroutine_server_stop_notify(void);
+
+/* 和master服务分离, master程序会以为此进程已经终止 */
+/* master 发起reload时, 不会在在通知此进程 reload */
+/* 1小时候后, 此进程强制退出 */
+void zcoroutine_server_detach_from_master();
+
+/* 主函数 */
 int zcoroutine_server_main(int argc, char **argv);
 
-/* charset ############################################################ */
+/* charset, src/charset/ ############################################## */
+/* 字符集函数, 例子见 sample/charset/ */
+
+#define zvar_charset_name_max_size          32
+
+extern zbool_t zvar_charset_debug;
+
+/* { "UTF-8", "GB18030", "BIG5", "UTF-7", 0 } */
+extern const char *zvar_charset_chinese[];
+
+/* { "UTF-8", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", "UTF-7", 0 } */
+extern const char *zvar_charset_japanese[];
+
+/* { "UTF-8", "KS_C_5601", "KS_C_5861", "UTF-7", 0 } */
+extern const char *zvar_charset_korean[];
+
+/* { "UTF-8", "GB18030", "BIG5", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", "KS_C_5601", "KS_C_5861", "UTF-7", 0 } */
+extern const char *zvar_charset_cjk[];
+
+/* 修正字符集名称, 如 GBK => GB18030, KS_C_5861 => EUC-KR */
+char *zcharset_correct_charset(const char *charset);
+
+/* 探测字符串data是什么字符集, 结果存储在charset_result, 并返回 */
+/* charset_list 是 字符集名称的指针输入, 结尾为 0 */
+char *zcharset_detect(const char **charset_list, const char *data, int size, zbuf_t *charset_result);
+
+/* 如上. charset_list = zvar_charset_cjk; */
+char *zcharset_detect_cjk(const char *data, int size, zbuf_t *charset_result);
+
+/* 字符集转码, 有点复杂哈, 建议再次封装 */
+/* 返回目标字符串的长度, -1: 错; */
+/* from_charset: 原字符集; src, src_len: 原字符串和长度 */
+/* to_charset: 目标字符集; result: 目标字符串, zbuf_reset(result) */
+/* *src_converted_len = (成功转码的字节数); */
+/* omit_invalid_bytes_limit: 设置可忽略的错误字节个数, <0: 无限大 */
+/* *omit_invalid_bytes_count = (实际忽略字节数); */
+int zcharset_iconv(const char *from_charset, const char *src, int src_len,
+        const char *to_charset, zbuf_t *result, int *src_converted_len,
+        int omit_invalid_bytes_limit, int *omit_invalid_bytes_count);
+
 #ifdef ZC_USE_LIBICONV
 #include <iconv.h>
 typeof(iconv) libiconv;
@@ -1249,152 +1987,308 @@ size_t iconv(iconv_t cd, char **a, size_t *b, char **c, size_t *d) { return libi
 int iconv_close(iconv_t cd) { return libiconv_close(cd); }
 #endif
 
-#define zvar_charset_name_max_size          32
-extern zbool_t zvar_charset_debug;
-extern const char *zvar_charset_chinese[];
-extern const char *zvar_charset_japanese[];
-extern const char *zvar_charset_korean[];
-extern const char *zvar_charset_cjk[];
-char *zcharset_correct_charset(const char *charset);
-char *zcharset_detect(const char **charset_list, const char *data, int size, zbuf_t *charset_result);
-char *zcharset_detect_cjk(const char *data, int size, zbuf_t *charset_result);
+/* mime utils, src/mime/ ############################################# */
+/* 邮件解码工具 例子见 sample/mime/ */
 
-int zcharset_iconv(const char *from_charset, const char *src, int src_len,
-        const char *to_charset, zbuf_t *result, int *src_converted_len,
-        int omit_invalid_bytes_limit, int *omit_invalid_bytes_count);
-
-/* mime utils ######################################################## */
+/* 假设邮件头逻辑行最长长度不超过 zvar_mime_header_line_max_length */
 #define zvar_mime_header_line_max_length   1024000
 
-/* iconv */
+/* 邮件用, 字符集转码 */
+/* 目标字符集为 UTF-8 */
+/* from_charset: 原字符集, 为空则探测字符集, 探测失败则取值 GB18030 */
 void zmime_iconv(const char *from_charset, const char *data, int size, zbuf_t *result);
 
-/* general header line utils */
+/* 解码原始邮件头行 */
 void zmime_raw_header_line_unescape(const char *in_line, int in_len, zbuf_t *result);
+
+/* 获取邮件头行的第一个单词, trim两侧的 " \t<?\"'" */
 void zmime_header_line_get_first_token(const char *in_line, int in_len, zbuf_t *result);
 
+/* 邮件头行单词节点 */
 typedef struct zmime_header_line_element_t zmime_header_line_element_t;
 struct zmime_header_line_element_t {
-    char *charset;
+    char *charset; /* 可能为空 */
     char *data;
     int dlen;
     char encode_type; /* 'B':base64, 'Q':qp, 0:unknown */
 };
+
+/* 分解邮件头行 */
 const zvector_t *zmime_header_line_get_element_vector(const char *in_line, int in_len);
 void zmime_header_line_element_vector_free(const zvector_t *element_vector);
 
+/* 对邮件头行做分解并转码, 目标字符集UTF-8, ... 参考 zmime_iconv */
 void zmime_header_line_get_utf8(const char *src_charset_def, const char *in_line, int in_len, zbuf_t *result);
+
+/* 对符合RFC2232的邮件头行做分解并转码, 如上 */
 void zmime_header_line_get_utf8_2231(const char *src_charset_def, const char *in_line, int in_len, zbuf_t *result, int with_charset_flag);
 
+/* 对邮件头行做处理, value 得到 第一个单词, params存储key<=>value */
 void zmime_header_line_get_params(const char *in_line, int in_len, zbuf_t *value, zdict_t *params);
+
+/* 解码 Date 字段 */
 long zmime_header_line_decode_date(const char *str);
 
-/* address */
+/* 邮件地址 */
 typedef struct zmime_address_t zmime_address_t;
 struct zmime_address_t {
-    char *name;
-    char *address;
-    char *name_utf8;
+    char *name; /* 原始名称 */
+    char *address; /* email 地址 */
+    char *name_utf8; /* 原始名称转码为UTF-8 字符集 */
 };
+
+/* 分解邮件头行为多个邮件地址并返回, 这个时候不处理 name_utf8 */
 zvector_t *zmime_header_line_get_address_vector(const char *in_str, int in_len);
+
+/* 分解邮件头行为多个邮件地址并返回, 这个时候不处理 name_utf8 */
 zvector_t *zmime_header_line_get_address_vector_utf8(const char *src_charset_def, const char *in_str, int in_len);
 void zmime_header_line_address_vector_free(zvector_t *address_vector);
 
-/* mail parser */
+/* 邮件解析mime节点函数列表, 全部只读 */
+
+/* type */
 const char *zmime_get_type(zmime_t *mime);
+
+/* 编码 */
 const char *zmime_get_encoding(zmime_t *mime);
+
+/* 字符集 */
 const char *zmime_get_charset(zmime_t *mime);
+
+/* disposition */
 const char *zmime_get_disposition(zmime_t *mime);
+
+/* 可读名字, 把mime的name或filename转码为UTF-8 */
 const char *zmime_get_show_name(zmime_t *mime);
+
+/* name */
 const char *zmime_get_name(zmime_t *mime);
+
+/* name转UTF-8 */
 const char *zmime_get_name_utf8(zmime_t *mime);
+
+/* filename */
 const char *zmime_get_filename(zmime_t *mime);
+
+/* RFC2231类型的filename;  *with_charset_flag是否带字符集 */
 const char *zmime_get_filename2231(zmime_t *mime, zbool_t *with_charset_flag);
+
+/* filename 转 UTF-8 */
 const char *zmime_get_filename_utf8(zmime_t *mime);
+
+/* CONTENT-ID */
 const char *zmime_get_content_id(zmime_t *mime);
+
+/* boundary */
 const char *zmime_get_boundary(zmime_t *mime);
+
+/* imap协议代码, 形如 1.2 或 2.1.6 */
 const char *zmime_get_imap_section(zmime_t *mime);
+
+/* mime头部 */
 const char *zmime_get_header_data(zmime_t *mime);
+
+/* mime邮件体 */
 const char *zmime_get_body_data(zmime_t *mime);
+
+/* mime头部相对于邮件起始偏移 */
 int zmime_get_header_offset(zmime_t *mime);
+
+/* mime头部长度 */
 int zmime_get_header_len(zmime_t *mime);
+
+/* mime邮件体相对于邮件起始偏移 */
 int zmime_get_body_offset(zmime_t *mime);
+
+/* mime 邮件体长度 */
 int zmime_get_body_len(zmime_t *mime);
+
+/* 下一个节点 */
 zmime_t *zmime_next(zmime_t *mime);
+
+/* 第一个子节点 */
 zmime_t *zmime_child(zmime_t *mime);
+
+/* 父节点 */
 zmime_t *zmime_parent(zmime_t *mime);
+
+/* 获取mime头 */
 const zvector_t *zmime_get_raw_header_line_vector(zmime_t *mime); /* zsize_data_t* */
-/* return, -1: no, >= 0: lenght of result */
+
+/* 获取第sn个名称为header_name的原始逻辑行, 返回 -1: 不存在 */
+/* sn -1: 倒数第一个, 0:第一个, 1: 第二个, ... 下同 */
 int zmime_get_raw_header_line(zmime_t *mime, const char *header_name, zbuf_t *result, int sn);
-/* return, -1: no, >= 0: lenght of result */
+
+/* 获取第sn个名称为header_name的行的值, 返回 -1: 不存在 */
 int zmime_get_header_line_value(zmime_t *mime, const char *header_name, zbuf_t *result, int sn);
+
+/* 获取解码(base64, qp)后的mime邮件体 */
 void zmime_get_decoded_content(zmime_t *mime, zbuf_t *result);
+
+/* 获取解码(base64, qp)后并转UTF-8的mime邮件体 */
 void zmime_get_decoded_content_utf8(zmime_t *mime, zbuf_t *result);
+
+/* 是不是 tnef(application/ms-tnef) 类型的附件 */
 zbool_t zmime_is_tnef(zmime_t *mime);
 
+/* 下面是邮件解析函数 */
+
+/* 创建邮件解析器, default_charset: 默认字符集 */
 zmail_t *zmail_create_parser_from_data(const char *mail_data, int mail_data_len, const char *default_charset);
 zmail_t *zmail_create_parser_from_pathname(const char *pathname, const char *default_charset);
 void zmail_free(zmail_t *parser);
+
+/* debug输出解析结果 */
+
 void zmail_debug_show(zmail_t *parser);
+
+/* 邮件源码data */
 const char *zmail_get_data(zmail_t *parser);
+
+/* 邮件源码长度 */
 int zmail_get_len(zmail_t *parser);
+
+/* 邮件头data */
 const char *zmail_get_header_data(zmail_t *parser);
+
+/* 邮件头偏移 */
 int zmail_get_header_offset(zmail_t *parser);
+
+/* 邮件头长度 */
 int zmail_get_header_len(zmail_t *parser);
+
+/*  邮件体 */
 const char *zmail_get_body_data(zmail_t *parser);
+
+/* 邮件体偏移 */
 int zmail_get_body_offset(zmail_t *parser);
+
+/* 邮件体偏移 */
 int zmail_get_body_len(zmail_t *parser);
+
+/* Message-ID */
 const char *zmail_get_message_id(zmail_t *parser);
+
+/* Subject */
 const char *zmail_get_subject(zmail_t *parser);
+
+/* Subject 转 UTF-8 */
 const char *zmail_get_subject_utf8(zmail_t *parser);
+
+/* 日期 */
 const char *zmail_get_date(zmail_t *parser);
-const char *zmail_get_in_reply_to(zmail_t *parser);
+
+/* 日期, unix时间 */
 long zmail_get_date_unix(zmail_t *parser);
+
+/* In-Reply-To */
+const char *zmail_get_in_reply_to(zmail_t *parser);
+
+/* From */
 const zmime_address_t *zmail_get_from(zmail_t *parser);
+
+/* From并且处理name_utf8 */
 const zmime_address_t *zmail_get_from_utf8(zmail_t *parser);
+
+/* Sender */
 const zmime_address_t *zmail_get_sender(zmail_t *parser);
+
+/* Reply-To */
 const zmime_address_t *zmail_get_reply_to(zmail_t *parser);
+
+/* Disposition-Notification-To */
 const zmime_address_t *zmail_get_receipt(zmail_t *parser);
+
+/* To */
 const zvector_t *zmail_get_to(zmail_t *parser); /* zmime_address_t* */
+
+/* To并且处理name_utf8 */
 const zvector_t *zmail_get_to_utf8(zmail_t *parser);
 const zvector_t *zmail_get_cc(zmail_t *parser);
 const zvector_t *zmail_get_cc_utf8(zmail_t *parser);
 const zvector_t *zmail_get_bcc(zmail_t *parser);
 const zvector_t *zmail_get_bcc_utf8(zmail_t *parser);
+
+/* References */
 const zargv_t *zmail_get_references(zmail_t *parser);
+
+/* 顶层mime */
 const zmime_t *zmail_get_top_mime(zmail_t *parser);
+
+/* 全部mime */
 const zvector_t *zmail_get_all_mimes(zmail_t *parser); /* zmime_t* */
+
+/* 全部text/html,text/plain类型的mime */
 const zvector_t *zmail_get_text_mimes(zmail_t *parser);
+
+/* 应该在客户端显示的mime, alternative情况首选html */
 const zvector_t *zmail_get_show_mimes(zmail_t *parser);
+
+/* 所有附件类型的mime, 包括内嵌图片 */
 const zvector_t *zmail_get_attachment_mimes(zmail_t *parser);
+
+/* 获取所有邮件头 */
 const zvector_t *zmail_get_raw_header_line_vector(zmail_t *parser); /* zsize_data_t* */
-/* return, -1: no, >= 0: lenght of result */
-/* @sn    0:first, 1:second, -1:last */
+
+
+/* 获取第sn个名称为header_name的原始逻辑行, 返回 -1: 不存在 */
+/* sn -1: 倒数第一个, 0:第一个, 1: 第二个, ... 下同 */
 int zmail_get_raw_header_line(zmail_t *parser, const char *header_name, zbuf_t *result, int sn);
-/* return, -1: no, >= 0: lenght of result */
+
+/* 获取第sn个名称为header_name的行的值, 返回 -1: 不存在 */
 int zmail_get_header_line_value(zmail_t *parser, const char *header_name, zbuf_t *result, int sn);
 
-/* tnef */
+/* 解析 tnef(application/ms-tnef) */
+
+/* type */
 const char *ztnef_mime_get_type(ztnef_mime_t *mime);
+
+/* filename_utf8 */
 const char *ztnef_mime_get_show_name(ztnef_mime_t *mime);
+
+/* filename */
 const char *ztnef_mime_get_filename(ztnef_mime_t *mime);
+
+/* filename_utf8 */
 const char *ztnef_mime_get_filename_utf8(ztnef_mime_t *mime);
+
+/* Content-ID */
 const char *ztnef_mime_get_content_id(ztnef_mime_t *mime);
-int ztnef_mime_get_body_offset(ztnef_mime_t *mime);
+
+/* mime_body 数据 */
+const char *ztnef_mime_get_body_data(ztnef_mime_t *mime);
+
+/* mime_body 长度 */
 int ztnef_mime_get_body_len(ztnef_mime_t *mime);
 
-ztnef_t *ztnef_create_parser();
-void ztnef_set_default_charset(ztnef_t *parser, const char *charset);
-void ztnef_parse_from_data(ztnef_t *parser, const char *tnef_data, int tnef_data_len);
-zbool_t ztnef_parse_from_pathname(ztnef_t *parser, const char *pathname);
+/* 如果是text类型的mime, 则返回其文本字符集 */
+const char *ztnef_mime_get_charset(ztnef_mime_t *mime);
+
+/* 创建tnef解析器 */
+ztnef_t * ztnef_create_parser_from_data(const char *tnef_data, int tnef_data_len, const char *default_charset);
+ztnef_t *ztnef_create_parser_from_pathname(const char *pathname, const char *default_charset);
 void ztnef_free(ztnef_t *parser);
+
+/* 原始数据 */
 const char *ztnef_get_data(ztnef_t *parser);
+
+/* 原始数据长度 */
 int ztnef_get_len(ztnef_t *parser);
+
+/* 全部 mime */
 const zvector_t *ztnef_get_all_mimes(ztnef_t *parser);
+
+/* 全部附件 mime */
+const zvector_t *ztnef_get_attachment_mimes(ztnef_t *parser);
+
+/* 全部文本(应该作为正文显示) mime, 包括 plain, html, 和 rtf */
+const zvector_t *ztnef_get_text_mimes(ztnef_t *parser);
+
+/* debug输出 */
 void ztnef_debug_show(ztnef_t *parser);
 
-/* zjson_t ############################################################### */
-
+/* zjson_t, src/json/ #################################################### */
+/* json 库, 序列号/反序列化, 例子见 sample/json/  */
 #define zvar_json_type_null        0
 #define zvar_json_type_bool        1
 #define zvar_json_type_string      2
@@ -1419,19 +2313,40 @@ struct zjson_t {
 };
 #pragma pack(pop)
 
-zjson_t *zjson_create();
+/* 创建json */
+zjson_t *zjson_create(void);
+
+/* 创建undefined/null */
 #define zjson_create_null zjson_create
+
+/* 创建bool */
 zjson_t *zjson_create_bool(zbool_t b);
+
+/* long */
 zjson_t *zjson_create_long(long l);
+
+/* doube */
 zjson_t *zjson_create_double(double d);
+
+/* string */
 zjson_t *zjson_create_string(const void *s, int len);
+
+/* 释放 */
 void zjson_free(zjson_t *j);
+
+/* 重置 */
 void zjson_reset(zjson_t *j);
-/* */
+
+/* 从文件加载并分析(反序列化)数据 */
 zbool_t zjson_load_from_pathname(zjson_t *j, const char *pathname);
+
+/* 反序列化数据 */
 zbool_t zjson_unserialize(zjson_t *j, const char *s, int len);
+
+/* 序列化json, 结果追加到result */
 void zjson_serialize(zjson_t *j, zbuf_t *result, int strict);
-/* */
+
+/* json的类型 */
 zinline int zjson_get_type(zjson_t *j) { return j->type; }
 zinline zbool_t zjson_is_null(zjson_t *j)   { return j->type==zvar_json_type_null; }
 zinline zbool_t zjson_is_bool(zjson_t *j)   { return j->type==zvar_json_type_bool; }
@@ -1440,26 +2355,51 @@ zinline zbool_t zjson_is_double(zjson_t *j) { return j->type==zvar_json_type_dou
 zinline zbool_t zjson_is_string(zjson_t *j) { return j->type==zvar_json_type_string; }
 zinline zbool_t zjson_is_object(zjson_t *j) { return j->type==zvar_json_type_object; }
 zinline zbool_t zjson_is_array(zjson_t *j)  { return j->type==zvar_json_type_array; }
-/* get value */
+
+/* 获取bool值的指针; 如果不是bool类型,则首先转换为bool类型, 默认为 0 */
 zbool_t *zjson_get_bool_value(zjson_t *j);
+
+/* 获取long值的指针; 如果不是long类型, 则首先转换为long类型, 默认为 0 */
 long *zjson_get_long_value(zjson_t *j);
+
+/* 获取double值的指针; 如果不是double类型, 则首先转换为long类型, 默认为 0 */
 double *zjson_get_double_value(zjson_t *j);
+
+/* 获取(zbuf_t *)值的指针; 如果不是zbuf_t *类型, 则首先转换为zbuf_t *类型, 值默认为 "" */
 zbuf_t **zjson_get_string_value(zjson_t *j);
+
+/* 获取数组值的指针; 如果不是数组类型, 则首先转换为数组类型, 默认为 [] */
 const zvector_t *zjson_get_array_value(zjson_t *j); /* <zjson_t *> */
+
+/* 获取对象值的指针; 如果不是对象类型, 则首先转换为对象类型, 默认为 {} */
 const zmap_t *zjson_get_object_value(zjson_t *j); /* <char *, zjson_t *> */
+
+/* 如果不是数组,先转为数组, 获取下表为idx的 子json */
 zjson_t *zjson_array_get(zjson_t *j, int idx);
+
+/* 如果不是对象,先转为对象, 获取下键为key的子json */
 zjson_t *zjson_object_get(zjson_t *j, const char *key);
+
+/* 如果不是数组,先转为数组, 获取数组长度 */
 int zjson_array_get_len(zjson_t *j);
+
+/* 如果不是对象,先转为对象, 获取子json个数 */
 int zjson_object_get_len(zjson_t *j);
 
-/* zjson_array_push 在数组后追加element(json). 返回element */
+/* 如果不是数组,先转为数组, 在数组后追加element(json). 返回element */
 zjson_t *zjson_array_push(zjson_t *j, zjson_t *element);
 #define zjson_array_add zjson_array_push
 
-/* zjson_array_pop, 存在则返回真,否则假.
+/* 如果不是数组,先转为数组, 存在则返回1, 否则返回 0;
  * element不为0,则pop出来的json赋值给*element, 否则销毁 */
 zbool_t zjson_array_pop(zjson_t *j, zjson_t **element);
+
+
+/* 如果不是数组,先转为数组, 存在则返回1, 否则返回 0;
+ * element不为0,则unshift出来的json赋值给*element, 否则销毁 */
 zjson_t *zjson_array_unshift(zjson_t *j, zjson_t *element);
+
+/* 如果不是数组,先转为数组, 在数组前追加element(json). 返回element */
 zbool_t zjson_array_shift(zjson_t *j, zjson_t **element);
 
 /* 已知 json = [1, {}, "ss" "aaa"]
@@ -1475,70 +2415,179 @@ zbool_t zjson_array_shift(zjson_t *j, zjson_t **element);
  *    3.3, 例子: zjson_array_update_element(json, 2, element, 0);
  *         结果: [1, {}, element, "aaa"], 且 销毁 "ss" */
 zjson_t *zjson_array_update(zjson_t *j, int idx, zjson_t *element, zjson_t **old_element);
+
+/* 把element插入idx处, idx及其后元素顺序后移 */
 zjson_t *zjson_array_insert(zjson_t *j, int idx, zjson_t *element);
+
+/* 移除idx处json,并把其值付给 *old_element, idx后元素属性前移 */
 void zjson_array_delete(zjson_t *j, int idx, zjson_t **old_element);
 
-/* zjson_object_add_element 如上 */
+/* 增加或更新键为key对应的json, 新值为element;
+ * 旧值如果存在则赋值给*old_element, 如果old_element为了0则销毁  */
 zjson_t *zjson_object_update(zjson_t *j, const char *key, zjson_t *element, zjson_t **old_element);
 #define zjson_object_add zjson_object_update
+
+/* 移除键key及对应的json;
+ * json如果存在则赋值给*old_element, 如果old_element为了0则销毁  */
 void zjson_object_delete(zjson_t *j, const char *key, zjson_t **old_element);
 
-/* zjson_get_element_by_path 得到路径path对应的zjson_t值, 并返回
- * 已知json {group:{linux:[{}, {}, {me: {age:18, sex:"male"}}}}, 则
+/* 已知json {group:{linux:[{}, {}, {me: {age:18, sex:"male"}}}}, 则
  * zjson_get_element_by_path(json, "group/linux/2/me") 返回的 应该是 {age:18, sex:"male"} */
 zjson_t *zjson_get_element_by_path(zjson_t *j, const char *path);
-/* zjson_get_element_by_path_vec 如上 
- * zjson_get_element_by_path_vec(json, "group", "linux", "2", "me", 0); */
+
+
+/* 已知json {group:{linux:[{}, {}, {me: {age:18, sex:"male"}}}}, 则
+ * zjson_get_element_by_path_vec(json, "group", "linux", "2", "me", 0); 返回的 应该是 {age:18, sex:"male"} */
 zjson_t *zjson_get_element_by_path_vec(zjson_t *j, const char *path0, ...);
-/* */
+
+
+/* 返回父节点 */
 zinline zjson_t *zjson_get_parent(zjson_t *j) { return j->parent; }
+
+/* 返回祖先 */
 zjson_t *zjson_get_top(zjson_t *j);
 
-/* memcache client #################################################### */
-zmemcache_client_t *zmemcache_client_connect(const char *destination, int cmd_timeout, zbool_t auto_reconnect);
-void zmemcache_client_set_cmd_timeout(zmemcache_client_t *mc, int timeout);
+/* memcache client, src/memcache/ ##################################### */
+/* memcache 客户端, 例子见 sample/memcache/ */
+
+/* 创建连接器; destination: 见 zconnect; timeout: connect超时,单位秒; auto_reconnect: 是否自动重连 */
+zmemcache_client_t *zmemcache_client_connect(const char *destination, int connect_timeout, zbool_t auto_reconnect);
+
+/* 设置connect超时时间, 单位秒 */
+void zmemcache_client_set_connect_timeout(zmemcache_client_t *mc, int connect_timeout);
+
+/* 设置可读超时时间, 单位秒 */
+void zmemcache_client_set_read_wait_timeout(zmemcache_client_t *mc, int read_wait_timeout);
+
+/* 设置可写超时时间, 单位秒 */
+void zmemcache_client_set_write_wait_timeout(zmemcache_client_t *mc, int write_wait_timeout);
+
+/* 设置是否自动重连 */
 void zmemcache_client_set_auto_reconnect(zmemcache_client_t *mc, zbool_t auto_reconnect);
+
+/* 断开连接 */
 void zmemcache_client_disconnect(zmemcache_client_t *mc);
+
+/* GET命令, 返回 -1: 错, 0: 不存在, 1: 存在 */
+/* key: 键; *flag: 返回的标记; value: 返回的值, zbuf_reset(value) */
 int zmemcache_client_get(zmemcache_client_t *mc, const char *key, int *flag, zbuf_t *value);
+
+/* ADD/SET/REPLACE/APPEND/PREPEND命令, 返回 -1:错; 0:存储失败; 1:存储成功 */
+/* key: 键; flag: 标记; data/len: 值/长度; */
 int zmemcache_client_add(zmemcache_client_t *mc, const char *key, int flag, long timeout, const void *data, int len); 
 int zmemcache_client_set(zmemcache_client_t *mc, const char *key, int flag, long timeout, const void *data, int len); 
 int zmemcache_client_replace(zmemcache_client_t *mc, const char *key, int flag, long timeout, const void *data, int len); 
 int zmemcache_client_append(zmemcache_client_t *mc, const char *key, int flag, long timeout, const void *data, int len); 
 int zmemcache_client_prepend(zmemcache_client_t *mc, const char *key, int flag, long timeout, const void *data, int len); 
+
+/* INCR命令, 返回 -1: 错; >= 0: incr的结果 */
 long zmemcache_client_incr(zmemcache_client_t *mc, const char *key, unsigned long n);
+
+/* DECR命令, 返回 -1: 错; >= 0: decr的结果 */
 long zmemcache_client_decr(zmemcache_client_t *mc, const char *key, unsigned long n);
+
+/* DEL命令, 返回 -1: 错; 0: 不存在; 1: 删除成功 */
 int zmemcache_client_del(zmemcache_client_t *mc, const char *key);
+
+
+/* FLUASH_ALL命令, 返回 -1:错; 0: 未知; 1: 成功 */
 int zmemcache_client_flush_all(zmemcache_client_t *mc, long after_second);
+
+/* VERSION命令, -1: 错; 1:成功 */
 int zmemcache_client_version(zmemcache_client_t *mc, zbuf_t *version);
 
-/* redis client ####################################################### */
-zredis_client_t *zredis_client_connect(const char *destinations, const char *password, int cmd_timeout, zbool_t auto_reconnect);
-zredis_client_t *zredis_client_connect_cluster(const char *destinations, const char *password, int cmd_timeout, zbool_t auto_reconnect);
-void zredis_client_set_cmd_timeout(zredis_client_t *rc, int cmd_timeout);
+/* redis client, src/redis/ ########################################### */
+/* redis 客户端, 例子见 sample/redis/ */
+
+/* 创建连接器 */
+/* destinations: 见 zconnect */
+/* password: 密码, 空: 没有密码 */
+/* connect_timeout: 连接超时,单位秒 */
+/* auto_reconnect: 是否自动重连 */
+zredis_client_t *zredis_client_connect(const char *destination, const char *password, int connect_timeout, zbool_t auto_reconnect);
+
+/* 创建连接器, 同上. 连接集群 */
+zredis_client_t *zredis_client_connect_cluster(const char *destination, const char *password, int connect_timeout, zbool_t auto_reconnect);
+
+/* 设置命令超时时间, 单位秒 */
+void zredis_client_set_connect_timeout(zredis_client_t *rc, int connect_timeout);
+
+/* 设置可读超时时间, 单位秒 */
+void zredis_client_set_read_wait_timeout(zredis_client_t *rc, int read_wait_timeout);
+
+/* 设置可写超时时间, 单位秒 */
+void zredis_client_set_write_wait_timeout(zredis_client_t *rc, int write_wait_timeout);
+
+/* 设置是否自动重连 */
 void zredis_client_set_auto_reconnect(zredis_client_t *rc, zbool_t auto_reconnect);
+
+/* 获取错误信息 */
 const char * zredis_client_get_error_msg(zredis_client_t *rc);
+
+/* 释放 */
 void zredis_client_free(zredis_client_t *rc);
+
+/* redis命令返回结果可以抽象为json, 绝大部分可以简化为4类:
+ * 1: 成功/失败, 2: 整数, 3: 字符串, 4:字符换vecgtor */
+
+/* 下面的 (redis_fmt, ...) 介绍:
+ * 's':  char *; 'S': zuf_t *; d: int; l: long int; f: double;
+ * 'L': zlist_t * <zbuf_t *>
+ * 'V': zvector_t * <zbuf_t *>
+ * 'A': zargv_t *
+ * 'P': char **, 0结尾
+ * 例子1: 检查key是否存在:
+ *      zredis_client_get_success(rc, "ss", "EXISTS", "somekey");
+ * 例子2: 将 key 所储存的值加上增量 increment:
+ *      zredis_client_get_long(rc, &number_ret, "ssl", "INRBY", "somekey", some_longint); 或
+ *      zredis_client_get_long(rc, &number_ret, "sss", "INRBY", "somekey", "some_longint_string"); 或
+ * */
+
+/* 返回 -1: 错; 0: 失败/不存在/逻辑错误/...; 1: 成功/存在/逻辑正确/... */
 int zredis_client_get_success(zredis_client_t *rc, const char *redis_fmt, ...);
+
+/* 返回: 如上; 一些命令, 适合得到一个整数结果并赋值给 *number_ret, 如 klen/incrby/ttl 等 */
 int zredis_client_get_long(zredis_client_t *rc, long *number_ret, const char *redis_fmt, ...);
+
+/* 返回: 如上; 一些命令, 适合得到一个字符串结果赋值给string_ret, 如 GET/HGET/ */
 int zredis_client_get_string(zredis_client_t *rc, zbuf_t *string_ret, const char *redis_fmt, ...);
+
+/* 返回: 如上; 一些命令, 适合得到一串字符串结果并赋值给string_ret, 如 MGET/HMGET/ */
 int zredis_client_get_vector(zredis_client_t *rc, zvector_t *vector_ret, const char *redis_fmt, ...);
+
+/* 返回: 如上; 所有命令都可以用 zredis_client_get_json */
 int zredis_client_get_json(zredis_client_t *rc, zjson_t *json_ret, const char *redis_fmt, ...);
+
+/* 返回: 如上; 多类结论 */
 int zredis_client_vget(zredis_client_t *rc, long *number_ret, zbuf_t *string_ret, zvector_t *vector_ret, zjson_t *json_ret, const char *redis_fmt, va_list ap);
+
+/* 返回: 如上; 命令选择 SCAN/HSCAN/SSCAN/ZSCAN/... */
+/* vector_ret: 保存当前结果; *cursor_ret: 保存cursor */
 int zredis_client_scan(zredis_client_t *rc,zvector_t *vector_ret,long *cursor_ret,const char *redis_fmt, ...);
+
+/* 返回: 如上; 命令info, 对返回的字符换结果分析成词典, 保存在info */
 int zredis_client_get_info_dict(zredis_client_t *rc, zdict_t *info);
+
+/* 返回: 如上; 订阅命令, 不必输入 "SUBSCRIBE" */
 int zredis_client_subscribe(zredis_client_t *rc, const char *redis_fmt, ...);
+
+/* 返回: 如上; 模式订阅命令, 不必输入 "PSUBSCRIBE" */
 int zredis_client_psubscribe(zredis_client_t *rc, const char *redis_fmt, ...);
+
+/* 返回: 如上; 获取消息, 结果保存在 vector_ret; 如果没有消息则阻塞 */
 int zredis_client_fetch_channel_message(zredis_client_t *rc, zvector_t *vector_ret);
 
+
 /* redis puny server ######################################### */
+/* 模拟标准redis服务, 部分支持 键/字符串/哈希表 */
 extern void (*zredis_puny_server_before_service)(void);
-extern void (*zredis_puny_server_before_reload)(void);
-extern void (*zredis_puny_server_before_exit)(void);
+extern void (*zredis_puny_server_before_softstop)(void);
 extern void (*zredis_puny_server_service_register) (const char *service, int fd, int fd_type);
 int zredis_puny_server_main(int argc, char **argv);
 void zredis_puny_server_exec_cmd(zvector_t *cmd);
 
-/* url ############################################################ */
+/* url, src/http/ ################################################# */
+/* url 解析, 例子见 sample/http/ */
 struct zurl_t {
     char *scheme;
     char *destination;
@@ -1548,110 +2597,206 @@ struct zurl_t {
     char *fragment;
     int port;
 };
+
+/* 解析url字符换 */
 zurl_t *zurl_parse(const char *url_string);
 void zurl_free(zurl_t *url);
+
+/* debug输出 */
 void zurl_debug_show(zurl_t *url);
 
+/* 解析query部分, 保存在query_vars, 并返回; 如果 query_vars==0, 则创建 */
 zdict_t *zurl_query_parse(const char *query, zdict_t *query_vars);
+
+/* 从词典query_vars, 组成query字符串保存在query_result; strict_flag: 是否严格编码 */
 char *zurl_query_build(const zdict_t *query_vars, zbuf_t *query_result, zbool_t strict);
 
-/* cookie ######################################################### */
+/* cookie, src/http/ ############################################### */
+/* 例子见 sample/http/ */
+
+/* 解析cookie字符串, 保存在cookies, 并返回; 如果 cookies == 0, 则创建 */
 zdict_t *zhttp_cookie_parse(const char *raw_cookie, zdict_t *cookies);
+
+/* 生成一个cookie条目, 保存在 cookie_result */
+/* name: 名称; */
+/* value: 值; 为空则删除 */
+/* expires: 设置过期时间, >0 生效 */
+/* path: cookie 路径, 为空则忽略 */
+/* domain: 作用域, 为空则忽略 */
+/* secure: 是否安全 */
+/* httponly: 是否httponly */
 char *zhttp_cookie_build_item(const char *name, const char *value, long expires, const char *path, const char *domain, zbool_t secure, zbool_t httponly, zbuf_t *cookie_result);
 
-/* httpd ########################################################## */
-zbool_t zvar_httpd_debug;
-zbool_t zvar_httpd_no_cache;
+/* httpd, src/http/ ############################################### */
+/* httpd, 例子见 sample/http/ */
+extern zbool_t zvar_httpd_debug;
+extern zbool_t zvar_httpd_no_cache;
 
+/* 从fd, 或ssl 创建http对象 */
 zhttpd_t *zhttpd_open_fd(int sock);
 zhttpd_t *zhttpd_open_ssl(SSL *ssl);
 void zhttpd_close(zhttpd_t *httpd, zbool_t close_fd_and_release_ssl);
+
+/* 执行 */
 void zhttpd_run(zhttpd_t *httpd);
+
+/* 设置handler */
 void zhttpd_set_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 void zhttpd_set_HEAD_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 void zhttpd_set_OPTIONS_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 void zhttpd_set_DELETE_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 void zhttpd_set_TRACE_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 void zhttpd_set_PATCH_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
+
+/* 设置/获取上下文 */
 void zhttpd_set_context(zhttpd_t *httpd, const void *context);
 void *zhttpd_get_context(zhttpd_t *httpd);
 
-/* set attribute */
-void zhttpd_set_exception(zhttpd_t *httpd);
+/* 停止httpd */
 void zhttpd_set_stop(zhttpd_t *httpd);
+
+/* 设置keep-alive时间, timeout: 秒 */
 void zhttpd_set_keep_alive_timeout(zhttpd_t *httpd, int timeout);
+
+/* 设置http协议头超时时间 */
 void zhttpd_set_request_header_timeout(zhttpd_t *httpd, int timeout);
+
+/* 通用超时等待可读, 单位秒, timeout<0: 表示无限长 */
+void zhttpd_set_read_wait_timeout(zhttpd_t *httpd, int read_wait_timeout);
+
+/* 通用超时等待可写, 单位秒 */
+void zhttpd_set_write_wait_timeout(zhttpd_t *httpd, int write_wait_timeout);
+
+/* 设置post方式最大长度 */
 void zhttpd_set_max_length_for_post(zhttpd_t *httpd, int max_length);
+
+/* 设置post方式临时目录 */
 void zhttpd_set_tmp_path_for_post(zhttpd_t *httpd, const char *tmp_path);
+
+/* 设置支持form_data协议, 默认不支持 */
 void zhttpd_enable_form_data(zhttpd_t *httpd);
 
+/* 请求的方法: GET/POST/... */
 const char *zhttpd_request_get_method(zhttpd_t *httpd);
+
+/* 请求的主机名 */
 const char *zhttpd_request_get_host(zhttpd_t *httpd);
+
+/* 请求的url路径 */
 const char *zhttpd_request_get_path(zhttpd_t *httpd);
+
+/* 请求的URI */
 const char *zhttpd_request_get_uri(zhttpd_t *httpd);
+
+/* http版本 */
 const char *zhttpd_request_get_version(zhttpd_t *httpd);
+
+/* 0: 1.0;  1: 1.1 */
 int zhttpd_request_get_version_code(zhttpd_t *httpd);
+
+/* 分析http头Content-Lengtgh字段 */
 long zhttpd_request_get_content_length(zhttpd_t *httpd);
+
+/* 请求是否是 gzip/deflate */
 zbool_t zhttpd_request_is_gzip(zhttpd_t *httpd);
 zbool_t zhttpd_request_is_deflate(zhttpd_t *httpd);
 
+/* 全部http头 */
 const zdict_t *zhttpd_request_get_headers(zhttpd_t *httpd);
+
+/* url queries, 解析后 */
 const zdict_t *zhttpd_request_get_query_vars(zhttpd_t *httpd);
+
+/* post queries, 解析后 */
 const zdict_t *zhttpd_request_get_post_vars(zhttpd_t *httpd);
+
+/* cookies, 解析后 */
 const zdict_t *zhttpd_request_get_cookies(zhttpd_t *httpd);
 
+/* 获取全部上传文件的信息 */
 const zvector_t *zhttpd_request_get_uploaded_files(zhttpd_t *httpd); /* zhttpd_uploaded_file * */
 
-/* response completely */
+/* 快速回复 */
 void zhttpd_response_200(zhttpd_t *httpd, const char *data, int size);
 void zhttpd_response_304(zhttpd_t *httpd, const char *etag);
 void zhttpd_response_404(zhttpd_t *httpd);
 void zhttpd_response_500(zhttpd_t *httpd);
 void zhttpd_response_501(zhttpd_t *httpd);
 
+/* 设置 默认handler */
 void zhttpd_set_200_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *data, int size));
 void zhttpd_set_304_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *etag));
 void zhttpd_set_404_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 void zhttpd_set_500_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 void zhttpd_set_501_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 
-/* response header */
+void zhttpd_show_log_inner(zhttpd_t *httpd, const char *code, int length);
+/* 输出 initialization; version: "http/1.0", "http/1.1", 0(采用请求值); status: 如 "200 XXX"  */
 void zhttpd_response_header_initialization(zhttpd_t *httpd, const char *version, const char *status);
+
+/* 输出header */
 void zhttpd_response_header(zhttpd_t *httpd, const char *name, const char *value);
+
+/* 输出header, value为date类型 */
 void zhttpd_response_header_date(zhttpd_t *httpd, const char *name, long value);
+
+/* 输出Content-Type; charset: 为空则取 UTF-8 */
 void zhttpd_response_header_content_type(zhttpd_t *httpd, const char *value, const char *charset);
+
+/* 输出http体长度 */
 void zhttpd_response_header_content_length(zhttpd_t *httpd, long length);
+
+/* 设置cookie */
 void zhttpd_response_header_set_cookie(zhttpd_t *httpd, const char *name, const char *value, long expires, const char *path, const char *domain, zbool_t secure, zbool_t httponly);
+
+/* 删除cookie */
 void zhttpd_response_header_unset_cookie(zhttpd_t *httpd, const char *name);
+
+/* http头输出完毕 */
 void zhttpd_response_header_over(zhttpd_t *httpd);
 
-/* response body */
+/* 写http体 */
 void zhttpd_response_write(zhttpd_t *httpd, const void *data, int len);
 void zhttpd_response_puts(zhttpd_t *httpd, const char *data);
 void zhttpd_response_append(zhttpd_t *httpd, const zbuf_t *bf);
 void zhttpd_response_printf_1024(zhttpd_t *httpd, const char *format, ...);
 void zhttpd_response_flush(zhttpd_t *httpd);
 
-/* stream */
+/* 获取http的stream */
 zstream_t *zhttpd_get_stream(zhttpd_t *httpd);
 
-/* zhttpd_uploaded_file_t */
+/* 上传文件路径名 */
 const char *zhttpd_uploaded_file_get_pathname(zhttpd_uploaded_file_t *fo);
+
+/* 上传文件名称 */
 const char *zhttpd_uploaded_file_get_name(zhttpd_uploaded_file_t *fo);
+
+/* 上传文件大小; -1: 错 */
 int zhttpd_uploaded_file_get_size(zhttpd_uploaded_file_t *fo);
+
+/* 保存上传文件到指定文件路径 */
 int zhttpd_uploaded_file_save_to(zhttpd_uploaded_file_t *fo, const char *pathname);
+
+/* 获取上传文件数据 */
 int zhttpd_uploaded_file_get_data(zhttpd_uploaded_file_t *fo, zbuf_t *data);
 
-/* extend response file */
+/* 输出一个文件 */
 void zhttpd_response_file(zhttpd_t *httpd, const char *pathname, const char *content_type, int max_age);
+
+/* 输出一个文件, 带gzip */
 void zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *gzip_pathname, const char *content_type, int max_age);
+
+/* 输出一个文件 */
 void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *pathname, const char *gzip_pathname, const char *content_type, int max_age);
 
+/* 日志 */
+#define zhttpd_show_log(httpd, fmt, args...) { zinfo("%s "fmt, zhttpd_get_prefix_log_msg(httpd), ##args) }
+const char *zhttpd_get_prefix_log_msg(zhttpd_t *httpd);
+
 /* sqlite3 ################################################## */
-/* zsqlite3_proxd based on zevent_server */
+/* zsqlite3_proxd based on zaio_server */
 extern void (*zsqlite3_proxy_server_before_service)(void);
-extern void (*zsqlite3_proxy_server_before_reload)(void);
-extern void (*zsqlite3_proxy_server_before_exit)(void);
+extern void (*zsqlite3_proxy_server_before_softstop)(void);
 extern void (*zsqlite3_proxy_server_service_register) (const char *service, int fd, int fd_type);
 int zsqlite3_proxy_server_main(int argc, char **argv);
 
@@ -1666,25 +2811,41 @@ int zsqlite3_proxy_client_get_row(zsqlite3_proxy_client_t *client, zbuf_t ***row
 int zsqlite3_proxy_client_get_column(zsqlite3_proxy_client_t *client);
 const char *zsqlite3_proxy_client_get_error_msg(zsqlite3_proxy_client_t *client);
 
-/* cdb ################################################################ */
+/* cdb, src/cdb/ ###################################################### */
+/* 一种新的静态db, 不支持修改, 例子见 sample/cdb/ */
+
 #define zvar_cdb_code_version "0001"
+
+/* 打开句柄 */
 zcdb_t *zcdb_open(const char *cdb_pathname);
 zcdb_t *zcdb_open2(const char *cdb_pathname, zbuf_t *error_msg);
-int zcdb_get_count(zcdb_t *cdb);
-/* -1:出错, 0: 没找到, 1: 找到. 线程安全 */
-int zcdb_find(zcdb_t *cdb, const void *key, int klen, void **val, int *vlen);
 void zcdb_close(zcdb_t *cdb);
 
+/* cdb成员个数 */
+int zcdb_get_count(zcdb_t *cdb);
+
+/* -1:出错, 0: 没找到, 1: 找到. 线程安全 */
+int zcdb_find(zcdb_t *cdb, const void *key, int klen, void **val, int *vlen);
+
+/* 创建遍历器 */
 zcdb_walker_t *zcdb_walker_create(zcdb_t *cdb);
-/* -1:出错, 0: 没找到, 1: 找到. 非线程安全 */
-int zcdb_walker_walk(zcdb_walker_t *walker, void **key, int *klen, void **val, int *vlen);
-void zcdb_walker_reset(zcdb_walker_t *walker);
 void zcdb_walker_free(zcdb_walker_t *walker);
 
+/* -1:出错, 0: 没找到, 1: 找到. 非线程安全 */
+int zcdb_walker_walk(zcdb_walker_t *walker, void **key, int *klen, void **val, int *vlen);
+
+/* 重置 */
+void zcdb_walker_reset(zcdb_walker_t *walker);
+
+/* 创建生成器 */
 zcdb_builder_t *zcdb_builder_create();
-void zcdb_builder_update(zcdb_builder_t *builder, const void *key, int klen, const void *val, int vlen);
-int zcdb_builder_build(zcdb_builder_t *builder, const char *dest_db_pathname);
 void zcdb_builder_free(zcdb_builder_t *builder);
+
+/* 更新值 */
+void zcdb_builder_update(zcdb_builder_t *builder, const void *key, int klen, const void *val, int vlen);
+
+/* 生成zcddb文件, 保存(覆盖写)在 dest_db_pathname */
+int zcdb_builder_build(zcdb_builder_t *builder, const char *dest_db_pathname);
 
 /* END ################################################################ */
 #ifdef ZC_NAMESAPCE_NO_MALLOC

@@ -16,17 +16,18 @@ struct zsqlite3_proxy_client_t {
     zstream_t *fp;
     zbuf_t *error_msg;
     zbuf_t **row;
-    short int column_count:14;
+    short int column_count;
     unsigned short int auto_reconnect:1;
     unsigned short int query_over:1;
 };
 
 zsqlite3_proxy_client_t *zsqlite3_proxy_client_connect(const char *destination, zbool_t auto_reconnect)
 {
-    int fd = zconnect(destination, 0, 0);
+    int fd = zconnect(destination, 0);
     if (fd < 0) {
         return 0;
     }
+    znonblocking(fd, 1);
     zsqlite3_proxy_client_t *client = (zsqlite3_proxy_client_t *)zcalloc(1, sizeof(zsqlite3_proxy_client_t));
     client->destination = zstrdup(destination);
     client->auto_reconnect = auto_reconnect;
@@ -64,10 +65,11 @@ static zbool_t _zsqlite3_proxy_client_connect(zsqlite3_proxy_client_t *client, z
         return 0;
     }
     for (int retry = 0; retry < 2; retry++) {
-        int fd = zconnect(client->destination, 0, 0);
+        int fd = zconnect(client->destination, 0);
         if (fd < 0) {
             continue;
         }
+        znonblocking(fd, 1);
         client->fp = zstream_open_fd(fd);
         break;
     }
@@ -128,7 +130,7 @@ int zsqlite3_proxy_client_log(zsqlite3_proxy_client_t *client, const char *sql, 
         return -1;
     }
 
-    zstream_write_size_data_size(client->fp, len+1);
+    zstream_write_cint(client->fp, len+1);
     zstream_putc(client->fp, 'L');
     zstream_write(client->fp, sql, len);
     zstream_flush(client->fp);
@@ -155,7 +157,7 @@ int zsqlite3_proxy_client_exec(zsqlite3_proxy_client_t *client, const char *sql,
         return -1;
     }
 
-    zstream_write_size_data_size(client->fp, len+1);
+    zstream_write_cint(client->fp, len+1);
     zstream_putc(client->fp, 'E');
     zstream_write(client->fp, sql, len);
     zstream_flush(client->fp);
@@ -165,7 +167,7 @@ int zsqlite3_proxy_client_exec(zsqlite3_proxy_client_t *client, const char *sql,
         return -1;
     }
 
-    len = zstream_size_data_get_size(client->fp);
+    len = zstream_get_cint(client->fp);
     if ((len < 1) || (len > 10000)) {
         proxy_set_errmsg("read");
         _zsqlite3_proxy_client_disconnect(client);
@@ -196,8 +198,14 @@ int zsqlite3_proxy_client_exec(zsqlite3_proxy_client_t *client, const char *sql,
 
 int zsqlite3_proxy_client_query(zsqlite3_proxy_client_t *client, const char *sql, int len)
 {
-
     _zsqlite3_proxy_client_clear_query(client);
+    if (client->row) {
+        for (int i = 0; i < client->column_count; i++) {
+            zbuf_free(client->row[i]);
+        }
+        zfree(client->row);
+        client->row = 0;
+    }
 
     if (zempty(sql) || (len == 0)) {
         return 1;
@@ -212,7 +220,7 @@ int zsqlite3_proxy_client_query(zsqlite3_proxy_client_t *client, const char *sql
 
     client->query_over = 0;
 
-    zstream_write_size_data_size(client->fp, len+1);
+    zstream_write_cint(client->fp, len+1);
     zstream_putc(client->fp, 'Q');
     zstream_write(client->fp, sql, len);
     zstream_flush(client->fp);
@@ -222,7 +230,7 @@ int zsqlite3_proxy_client_query(zsqlite3_proxy_client_t *client, const char *sql
         return -1;
     }
 
-    len = zstream_size_data_get_size(client->fp);
+    len = zstream_get_cint(client->fp);
     if ((len < 1) || (len > 10000)) {
         proxy_set_errmsg("read");
         _zsqlite3_proxy_client_disconnect(client);
@@ -257,12 +265,19 @@ int zsqlite3_proxy_client_query(zsqlite3_proxy_client_t *client, const char *sql
 
 int zsqlite3_proxy_client_get_row(zsqlite3_proxy_client_t *client, zbuf_t ***row)
 {
+    if (client->row) {
+        for (int i = 0; i < client->column_count; i++) {
+            zbuf_free(client->row[i]);
+        }
+        zfree(client->row);
+        client->row = 0;
+    }
     if (client->fp == 0) {
         proxy_set_errmsg("closed");
         client->query_over = 1;
         return -1;
     }
-    int len = zstream_size_data_get_size(client->fp);
+    int len = zstream_get_cint(client->fp);
     if (len < 1) {
         proxy_set_errmsg("read");
         _zsqlite3_proxy_client_disconnect(client);
@@ -313,12 +328,6 @@ int zsqlite3_proxy_client_get_row(zsqlite3_proxy_client_t *client, zbuf_t ***row
         zbuf_free(cbuf);
         return -1;
     }
-    if (client->row) {
-        for (int i = 0; i < client->column_count; i++) {
-            zbuf_free(client->row[i]);
-        }
-        zfree(client->row);
-    }
     client->row = (zbuf_t **)zcalloc(client->column_count, sizeof(zbuf_t *));
     *row = client->row;
 
@@ -328,7 +337,7 @@ int zsqlite3_proxy_client_get_row(zsqlite3_proxy_client_t *client, zbuf_t ***row
     while(len > 0) {
         char *result_data;
         int result_len;
-        int offset = zsize_data_unescape(ps, len, (void **)&result_data, &result_len);
+        int offset = zcint_data_unescape(ps, len, (void **)&result_data, &result_len);
         if ((offset < 0) || (offset > len)) {
             proxy_set_errmsg("unescape row");
             _zsqlite3_proxy_client_disconnect(client);

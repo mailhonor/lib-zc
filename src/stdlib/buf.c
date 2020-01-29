@@ -76,22 +76,19 @@ int zbuf_put_do(zbuf_t *bf, int ch)
     return ZBUF_PUT(bf, ch);
 }
 
-int zbuf_strncpy(zbuf_t *bf, const char *src, int len)
+void zbuf_strncpy(zbuf_t *bf, const char *src, int len)
 {
     zbuf_reset(bf);
-    if (len < 1) {
-        return zbuf_len(bf);
-    }
-    while (len-- && *src) {
-        ZBUF_PUT(bf, *src);
-        src++;
+    if (len > 0) {
+        while (len-- && *src) {
+            ZBUF_PUT(bf, *src);
+            src++;
+        }
     }
     zbuf_terminate(bf);
-
-    return (bf->len);
 }
 
-int zbuf_strcpy(zbuf_t *bf, const char *src)
+void zbuf_strcpy(zbuf_t *bf, const char *src)
 {
     zbuf_reset(bf);
 #if 0
@@ -113,25 +110,20 @@ int zbuf_strcpy(zbuf_t *bf, const char *src)
     }
 #endif
     zbuf_terminate(bf);
-
-    return (bf->len);
 }
 
-int zbuf_strncat(zbuf_t *bf, const char *src, int len)
+void zbuf_strncat(zbuf_t *bf, const char *src, int len)
 {
-    if (len < 1) {
-        return zbuf_len(bf);
-    }
-    while (len-- && *src) {
-        ZBUF_PUT(bf, *src);
-        src++;
+    if (len > 0) {
+        while (len-- && *src) {
+            ZBUF_PUT(bf, *src);
+            src++;
+        }
     }
     zbuf_terminate(bf);
-
-    return (bf->len);
 }
 
-int zbuf_strcat(zbuf_t *bf, const char *src)
+void zbuf_strcat(zbuf_t *bf, const char *src)
 {
 #if 0
     while (*src) {
@@ -140,86 +132,79 @@ int zbuf_strcat(zbuf_t *bf, const char *src)
     }
 #else
     int len = strlen(src);
-    int left = zbuf_need_space(bf, len + 1);
-    if (left > len) {
-        memcpy(zbuf_data(bf) + zbuf_len(bf), src, len);
-        bf->len += len;
-    } else {
-        while (len--) {
-            ZBUF_PUT(bf, *src);
-            src++;
+    if (len > 0) {
+        int left = zbuf_need_space(bf, len + 1);
+        if (left > len) {
+            memcpy(zbuf_data(bf) + zbuf_len(bf), src, len);
+            bf->len += len;
+        } else {
+            while (len--) {
+                ZBUF_PUT(bf, *src);
+                src++;
+            }
         }
     }
 #endif
     zbuf_terminate(bf);
-
-    return (bf->len);
 }
 
-int zbuf_memcpy(zbuf_t *bf, const void *src_raw, int len)
+void zbuf_memcpy(zbuf_t *bf, const void *src_raw, int len)
 {
     char *src = (char *)src_raw;
 
     zbuf_reset(bf);
-    if (len < 1) {
-        return zbuf_len(bf);
-    }
+    if (len > 0) {
 #if 0
-    while (len--) {
-        ZBUF_PUT(bf, *src);
-        src++;
-    }
-#else
-    int left = zbuf_need_space(bf, len + 1);
-    if (left > len) {
-        memcpy(zbuf_data(bf) + zbuf_len(bf), src, len);
-        bf->len += len;
-    } else {
         while (len--) {
             ZBUF_PUT(bf, *src);
             src++;
         }
-    }
+#else
+        int left = zbuf_need_space(bf, len + 1);
+        if (left > len) {
+            memcpy(zbuf_data(bf) + zbuf_len(bf), src, len);
+            bf->len += len;
+        } else {
+            while (len--) {
+                ZBUF_PUT(bf, *src);
+                src++;
+            }
+        }
 #endif
+    }
     zbuf_terminate(bf);
-
-    return (bf->len);
 }
 
-int zbuf_memcat(zbuf_t *bf, const void *src_raw, int len)
+void zbuf_memcat(zbuf_t *bf, const void *src_raw, int len)
 {
     char *src = (char *)src_raw;
 
-    if (len < 1) {
-        zbuf_terminate(bf);
-        return zbuf_len(bf);
-    }
+    if (len > 0) {
 #if 0
-    while (len--) {
-        ZBUF_PUT(bf, *src);
-        src++;
-    }
-#else
-    int left = zbuf_need_space(bf, len + 1);
-    if (left > len) {
-        memcpy(zbuf_data(bf) + zbuf_len(bf), src, len);
-        bf->len += len;
-    } else {
         while (len--) {
             ZBUF_PUT(bf, *src);
             src++;
         }
-    }
+#else
+        int left = zbuf_need_space(bf, len + 1);
+        if (left > len) {
+            memcpy(zbuf_data(bf) + zbuf_len(bf), src, len);
+            bf->len += len;
+        } else {
+            while (len--) {
+                ZBUF_PUT(bf, *src);
+                src++;
+            }
+        }
 #endif
+    }
     zbuf_terminate(bf);
-
-    return (bf->len);
 }
 
 /* ################################################################## */
 /* printf */
 
-int zbuf_printf_1024(zbuf_t *bf, const char *format, ...)
+void zbuf_printf_1024(zbuf_t *bf, const char *format, ...)
 {
     va_list ap;
     char buf[1024+1];
@@ -230,24 +215,23 @@ int zbuf_printf_1024(zbuf_t *bf, const char *format, ...)
     len = ((len<1024)?len:(1024-1));
     va_end(ap);
 
-    return zbuf_memcat(bf, buf, len);
+    zbuf_memcat(bf, buf, len);
 }
 
-int zbuf_trim_right_rn(zbuf_t *bf)
+void zbuf_trim_right_rn(zbuf_t *bf)
 {
-    int r = 0;
-    if (bf->len > 0) {
-        if (bf->data[bf->len -1] == '\n') {
+    unsigned char *data = (unsigned char *)(bf->data);
+    while (bf->len > 0) {
+        if(data[bf->len -1] == '\n') {
             bf->len --;
-            r = 1;
+            continue;
         }
-    }
-    if (bf->len > 0) {
-        if (bf->data[bf->len -1] == '\r') {
+        if(data[bf->len -1] == '\r') {
             bf->len --;
+            continue;
         }
+        break;
     }
     zbuf_terminate(bf);
-    return r;
 }
 

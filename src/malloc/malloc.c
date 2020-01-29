@@ -19,7 +19,7 @@ void *zmalloc(int len)
         len = 0;
     }
     if ((r = malloc(len)) == 0) {
-        zfatal("zmalloc: insufficient memory for %d bytes: %m", len);
+        zfatal("FATAL zmalloc: insufficient memory for %d bytes: %m", len);
     }
 
     return r;
@@ -36,7 +36,7 @@ void *zcalloc(int nmemb, int size)
         size = 0;
     }
     if ((r = calloc(nmemb, size)) == 0) {
-        zfatal("zcalloc: insufficient memory for %dx%d bytes: %m", nmemb, size);
+        zfatal("FATAL zcalloc: insufficient memory for %dx%d bytes: %m", nmemb, size);
     }
 
     return r;
@@ -49,7 +49,7 @@ void *zrealloc(const void *ptr, int len)
         len = 0;
     }
     if ((r = realloc((void *)ptr, len)) == 0) {
-        zfatal("zrealloc: insufficient memory for %d bytes: %m", len);
+        zfatal("FATAL zrealloc: insufficient memory for %d bytes: %m", len);
     }
 
     return r;
@@ -68,7 +68,7 @@ char *zstrdup(const char *ptr)
 
     r = strdup(ptr?ptr:"");
     if (r == NULL) {
-        zfatal("zstrdup: insufficient memory : %m");
+        zfatal("FATAL zstrdup: insufficient memory : %m");
     }
 
     return r;
@@ -91,7 +91,7 @@ char *zstrndup(const char *ptr, int n)
     }
     r = strndup(ptr, nlen);
     if (r == NULL) {
-        zfatal("zstrndup: insufficient memory for %d bytes: %m", n);
+        zfatal("FATAL zstrndup: insufficient memory for %d bytes: %m", n);
     }
 
     return r;
@@ -110,7 +110,7 @@ char *zmemdup(const void *ptr, int n)
         n = 0;
     }
     if ((r = (char *)malloc(n)) == 0) {
-        zfatal("zmalloc: insufficient memory for %d bytes: %m", n);
+        zfatal("FATAL zmalloc: insufficient memory for %d bytes: %m", n);
     }
     if (n>0) {
         memcpy(r, ptr, n);
@@ -133,7 +133,7 @@ char *zmemdupnull(const void *ptr, int n)
         n = 0;
     }
     if ((r = (char *)malloc(n+1)) == 0) {
-        zfatal("zmalloc: insufficient memory for %d bytes: %m", (n+1));
+        zfatal("FATAL zmalloc: insufficient memory for %d bytes: %m", (n+1));
     }
     if (n>0) {
         memcpy(r, ptr, n);

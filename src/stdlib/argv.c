@@ -14,6 +14,9 @@ struct zargv_mpool_t {
     zmpool_t *mpool;
 };
 
+void zargv_init(zargv_t *argvp, int size);
+void zargv_fini(zargv_t *argvp);
+
 zargv_t *zargv_create(int size)
 {
     zargv_t *argvp = (zargv_t *) zmalloc(sizeof(zargv_t));
@@ -58,7 +61,7 @@ void zargv_fini(zargv_t *argvp)
         }
     }
     if (argvp->mpool_used) {
-            zmpool_free(ama->mpool, argvp->argv);
+        zmpool_free(ama->mpool, argvp->argv);
     } else {
         zfree(argvp->argv);
     }
@@ -139,14 +142,12 @@ void zargv_truncate(zargv_t * argvp, int len)
     }
 }
 
-void zargv_rest(zargv_t * argvp)
-{
-    zargv_truncate(argvp, 0);
-}
-
 zargv_t *zargv_split_append(zargv_t * argvp, const char *string, const char *delim)
 {
     zstrtok_t stok;
+    if (argvp == 0) {
+        argvp = zargv_create(-1);
+    }
 
     zstrtok_init(&stok, (char *)string);
     while (zstrtok(&stok, delim)) {

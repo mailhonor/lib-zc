@@ -26,12 +26,11 @@
 #include <time.h>
 
 #define mydebug(fmt,args...) { if(zvar_master_server_log_debug_enable){zinfo(fmt, ##args);} }
-#define zpthread_lock(l)    {if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
-#define zpthread_unlock(l)  {if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
+#define zpthread_lock(l)    {if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}}
+#define zpthread_unlock(l)  {if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}}
 
 int zvar_master_server_reload_signal = SIGHUP;
 zbool_t zvar_master_server_log_debug_enable = 0;
-int zvar_master_server_dev_mode = 0;
 
 void (*zmaster_server_load_config)(zvector_t *cfs) = 0;
 void (*zmaster_server_before_service)() = 0;
@@ -204,7 +203,7 @@ static void *log_recv_pthread(void *arg)
                 ztimed_read_wait_millisecond(log_sock, 1 * 1000);
                 continue;
             }
-            zfatal("log sock error (%m)");
+            zfatal("FATAL log sock error (%m)");
         }
 
         char *buf_insert = (char *)zmemdupnull(logbuf, num);
@@ -229,12 +228,12 @@ static void log_pthread_init()
 
     char *listen_path = svp[0];
     if (zempty(listen_path)) {
-        zfatal("ERR -log-service %s, no listen address", log_service);
+        zfatal("FATAL ERR -log-service %s, no listen address", log_service);
     }
 
     log_path = zstrdup(svp[1]);
     if (strlen(log_path) < 1) {
-        zfatal("ERR -log-service %s, no path", log_service);
+        zfatal("FATAL ERR -log-service %s, no path", log_service);
     }
 
     if (log_path[strlen(log_path)-1] == '/') {
@@ -254,11 +253,11 @@ static void log_pthread_init()
 
     struct sockaddr_un server_un;
     if ((log_sock = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
-        zfatal("create socket error (%m)");
+        zfatal("FATAL create socket error (%m)");
     }
 
     if (strlen(listen_path) >= (int)sizeof(server_un.sun_path)) {
-        zfatal("socket path too long: %s", listen_path);
+        zfatal("FATAL socket path too long: %s", listen_path);
     }
 
     memset(&server_un, 0, sizeof(struct sockaddr_un));
@@ -266,25 +265,25 @@ static void log_pthread_init()
     memcpy(server_un.sun_path, listen_path, strlen(listen_path) + 1);
 
     if ((log_sock = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
-        zfatal("create socket error (%m)");
+        zfatal("FATAL create socket error (%m)");
     }
 
     if ((zunlink(listen_path) < 0) && (errno != ENOENT)) {
-        zfatal("unlink: %s(%m)", listen_path);
+        zfatal("FATAL unlink: %s(%m)", listen_path);
     }
 
     if (bind(log_sock, (struct sockaddr *)&server_un, sizeof(struct sockaddr_un)) < 0) {
-        zfatal("bind %s (%m)", listen_path);
+        zfatal("FATAL bind %s (%m)", listen_path);
     }
     zclose_on_exec(log_sock, 1);
 
     log_content_list = zlist_create();
     if(pthread_create(&log_save_pthread_id, 0, log_save_pthread, 0)) {
-        zfatal("pthread_create error (%m)");
+        zfatal("FATAL pthread_create error (%m)");
     }
 
     if (pthread_create(&log_recv_pthread_id, 0, log_recv_pthread, 0)) {
-        zfatal("pthread_create error (%m)");
+        zfatal("FATAL pthread_create error (%m)");
     }
 
     zargv_free(sv);
@@ -326,7 +325,7 @@ struct listen_pair_t {
 
 struct child_status_t {
     server_info_t *server;
-    zeio_t *status_ev;
+    zaio_t *status_ev;
     int fd;
     int pid;
     long stamp;
@@ -334,7 +333,8 @@ struct child_status_t {
 };
 
 static char *config_path = 0;
-static int sighup_reload_on = 0;
+static int flag_reload = 0;
+static int flag_stop = 0;
 static int master_status_fd[2];
 static zmap_t *listen_pair_map = 0; /* <char *, listen_pair_t *> */
 static zmap_t *child_status_map = 0; /* <int, child_status_t *> */
@@ -415,7 +415,7 @@ child_status_t *child_status_create()
 void child_status_free(child_status_t *c)
 {
     if (c->status_ev) {
-        zeio_free(c->status_ev, 1);
+        zaio_free(c->status_ev, 1);
         c->status_ev = 0;
     }
     if (c->uri_argv) {
@@ -426,9 +426,9 @@ void child_status_free(child_status_t *c)
 }
 
 /* ########################################################### */
-static void child_strike(zeio_t *eio)
+static void child_strike(zaio_t *eio)
 {
-    child_status_t *cs = (child_status_t *)(zeio_get_context(eio));
+    child_status_t *cs = (child_status_t *)(zaio_get_context(eio));
     server_info_t *server = cs->server;
     if (server) {
         mydebug("master: child_strike, cmd:%s", server->cmd);
@@ -458,7 +458,7 @@ static void start_one_child(server_info_t *server)
 
     int status_fd[2];
     if (pipe(status_fd) == -1) {
-        zfatal("master: pipe (%m)");
+        zfatal("FATAL master: pipe (%m)");
     }
     pid_t pid = fork();
     if (pid == -1) {
@@ -475,9 +475,9 @@ static void start_one_child(server_info_t *server)
         cs->server = server;
         cs->fd = status_fd[1];
         cs->pid = pid;
-        cs->status_ev = zeio_create(status_fd[1], zvar_default_event_base);
-        zeio_set_context(cs->status_ev, cs);
-        zeio_enable_read(cs->status_ev, child_strike);
+        cs->status_ev = zaio_create(status_fd[1], zvar_default_aio_base);
+        zaio_set_context(cs->status_ev, cs);
+        zaio_readable(cs->status_ev, child_strike);
         cs->uri_argv = zargv_create(zmap_len(server->listens));
         ZMAP_WALK_BEGIN(server->listens, fdp, listen_pair_t *, lp) {
             zargv_add(cs->uri_argv, lp->uri);
@@ -491,7 +491,7 @@ static void start_one_child(server_info_t *server)
         zargv_t *exec_argv = zargv_create(-1);
 
         zclose(status_fd[1]);
-        dup2(status_fd[0], zvar_event_server_status_fd);
+        dup2(status_fd[0], zvar_aio_server_status_fd);
         zclose(status_fd[0]);
 
         zclose(master_status_fd[0]);
@@ -518,7 +518,7 @@ static void start_one_child(server_info_t *server)
             }
         }
 
-        int fdnext = zvar_event_server_listen_fd;
+        int fdnext = zvar_aio_server_listen_fd;
         zbuf_t *service_fork = zbuf_create(-1);
         ZMAP_WALK_BEGIN(server->listens, fdp, listen_pair_t *, lp2) {
             dup2(lp2->fd, fdnext);
@@ -537,11 +537,8 @@ static void start_one_child(server_info_t *server)
             zargv_add(exec_argv, a);
         } ZARGV_WALK_END;
         
-        if (zvar_master_server_dev_mode) {
-            zargv_add(exec_argv, "--dev-mode");
-        }
         execvp(server->cmd, (char **)(zmemdup(zargv_data(exec_argv), (zargv_len(exec_argv) + 1) * sizeof(char *))));
-        zfatal("master: start child(%s) error: %m", server->cmd);
+        zfatal("FATAL master: start child(%s) error: %m", server->cmd);
     }
 }
 
@@ -594,9 +591,6 @@ static void prepare_server_by_config(zconfig_t *cf)
     server->config_fn = zstrdup(fn);
     server->cmd = zstrdup(cmd);
     server->proc_limit = zconfig_get_int(cf, "server-proc-count", 1, 1, 1000);
-    if (zvar_master_server_dev_mode) {
-        server->proc_limit = 1;
-    }
     server->proc_count = 0;
     if (zempty(fn)) {
         zbuf_t *kk = zbuf_create(-1);
@@ -624,7 +618,7 @@ static void prepare_server_by_config(zconfig_t *cf)
     ZARGV_WALK_BEGIN(splitor, uri_str) {
         char lbuf[1024];
         if (strlen(uri_str) > 1000) {
-            zfatal("master: service url too long, %s", uri_str);
+            zfatal("FATAL master: service url too long, %s", uri_str);
         }
         strcpy(lbuf, uri_str);
         char *service = lbuf;
@@ -642,14 +636,15 @@ static void prepare_server_by_config(zconfig_t *cf)
             lp = listen_pair_create();
             zmap_update(listen_pair_map, uri, lp, 0);
             lp->uri = zstrdup(uri);
-            lp->fd = zlisten(uri, (int *)&(lp->iuf), 5, 1);
+            lp->fd = zlisten(uri, (int *)&(lp->iuf), 5);
             if (lp->fd < 0) {
-                zfatal("master: open %s error", uri);
+                zfatal("FATAL master: open %s error", uri);
             }
+            znonblocking(lp->fd, 1);
             zclose_on_exec(lp->fd, 1);
         }
         if (lp->used) {
-            zfatal("master: open %s twice", uri);
+            zfatal("FATAL master: open %s twice", uri);
         }
         lp->used = 1;
         zfree(lp->service_name);
@@ -670,7 +665,7 @@ static void reload_config()
         zmaster_server_load_config(cfs);
     } else {
         if (zempty(config_path)) {
-            zfatal("master: need service config path");
+            zfatal("FATAL master: need service config path");
         }
         zmaster_server_load_config_from_dirname(config_path, cfs);
     }
@@ -720,7 +715,7 @@ static void reload_server()
     zclose(master_status_fd[0]);
     zclose(master_status_fd[1]);
     if (pipe(master_status_fd) == -1) {
-        zfatal("master: pipe : %m");
+        zfatal("FATAL master: pipe : %m");
     }
     zclose_on_exec(master_status_fd[0], 1);
 
@@ -762,12 +757,12 @@ static zbool_t master_lock_pfile(char *lock_file)
 
 static void sighup_handler(int sig)
 {
-    sighup_reload_on = sig;
+    flag_reload = sig;
 }
 
 static void sigterm_handler(int sig)
 {
-    zvar_proc_stop = sig;
+    flag_stop = sig;
 }
 
 static void set_signal_handler()
@@ -782,7 +777,7 @@ static void set_signal_handler()
     sig.sa_flags = 0;
     sig.sa_handler = sighup_handler;
     if (sigaction(zvar_master_server_reload_signal, &sig, (struct sigaction *)0) < 0) {
-        zfatal("%s: sigaction(%d) : %m", __FUNCTION__, zvar_master_server_reload_signal);
+        zfatal("FATAL %s: sigaction(%d) : %m", __FUNCTION__, zvar_master_server_reload_signal);
     }
 }
 
@@ -793,7 +788,7 @@ static void init_all(int argc, char **argv)
     zbool_t try_lock = 0;
 
     if (___init_flag) {
-        zfatal("master: master::run only be excuted once");
+        zfatal("FATAL master: master::run only be excuted once");
     }
     ___init_flag = 1;
 
@@ -804,7 +799,6 @@ static void init_all(int argc, char **argv)
         exit(0);
     }
 
-    zvar_master_server_dev_mode = zconfig_get_bool(zvar_default_config, "dev-mode", zvar_master_server_dev_mode);
     zvar_master_server_log_debug_enable = zconfig_get_bool(zvar_default_config, "DEBUG", zvar_master_server_log_debug_enable);
     try_lock = zconfig_get_bool(zvar_default_config, "try-lock", 0); 
     lock_file = zconfig_get_str(zvar_default_config, "pid-file", "master.pid");
@@ -828,7 +822,7 @@ static void init_all(int argc, char **argv)
     }
 
     if (zempty(lock_file)) {
-        zfatal("parameter: need pid-file");
+        zfatal("FATAL parameter: need pid-file");
     }
     if (try_lock) {
         if (master_lock_pfile(lock_file)) {
@@ -846,7 +840,7 @@ static void init_all(int argc, char **argv)
     listen_pair_map = zmap_create();
     child_status_map = zmap_create();
     server_info_vec = zvector_create(-1);
-    zvar_default_event_base = zevent_base_create();
+    zvar_default_aio_base = zaio_base_create();
 
     /* LOG SERVICE */
     if (log_service && strlen(log_service)) {
@@ -858,14 +852,12 @@ static void init_all(int argc, char **argv)
 
     /* MASTER STATUS */
     if (pipe(master_status_fd) == -1) {
-        zfatal("master: pipe : %m");
+        zfatal("FATAL master: pipe : %m");
     }
     zclose_on_exec(master_status_fd[0], 1);
 
     /* SELF LOG */
-    if (zconfig_get_bool(zvar_default_config, "dev-mode", 0) == 0) {
-        zmaster_log_use_inner(argv[0], zconfig_get_str(zvar_default_config, "server-log", 0));
-    }
+    zmaster_log_use_inner(argv[0], zconfig_get_str(zvar_default_config, "server-log", 0));
 }
 
 static void fini_all()
@@ -891,33 +883,30 @@ static void fini_all()
     zmap_free(child_status_map);
     zvector_free(server_info_vec);
 
-    zevent_base_free(zvar_default_event_base);
+    zaio_base_free(zvar_default_aio_base);
+}
+
+static void zmaster_server_main_loop()
+{
+    if (flag_stop) {
+        zaio_base_stop_notify(zvar_default_aio_base);
+        return;
+    }
+    if (flag_reload) {
+        mydebug("master_reload");
+        flag_reload = 0;
+        reload_server();
+    }
+    start_all_child();
 }
 
 int zmaster_server_main(int argc, char **argv)
 {
     init_all(argc, argv);
     reload_server();
-    sighup_reload_on = 0;
-    while (1) {
-        if (zvar_proc_stop) {
-            break;
-        }
-        if (!zevent_base_dispatch(zvar_default_event_base)) {
-            break;
-        }
-        if (zvar_proc_stop) {
-            break;
-        }
-        if (sighup_reload_on) {
-            mydebug("master_reload");
-            sighup_reload_on = 0;
-            reload_server();
-        }
-        start_all_child();
-    }
+    flag_reload = 0;
+    zaio_base_run(zvar_default_aio_base, zmaster_server_main_loop);
     fini_all();
-
     return 0;
 }
 
@@ -930,7 +919,7 @@ void zmaster_server_load_config_from_dirname(const char *config_path, zvector_t 
 
     dir = opendir(config_path);
     if (!dir) {
-        zfatal("master: open %s/(%m)", config_path);
+        zfatal("FATAL master: open %s/(%m)", config_path);
     }
 
     while ((!readdir_r(dir, &ent, &ent_list)) && (ent_list)) {

@@ -8,19 +8,6 @@
 
 #include "zc.h"
 
-zlist_t *zlist_create(void)
-{
-    zlist_t *list = zmalloc(sizeof(zlist_t));
-    zlist_init(list);
-    return (list);
-}
-
-void zlist_free(zlist_t * list)
-{
-    zlist_fini(list);
-    zfree(list);
-}
-
 void zlist_init(zlist_t *list)
 {
     memset(list, 0, sizeof(zlist_t));
@@ -37,6 +24,19 @@ void zlist_fini(zlist_t *list)
         next = n->next;
         zfree(n);
     }
+}
+
+zlist_t *zlist_create(void)
+{
+    zlist_t *list = zmalloc(sizeof(zlist_t));
+    zlist_init(list);
+    return (list);
+}
+
+void zlist_free(zlist_t * list)
+{
+    zlist_fini(list);
+    zfree(list);
 }
 
 void zlist_reset(zlist_t *list)

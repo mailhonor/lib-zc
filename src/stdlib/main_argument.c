@@ -10,11 +10,11 @@
 #include <signal.h>
 
 char *zvar_progname = 0;
-zbool_t zvar_proc_stop = 0;
-zbool_t zvar_test_mode = 0;
-int zvar_max_fd = 102400;
 char **zvar_main_redundant_argv = 0;
 int zvar_main_redundant_argc = 0;
+int zvar_memleak_check = 0;
+int zvar_sigint_flag = 0;
+
 static zvector_t *zvar_main_redundant_argument_vector = 0;
 
 static void main_redundant_argument_vector_fini(void)
@@ -25,6 +25,11 @@ static void main_redundant_argument_vector_fini(void)
     zvar_main_redundant_argument_vector = 0;
 }
 
+static void sigint_handler(int sig)
+{
+    zvar_sigint_flag = 1;
+}
+
 static void ___timeout_do2(int pid)
 {
     exit(1);
@@ -32,7 +37,6 @@ static void ___timeout_do2(int pid)
 
 static void ___timeout_do(int pid)
 { 
-    zvar_proc_stop = 1;
     alarm(0);
     signal(SIGALRM, ___timeout_do2);
     alarm(2);
@@ -109,6 +113,13 @@ void zmain_argument_run(int argc, char **argv, unsigned int (*self_argument_fn)(
         signal(SIGALRM, ___timeout_do);
         alarm(i);
     }
+
+    zvar_memleak_check = zconfig_get_bool(zvar_default_config, "memleak-check", zvar_memleak_check);
+    if (zvar_memleak_check) {
+        signal(SIGINT, sigint_handler);
+    }
+
+    signal(SIGPIPE, SIG_IGN);
 }
 
 

@@ -30,7 +30,7 @@ static void _pool_free(zmpool_t * mp, const void *ptr)
 
 static void _pool_reset(zmpool_t * mp)
 {
-    zfatal("mpool: system memory can not reset");
+    zfatal("FATAL mpool: system memory can not reset");
 }
 
 static void _pool_free_pool(zmpool_t * mp)

@@ -10,6 +10,7 @@
 #include <poll.h>
 #include <sys/file.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <errno.h>
 
 int zrwable(int fd)
@@ -25,21 +26,19 @@ int zrwable(int fd)
             if (errno != EINTR) {
                 return -1;
             }
-            if (zvar_proc_stop) {
-                return 0;
-            }
             continue;
         case 0:
             return 0;
         default:
             revs = pollfd.revents;
+            if (revs & POLLNVAL) {
+                return -1;
+            }
+            return 1;
             if (revs & (POLLIN|POLLOUT)) {
                 return 1;
             }
             return -1;
-            if (revs & POLLNVAL) {
-                return -1;
-            }
             if (revs & (POLLERR | POLLHUP | POLLRDHUP)) {
                 return -1;
             }
@@ -62,21 +61,19 @@ int zreadable(int fd)
             if (errno != EINTR) {
                 return -1;
             }
-            if (zvar_proc_stop) {
-                return 0;
-            }
             continue;
         case 0:
             return 0;
         default:
             revs = pollfd.revents;
+            if (revs & POLLNVAL) {
+                return -1;
+            }
+            return 1;
             if (revs & (POLLIN)) {
                 return 1;
             }
             return -1;
-            if (revs & POLLNVAL) {
-                return -1;
-            }
             if (revs & (POLLERR | POLLHUP | POLLRDHUP)) {
                 return -1;
             }
@@ -99,21 +96,19 @@ int zwriteable(int fd)
             if (errno != EINTR) {
                 return -1;
             }
-            if (zvar_proc_stop) {
-                return 0;
-            }
             continue;
         case 0:
             return 0;
         default:
             revs = pollfd.revents;
+            if (revs & POLLNVAL) {
+                return -1;
+            }
+            return 1;
             if (revs & (POLLOUT)) {
                 return 1;
             }
             return -1;
-            if (revs & POLLNVAL) {
-                return -1;
-            }
             if (revs & (POLLERR | POLLHUP | POLLRDHUP)) {
                 return -1;
             }
@@ -164,7 +159,7 @@ int zget_readable_count(int fd)
     int ret; \
     do { \
         ret = exp; \
-    } while((ret<0) && (errno==EINTR) && (zvar_proc_stop==0)); \
+    } while((ret<0) && (errno==EINTR)); \
     return ret;
 
 int zopen(const char *pathname, int flags, mode_t mode)
@@ -180,9 +175,6 @@ ssize_t zread(int fd, void *buf, size_t count)
         if ((ret = read(fd, buf, count)) < 0) {
             ec = errno;
             if (ec == EINTR) {
-                if (zvar_proc_stop) {
-                    return -1;
-                }
                 continue;
             }
             return -1;
@@ -203,9 +195,6 @@ ssize_t zwrite(int fd, const void *buf, size_t count)
         if (ret < 0) {
             ec = errno;
             if (ec == EINTR) {
-                if (zvar_proc_stop) {
-                    break;
-                }
                 continue;
             }
             if (ec == EPIPE) {
@@ -264,3 +253,94 @@ int zunlink(const char *pathname)
     ___ROBUST_DO(unlink(pathname));
 }
 
+/* postfix src/util/unix_send_fd.c */
+int zsend_fd(int fd, int sendfd)
+{
+    struct msghdr msg;
+    struct iovec iov[1];
+
+    union {
+        struct cmsghdr just_for_alignment;
+        char control[CMSG_SPACE(sizeof(sendfd))];
+    } control_un;
+    struct cmsghdr *cmptr;
+
+    memset(&msg, 0, sizeof(msg));
+    msg.msg_control = control_un.control;
+    msg.msg_controllen = sizeof(control_un.control);
+
+    cmptr = CMSG_FIRSTHDR(&msg);
+    cmptr->cmsg_len = CMSG_LEN(sizeof(sendfd));
+    cmptr->cmsg_level = SOL_SOCKET;
+    cmptr->cmsg_type = SCM_RIGHTS;
+
+    int *int_ptr = (int *)(CMSG_DATA(cmptr));
+    *int_ptr = sendfd;
+
+    msg.msg_name = 0;
+    msg.msg_namelen = 0;
+
+    iov->iov_base = "";
+    iov->iov_len = 1;
+    msg.msg_iov = iov;
+    msg.msg_iovlen = 1;
+
+    int sendmsg_ret;
+    do {
+        sendmsg_ret = sendmsg(fd, &msg, 0);
+    } while((sendmsg_ret<0) && (errno==EINTR));
+    if (sendmsg_ret >= 0) {
+        return 1;
+    }
+
+    return (-1);
+}
+
+/* postfix src/util/unix_recv_fd.c */
+int zrecv_fd(int fd)
+{
+    struct msghdr msg;
+    int newfd;
+    struct iovec iov[1];
+    char buf[1];
+
+    union {
+        struct cmsghdr just_for_alignment;
+        char control[CMSG_SPACE(sizeof(newfd))];
+    } control_un;
+    struct cmsghdr *cmptr;
+
+    memset(&msg, 0, sizeof(msg));
+    msg.msg_control = control_un.control;
+    msg.msg_controllen = sizeof(control_un.control);
+
+    msg.msg_name = 0;
+    msg.msg_namelen = 0;
+
+    iov->iov_base = buf;
+    iov->iov_len = sizeof(buf);
+    msg.msg_iov = iov;
+    msg.msg_iovlen = 1;
+
+    int recvmsg_ret;
+    do {
+        recvmsg_ret = recvmsg(fd, &msg, 0);
+    } while((recvmsg_ret<0) && (errno==EINTR));
+    if (recvmsg_ret < 0) {
+        return -1;
+    }
+
+    if (((cmptr = CMSG_FIRSTHDR(&msg)) != 0) && (cmptr->cmsg_len == CMSG_LEN(sizeof(newfd)))) {
+        if (cmptr->cmsg_level != SOL_SOCKET) {
+            zfatal("FATAL control level %d != SOL_SOCKET", cmptr->cmsg_level);
+        }
+        if (cmptr->cmsg_type != SCM_RIGHTS) {
+            zfatal("FATAL control type %d != SCM_RIGHTS", cmptr->cmsg_type);
+        }
+        int *int_ptr = (int *)(CMSG_DATA(cmptr));
+        newfd = *int_ptr;
+        return newfd;
+    }
+
+    return (-1);
+}

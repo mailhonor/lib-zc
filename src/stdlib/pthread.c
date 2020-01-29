@@ -6,8 +6,10 @@
  * ================================
  */
 
+#if 0
 #include "zc.h"
 #include <pthread.h>
 
 static pthread_mutex_t zvar_general_pthread_mutex_buffer = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t *zvar_general_pthread_mutex = &zvar_general_pthread_mutex_buffer;
+#endif

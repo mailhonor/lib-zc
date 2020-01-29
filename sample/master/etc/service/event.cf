@@ -1,4 +1,4 @@
-server-command = ./event_server
+server-command = ./aio_server
 server-service = 0:8899, ssl://0:8898
 server-proc-count = 1
 server-log = masterlog,./log.socket

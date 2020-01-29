@@ -3,7 +3,7 @@ all: target
 .PHONY: tags
 
 CC=gcc
-CFLAGS= -std=gnu11 -ggdb -Wall -Winline -I../../ -O3
+CFLAGS= -std=gnu99 -ggdb -Wall -Winline -I../../ -O2
 GLOBAL_LIBS=
 
 ALL_LIBS = 
@@ -21,8 +21,8 @@ clean: CLEAN
 	@echo clean
 
 CLEAN:
-	@rm -f *~; rm -f $(DEST); rm -f tags gmon.out;rm -rf $(DELS);
-	@find -type f -name "*~" -exec rm  {} \;
+	rm -f *~; rm -f $(DEST); rm -f tags gmon.out;rm -rf $(DELS);
+	find -type f -name "*~" -exec rm  {} \;
 
 libzc:
 	@echo build global lib

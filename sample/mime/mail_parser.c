@@ -23,25 +23,6 @@ static char *name_char_validate(char *abc)
     return abc;
 
 }
-static int save_att_tnef(ztnef_t * parser, ztnef_mime_t * mime, int i)
-{
-    const char *sname;
-    char tmpname[256];
-
-    sname = ztnef_mime_get_show_name(mime);
-    if (zempty(sname)) {
-        sprintf(tmpname, "atts/tnef_unknown_%d.dat", i);
-    } else {
-        snprintf(tmpname, 255, "atts/tnef_%s", sname);
-        name_char_validate(tmpname+5);
-    }
-    printf("save tnef attachment %s\n", tmpname);
-    if (zfile_put_contents(tmpname, ztnef_get_data(parser) + ztnef_mime_get_body_offset(mime), ztnef_mime_get_body_len(mime)) < 0) {
-        printf("ERR save_att_tnef save %m\n");
-    }
-
-    return 0;
-}
 
 static int save_att(zmail_t * parser, zmime_t * mime, int i)
 {
@@ -63,18 +44,6 @@ static int save_att(zmail_t * parser, zmime_t * mime, int i)
         printf("ERR decode_mime_body: save %m\n");
     }
 
-    if (zmime_is_tnef(mime)) {
-        int j = 0;
-        ztnef_t *tp = ztnef_create_parser();
-        ztnef_parse_from_data(tp, zbuf_data(dcon), zbuf_len(dcon));
-        ztnef_debug_show(tp);
-        const zvector_t *ams = ztnef_get_all_mimes(tp);
-        ZVECTOR_WALK_BEGIN(ams, ztnef_mime_t *, m) {
-            save_att_tnef(tp, m, j + 1);
-            j++;
-        } ZVECTOR_WALK_END;
-        ztnef_free(tp);
-    }
     zbuf_free(dcon);
     return 0;
 }

@@ -49,16 +49,20 @@ int main(int argc, char **argv)
     }
 
     printf("\n##############################\n\n");
-    fd = zconnect(server, 1, 10);
+    fd = zconnect(server, 10);
     if (fd < 0) {
         printf("ERR open %s error, (%m)\n", server);
         exit(1);
     }
+    znonblocking(fd, 1);
 
     if (ssl_mode) {
         SSL *ssl = zopenssl_SSL_create(ssl_ctx, fd);
-        if (zopenssl_timed_connect(ssl, 10 * 1000) < 0) {
-            printf("ERR ssl initialization error (%m)\n");
+        if (zopenssl_timed_connect(ssl, 10, 10) < 0) {
+            unsigned long ecode;
+            char buf[1024];
+            zopenssl_get_error(&ecode, buf, 1024);
+            printf("ERR ssl initialization error:%s\n", buf);
             goto over;
         }
         fp = zstream_open_ssl(ssl);

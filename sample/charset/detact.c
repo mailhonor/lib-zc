@@ -21,7 +21,7 @@ static void dorun(const char *fn)
 
     zfile_get_contents_sample(fn, content);
 
-    if (zcharset_detect_cjk(zbuf_data(content), zbuf_len(content), charset) < 0) {
+    if (zcharset_detect_cjk(zbuf_data(content), zbuf_len(content), charset) == 0) {
         printf("%-30s: not found, maybe ASCII\n", fn);
     } else {
         printf("%-30s: %s\n", fn, zbuf_data(charset));

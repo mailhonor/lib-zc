@@ -90,16 +90,17 @@ int zhttpd_uploaded_file_get_data(zhttpd_uploaded_file_t *fo, zbuf_t *data)
     return fo->size;
 }
 
+static void zhttpd_response_200_default(zhttpd_t *httpd, const char *data, int size);
 static void zhttpd_response_304_default(zhttpd_t *httpd, const char *etag);
+static void zhttpd_response_404_default(zhttpd_t *httpd);
 static void zhttpd_response_500_default(zhttpd_t *httpd);
 static void zhttpd_response_501_default(zhttpd_t *httpd);
-static void zhttpd_response_404_default(zhttpd_t *httpd);
-static void zhttpd_response_200_default(zhttpd_t *httpd, const char *data, int size);
 
 static zhttpd_t * _zhttpd_malloc_struct_general()
 {
     zhttpd_t * httpd = (zhttpd_t *)zcalloc(1, sizeof(zhttpd_t));
     httpd->fp = 0;
+    httpd->prefix_log_msg = 0;
     httpd->method = zblank_buffer;
     httpd->host = zblank_buffer;
     httpd->port = -1;
@@ -129,6 +130,8 @@ static zhttpd_t * _zhttpd_malloc_struct_general()
 
     httpd->keep_alive_timeout = -1;
     httpd->request_header_timeout = -1;
+    httpd->read_wait_timeout = -1;
+    httpd->write_wait_timeout = -1;
     httpd->max_length_for_post = -1;
     httpd->tmp_path_for_post = zblank_buffer;
     httpd->gzip_file_suffix[0] = 0;
@@ -151,6 +154,8 @@ zhttpd_t *zhttpd_open_fd(int sock)
 {
     zhttpd_t * httpd = _zhttpd_malloc_struct_general();
     httpd->fp = zstream_open_fd(sock);
+    zstream_set_read_wait_timeout(httpd->fp, httpd->read_wait_timeout);
+    zstream_set_write_wait_timeout(httpd->fp, httpd->write_wait_timeout);
     httpd->ssl_mode = 0;
     return httpd;
 }
@@ -159,6 +164,8 @@ zhttpd_t *zhttpd_open_ssl(SSL *ssl)
 {
     zhttpd_t * httpd = _zhttpd_malloc_struct_general();
     httpd->fp = zstream_open_ssl(ssl);
+    zstream_set_read_wait_timeout(httpd->fp, httpd->read_wait_timeout);
+    zstream_set_write_wait_timeout(httpd->fp, httpd->write_wait_timeout);
     httpd->ssl_mode = 1;
     return httpd;
 }
@@ -167,6 +174,7 @@ void zhttpd_close(zhttpd_t *httpd, zbool_t close_fd_and_release_ssl)
 {
     zhttpd_response_flush(httpd);
     zstream_close(httpd->fp, close_fd_and_release_ssl);
+    zbuf_free(httpd->prefix_log_msg);
     zfree(httpd->method);
     zfree(httpd->host);
     zfree(httpd->path);
@@ -243,6 +251,18 @@ void zhttpd_set_request_header_timeout(zhttpd_t *httpd, int timeout)
     httpd->request_header_timeout = timeout;
 }
 
+void zhttpd_set_read_wait_timeout(zhttpd_t *httpd, int read_wait_timeout)
+{
+    httpd->read_wait_timeout = read_wait_timeout;
+    zstream_set_read_wait_timeout(httpd->fp, httpd->read_wait_timeout);
+}
+
+void zhttpd_set_write_wait_timeout(zhttpd_t *httpd, int write_wait_timeout)
+{
+    httpd->write_wait_timeout = write_wait_timeout;
+    zstream_set_write_wait_timeout(httpd->fp, httpd->write_wait_timeout);
+}
+
 void zhttpd_set_max_length_for_post(zhttpd_t *httpd, int max_length)
 {
     httpd->max_length_for_post = max_length;
@@ -260,7 +280,7 @@ void zhttpd_set_gzip_file_suffix(zhttpd_t *httpd, const char *suffix)
     if (suffix) {
         int len = strlen(suffix);
         if (len > 7) {
-            zfatal("zhttpd_set_gzip_file_suffix: %s'length > 7", suffix);
+            zfatal("FATAL zhttpd_set_gzip_file_suffix: %s'length > 7", suffix);
         }
         strcpy(httpd->gzip_file_suffix, suffix);
     }
@@ -271,11 +291,6 @@ void zhttpd_enable_form_data(zhttpd_t *httpd)
     httpd->enable_form_data = 1;
 }
 
-void zhttps_set_exception(zhttpd_t *httpd)
-{
-    httpd->exception = 1;
-}
-
 void zhttpd_run(zhttpd_t *httpd)
 {
     zbuf_t *linebuf = zbuf_create(1024);
@@ -283,12 +298,12 @@ void zhttpd_run(zhttpd_t *httpd)
         zhttpd_loop_clear(httpd);
         zhttpd_request_header_do(httpd, linebuf);
         zhttpd_request_data_do(httpd, linebuf);
-        if (httpd->exception) {
+        if (httpd->exception || httpd->stop) {
             break;
         }
         httpd->handler_protocal(httpd);
         zhttpd_response_flush(httpd);
-        if (httpd->stop || httpd->exception || (httpd->request_keep_alive==0)) {
+        if (httpd->exception || httpd->stop || (httpd->request_keep_alive==0)) {
             break;
         }
     }
@@ -299,11 +314,6 @@ void zhttpd_run(zhttpd_t *httpd)
 void zhttpd_set_stop(zhttpd_t *httpd)
 {
     httpd->stop = 1;
-}
-
-void zhttpd_set_exception(zhttpd_t *httpd)
-{
-    httpd->exception = 1;
 }
 
 const char *zhttpd_request_get_method(zhttpd_t *httpd)
@@ -417,6 +427,10 @@ void zhttpd_set_200_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, c
 
 static void zhttpd_response_200_default(zhttpd_t *httpd, const char *data, int size)
 {
+    if (size < 0) {
+        size = strlen(data);
+    }
+    zhttpd_show_log(httpd, "200 %d", size);
     zhttpd_response_header_content_length(httpd, size);
     if (httpd->request_keep_alive) {
         zhttpd_response_header(httpd, "Connection", "keep-alive");
@@ -435,6 +449,7 @@ void zhttpd_response_200(zhttpd_t *httpd, const char *data, int size)
 
 static void zhttpd_response_304_default(zhttpd_t *httpd, const char *etag)
 {
+    zhttpd_show_log(httpd, "304 -");
     zstream_puts_const(httpd->fp, "HTTP/1.1 304 Not Modified\r\nServer: LIBZC HTTPD\r\nEtag: ");
     zstream_puts(httpd->fp, etag);
     zstream_write(httpd->fp, "\r\n\r\n", 4);
@@ -448,6 +463,7 @@ void zhttpd_response_304(zhttpd_t *httpd, const char *etag)
 
 static void zhttpd_response_404_default(zhttpd_t *httpd)
 {
+    zhttpd_show_log(httpd, "404 -");
     zstream_puts(httpd->fp, httpd->version);
     zstream_puts(httpd->fp, " 404 Not Found\r\nServer: LIBZC HTTPD\r\nContent-Type: text/html\r\n");
     if (httpd->request_keep_alive) {
@@ -465,6 +481,7 @@ void zhttpd_response_404(zhttpd_t *httpd)
 
 static void zhttpd_response_500_default(zhttpd_t *httpd)
 {
+    zhttpd_show_log(httpd, "500 -");
     zstream_puts(httpd->fp, httpd->version);
     zstream_puts(httpd->fp, " 500 Error\r\nServer: LIBZC HTTPD\r\nContent-Type: text/html\r\n");
     if (httpd->request_keep_alive) {
@@ -482,6 +499,7 @@ void zhttpd_response_500(zhttpd_t *httpd)
 
 static void zhttpd_response_501_default(zhttpd_t *httpd)
 {
+    zhttpd_show_log(httpd, "501 -");
     char output[] = " 501 Not implemented\r\nServer: LIBZC HTTPD\r\nConnection: close\r\n"
         "Content-Length: 19\r\n\r\n501 Not implemented";
     zstream_puts(httpd->fp, httpd->version);
@@ -606,6 +624,7 @@ void zhttpd_response_flush(zhttpd_t *httpd)
     }
     if (zstream_flush(httpd->fp) < 0) {
         httpd->exception = 0;
+        zhttpd_show_log(httpd, "exception write");
     }
 }
 
@@ -654,22 +673,38 @@ static void zhttpd_loop_clear(zhttpd_t *httpd)
 static void zhttpd_request_header_do(zhttpd_t * httpd, zbuf_t *linebuf)
 {
     char *p, *ps;
-    int ret, llen;
+    int ret, llen, first = httpd->first;
 
     /* read first header line */
     if (httpd->first) {
-        ret = zstream_timed_read_wait(httpd->fp, httpd->request_header_timeout);
         httpd->first = 0;
+        ret = zstream_timed_read_wait(httpd->fp, httpd->request_header_timeout);
+        if (ret < 1) {
+            zhttpd_show_log(httpd, "exception wait read");
+            httpd->exception = 1;
+            return;
+        }
     } else {
         ret = zstream_timed_read_wait(httpd->fp, httpd->keep_alive_timeout);
+        if (ret < 1) {
+            httpd->exception = 1;
+            return;
+        }
     }
-    if (ret < 1) {
+    zstream_timed_read_wait(httpd->fp, httpd->request_header_timeout);
+    ret = zstream_gets(httpd->fp, linebuf, zvar_httpd_header_line_max_size);
+    if (ret < 0) {
+        zhttpd_show_log(httpd, "exception read banner line");
         httpd->exception = 1;
         return;
     }
-    zstream_set_timeout(httpd->fp, httpd->request_header_timeout);
-    if ((zstream_gets(httpd->fp, linebuf, zvar_httpd_header_line_max_size)) < 1) {
-        httpd->exception = 1;
+    if (ret == 0) {
+        if (first) {
+            zhttpd_show_log(httpd, "exception read banner line");
+            httpd->exception = 1;
+            return;
+        }
+        httpd->stop = 1;
         return;
     }
     zbuf_trim_right_rn(linebuf);
@@ -678,6 +713,7 @@ static void zhttpd_request_header_do(zhttpd_t * httpd, zbuf_t *linebuf)
     ps = httpd->method;
     p = strchr(ps, ' ');
     if (!p) {
+        zhttpd_show_log(httpd, "exception banner no blank");
         httpd->exception = 1;
         return;
     }
@@ -700,6 +736,7 @@ static void zhttpd_request_header_do(zhttpd_t * httpd, zbuf_t *linebuf)
     } else if (ZSTR_EQ(ps, "PATCH")) {
         httpd->handler_protocal = httpd->handler_PATCH;
     } else {
+        zhttpd_show_log(httpd, "exception unknown CMD");
         httpd->exception = 1;
         return;
     }
@@ -707,6 +744,7 @@ static void zhttpd_request_header_do(zhttpd_t * httpd, zbuf_t *linebuf)
     ps = httpd->uri = p + 1;
 
     if (llen < 10) {
+        zhttpd_show_log(httpd, "exception banner line too short");
         httpd->exception = 1;
         return;
     }
@@ -717,6 +755,7 @@ static void zhttpd_request_header_do(zhttpd_t * httpd, zbuf_t *linebuf)
         }
     }
     if (ps == p) {
+        zhttpd_show_log(httpd, "exception banner line no version token");
         httpd->exception = 1;
         return;
     }
@@ -744,10 +783,12 @@ static void zhttpd_request_header_do(zhttpd_t * httpd, zbuf_t *linebuf)
     /* read other header lines */
     while(1) {
         if ((zstream_gets(httpd->fp, linebuf, zvar_httpd_header_line_max_size)) < 1) {
+            zhttpd_show_log(httpd, "exception read header line");
             httpd->exception = 1;
             return;
         }
         if (zbuf_data(linebuf)[zbuf_len(linebuf)-1] != '\n') {
+            zhttpd_show_log(httpd, "exception header line too long");
             httpd->exception = 1;
             return;
         }
@@ -810,6 +851,7 @@ static char *_zhttpd_request_data_do_save_tmpfile(zhttpd_t *httpd, zbuf_t *lineb
 
     zstream_t *tmp_fp = zstream_open_file(data_pathname, "w+");
     if (!tmp_fp) {
+        zhttpd_show_log(httpd, "exception open temp file");
         httpd->exception = 1;
         zfree(data_pathname);
         return 0;
@@ -826,6 +868,7 @@ static char *_zhttpd_request_data_do_save_tmpfile(zhttpd_t *httpd, zbuf_t *lineb
         }
         rlen = zstream_readn(httpd->fp, linebuf, rlen);
         if (rlen < 1) {
+            zhttpd_show_log(httpd, "exception read body");
             httpd->exception = 1;
             break;
         }
@@ -834,6 +877,7 @@ static char *_zhttpd_request_data_do_save_tmpfile(zhttpd_t *httpd, zbuf_t *lineb
     }
     if (httpd->exception == 0) {
         if (zstream_flush(tmp_fp) < 0) {
+            zhttpd_show_log(httpd, "exception write");
             httpd->exception = 1;
         }
     }
@@ -848,18 +892,18 @@ static char *_zhttpd_request_data_do_save_tmpfile(zhttpd_t *httpd, zbuf_t *lineb
 
 static zbool_t _zhttpd_request_data_do_prepare(zhttpd_t *httpd)
 {
-    if (httpd->exception || zstream_is_exception(httpd->fp)) {
+    if (httpd->exception || httpd->stop || zstream_is_exception(httpd->fp)) {
         return 0;
     }
     if (httpd->request_content_length < 1) {
         return 0;
     }
-    if ((httpd->max_length_for_post) > 0 && (httpd->request_content_length > httpd->max_length_for_post)) {
+    if ((httpd->max_length_for_post > 0) && (httpd->request_content_length > httpd->max_length_for_post)) {
+        zhttpd_show_log(httpd, "exception Content-Length>max_length_for_post, zhttpd_set_max_length_for_post");
         httpd->exception = 1;
         return 0;
     }
 
-    zstream_set_timeout(httpd->fp, -1);
     return 1;
 }
 
@@ -867,6 +911,7 @@ static void _zhttpd_request_data_do_x_www_form_urlencoded(zhttpd_t *httpd, zbuf_
 {
     /* FIXME too long */
     if (zstream_readn(httpd->fp, linebuf, httpd->request_content_length) < httpd->request_content_length) {
+        zhttpd_show_log(httpd, "exception read");
         httpd->exception = 1;
         return;
     }
@@ -885,7 +930,6 @@ static void _zhttpd_request_data_do_disabled_form_data(zhttpd_t *httpd)
 
 static void _zhttpd_uploaded_dump_file(zhttpd_t *httpd, zmime_t *mime, zbuf_t *linebuf, zbuf_t *tmpbf, const char *name, const char *pathname)
 {
-
     int wlen = 0, raw_len = 0;
     const char *encoding = zmime_get_encoding(mime);
     raw_len = zmime_get_body_len(mime);
@@ -932,7 +976,7 @@ static void _zhttpd_request_data_do_form_data_one_mime(zhttpd_t *httpd, zmime_t 
     }
     const char *ctype = zmime_get_type(mime);
     if (strncmp(ctype, "multipart/", 10)) {
-        char *pathname = zdict_get_str(params, "pathname", "");
+        char *pathname = zdict_get_str(params, "filename", "");
         if (zempty(pathname)) {
             if (!zempty(name)) {
                 zmime_get_decoded_content(mime, tmp_bf);
@@ -957,7 +1001,7 @@ static void _zhttpd_request_data_do_form_data_one_mime(zhttpd_t *httpd, zmime_t 
             }
             zmime_header_line_get_params(zbuf_data(linebuf), zbuf_len(linebuf), tmp_bf, params);
             zbuf_reset(tmp_bf);
-            char *pathname = zdict_get_str(params, "pathname", "");
+            char *pathname = zdict_get_str(params, "filename", "");
             _zhttpd_uploaded_dump_file(httpd, child, linebuf, tmp_bf, name, pathname);
             if (httpd->exception) {
                 break;
@@ -982,8 +1026,8 @@ static void _zhttpd_request_data_do_form_data(zhttpd_t *httpd, zbuf_t *linebuf, 
         mime_parser = zmail_create_parser_from_pathname(data_pathname, "");
     }
     if (!mime_parser) {
+        zhttpd_show_log(httpd, "exception format error of from_data");
         httpd->exception = 1;
-        zinfo("error open tmp file %s(%m)", data_pathname);
         goto over;
     }
 
@@ -1019,4 +1063,42 @@ static void zhttpd_request_data_do(zhttpd_t *httpd, zbuf_t *linebuf)
     }
     
     _zhttpd_request_data_do_form_data(httpd, linebuf, p);
+}
+
+/* log */
+const char *zhttpd_get_prefix_log_msg(zhttpd_t *httpd)
+{
+    if (httpd->prefix_log_msg == 0) {
+        httpd->prefix_log_msg = zbuf_create(512);
+    }
+    const char *ps;
+    zbuf_t *logbf = httpd->prefix_log_msg;
+    zbuf_reset(logbf);
+
+    ps = zhttpd_request_get_method(httpd);
+    if (zempty(ps)) {
+        ps = "NIL";
+    }
+    zbuf_strcat(logbf, ps);
+
+    ps = zhttpd_request_get_uri(httpd);
+    if (zempty(ps)) {
+        zbuf_strcat(logbf, " NIL");
+    } else {
+        zbuf_strcat(logbf, " \"");
+        zbuf_strncat(logbf, ps, 512);
+        zbuf_strcat(logbf, "\"");
+    }
+
+    int ip, port = 0;
+    char ipstr[18];
+    if (zget_peername(zstream_get_fd(zhttpd_get_stream(httpd)), &ip, &port) > 0)  {
+        zget_ipstring(ip, ipstr);
+    } else {
+        ipstr[0] = '0';
+        ipstr[1] = 0;
+    }
+    zbuf_printf_1024(logbf, " %s:%d%s", ipstr, port, (httpd->ssl_mode?"/ssl":""));
+
+    return zbuf_data(logbf);
 }

@@ -161,6 +161,9 @@ int zcharset_iconv(const char *from_charset, const char *src, int src_len,
 
     in_str = (char *)(src);
     in_len = src_len;
+    if (in_len < 0) {
+        in_len = strlen(src);
+    }
 
     while (in_len > 0) {
         str_running = buf;

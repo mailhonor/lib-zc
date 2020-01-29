@@ -12,7 +12,9 @@
 struct zredis_client_t {
     char *password;
     char *destination;
-    int cmd_timeout;
+    int connect_timeout;
+    int read_wait_timeout;
+    int write_wait_timeout;
     unsigned int cluster_mode:1;
     unsigned int auto_reconnect:1;
     char error_msg[zredis_client_error_msg_size + 1];
@@ -35,14 +37,14 @@ static zbuf_t *___zbuf_create_from_str(const char *s, int len)
     return bf;
 }
 
-static int ___query_by_io_vector(zbuf_t *rstr, char *error_msg, int lnum, zvector_t *lval, zstream_t *fp)
+static int ___query_by_io_vector(zredis_client_t *rc, zbuf_t *rstr, int lnum, zvector_t *lval, zstream_t *fp)
 {
     char *rp, firstch;
     int rlen, i, tmp, num2;
     for (i = 0; i < lnum ;i++) {
         zbuf_reset(rstr);
         if (zstream_gets(fp, rstr, 1024 * 1024) < 3) {
-            strcpy(error_msg, "the length of the response < 3");
+            strcpy(rc->error_msg, "the length of the response < 3");
             return -2;
         }
         rp = zbuf_data(rstr);
@@ -52,9 +54,11 @@ static int ___query_by_io_vector(zbuf_t *rstr, char *error_msg, int lnum, zvecto
         if (firstch  == '*') {
             tmp = atoi(rp + 1);
             if (tmp < 1) {
+#if 0
                 if (lval) {
                     zvector_push(lval, ___zbuf_create_from_str(zblank_buffer, 0));
                 }
+#endif
             } else {
                 lnum += tmp;
             }
@@ -79,7 +83,7 @@ static int ___query_by_io_vector(zbuf_t *rstr, char *error_msg, int lnum, zvecto
                 zstream_readn(fp, 0, 2);
             }
             if (zstream_is_exception(fp)) {
-                strcpy(error_msg, "read/write");
+                strcpy(rc->error_msg, "read/write");
                 return -2;
             }
             if (lval) {
@@ -90,14 +94,14 @@ static int ___query_by_io_vector(zbuf_t *rstr, char *error_msg, int lnum, zvecto
                 }
             }
         } else {
-            strcpy(error_msg, "the initial of the response shold be $");
+            strcpy(rc->error_msg, "the initial of the response shold be $");
             return -2;
         }
     }
     return 1;
 }
 
-static int ___query_by_io_vector_json(zbuf_t *rstr, char *error_msg, int lnum, zjson_t *jval, zstream_t *fp)
+static int ___query_by_io_vector_json(zredis_client_t *rc, zbuf_t *rstr, int lnum, zjson_t *jval, zstream_t *fp)
 {
     long idx, num, tmp;
     int ret, rlen, num2;
@@ -120,7 +124,7 @@ static int ___query_by_io_vector_json(zbuf_t *rstr, char *error_msg, int lnum, z
         for (; idx < num ;idx++) {
             zbuf_reset(rstr);
             if (zstream_gets(fp, rstr, 1024 * 1024) < 3) {
-                strcpy(error_msg, "the length of the response < 3");
+                strcpy(rc->error_msg, "the length of the response < 3");
                 ret = -2;
                 goto over;
             }
@@ -131,7 +135,9 @@ static int ___query_by_io_vector_json(zbuf_t *rstr, char *error_msg, int lnum, z
             if (firstch == '*') {
                 tmp = atoi(rp + 1);
                 if (tmp < 1) {
+#if 0
                     zjson_array_push(jn, zjson_create_string("", 0));
+#endif
                 } else {
                     zvector_push(stack_vec, (void *)num);
                     zvector_push(stack_vec, (void *)idx);
@@ -163,13 +169,13 @@ static int ___query_by_io_vector_json(zbuf_t *rstr, char *error_msg, int lnum, z
                     zstream_readn(fp, 0, 2);
                 }
                 if (zstream_is_exception(fp)) {
-                    strcpy(error_msg, "read/write");
+                    strcpy(rc->error_msg, "read/write");
                     ret = -2;
                     goto over;
                 }
                 continue;
             }
-            strcpy(error_msg, "the initial of the response shold be $");
+            strcpy(rc->error_msg, "the initial of the response shold be $");
             ret = -2;
             goto over;
         }
@@ -180,7 +186,7 @@ over:
     return ret;
 }
 
-static int ___query_by_io_string(zbuf_t *rstr, char *error_msg, int length, zbuf_t *sval, zstream_t *fp)
+static int ___query_by_io_string(zredis_client_t *rc, zbuf_t *rstr, int length, zbuf_t *sval, zstream_t *fp)
 {
     if (length < 0) {
         return 0;
@@ -190,13 +196,13 @@ static int ___query_by_io_string(zbuf_t *rstr, char *error_msg, int length, zbuf
     }
     zstream_readn(fp, 0, 2);
     if (zstream_is_exception(fp)) {
-        strcpy(error_msg, "read/write");
+        strcpy(rc->error_msg, "read/write");
         return -2;
     }
     return 1;
 }
 
-static int ___query_by_io_string_json(zbuf_t *rstr, char *error_msg, int length, zjson_t *jval, zstream_t *fp)
+static int ___query_by_io_string_json(zredis_client_t *rc, zbuf_t *rstr, int length, zjson_t *jval, zstream_t *fp)
 {
     if (length < 0) {
         return 0;
@@ -206,16 +212,16 @@ static int ___query_by_io_string_json(zbuf_t *rstr, char *error_msg, int length,
     }
     zstream_readn(fp, 0, 2);
     if (zstream_is_exception(fp)) {
-        strcpy(error_msg, "read/write");
+        strcpy(rc->error_msg, "read/write");
         return -2;
     }
     return 1;
 }
 
-static int ___query_by_io_prepare_and_write(zbuf_t *rstr, long *number_ret, zbuf_t *string_ret, zvector_t *vector_ret, zjson_t *json_ret, zvector_t *query_vec, long cmd_timeout, char *error_msg, zstream_t *fp)
+static int ___query_by_io_prepare_and_write(zredis_client_t *rc, zbuf_t *rstr, long *number_ret, zbuf_t *string_ret, zvector_t *vector_ret, zjson_t *json_ret, zvector_t *query_vec, zstream_t *fp)
 {
     int ret;
-    error_msg[0] = 0;
+    rc->error_msg[0] = 0;
     if (string_ret) {
         zbuf_reset(string_ret);
     }
@@ -227,26 +233,21 @@ static int ___query_by_io_prepare_and_write(zbuf_t *rstr, long *number_ret, zbuf
     }
 
     if (zvector_len(query_vec) == 0) {
-        if ((ret = zstream_timed_read_wait(fp, cmd_timeout)) < 0) {
-            strcpy(error_msg, "read timeout");
-            return -2;
-        } else if (ret == 0 ) {
-            strcpy(error_msg, "no available readable data");
+        if ((ret = zstream_timed_read_wait(fp, rc->read_wait_timeout)) == 0) {
+            strcpy(rc->error_msg, "read timeout");
             return 0;
         }
-        zstream_set_timeout(fp, cmd_timeout);
         if (zstream_gets(fp, rstr, 1024*1024) < 3) {
-            strcpy(error_msg, "data too short");
+            strcpy(rc->error_msg, "data too short");
             return -2;
         }
         return 1;
     }
 
-    if (zstream_timed_write_wait(fp, cmd_timeout) < 1) {
-        strcpy(error_msg, "write timeout");
+    if (zstream_timed_write_wait(fp, rc->write_wait_timeout) < 1) {
+        strcpy(rc->error_msg, "write timeout");
         return -2;
     }
-    zstream_set_timeout(fp, cmd_timeout);
     zstream_printf_1024(fp, "*%d\r\n", zvector_len(query_vec));
     ZVECTOR_WALK_BEGIN(query_vec, zbuf_t *, bf) {
         zstream_printf_1024(fp, "$%d\r\n", zbuf_len(bf));
@@ -260,22 +261,21 @@ static int ___query_by_io_prepare_and_write(zbuf_t *rstr, long *number_ret, zbuf
         return 3;
     }
 
-    zstream_set_timeout(fp, cmd_timeout);
     if (zstream_gets(fp, rstr, 1024*1024) < 3) {
-        strcpy(error_msg, "data too short");
+        strcpy(rc->error_msg, "data too short");
         return -2;
     }
     return 1;
 }
 
-static int ___query_by_io(long *number_ret, zbuf_t *string_ret, zvector_t *vector_ret, zjson_t *json_ret, zvector_t *query_vec, long cmd_timeout, char *error_msg, zstream_t *fp)
+static int ___query_by_io(zredis_client_t *rc, long *number_ret, zbuf_t *string_ret, zvector_t *vector_ret, zjson_t *json_ret, zvector_t *query_vec, zstream_t *fp)
 {
     char *rp;
     int rlen, num, firstch, ret;
     long lret;
     zbuf_t *rstr = zbuf_create(-1);
 
-    if ((ret = ___query_by_io_prepare_and_write(rstr, number_ret, string_ret, vector_ret, json_ret, query_vec,  cmd_timeout,error_msg, fp)) < 1) {
+    if ((ret = ___query_by_io_prepare_and_write(rc, rstr, number_ret, string_ret, vector_ret, json_ret, query_vec, fp)) < 1) {
         goto over;
     }
     if (ret == 3) {
@@ -287,7 +287,7 @@ static int ___query_by_io(long *number_ret, zbuf_t *string_ret, zvector_t *vecto
     rp[rlen] = 0;
     firstch = rp[0];
     if (firstch == '-') {
-        strncpy(error_msg, rp, rlen>zredis_client_error_msg_size?zredis_client_error_msg_size:rlen);
+        strncpy(rc->error_msg, rp, rlen>zredis_client_error_msg_size?zredis_client_error_msg_size:rlen);
         if (json_ret) {
             (*zjson_get_bool_value(json_ret)) = 1;
         }
@@ -304,9 +304,9 @@ static int ___query_by_io(long *number_ret, zbuf_t *string_ret, zvector_t *vecto
     if (firstch == '*') {
         num = atoi(rp + 1);
         if (json_ret) {
-            ret = ___query_by_io_vector_json(rstr, error_msg, num, json_ret, fp);
+            ret = ___query_by_io_vector_json(rc, rstr, num, json_ret, fp);
         } else {
-            ret = ___query_by_io_vector(rstr, error_msg, num, vector_ret, fp);
+            ret = ___query_by_io_vector(rc, rstr, num, vector_ret, fp);
         }
         goto over;
     }
@@ -324,13 +324,13 @@ static int ___query_by_io(long *number_ret, zbuf_t *string_ret, zvector_t *vecto
     if (firstch == '$') {
         num = atoi(rp+1);
         if (json_ret) {
-            ret =  ___query_by_io_string_json(rstr, error_msg, num, json_ret, fp);
+            ret =  ___query_by_io_string_json(rc, rstr, num, json_ret, fp);
         } else { 
-            ret =  ___query_by_io_string(rstr, error_msg, num, string_ret, fp);
+            ret =  ___query_by_io_string(rc, rstr, num, string_ret, fp);
         }
         goto over;
     }
-    strcpy(error_msg, "read/write, or unknown protocol");
+    strcpy(rc->error_msg, "read/write, or unknown protocol");
 over:
     zbuf_free(rstr);
     return ret;
@@ -500,19 +500,22 @@ struct zredis_client_standalone_t {
     zstream_t *fp;
 };
 
-zredis_client_t *zredis_client_connect(const char *destination, const char *password, int cmd_timeout, zbool_t auto_reconnect)
+zredis_client_t *zredis_client_connect(const char *destination, const char *password, int connect_timeout, zbool_t auto_reconnect)
 {
-    int fd = zconnect(destination, 1, cmd_timeout);
+    int fd = zconnect(destination, connect_timeout);
     if (fd < 0) {
         return 0;
     }
+    znonblocking(fd, 1);
     zredis_client_t *rc = (zredis_client_t *)zcalloc(1, sizeof(zredis_client_standalone_t));
     zredis_client_standalone_t *sc = (zredis_client_standalone_t *)rc;
     if (!zempty(password)) {
         rc->password = zstrdup(password);
     }
     rc->destination = zstrdup(destination);
-    rc->cmd_timeout = cmd_timeout;
+    rc->connect_timeout = connect_timeout;
+    rc->read_wait_timeout = -1;
+    rc->write_wait_timeout = -1;
     rc->cluster_mode = 0;
     rc->auto_reconnect = auto_reconnect;
     sc->fd = fd;
@@ -524,7 +527,10 @@ static int zredis_client_standalone_vget_inner(zredis_client_t *rc, long *number
     zredis_client_standalone_t *sc = (zredis_client_standalone_t *)rc;
     if (sc->fd < 0) {
         if (rc->auto_reconnect) {
-            sc->fd = zconnect(rc->destination, 1, rc->cmd_timeout);
+            sc->fd = zconnect(rc->destination, rc->connect_timeout);
+            if (sc->fd > -1) {
+                znonblocking(sc->fd, 1);
+            }
             snprintf(rc->error_msg, zredis_client_error_msg_size, "connect %s", rc->destination);
         }
     }
@@ -533,8 +539,10 @@ static int zredis_client_standalone_vget_inner(zredis_client_t *rc, long *number
     }
     if (!(sc->fp)) {
         sc->fp = zstream_open_fd(sc->fd);
+        zstream_set_read_wait_timeout(sc->fp, rc->read_wait_timeout);
+        zstream_set_write_wait_timeout(sc->fp, rc->write_wait_timeout);
     }
-    int ret = ___query_by_io(number_ret, string_ret, vector_ret, json_ret, query_vec, rc->cmd_timeout, rc->error_msg, sc->fp);
+    int ret = ___query_by_io(rc, number_ret, string_ret, vector_ret, json_ret, query_vec, sc->fp);
     if ((zstream_get_read_cache_len(sc->fp) == 0) || (ret == -2)) {
         zstream_close(sc->fp, 0);
         sc->fp = 0;
@@ -587,20 +595,22 @@ struct zredis_client_cluster_t {
     zstream_t *fp;
 };
 
-zredis_client_t *zredis_client_connect_cluster(const char *destination, const char *password, int cmd_timeout, zbool_t auto_reconnect)
+zredis_client_t *zredis_client_connect_cluster(const char *destination, const char *password, int connect_timeout, zbool_t auto_reconnect)
 {
-    int fd = zconnect(destination, 1, cmd_timeout);
+    int fd = zconnect(destination, connect_timeout);
     if (fd < 0) {
         return 0;
     }
-    int zget_peername(int sockfd, int *host, int *port);
+    znonblocking(fd, 1);
     zredis_client_t *rc = (zredis_client_t *)zcalloc(1, sizeof(zredis_client_cluster_t));
     zredis_client_cluster_t *cc = (zredis_client_cluster_t *)rc;
     if (!zempty(password)) {
         rc->password = zstrdup(password);
     }
     rc->destination = zstrdup(destination);
-    rc->cmd_timeout = cmd_timeout;
+    rc->connect_timeout = connect_timeout;
+    rc->read_wait_timeout = -1;
+    rc->write_wait_timeout = -1;
     rc->cluster_mode = 1;
     rc->auto_reconnect = auto_reconnect;
 
@@ -663,9 +673,11 @@ static _cluster_connection_t *_cluster_vget_inner_prepare(zredis_client_t *rc, z
     connection = cc->connections+slotrange->connection_offset;
     if (connection->fd < 0) {
         if ((connection->fd == -2) && (rc->auto_reconnect)) {
-            connection->fd = zinet_connect(zget_ipstring(connection->ip, ip), connection->port, 1, rc->cmd_timeout);
+            connection->fd = zinet_connect(zget_ipstring(connection->ip, ip), connection->port, rc->connect_timeout);
             if (connection->fd < 0) {
                 snprintf(rc->error_msg, zredis_client_error_msg_size, "connect %s:%d", zget_ipstring(connection->ip, ip), connection->port);
+            } else {
+                znonblocking(connection->fd, 1);
             }
         }
         if (connection->fd < 0) {
@@ -678,6 +690,8 @@ static _cluster_connection_t *_cluster_vget_inner_prepare(zredis_client_t *rc, z
     }
     if (!(cc->fp)) {
         cc->fp = zstream_open_fd(connection->fd);
+        zstream_set_read_wait_timeout(cc->fp, rc->read_wait_timeout);
+        zstream_set_write_wait_timeout(cc->fp, rc->write_wait_timeout);
     }
     return connection;
 }
@@ -788,7 +802,7 @@ static int zredis_client_cluster_vget_inner(zredis_client_t *rc, long *number_re
         if (connection == 0) {
             return -1;
         }
-        ret = ___query_by_io(number_ret, string_ret, vector_ret, json_ret, query_vec, rc->cmd_timeout, rc->error_msg, cc->fp);
+        ret = ___query_by_io(rc, number_ret, string_ret, vector_ret, json_ret, query_vec, cc->fp);
         if ((zstream_get_read_cache_len(cc->fp) == 0) || (ret == -2)) {
             zstream_close(cc->fp, 0);
             cc->fp = 0;
@@ -845,9 +859,19 @@ void zredis_client_free(zredis_client_t *rc)
     }
 }
 
-void zredis_client_set_cmd_timeout(zredis_client_t *rc, int cmd_timeout)
+void zredis_client_set_connect_timeout(zredis_client_t *rc, int connect_timeout)
 {
-    rc->cmd_timeout = cmd_timeout;
+    rc->connect_timeout = connect_timeout;
+}
+
+void zredis_client_set_read_wait_timeout(zredis_client_t *rc, int read_wait_timeout)
+{
+    rc->read_wait_timeout = read_wait_timeout;
+}
+
+void zredis_client_set_write_wait_timeout(zredis_client_t *rc, int write_wait_timeout)
+{
+    rc->write_wait_timeout = write_wait_timeout;
 }
 
 void zredis_client_set_auto_reconnect(zredis_client_t *rc, zbool_t auto_reconnect)

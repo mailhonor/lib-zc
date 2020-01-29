@@ -11,7 +11,7 @@
 #include "zc.h"
 #include <ctype.h>
 
-zjson_t *zjson_create()
+zjson_t *zjson_create(void)
 {
     zjson_t *j = (zjson_t *)zcalloc(1, sizeof(zjson_t));
     j->type = zvar_json_type_null;
@@ -56,6 +56,10 @@ zjson_t *zjson_create_string(const void *s, int len)
 
 void zjson_free(zjson_t *j)
 {
+    if (j==0) {
+        return;
+    }
+
     if ((j->type == zvar_json_type_object) || (j->type == zvar_json_type_array)) {
         zjson_reset(j);
     } else if (j->type == zvar_json_type_string) {

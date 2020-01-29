@@ -7,136 +7,135 @@
  */
 
 #include "zc.h"
-#include <time.h>
 
-static zevent_base_t *evbase;
-static int server_error(zeio_t * ev)
+static int current_client = 0;
+static int all_client = 0;
+static zaio_t *tm;
+static zaio_t *listen_aio;
+
+static void connect_quit(zaio_t *aio, const char *msg)
 {
-    int ret, fd;
-    zstream_t *fp;
-
-    ret = zeio_get_result(ev);
-    fd = zeio_get_fd(ev);
-    fp = (zstream_t *)zeio_get_context(ev);
-
-    if (ret < 0) {
-        zinfo("%d: error", fd);
+    if (msg) {
+        zinfo("%s", msg);
     }
-
-    zeio_free(ev, 1);
-    if (fp) {
-        zstream_close(fp, 1);
-    }
-    close(fd);
-
-    return 0;
+    zaio_free(aio, 1);
+    current_client--;
 }
 
-static void server_read(zeio_t * ev)
+static void timer_cb(zaio_t *tm)
 {
-    int ret;
+    if (zvar_sigint_flag == 1) {
+        /* 这段代码是为了检查内存泄露 */
+        fprintf(stderr, "\r                          \n");
+        zinfo("signal SIGINT, then EXIT");
+        zaio_base_stop_notify(zaio_get_aio_base(tm));
+        zaio_free(tm, 1);
+        zaio_free(listen_aio, 1);
+        return;
+    }
+    const char title[] = "LIB-ZC";
+    static int s = 0;
+    zinfo("%c all:%d, current:%d", title[s++%(sizeof(title)-1)], all_client, current_client);
+    zaio_sleep(tm, timer_cb, 1);
+}
 
-    if (zeio_get_result(ev) < 1) {
-        server_error(ev);
+static void server_read(zaio_t *aio)
+{
+    if (zaio_get_result(aio) < 1) {
+        connect_quit(aio, "readable error");
         return;
     }
 
-    ZSTACK_BUF(bf, 1025);
-    zstream_t *fp= zstream_open_fd(zeio_get_fd(ev));
-    ret = zstream_gets(fp, bf, 1024);
+    ZSTACK_BUF(bf, 10240 + 1);
+    zstream_t *fp= zstream_open_fd(zaio_get_fd(aio));
+    int ret = zstream_gets(fp, bf, 10240);
     if (ret < 1) {
         zstream_close(fp, 0);
-        server_error(ev);
-        return;
-    }
-    if (!strncmp(zbuf_data(bf), "exit", 4)) {
-        zstream_close(fp, 0);
-        server_error(ev);
+        connect_quit(aio, "read error");
         return;
     }
     zbuf_trim_right_rn(bf);
 
-    zstream_printf_1024(fp, "your input: %s\n", zbuf_data(bf));
-    ret = zstream_flush(fp);
-    if (ret < 0) {
-        zstream_close(fp, 0);
-        server_error(ev);
-        return;
-    }
-
-    zeio_enable_read(ev, server_read);
-}
-
-static void server_welcome(zeio_t * ev)
-{
-    int ret;
-    zstream_t *fp;
-
-    if (zeio_get_result(ev) < 0) {
-        server_error(ev);
-        return;
-    }
-
-    fp = zstream_open_fd(zeio_get_fd(ev));
-    time_t t = time(0);
-    zstream_printf_1024(fp, "welcome ev: %s\n", ctime(&t));
+    zstream_write(fp, zbuf_data(bf), zbuf_len(bf));
+    zstream_puts(fp, "\n");
     ret = zstream_flush(fp);
     zstream_close(fp, 0);
     if (ret < 0) {
-        server_error(ev);
+        connect_quit(aio, "write error");
         return;
     }
 
-    zeio_enable_read(ev, server_read);
+    if (!strcmp(zbuf_data(bf), "exit")) {
+        connect_quit(aio, 0);
+        return;
+    }
+
+    zaio_readable(aio, server_read);
 }
 
-static void before_accept(zeio_t * ev)
+static void server_welcome(zaio_t *aio)
 {
-    int sock = zeio_get_fd(ev);
+    if (zaio_get_result(aio) < 0) {
+        connect_quit(aio, "writeable error");
+        return;
+    }
+
+    zstream_t *fp = zstream_open_fd(zaio_get_fd(aio));
+    zstream_puts(fp, "echo server, support command: exit\n");
+    int ret = zstream_flush(fp);
+    zstream_close(fp, 0);
+    if (ret < 0) {
+        connect_quit(aio, "write error");
+        return;
+    }
+
+    zaio_readable(aio, server_read);
+}
+
+static void before_accept(zaio_t *aio)
+{
+    int sock = zaio_get_fd(aio);
     int fd = zinet_accept(sock);
     if (fd < 0) {
         return;
     }
-    zeio_t *nev = zeio_create(fd, evbase);
-    zeio_enable_write(nev, server_welcome);
-}
-
-static void timer_cb(zetimer_t * zt)
-{
-    zinfo("now exit!");
-    exit(1);
+    all_client++;
+    current_client++;
+    zaio_t *naio = zaio_create(fd, zaio_get_aio_base(aio));
+    zaio_writeable(naio, server_welcome);
 }
 
 int main(int argc, char **argv)
 {
-    int sock;
-    zeio_t *ev;
-    zetimer_t *tm;
-    char *server;
-
     zmain_argument_run(argc, argv, 0);
-    server = zconfig_get_str(zvar_default_config, "server", "");
-    if (zempty(server)) {
-        printf("USAGE: %s -O server 0:8899\n", zvar_progname);
-        exit(1);
+    
+    char *listen = zconfig_get_str(zvar_default_config, "listen", 0);
+    if (zempty(listen)) {
+        zinfo("default listen on 0:8899");
+        zinfo("USAGE %s -listen 0:8899", argv[0]);
+        listen = "0:8899";
     }
 
-    sock = zlisten(server, 0, 1, 5);
+    int sock = zlisten(listen, 0, 5);
     if (sock < 0) {
-        printf("ERR listen on %s(%m)\n", server);
+        zinfo("ERR listen on %s(%m)", listen);
         return 1;
     }
+    znonblocking(sock, 1);
 
-    printf("### echo server\n");
-    evbase = zevent_base_create();
-    ev = zeio_create(sock, evbase);
-    zeio_enable_read(ev, before_accept);
+    zinfo("### echo server start");
 
-    tm = zetimer_create(evbase);
-    zetimer_start(tm, timer_cb, 200);
+    zaio_base_t *aiobase = zaio_base_create();
 
-    while(zevent_base_dispatch(evbase)) {
-    }
+    listen_aio = zaio_create(sock, aiobase);
+    zaio_readable(listen_aio, before_accept);
+
+    tm = zaio_create(-1, aiobase);
+    zaio_sleep(tm, timer_cb, 1);
+
+    zaio_base_run(aiobase, 0);
+
+    zaio_base_free(aiobase);
 
     return 0;
 }

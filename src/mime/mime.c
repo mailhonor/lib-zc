@@ -236,7 +236,7 @@ static void zmail_decode_mime_prepare_node(zmail_t *parser, mail_parser_context_
 static int zmail_decode_mime_get_all_boundary(zmail_t *parser, boundary_line_t **_bls_ptr)
 {
     int bls_size = 100, bls_len = 0, len;
-    boundary_line_t *bls, *bls_ptr = (boundary_line_t *)zmalloc((bls_size+1)*sizeof(boundary_line_t));
+    boundary_line_t *bls, *bls_ptr = (boundary_line_t *)zcalloc((bls_size+1), sizeof(boundary_line_t));
     char *ps = parser->mail_data, *pend = parser->mail_data + parser->mail_size, *p;
 
     if (parser->mail_size > 0) {
@@ -295,7 +295,7 @@ static int zmail_decode_mime_get_all_boundary(zmail_t *parser, boundary_line_t *
 
 static mail_parser_context_t *zmail_decode_mime_prepare_context(zmail_t *parser)
 {
-    mail_parser_context_t *ctx = (mail_parser_context_t *)zmalloc(sizeof(mail_parser_context_t));
+    mail_parser_context_t *ctx = (mail_parser_context_t *)zcalloc(sizeof(mail_parser_context_t), 1);
 
     ctx->node_vec = zvector_create(32); /* mail_parser_node_t */
 
@@ -327,7 +327,8 @@ int zmail_decode_mime_inner(zmail_t * parser)
             zfree(cnode_last);
         }
         cnode_last = cnode = ctx->cnode = (mail_parser_node_t *)(zvector_data(ctx->node_vec)[zvector_len(ctx->node_vec)-1]);
-        zvector_truncate(ctx->node_vec, zvector_len(ctx->node_vec) - 1);
+        int new_len = zvector_len(ctx->node_vec) - 1;
+        zvector_truncate(ctx->node_vec, new_len);
         zmime_t *cmime = cnode->cmime; 
 
         /* header */

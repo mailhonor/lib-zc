@@ -16,22 +16,30 @@
 
 int zlicense_mac_check(const char *salt, const char *license)
 {
-    zbuf_t *license_c = zbuf_create(0);
-    zargv_t *mac_list = zargv_create(0);
-
-    if (ZEMPTY(salt) || ZEMPTY(license)) {
+    if (ZEMPTY(salt) || ZEMPTY(license) || (strlen(license)!=16)) {
         return 0;
     }
-    zget_mac_address(mac_list);
+
+    int ret = 0;
+
+    zargv_t *mac_list = zargv_create(0);
+    if (zget_mac_address(mac_list) < 0) {
+        zargv_free(mac_list);
+        return -1;
+    }
+
+    ZSTACK_BUF(license_c, 18);
     ZARGV_WALK_BEGIN(mac_list, mac) {
         zbuf_reset(license_c);
         zlicense_mac_build(salt, mac, license_c);
-        if (!strncasecmp(zbuf_data(license_c), license, 16)) {
-            return 1;
+        if (!strcmp(zbuf_data(license_c), license)) {
+            ret = 1;
+            break;
         }
     } ZARGV_WALK_END;
+    zargv_free(mac_list);
 
-    return 0;
+    return ret;
 }
 
 void zlicense_mac_build(const char *salt, const char *_mac, zbuf_t *result)
@@ -43,7 +51,9 @@ void zlicense_mac_build(const char *salt, const char *_mac, zbuf_t *result)
     zbuf_puts(builder, _mac);
     zstr_tolower(zbuf_data(builder) + len);
     long crc = zcrc64(zbuf_data(builder), zbuf_len(builder), 0);
-    zhex_encode(&crc, 8, result);
+    char tmpbuf[18];
+    sprintf(tmpbuf, "%016lX", crc);
+    zbuf_strcat(result, tmpbuf);
     zbuf_free(builder);
 }
 

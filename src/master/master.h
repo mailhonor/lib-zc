@@ -8,8 +8,8 @@
 
 #define zvar_master_server_status_fd  3
 
-#define zvar_event_server_status_fd   4
-#define zvar_event_server_listen_fd   5
+#define zvar_aio_server_status_fd   4
+#define zvar_aio_server_listen_fd   5
 
 #define zvar_coroutine_server_status_fd   4
 #define zvar_coroutine_server_listen_fd   5

@@ -8,12 +8,6 @@
 
 #include "zc.h"
 
-void zlink_init(zlink_t * link)
-{
-    link->head = 0;
-    link->tail = 0;
-}
-
 zlink_node_t *zlink_attach_before(zlink_t * link, zlink_node_t * node, zlink_node_t * before)
 {
     ZMLINK_ATTACH_BEFORE(link->head, link->tail, node, prev, next, before);

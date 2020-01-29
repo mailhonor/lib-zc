@@ -70,7 +70,6 @@ int main(int argc, char **argv)
     if (ex) {
         rc = zredis_client_connect_cluster(server, 0, 10, 1);
     } else {
-    return 0;
         rc = zredis_client_connect(server, 0, 10, 1);
     }
 

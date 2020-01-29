@@ -10,6 +10,7 @@
 
 static void _response_416(zhttpd_t *httpd)
 {
+    zhttpd_show_log(httpd, "416 -");
     char output[] = " 416 Request Range Not Satisfiable\r\n"
         "Server: LIBZC HTTPD\r\n"
         "Content-Type: text/html\r\n"
@@ -108,18 +109,24 @@ static zbool_t _zhttpd_response_file(zhttpd_t *httpd, const char *pathname, cons
     }
     
     if (do_ragne) {
+        zhttpd_show_log(httpd, "206 %ld/%ld", offset1, offset2-offset1+1);
         zhttpd_response_header_initialization(httpd, 0, "206 Partial Content");
+    } else {
+        zhttpd_show_log(httpd, "200 %ld", offset2+1);
     }
     zhttpd_response_header_content_type(httpd, content_type, 0);
     zhttpd_response_header_content_length(httpd, offset2-offset1+1);
     if (zvar_httpd_no_cache == 0) {
         zhttpd_response_header(httpd, "Etag", new_etag);
         zhttpd_response_header_date(httpd, "Last-Modified", st.st_mtime);
+        if (max_age == -1) {
+            max_age = 3600 * 24 * 10;
+        }
         if (max_age > 0) {
             sprintf(rwdata, "max-age=%d", httpd->response_max_age);
             zhttpd_response_header(httpd, "Cache-Control", rwdata);
             zhttpd_response_header_date(httpd, "Expires", httpd->response_expires + 1 + time(0));
-        } else if (max_age < 0) {
+        } else if (max_age == 0) {
             zhttpd_response_header(httpd, "Cache-Control", "no-cache");
         }
     }
@@ -142,7 +149,7 @@ static zbool_t _zhttpd_response_file(zhttpd_t *httpd, const char *pathname, cons
     rlen_sum = 0;
     if (offset1) {
         if (lseek(fd, offset1, SEEK_SET) == (off_t) -1) {
-            zhttpd_set_exception(httpd);
+            zhttpd_set_stop(httpd);
             goto over;
         }
     }
@@ -164,22 +171,16 @@ static zbool_t _zhttpd_response_file(zhttpd_t *httpd, const char *pathname, cons
             break;
         }
         if (errno == EINTR) {
-            if (zvar_proc_stop) {
-                zhttpd_set_stop(httpd);
-                break;
-            }
             continue;
         }
         break;
     }
 
-    if (zvar_proc_stop == 0) {
+    zstream_flush(httpd->fp);
+    if (rlen_sum != st.st_size) {
+        zhttpd_set_stop(httpd);
+    } else {
         zstream_flush(httpd->fp);
-        if (rlen_sum != st.st_size) {
-            zhttpd_set_stop(httpd);
-        } else {
-            zstream_flush(httpd->fp);
-        }
     }
 
 over:

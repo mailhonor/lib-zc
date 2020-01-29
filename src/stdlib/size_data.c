@@ -8,7 +8,7 @@
 
 #include "zc.h"
 
-int zsize_data_unescape(const void *src_data, int src_size, void **result_data, int *result_len)
+int zcint_data_unescape(const void *src_data, int src_size, void **result_data, int *result_len)
 {
     int i = 0;
     unsigned char *buf = (unsigned char *)src_data;
@@ -32,7 +32,7 @@ int zsize_data_unescape(const void *src_data, int src_size, void **result_data, 
     return i + len;
 }
 
-int zsize_data_unescape_all(const void *src_data, int src_size, zsize_data_t *vec, int vec_size)
+int zcint_data_unescape_all(const void *src_data, int src_size, zsize_data_t *vec, int vec_size)
 {
     int count = 0;
     zsize_data_t *sd;
@@ -65,7 +65,7 @@ int zsize_data_unescape_all(const void *src_data, int src_size, zsize_data_t *ve
     return count;
 }
 
-void zsize_data_escape(zbuf_t * zb, const void *data, int len)
+void zcint_data_escape(zbuf_t * zb, const void *data, int len)
 {
 	int ch, left = len;
 
@@ -85,38 +85,38 @@ void zsize_data_escape(zbuf_t * zb, const void *data, int len)
 	}
 }
 
-void zsize_data_escape_int(zbuf_t * zb, int i)
+void zcint_data_escape_int(zbuf_t * zb, int i)
 {
 	char buf[32];
 	int len;
 	len = sprintf(buf, "%d", i);
-	zsize_data_escape(zb, buf, len);
+	zcint_data_escape(zb, buf, len);
 }
 
-void zsize_data_escape_long(zbuf_t * zb, long i)
+void zcint_data_escape_long(zbuf_t * zb, long i)
 {
 	char buf[64];
 	int len;
 	len = sprintf(buf, "%lu", i);
-	zsize_data_escape(zb, buf, len);
+	zcint_data_escape(zb, buf, len);
 }
 
-void zsize_data_escape_dict(zbuf_t * zb, zdict_t * zd)
+void zcint_data_escape_dict(zbuf_t * zb, zdict_t * zd)
 {
 	ZDICT_WALK_BEGIN(zd, k, v) {
-        zsize_data_escape(zb, k, -1);
-        zsize_data_escape(zb, zbuf_data(v), zbuf_len(v));
+        zcint_data_escape(zb, k, -1);
+        zcint_data_escape(zb, zbuf_data(v), zbuf_len(v));
     } ZDICT_WALK_END;
 }
 
-void zsize_data_escape_pp(zbuf_t * zb, const char **pp, int size)
+void zcint_data_escape_pp(zbuf_t * zb, const char **pp, int size)
 {
     for (int i = 0;i<size;i++) {
-        zsize_data_escape(zb, pp[i], -1);
+        zcint_data_escape(zb, pp[i], -1);
     }
 }
 
-int zsize_data_put_size(int size, char *buf)
+int zcint_put(int size, char *buf)
 {
     int ch, left = size, len = 0;
 	do {
@@ -130,7 +130,7 @@ int zsize_data_put_size(int size, char *buf)
     return len;
 }
 
-int zsize_data_get_size_from_zstream(zstream_t *fp)
+int zcint_data_get_from_zstream(zstream_t *fp)
 {
     int ch, size = 0, shift = 0;
     while (1) {
