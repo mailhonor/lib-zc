@@ -57,26 +57,23 @@ int zopenssl_SSL_get_fd(SSL *ssl);
 
 ### 带超时的connect/accept/shutdown/read/write
  
-- 下面都是带超时的函数
-- timeout单位是秒
-- 返回 <0 表示失败(或超时)
-- 支持超时(timeout)的前提是: SSL的fd是非阻塞的
+支持超时(timeout)的前提是: SSL的fd是非阻塞的
 
 ```
-/* 返回 1: 成功 */
-int zopenssl_timed_connect(SSL *ssl, int timeout);
+/* 带超时的ssl connect, timeout: 秒, 下同, 返回 -1:错/超时, 1:成功 */
+int zopenssl_timed_connect(SSL *ssl, int read_wait_timeout, int write_wait_timeout);
 
-/* 返回 1: 成功 */
-int zopenssl_timed_accept(SSL *ssl, int timeout);
+/* 带超时的ssl accept, 返回 -1:错/超时, 1:成功 */
+int zopenssl_timed_accept(SSL *ssl, int read_wait_timeout, int write_wait_timeout);
 
-/* 返回 1: 成功 */
-int zopenssl_timed_shutdown(SSL *ssl, int timeout);
+/* 带超时的ssl shutdown, 返回 -1:错/超时, 1:成功 */
+int zopenssl_timed_shutdown(SSL *ssl, int read_wait_timeout, int write_wait_timeout);
 
-/* 返回值: 请参考 SSL_read */
-int zopenssl_timed_read(SSL *ssl, void *buf, int len, int timeout);
+/* 带超时的ssl read, 返回 和 -1:错/超时, 其他请看 ssl_read 帮助文档 */
+int zopenssl_timed_read(SSL *ssl, void *buf, int len, int read_wait_timeout, int write_wait_timeout);
 
-/* 返回值: 请参考 SSL_write
-int zopenssl_timed_write(SSL *ssl, const void *buf, int len, int timeout);
+/* 带超时的ssl write, 返回 和 -1:错/超时, 其他请看 ssl_write 帮助文档 */
+int zopenssl_timed_write(SSL *ssl, const void *buf, int len, int read_wait_timeout, int write_wait_timeout);
 
 ```
 
