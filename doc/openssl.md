@@ -1,4 +1,4 @@
-# OEPNSSL初始化/线程安全/SSL上下文/超时读写
+# OEPNSSL初始化/线程安全/SSL上下文/超时读写/SNI
 
 [LIB-ZC](https://gitee.com/linuxmail/lib-zc) 是一个C扩展库
 
@@ -56,7 +56,7 @@ int zopenssl_SSL_get_fd(SSL *ssl);
 ```
 
 ### 带超时的connect/accept/shutdown/read/write
-
+ 
 - 下面都是带超时的函数
 - timeout单位是秒
 - 返回 <0 表示失败(或超时)
@@ -78,6 +78,15 @@ int zopenssl_timed_read(SSL *ssl, void *buf, int len, int timeout);
 /* 返回值: 请参考 SSL_write
 int zopenssl_timed_write(SSL *ssl, const void *buf, int len, int timeout);
 
+```
+
+### 支持 SNI
+
+所谓 **SNI**, 既 TLS extension, Server Name Indication
+
+```
+/* get_ssl_ctx_by_server_name 为回调函数, 其参数为servername, 根据servername 返回合适的 SSL_CTX */
+void zopenssl_SSL_CTX_support_sni(SSL_CTX *ctx, SSL_CTX *(*get_ssl_ctx_by_server_name)(const char *servername));
 ```
 
 ## 应用

@@ -14,7 +14,7 @@ LIB-ZC 是一个Linux平台通用C扩展库
 - 封装了常用编解码 [base64/quoted-printable/hex/url/ncr](./doc/encode.md)
 - 封装了常见的[io函数](./doc/io.md), [超时io函数](./doc/timed_io.md), [tcp socket](./doc/tcp_socket.md), [dns函数](./doc/dns.md)
 - 封装了常见的[字符串函数](./doc/string.md), [时间函数](./doc/time.md), [文件操作函数](./doc/file.md)
-- 封装了[openssl函数](./doc/openssl.md)
+- 封装了[openssl函数](./doc/openssl.md), 线程安全, 异步SSL, 支持 SNI
 - 封装了[io流](./doc/stream.md), 支持ssl
 - master/server服务管理框架, server包括异步io模式和协程模式
 - [异步io开发框架](./doc/aio.md). 包括 triger, 异步io, 缓存读写, 定时器, 支持ssl
