@@ -1282,6 +1282,10 @@ SSL_CTX *zopenssl_SSL_CTX_create_client(void);
 /* 释放 SSL_CTX */
 void zopenssl_SSL_CTX_free(SSL_CTX *ctx);
 
+/* 支持 SNI */
+/* get_ssl_ctx_by_server_name 为回调函数, 其参数为servername, 根据servername 返回合适的 SSL_CTX */
+void zopenssl_SSL_CTX_support_sni(SSL_CTX *ctx, SSL_CTX *(*get_ssl_ctx_by_server_name)(const char *servername));
+
 /* 获取错误, *ecode: 错误码, buf: 错误信息, buf_len: 错误信息buf长度 */
 void zopenssl_get_error(unsigned long *ecode, char *buf, int buf_len);
 

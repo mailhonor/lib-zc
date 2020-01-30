@@ -17,6 +17,8 @@
 #include <errno.h>
 #include <dirent.h>
 #include <signal.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 static int is_ssl = 0;
 SSL_CTX *var_openssl_server_ctx;
@@ -218,6 +220,7 @@ static void *do_httpd(void *arg)
     zhttpd_t *httpd;
     if (is_ssl) {
         SSL *ssl = zopenssl_SSL_create(var_openssl_server_ctx, fd);
+
         if (zopenssl_timed_accept(ssl, 10, 10) < 1) {
             int ip = 0, port = 0;
             char ipstr[18];

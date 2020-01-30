@@ -222,6 +222,51 @@ err:
     return 0;
 }
 
+typedef SSL_CTX *(*get_ssl_ctx_by_server_name_fn_t)(const char *servername);
+
+static int _change_ssl_ctx_by_servername(SSL *ssl, int *ad, void *arg)
+{
+    const char *servername = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+    if (zempty(servername)) {
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+
+    get_ssl_ctx_by_server_name_fn_t get_ssl_ctx_by_server_name = (get_ssl_ctx_by_server_name_fn_t)arg;
+    if (!get_ssl_ctx_by_server_name) {
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+
+    SSL_CTX *my_ctx = SSL_get_SSL_CTX(ssl);
+    if (!my_ctx) {
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+
+    SSL_CTX *another_ctx = get_ssl_ctx_by_server_name(servername);
+    if (!another_ctx) {
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+
+    if (another_ctx != my_ctx) {
+        SSL_set_SSL_CTX(ssl, another_ctx);
+    }
+
+    return SSL_TLSEXT_ERR_OK;
+}
+
+void zopenssl_SSL_CTX_support_sni(SSL_CTX *ctx, SSL_CTX *(*get_ssl_ctx_by_server_name)(const char *servername))
+{
+    do { 
+        if (SSL_CTX_set_tlsext_servername_callback(ctx,  _change_ssl_ctx_by_servername) == 0) {
+            zinfo("WARNING SSL_CTX_set_tlsext_servername_callback failure");
+            break;
+        }
+        if (SSL_CTX_set_tlsext_servername_arg(ctx, get_ssl_ctx_by_server_name) == 0) {
+            zinfo("WARNING SSL_CTX_set_tlsext_servername_arg failure");
+            break;
+        }
+    } while(0);
+}
+
 void zopenssl_SSL_CTX_free(SSL_CTX * ctx)
 {
     SSL_CTX_free(ctx);
