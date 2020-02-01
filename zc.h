@@ -1317,19 +1317,29 @@ int zopenssl_timed_write(SSL *ssl, const void *buf, int len, int read_wait_timeo
 #define zvar_stream_rbuf_size           4096
 #define zvar_stream_wbuf_size           4096
 
+typedef struct zstream_engine_t zstream_engine_t;
+struct zstream_engine_t {
+    const char *type;
+    int (*close_fn)(zstream_t *fp, int release_ioctx);
+    int (*read_fn)(zstream_t *fp, void *buf, int len);
+    int (*write_fn)(zstream_t *fp, const void *buf, int len);
+    int (*timed_read_wait_fn)(zstream_t *fp, int read_wait_timeout);
+    int (*timed_write_wait_fn)(zstream_t *fp, int write_wait_timeout);
+    int (*get_fd_fn)(zstream_t *fp);
+};
+
 struct zstream_t {
+    int read_wait_timeout;
+    int write_wait_timeout;
+    void *ioctx;
+    zstream_engine_t *engine;
     short int read_buf_p1;
     short int read_buf_p2;
     short int write_buf_len;
     unsigned short int error:1;
     unsigned short int eof:1;
-    unsigned short int ssl_mode:1;
-    unsigned short int file_mode:1;
     unsigned char read_buf[zvar_stream_rbuf_size];
     unsigned char write_buf[zvar_stream_wbuf_size];
-    int read_wait_timeout;
-    int write_wait_timeout;
-    union { int fd; SSL *ssl; } ioctx;
 };
 
 /* 宏, 返回读取的下一个字符, -1:错 */
@@ -1357,13 +1367,14 @@ zstream_t *zstream_open_fd(int fd);
 zstream_t *zstream_open_ssl(SSL *ssl);
 
 /* 打开本地文件, mode: "r", "r+", "w", "w+", "a", "a+" */
+/* 推荐使用标准库FILE *, 只有在极为特殊的情况下才建议用这个函数, 一般情况就用FILE * */
 zstream_t *zstream_open_file(const char *pathname, const char *mode);
 
 /* 打开地址destination, timeout:是超时, 单位秒. destination: 见 zconnect */
 zstream_t *zstream_open_destination(const char *destination, int timeout);
 
-/* 关闭stream, close_fd_and_release_ssl: 是否同时关闭相关fd */
-int zstream_close(zstream_t *fp, zbool_t release);
+/* 关闭stream, release_ioctx: 是否同时关闭相关fd */
+int zstream_close(zstream_t *fp, zbool_t release_ioctx);
 
 /* 返回 fd */
 int zstream_get_fd(zstream_t *fp);

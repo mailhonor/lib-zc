@@ -22,11 +22,11 @@ LIB-ZC 是一个Linux平台通用C扩展库
 - [io管道(代理)库](./doc/iopipe.md), 协程风格和异步IO风格
 - [json 解析库](./doc/json.md)
 - mime 邮件解析库, [tnef邮件解析库](./doc/tnef.md)
-- redis客户端(支持集群), memcache客户端
+- [redis客户端(支持集群)](doc/redis_client.md), [memcache客户端](doc/memcache_client.md)
 - 类redis服务器端
 - sqlite3 代理服务器/客户端
 - http服务器库
-- 一个全新的const db库
+- 一个全新的[const db](./doc/cdb.md)库
 
 ## 背景
 在Linux平台, 仅基于GNU C标准库, 开发一个全新的完整的邮件系统, 包括

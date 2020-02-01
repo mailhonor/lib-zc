@@ -59,8 +59,8 @@ int zstream_close(zstream_t *fp, zbool_t release);
 #define ZSTREAM_GETC(fp)    ... 
 
 /* 超时等待可读, 单位秒, timeout<0: 表示无限长 */
-/*返回 -1: 出错  0: 不可读, 1: 可读或socket异常 */
-int zstream_timed_read_wait(zstream_t *fp, int timeout);
+/* -1: 出错  0: 不可读, 1: 可读或socket异常 */
+int zstream_timed_read_wait(zstream_t *fp, int read_wait_timeout);
 
 /* 读取并返回一个字符,  返回 < 0: 错误 */
 /* 不应该使用这个函数 */
@@ -92,8 +92,9 @@ int zstream_flush(zstream_t *fp);
 #define ZSTREAM_PUTC(fp, ch) ...
 
 /* 超时等待可写, 单位秒 */
-/* 返回 <0: 出错  0: 不可写, 1: 可写或socket异常 */
-int zstream_timed_write_wait(zstream_t *fp, int timeout);
+/* <0: 出错  0: 不可写, 1: 可写或socket异常 */
+int zstream_timed_write_wait(zstream_t *fp, int write_wait_timeout);
+
   
 /* 写一个字节ch, 返回-1:错, 返回ch:成功 */
 /* 不推荐使用zstream_putc_do, 而是使用 zstream_putc */
@@ -151,8 +152,11 @@ zbool_t zstream_is_exception(zstream_t *fp) ;
 /* 可读缓存的长度 */
 int zstream_get_read_cache_len(zstream_t *fp);
 
-/* 设置超时, 单位秒(小于0则无限长) */
-void zstream_set_timeout(zstream_t *fp, int timeout);
+/* 通用超时等待可读, 单位秒, timeout<0: 表示无限长 */
+void zstream_set_read_wait_timeout(zstream_t *fp, int read_wait_timeout);
+
+/* 通用超时等待可写, 单位秒 */
+void zstream_set_write_wait_timeout(zstream_t *fp, int write_wait_timeout);
 ```
 
 ## 例子: 连接fd

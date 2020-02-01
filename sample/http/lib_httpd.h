@@ -17,17 +17,25 @@
 #include <errno.h>
 #include <dirent.h>
 #include <signal.h>
+#ifdef ___INNER_USE_SSL___
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#endif
 
+#ifdef ___INNER_USE_SSL___
 static int is_ssl = 0;
 SSL_CTX *var_openssl_server_ctx;
+#endif
 
 typedef void (*cmd_fn_t)(zhttpd_t * httpd);
 
 static void usage()
 {
+#ifdef ___INNER_USE_SSL___
     printf("USAGE: %s -listen 0:8899 [ --ssl [ -cert ./ssl.cert, -key ./ssl.key ] ]\n", zvar_progname);
+#else
+    printf("USAGE: %s -listen 0:8899\n", zvar_progname);
+#endif
     exit(1);
 }
 
@@ -218,6 +226,7 @@ static void *do_httpd(void *arg)
     int fd = linfo.sockinfo.fd;
 
     zhttpd_t *httpd;
+#ifdef ___INNER_USE_SSL___
     if (is_ssl) {
         SSL *ssl = zopenssl_SSL_create(var_openssl_server_ctx, fd);
 
@@ -237,7 +246,9 @@ static void *do_httpd(void *arg)
             return 0; 
         }
         httpd = zhttpd_open_ssl(ssl);
-    } else {
+    } else
+#endif
+    {
         httpd = zhttpd_open_fd(fd);
     }
 
@@ -251,6 +262,7 @@ static void *do_httpd(void *arg)
 
 static void load_ssl()
 {
+#ifdef ___INNER_USE_SSL___
     is_ssl = zconfig_get_bool(zvar_default_config, "ssl", 0);
     if (!is_ssl) {
         return;
@@ -266,5 +278,6 @@ static void load_ssl()
         printf("ERR can load cert/key:%s", error_buf);
         usage();
     } 
+#endif
 }
 

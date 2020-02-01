@@ -96,7 +96,7 @@ static void zhttpd_response_404_default(zhttpd_t *httpd);
 static void zhttpd_response_500_default(zhttpd_t *httpd);
 static void zhttpd_response_501_default(zhttpd_t *httpd);
 
-static zhttpd_t * _zhttpd_malloc_struct_general()
+zhttpd_t * _zhttpd_malloc_struct_general()
 {
     zhttpd_t * httpd = (zhttpd_t *)zcalloc(1, sizeof(zhttpd_t));
     httpd->fp = 0;
@@ -157,16 +157,6 @@ zhttpd_t *zhttpd_open_fd(int sock)
     zstream_set_read_wait_timeout(httpd->fp, httpd->read_wait_timeout);
     zstream_set_write_wait_timeout(httpd->fp, httpd->write_wait_timeout);
     httpd->ssl_mode = 0;
-    return httpd;
-}
-
-zhttpd_t *zhttpd_open_ssl(SSL *ssl)
-{
-    zhttpd_t * httpd = _zhttpd_malloc_struct_general();
-    httpd->fp = zstream_open_ssl(ssl);
-    zstream_set_read_wait_timeout(httpd->fp, httpd->read_wait_timeout);
-    zstream_set_write_wait_timeout(httpd->fp, httpd->write_wait_timeout);
-    httpd->ssl_mode = 1;
     return httpd;
 }
 

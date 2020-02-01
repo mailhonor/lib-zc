@@ -40,7 +40,7 @@ void zredis_client_free(zredis_client_t *rc);
  *      zredis_client_get_success(rc, "ss", "EXISTS", "somekey");
  * 例子2: 将 key 所储存的值加上增量 increment:
  *      zredis_client_get_long(rc, &number_ret, "ssl", "INRBY", "somekey", some_longint); 或
- *      zredis_client_get_long(rc, &number_ret, "sss", "INRBY", "somekey", "some_longint_string"); 或
+ *      zredis_client_get_long(rc, &number_ret, "sss", "INRBY", "somekey", "some_longint_string");
  * */
 
 /* 返回 -1: 错; 0: 失败/不存在/逻辑错误/...; 1: 成功/存在/逻辑正确/... */

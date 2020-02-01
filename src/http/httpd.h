@@ -79,3 +79,5 @@ struct zhttpd_t {
     void (*handler_protocal)(zhttpd_t * httpd);
     void *context;
 };
+
+zhttpd_t * _zhttpd_malloc_struct_general();

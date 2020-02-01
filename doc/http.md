@@ -95,6 +95,12 @@ void zhttpd_set_keep_alive_timeout(zhttpd_t *httpd, int timeout);
 /* 获取http协议头超时时间 */
 void zhttpd_set_request_header_timeout(zhttpd_t *httpd, int timeout);
 
+/* 通用超时等待可读, 单位秒, timeout<0: 表示无限长 */
+void zhttpd_set_read_wait_timeout(zhttpd_t *httpd, int read_wait_timeout);
+
+/* 通用超时等待可写, 单位秒 */
+void zhttpd_set_write_wait_timeout(zhttpd_t *httpd, int write_wait_timeout);
+
 /* 设置post方式最大长度 */
 void zhttpd_set_max_length_for_post(zhttpd_t *httpd, int max_length);
 

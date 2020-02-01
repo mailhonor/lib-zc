@@ -1,7 +1,14 @@
 ${shell mkdir -p uploaded_files; }
 DELS=uploaded_files
-SUFFIX_LIBS = -lssl -lcrypto
-coroutine_httpd_LIB = ../../libzc_coroutine.a
-LIB_coroutine_httpd = -lpthread
+
+LIB_coroutine_httpd = ../../libzc_coroutine.a -lssl -lcrypto -lpthread
+LIB_no_ssl_coroutine_httpd = ../../libzc_coroutine.a -lpthread
+
+LIB_simple_httpd = -lssl -lcrypto
+LIB_no_sslsimple_httpd =
+
 include ../../makefiles/sample.makefile
+
 $(DEST): ./lib_httpd.h
+no_ssl_coroutine_httpd: coroutine_httpd.c
+no_ssl_simple_httpd: simple_httpd.c

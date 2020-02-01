@@ -10,6 +10,10 @@
 ab -n 1000 -c 1000 http://127.0.0.1:8080/
 */
 
+#ifndef ___INNER_DONOT_USE_SSL___
+#define ___INNER_USE_SSL___
+#endif
+
 #include "./lib_httpd.h"
 
 static void *accept_incoming(void *arg)

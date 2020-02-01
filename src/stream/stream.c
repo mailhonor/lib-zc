@@ -1,99 +1,17 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2015-10-19
  * ================================
  */
 
 #include "zc.h"
-#include <fcntl.h>
-#include <errno.h>
 
-#define _ZSTREAM_INIT(fp)  \
-    fp->read_buf_p1 = 0; \
-    fp->read_buf_p2 = 0; \
-    fp->write_buf_len = 0; \
-    fp->read_wait_timeout = -1; \
-    fp->write_wait_timeout = -1; \
-    fp->error = 0; \
-    fp->eof = 0; \
-    fp->ssl_mode = 0; \
-    fp->file_mode = 0;
-
-zstream_t *zstream_open_fd(int fd)
-{
-    zstream_t *fp = (zstream_t *)zmalloc(sizeof(zstream_t));
-    _ZSTREAM_INIT(fp);
-    fp->ioctx.fd = fd;
-    return fp;
-}
-
-zstream_t *zstream_open_ssl(SSL *ssl)
-{
-    zstream_t *fp = (zstream_t *)zmalloc(sizeof(zstream_t));
-    _ZSTREAM_INIT(fp);
-    fp->ioctx.ssl = ssl;
-    fp->ssl_mode = 1;
-    return fp;
-}
-
-zstream_t *zstream_open_destination(const char *destination, int timeout)
-{
-    int fd = zconnect(destination, timeout);
-    if (fd < 0) {
-        return 0;
-    }
-    znonblocking(fd, 1);
-    return zstream_open_fd(fd);
-}
-
-zstream_t *zstream_open_file(const char *pathname, const char *mode)
-{
-    int flags = 0;
-    if (*mode == 'r') {
-        flags = O_RDONLY;
-        if (mode[1] == '+') {
-            flags = O_RDWR;
-        }
-    } else  if (*mode == 'w') {
-        flags = O_WRONLY|O_TRUNC|O_CREAT;
-        if (mode[1] == '+') {
-            flags = O_RDWR|O_TRUNC|O_CREAT;
-        }
-    } else  if (*mode == 'a') {
-        flags = O_WRONLY|O_TRUNC|O_CREAT|O_APPEND;
-        if (mode[1] == '+') {
-            flags = O_RDWR|O_TRUNC|O_CREAT|O_APPEND;
-        }
-    } else {
-        flags = O_RDONLY;
-    }
-    int fd = open(pathname, flags, 0666);
-    if (fd == -1) {
-        return 0;
-    }
-    zstream_t *fp = (zstream_t *)zmalloc(sizeof(zstream_t));
-    _ZSTREAM_INIT(fp);
-    fp->ioctx.fd = fd;
-    fp->file_mode = 1;
-    return fp;
-
-}
-
-int zstream_close(zstream_t *fp, int close_fd_and_release_ssl)
+int zstream_close(zstream_t *fp, int release_ioctx)
 {
     int ret=zstream_flush(fp);
-    if (close_fd_and_release_ssl) {
-        if (fp->ssl_mode) {
-            SSL *ssl = fp->ioctx.ssl;
-            int fd = zopenssl_SSL_get_fd(ssl);
-            zopenssl_SSL_free(ssl);
-            zclose(fd);
-        } else {
-            zclose(fp->ioctx.fd);
-        }
-    }
+    fp->engine->close_fn(fp, release_ioctx);
     zfree(fp);
     return ret;
 }
@@ -110,20 +28,7 @@ void zstream_set_write_wait_timeout(zstream_t *fp, int write_wait_timeout)
 
 int zstream_get_fd(zstream_t *fp)
 {
-    if (fp->ssl_mode) {
-        return zopenssl_SSL_get_fd(fp->ioctx.ssl);
-    } else {
-        return fp->ioctx.fd;
-    }
-}
-
-SSL *zstream_get_ssl(zstream_t *fp)
-{
-    if (fp->ssl_mode) {
-        return fp->ioctx.ssl;
-    } else {
-        return 0;
-    }
+    return fp->engine->get_fd_fn(fp);
 }
 
 int zstream_timed_read_wait(zstream_t *fp, int timeout)
@@ -131,52 +36,12 @@ int zstream_timed_read_wait(zstream_t *fp, int timeout)
     if (fp->read_buf_p1 < fp->read_buf_p2) {
         return 1;
     }
-    return ztimed_read_wait(fp->ssl_mode?zopenssl_SSL_get_fd(fp->ioctx.ssl):fp->ioctx.fd, timeout);
+    return fp->engine->timed_read_wait_fn(fp, timeout);
 }
 
 int zstream_timed_write_wait(zstream_t *fp, int timeout)
 {
-    return ztimed_write_wait(fp->ssl_mode?zopenssl_SSL_get_fd(fp->ioctx.ssl):fp->ioctx.fd, timeout);
-}
-
-int zstream_tls_connect(zstream_t *fp, SSL_CTX *ctx)
-{
-    if (fp->ssl_mode) {
-        return -1;
-    }
-
-    SSL *_ssl = zopenssl_SSL_create(ctx, fp->ioctx.fd);
-    if (!_ssl) {
-        return -1;
-    }
-    if (zopenssl_timed_connect(_ssl, fp->read_wait_timeout, fp->write_wait_timeout) < 0) {
-        zopenssl_SSL_free(_ssl);
-        fp->error = 1;
-        return -1;
-    }
-    fp->ssl_mode = 1;
-    fp->ioctx.ssl = _ssl;
-    return 1;
-}
-
-int zstream_tls_accept(zstream_t *fp, SSL_CTX *ctx)
-{
-    if (fp->ssl_mode) {
-        return -1;
-    }
-
-    SSL *_ssl = zopenssl_SSL_create(ctx, fp->ioctx.fd);
-    if (!_ssl) {
-        return -1;
-    }
-    if (zopenssl_timed_accept(_ssl, fp->read_wait_timeout, fp->write_wait_timeout) < 0) {
-        zopenssl_SSL_free(_ssl);
-        fp->error = 1;
-        return -1;
-    }
-    fp->ssl_mode = 1;
-    fp->ioctx.ssl = _ssl;
-    return 1;
+    return fp->engine->timed_write_wait_fn(fp, timeout);
 }
 
 /* read */
@@ -198,20 +63,7 @@ int zstream_getc_do(zstream_t *fp)
 
     fp->read_buf_p1 = fp->read_buf_p2 = 0;
 
-    int ret = -1;
-
-    if (fp->file_mode) {
-        ret = ztimed_read(fp->ioctx.fd, fp->read_buf, zvar_stream_rbuf_size, 0);
-        if (errno == EAGAIN) {
-            zfatal("FATAL zstream_t: can not use nonblocking fd in file mode");
-        }
-    } else {
-        if (fp->ssl_mode) {
-            ret = zopenssl_timed_read(fp->ioctx.ssl, fp->read_buf, zvar_stream_rbuf_size, fp->read_wait_timeout, fp->write_wait_timeout);
-        } else {
-            ret = ztimed_read(fp->ioctx.fd, fp->read_buf, zvar_stream_rbuf_size, fp->read_wait_timeout);
-        }
-    }
+    int ret = fp->engine->read_fn(fp, fp->read_buf, zvar_stream_rbuf_size);
 
     if (ret == 0) {
         fp->eof = 1;
@@ -385,20 +237,7 @@ int zstream_flush(zstream_t *fp)
     char *data = (char *)(fp->write_buf);
 
     while(left > 0) {
-        if (fp->file_mode) {
-            ret = ztimed_write(fp->ioctx.fd, data, left, 0);
-            if (errno == EAGAIN) {
-                zfatal("FATAL zstream_t: can not use nonblocking fd in file mode");
-            }
-        } else {
-            if (fp->ssl_mode) {
-                ret = zopenssl_timed_write(fp->ioctx.ssl, data, left, fp->read_wait_timeout, fp->write_wait_timeout);
-            } else {
-                ret = ztimed_write(fp->ioctx.fd, data, left, fp->write_wait_timeout);
-            }
-        }
-
-        if (ret < 0) {
+        if ((ret = fp->engine->write_fn(fp, data, left)) < 0) {
             break;
         }
         left -= ret;

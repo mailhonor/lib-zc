@@ -59,7 +59,7 @@
 }
 /* }}} */
 
-/* {{{ struct, declare, var */
+/* {{{ struct */
 
 typedef enum active_stage_type_t active_stage_type_t;
 enum active_stage_type_t {
@@ -165,7 +165,261 @@ struct zaio_base_t {
     zrbtree_node_t *tmp_queue_tail;
     pthread_mutex_t extern_plocker;
 };
+/* }}} */
 
+#ifdef ___ZC_AIO_USE_SSL_INNER___
+
+/* {{{ create free with ssl */
+static int _flag_zaio_ssl_engine_init = 0;
+static void _zaio_ssl_engine_init();
+
+zaio_t *zaio_create_by_ssl(SSL *ssl, zaio_base_t *aiobase)
+{
+    if (_flag_zaio_ssl_engine_init == 0) {
+        _zaio_ssl_engine_init();
+    }
+
+    zaio_t *aio = zaio_create_by_fd(zopenssl_SSL_get_fd(ssl), aiobase);
+    aio->ssl = ssl;
+    return aio;
+}
+
+extern void (*_zaio_free_release)(zaio_t *aio);
+
+static void _zaio_free_release_with_ssl(zaio_t *aio)
+{
+    if (aio->ssl) {
+        zopenssl_SSL_free(aio->ssl);
+        aio->ssl = 0;
+    }
+    if (aio->fd > -1) {
+        zclose(aio->fd);
+    }
+}
+
+SSL *zaio_get_ssl(zaio_t *aio)
+{
+    return aio->ssl;
+}
+/* }}} */
+
+/* {{{ io with ssl */
+/* -1: 错, 0: 重试, >0: 正确,长度 */
+extern int (*_zaio_io_read)(zaio_t *aio, void *buf, int len);
+static int _zaio_io_read_with_ssl(zaio_t *aio, void *buf, int len)
+{
+    int ret;
+
+    _clear_read_write_flag(aio);
+
+    if (aio->ssl) {
+        if ((ret = SSL_read(aio->ssl, buf, len)) > 0) {
+            aio->is_io_ok_once = 1;
+            return ret;
+        }
+        int status = SSL_get_error(aio->ssl, ret);
+        if (status == SSL_ERROR_WANT_WRITE) {
+            aio->is_want_write = 1;
+        } else if (status == SSL_ERROR_WANT_READ) {
+            aio->is_want_read = 1;
+        } else {
+            aio->is_ssl_error_or_closed = 1;
+        }
+        if (aio->is_ssl_error_or_closed) {
+            return -1;
+        }
+        return 0;
+    } else  {
+        while (1) {
+            if ((ret = read(aio->fd, buf, len)) > 0) {
+                aio->is_io_ok_once = 1;
+                return ret;
+            } else if (ret == 0) {
+                return -1;
+            }
+            int ec = errno;
+            if (ec == EINTR) {
+                continue;
+            }
+            aio->is_want_read = 1;
+            if (ec == EAGAIN) {
+                return 0;
+            }
+            return -1;
+        }
+    }
+}
+
+extern int (*_zaio_io_write)(zaio_t *aio, void *buf, int len);
+static int _zaio_io_write_with_ssl(zaio_t *aio, const void *buf, int len)
+{
+    int ret;
+
+    _clear_read_write_flag(aio);
+
+    if (aio->ssl) {
+        aio->is_ssl_error_or_closed = 0;
+
+        if ((ret = SSL_write(aio->ssl, buf, len)) > 0) {
+            aio->is_io_ok_once = 1;
+            return ret;
+        }
+        int status = SSL_get_error(aio->ssl, ret);
+        if (status == SSL_ERROR_WANT_WRITE) {
+            aio->is_want_write = 1;
+        } else if (status == SSL_ERROR_WANT_READ) {
+            aio->is_want_read = 1;
+        } else {
+            aio->is_ssl_error_or_closed = 1;
+        }
+        if (aio->is_ssl_error_or_closed) {
+            return -1;
+        }
+        return 0;
+    } else  {
+        while (1) {
+            if ((ret = write(aio->fd, buf, len)) >= 0) {
+                if (ret > 0) {
+                    aio->is_io_ok_once = 1;
+                }
+                return ret;
+            }
+            int ec = errno;
+            if (ec == EINTR) {
+                continue;
+            }
+            if (ec == EPIPE) {
+                return -1;
+            }
+            aio->is_want_write = 1;
+            if (ec == EAGAIN) {
+                return 0;
+            }
+            return -1;
+        }
+    }
+}
+/* }}} */
+
+/* {{{ tls */
+void _zaio_event_monitor(zaio_t *aio, int monitor_cmd);
+void _zaio_enter_incoming(zaio_t *aio);
+
+extern void (*_zaio_active_tls_connect)(zaio_t *aio);
+static void _active_tls_connect(zaio_t *aio)
+{
+    if (aio->active_stage == active_stage_timeout) {
+        _ready_go_and_return(aio, -1);
+    }
+
+    _clear_read_write_flag(aio);
+
+    int ret = SSL_connect(aio->ssl);
+    if (ret < 1) {
+        int status = SSL_get_error(aio->ssl, ret);
+        if (status == SSL_ERROR_WANT_WRITE) {
+            aio->is_want_write = 1;
+        } else if (status == SSL_ERROR_WANT_READ) {
+            aio->is_want_read = 1;
+        } else {
+            aio->is_ssl_error_or_closed = 1;
+        }
+    }
+
+    if (ret > 0) {
+        _zaio_event_monitor(aio, monitor_none);
+        _ready_go_and_return(aio, 1);
+    } else if (aio->is_ssl_error_or_closed) {
+        _zaio_event_monitor(aio, monitor_clear);
+        _ready_go_and_return(aio, -1);
+    } else if (aio->is_want_read || aio->is_want_write ) {
+        aio->ret = 0;
+        _zaio_event_monitor(aio, monitor_active);
+        return;
+    } else {
+    }
+}
+
+extern void (*_zaio_active_tls_accept)(zaio_t *aio);
+static void _active_tls_accept(zaio_t *aio)
+{
+    if (aio->active_stage == active_stage_timeout) {
+        _ready_go_and_return(aio, -1);
+    }
+
+    _clear_read_write_flag(aio);
+
+    int ret = SSL_accept(aio->ssl);
+    if (ret < 1) {
+        int status = SSL_get_error(aio->ssl, ret);
+        if (status == SSL_ERROR_WANT_WRITE) {
+            aio->is_want_write = 1;
+        } else if (status == SSL_ERROR_WANT_READ) {
+            aio->is_want_read = 1;
+        } else {
+            aio->is_ssl_error_or_closed = 1;
+        }
+    }
+
+    if (ret > 0) {
+        _zaio_event_monitor(aio, monitor_none);
+        _ready_go_and_return(aio, 1);
+    } else if (aio->is_ssl_error_or_closed) {
+        _zaio_event_monitor(aio, monitor_clear);
+        _ready_go_and_return(aio, -1);
+    } else if (aio->is_want_read || aio->is_want_write ) {
+        aio->ret = 0;
+        _zaio_event_monitor(aio, monitor_active);
+        return;
+    } else {
+    }
+}
+
+void zaio_tls_connect(zaio_t *aio, SSL_CTX *ctx, void (*callback)(zaio_t *aio))
+{
+    if (_flag_zaio_ssl_engine_init == 0) {
+        _zaio_ssl_engine_init();
+    }
+
+    aio->ssl = zopenssl_SSL_create(ctx, aio->fd);
+    aio->action_type = action_tls_connect;
+    aio->callback = callback;
+
+    _zaio_enter_incoming(aio);
+}
+
+void zaio_tls_accept(zaio_t *aio, SSL_CTX *ctx, void (*callback)(zaio_t *aio))
+{
+    if (_flag_zaio_ssl_engine_init == 0) {
+        _zaio_ssl_engine_init();
+    }
+
+    aio->ssl = zopenssl_SSL_create(ctx, aio->fd);
+    aio->action_type = action_tls_accept;
+    aio->callback = callback;
+
+    _zaio_enter_incoming(aio);
+}
+/* }}} */
+
+/* {{{ engine ssl */
+static void _zaio_ssl_engine_init()
+{
+    _zaio_free_release = _zaio_free_release_with_ssl;
+
+    _zaio_io_read = _zaio_io_read_with_ssl;
+    _zaio_io_write = _zaio_io_write_with_ssl;
+
+    _zaio_active_tls_connect = _active_tls_connect;
+    _zaio_active_tls_accept = _active_tls_accept;
+
+    _flag_zaio_ssl_engine_init = 1;
+}
+/* }}} */
+
+#else /* ___ZC_AIO_USE_SSL_INNER___ */
+
+/* {{{ var */
 zaio_base_t *zvar_default_aio_base;
 static __thread zaio_base_t *_zvar_current_base = 0;
 static zaio_cb_t _active_vector[action_unknown+1];
@@ -287,7 +541,7 @@ static void ___zaio_cache_append(zaio_t *aio, zaio_rwbuf_list_t *ioc, const void
 /* }}} */
 
 /* {{{ monitor */ 
-static void _event_monitor(zaio_t *aio, int monitor_cmd)
+void _zaio_event_monitor(zaio_t *aio, int monitor_cmd)
 {
 
     zaio_base_t *eb = aio->aiobase;
@@ -368,7 +622,7 @@ static void _event_monitor(zaio_t *aio, int monitor_cmd)
 /* }}} */
 
 /* {{{ incoming */
-static void _enter_incoming(zaio_t *aio)
+void _zaio_enter_incoming(zaio_t *aio)
 {
     zaio_base_t *eb = aio->aiobase;
     zrbtree_node_t *rn = &(aio->rbnode_time);
@@ -400,185 +654,73 @@ static void _enter_incoming(zaio_t *aio)
 
 /* {{{ io */
 /* -1: 错, 0: 重试, >0: 正确,长度 */
-static int _io_read(zaio_t *aio, void *buf, int len)
+static int _zaio_io_read_no_ssl(zaio_t *aio, void *buf, int len)
 {
     int ret;
 
     _clear_read_write_flag(aio);
 
-    if (aio->ssl) {
-        if ((ret = SSL_read(aio->ssl, buf, len)) > 0) {
+    while (1) {
+        if ((ret = read(aio->fd, buf, len)) > 0) {
             aio->is_io_ok_once = 1;
             return ret;
-        }
-        int status = SSL_get_error(aio->ssl, ret);
-        if (status == SSL_ERROR_WANT_WRITE) {
-            aio->is_want_write = 1;
-        } else if (status == SSL_ERROR_WANT_READ) {
-            aio->is_want_read = 1;
-        } else {
-            aio->is_ssl_error_or_closed = 1;
-        }
-        if (aio->is_ssl_error_or_closed) {
+        } else if (ret == 0) {
             return -1;
         }
-        return 0;
-    } else  {
-        while (1) {
-            if ((ret = read(aio->fd, buf, len)) > 0) {
+        int ec = errno;
+        if (ec == EINTR) {
+            continue;
+        }
+        aio->is_want_read = 1;
+        if (ec == EAGAIN) {
+            return 0;
+        }
+        return -1;
+    }
+}
+int (*_zaio_io_read)(zaio_t *aio, void *buf, int len) = _zaio_io_read_no_ssl;
+
+static int _zaio_io_write_no_ssl(zaio_t *aio, const void *buf, int len)
+{
+    int ret;
+
+    _clear_read_write_flag(aio);
+
+    while (1) {
+        if ((ret = write(aio->fd, buf, len)) >= 0) {
+            if (ret > 0) {
                 aio->is_io_ok_once = 1;
-                return ret;
-            } else if (ret == 0) {
-                return -1;
             }
-            int ec = errno;
-            if (ec == EINTR) {
-                continue;
-            }
-            aio->is_want_read = 1;
-            if (ec == EAGAIN) {
-                return 0;
-            }
-            return -1;
-        }
-    }
-}
-
-static int _io_write(zaio_t *aio, const void *buf, int len)
-{
-    int ret;
-
-    _clear_read_write_flag(aio);
-
-    if (aio->ssl) {
-        aio->is_ssl_error_or_closed = 0;
-
-        if ((ret = SSL_write(aio->ssl, buf, len)) > 0) {
-            aio->is_io_ok_once = 1;
             return ret;
         }
-        int status = SSL_get_error(aio->ssl, ret);
-        if (status == SSL_ERROR_WANT_WRITE) {
-            aio->is_want_write = 1;
-        } else if (status == SSL_ERROR_WANT_READ) {
-            aio->is_want_read = 1;
-        } else {
-            aio->is_ssl_error_or_closed = 1;
+        int ec = errno;
+        if (ec == EINTR) {
+            continue;
         }
-        if (aio->is_ssl_error_or_closed) {
+        if (ec == EPIPE) {
             return -1;
         }
-        return 0;
-    } else  {
-        while (1) {
-            if ((ret = write(aio->fd, buf, len)) >= 0) {
-                if (ret > 0) {
-                    aio->is_io_ok_once = 1;
-                }
-                return ret;
-            }
-            int ec = errno;
-            if (ec == EINTR) {
-                continue;
-            }
-            if (ec == EPIPE) {
-                return -1;
-            }
-            aio->is_want_write = 1;
-            if (ec == EAGAIN) {
-                return 0;
-            }
-            return -1;
+        aio->is_want_write = 1;
+        if (ec == EAGAIN) {
+            return 0;
         }
+        return -1;
     }
 }
+int (*_zaio_io_write)(zaio_t *aio, const void *buf, int len) = _zaio_io_write_no_ssl;
 /* }}} */
 
-/* {{{ tls */
-static void _active_tls_connect(zaio_t *aio)
+/* {{{ tls nothing */
+void (*_zaio_active_tls_connect)(zaio_t *aio) = 0;
+static zinline void _active_tls_connect(zaio_t *aio)
 {
-    if (aio->active_stage == active_stage_timeout) {
-        _ready_go_and_return(aio, -1);
-    }
-
-    _clear_read_write_flag(aio);
-
-    int ret = SSL_connect(aio->ssl);
-    if (ret < 1) {
-        int status = SSL_get_error(aio->ssl, ret);
-        if (status == SSL_ERROR_WANT_WRITE) {
-            aio->is_want_write = 1;
-        } else if (status == SSL_ERROR_WANT_READ) {
-            aio->is_want_read = 1;
-        } else {
-            aio->is_ssl_error_or_closed = 1;
-        }
-    }
-
-    if (ret > 0) {
-        _event_monitor(aio, monitor_none);
-        _ready_go_and_return(aio, 1);
-    } else if (aio->is_ssl_error_or_closed) {
-        _event_monitor(aio, monitor_clear);
-        _ready_go_and_return(aio, -1);
-    } else if (aio->is_want_read || aio->is_want_write ) {
-        aio->ret = 0;
-        _event_monitor(aio, monitor_active);
-        return;
-    } else {
-    }
+    return _zaio_active_tls_connect(aio);
 }
 
-static void _active_tls_accept(zaio_t *aio)
+void (*_zaio_active_tls_accept)(zaio_t *aio) = 0;
+static zinline void _active_tls_accept(zaio_t *aio)
 {
-    if (aio->active_stage == active_stage_timeout) {
-        _ready_go_and_return(aio, -1);
-    }
-
-    _clear_read_write_flag(aio);
-
-    int ret = SSL_accept(aio->ssl);
-    if (ret < 1) {
-        int status = SSL_get_error(aio->ssl, ret);
-        if (status == SSL_ERROR_WANT_WRITE) {
-            aio->is_want_write = 1;
-        } else if (status == SSL_ERROR_WANT_READ) {
-            aio->is_want_read = 1;
-        } else {
-            aio->is_ssl_error_or_closed = 1;
-        }
-    }
-
-    if (ret > 0) {
-        _event_monitor(aio, monitor_none);
-        _ready_go_and_return(aio, 1);
-    } else if (aio->is_ssl_error_or_closed) {
-        _event_monitor(aio, monitor_clear);
-        _ready_go_and_return(aio, -1);
-    } else if (aio->is_want_read || aio->is_want_write ) {
-        aio->ret = 0;
-        _event_monitor(aio, monitor_active);
-        return;
-    } else {
-    }
-}
-
-void zaio_tls_connect(zaio_t *aio, SSL_CTX *ctx, void (*callback)(zaio_t *aio))
-{
-    aio->ssl = zopenssl_SSL_create(ctx, aio->fd);
-    aio->action_type = action_tls_connect;
-    aio->callback = callback;
-
-    _enter_incoming(aio);
-}
-
-void zaio_tls_accept(zaio_t *aio, SSL_CTX *ctx, void (*callback)(zaio_t *aio))
-{
-    aio->ssl = zopenssl_SSL_create(ctx, aio->fd);
-    aio->action_type = action_tls_accept;
-    aio->callback = callback;
-
-    _enter_incoming(aio);
+    return _zaio_active_tls_accept(aio);
 }
 /* }}} */
 
@@ -592,19 +734,19 @@ static void _active_none(zaio_t *aio)
 static void _active_readable(zaio_t *aio)
 {
     if (aio->read_cache.len) {
-        _event_monitor(aio, monitor_none);
+        _zaio_event_monitor(aio, monitor_none);
         _ready_go_and_return(aio, 1);
     }
 
     if (aio->active_stage == active_stage_timeout) {
         _ready_go_and_return(aio, -2);
     } else if (aio->active_stage == active_stage_epoll) {
-        _event_monitor(aio, monitor_none);
+        _zaio_event_monitor(aio, monitor_none);
         _ready_go_and_return(aio, 1);
     }
 
     _want_read_or_write(aio, 1, 0);
-    _event_monitor(aio, monitor_active);
+    _zaio_event_monitor(aio, monitor_active);
 }
 
 void zaio_readable(zaio_t *aio, void (*callback)(zaio_t *aio))
@@ -612,7 +754,7 @@ void zaio_readable(zaio_t *aio, void (*callback)(zaio_t *aio))
     aio->action_type = action_readable;
     aio->callback = callback;
 
-    _enter_incoming(aio);
+    _zaio_enter_incoming(aio);
 }
 /* }}} */
 
@@ -630,19 +772,19 @@ static void _active_read(zaio_t *aio)
     int ret;
     char buf[aio_rwbuf_size + 1];
     if (aio->want_read_len < 1) {
-        _event_monitor(aio, monitor_none);
+        _zaio_event_monitor(aio, monitor_none);
         _ready_go_and_return(aio, 0);
     }
 
     if (aio->read_cache.len == 0) {
-        if ((ret = _io_read(aio, buf, aio_rwbuf_size)) > 0) {
+        if ((ret = _zaio_io_read(aio, buf, aio_rwbuf_size)) > 0) {
             ___zaio_cache_append(aio, &(aio->read_cache), buf, ret);
         } else if (ret == 0) {
             aio->ret = 0;
-            _event_monitor(aio, monitor_active);
+            _zaio_event_monitor(aio, monitor_active);
             return;
         } else {
-            _event_monitor(aio, monitor_clear);
+            _zaio_event_monitor(aio, monitor_clear);
             _ready_go_and_return(aio, -1);
         }
     }
@@ -652,7 +794,7 @@ static void _active_read(zaio_t *aio)
     } else {
         ret = aio->read_cache.len;
     }
-    _event_monitor(aio, monitor_none);
+    _zaio_event_monitor(aio, monitor_none);
     _ready_go_and_return(aio, ret);
 }
 
@@ -662,7 +804,7 @@ void zaio_read(zaio_t *aio, int max_len, void (*callback)(zaio_t *aio))
     aio->want_read_len = max_len;
     aio->callback = callback;
 
-    _enter_incoming(aio);
+    _zaio_enter_incoming(aio);
 }
 
 /* }}} */
@@ -682,25 +824,25 @@ static void _active_readn(zaio_t *aio)
     char buf[aio_rwbuf_size + 1];
 
     if (strict_len < 1) {
-        _event_monitor(aio, monitor_none);
+        _zaio_event_monitor(aio, monitor_none);
         _ready_go_and_return(aio, 0);
     }
     while (1) {
         if (strict_len <= aio->read_cache.len) {
             break;
         }
-        int ret = _io_read(aio, buf, aio_rwbuf_size);
+        int ret = _zaio_io_read(aio, buf, aio_rwbuf_size);
         if (ret == 0) {
             aio->ret = 0;
-            _event_monitor(aio, monitor_active);
+            _zaio_event_monitor(aio, monitor_active);
             return;
         } else if (ret < 0) {
-            _event_monitor(aio, monitor_clear);
+            _zaio_event_monitor(aio, monitor_clear);
             _ready_go_and_return(aio, -1);
         }
         ___zaio_cache_append(aio, &(aio->read_cache), buf, ret);
     }
-    _event_monitor(aio, monitor_none);
+    _zaio_event_monitor(aio, monitor_none);
     _ready_go_and_return(aio, strict_len);
 }
 
@@ -710,7 +852,7 @@ void zaio_readn(zaio_t *aio, int strict_len, void (*callback)(zaio_t *aio))
     aio->want_read_len = strict_len;
     aio->callback = callback;
 
-    _enter_incoming(aio);
+    _zaio_enter_incoming(aio);
 }
 
 /* }}} */
@@ -731,7 +873,7 @@ static void _active_read_delimiter(zaio_t *aio)
     char buf[aio_rwbuf_size + 1], *data;
 
     if (max_len < 1) {
-        _event_monitor(aio, monitor_none);
+        _zaio_event_monitor(aio, monitor_none);
         _ready_go_and_return(aio, 0);
     }
 
@@ -754,18 +896,18 @@ static void _active_read_delimiter(zaio_t *aio)
             }
         }
         if (found ) {
-            _event_monitor(aio, monitor_none);
+            _zaio_event_monitor(aio, monitor_none);
             _ready_go_and_return(aio, rlen);
         }
     }
 
     while (1) {
-        if ((ret = _io_read(aio, buf, aio_rwbuf_size)) < 0) {
-            _event_monitor(aio, monitor_clear);
+        if ((ret = _zaio_io_read(aio, buf, aio_rwbuf_size)) < 0) {
+            _zaio_event_monitor(aio, monitor_clear);
             _ready_go_and_return(aio, -1);
         } else if (ret == 0) {
             aio->ret = 0;
-            _event_monitor(aio, monitor_active);
+            _zaio_event_monitor(aio, monitor_active);
             return;
         }
         ___zaio_cache_append(aio, &(aio->read_cache), buf, ret);
@@ -781,7 +923,7 @@ static void _active_read_delimiter(zaio_t *aio)
             }
         }
         if (rlen != -1) {
-            _event_monitor(aio, monitor_none);
+            _zaio_event_monitor(aio, monitor_none);
             _ready_go_and_return(aio, rlen);
         }
     }
@@ -795,7 +937,7 @@ void zaio_read_delimiter(zaio_t *aio, int delimiter, int max_len, void (*callbac
     aio->want_read_len = max_len;
     aio->callback = callback;
 
-    _enter_incoming(aio);
+    _zaio_enter_incoming(aio);
 }
 /* }}} */
 
@@ -825,32 +967,32 @@ static void _active_read_cint(zaio_t *aio)
             for (int i = rwb->p1; i != end; i++) {
                 byte_count++;
                 if (byte_count > 4) {
-                    _event_monitor(aio, monitor_none);
+                    _zaio_event_monitor(aio, monitor_none);
                     _ready_go_and_return(aio, -1);
                 }
                 int ch = buf[i];
                 size |= ((ch & 0177) << shift);
                 if (ch & 0200) {
                     ___zaio_cache_shift(aio, &(aio->read_cache), 0, byte_count);
-                    _event_monitor(aio, monitor_none);
+                    _zaio_event_monitor(aio, monitor_none);
                     if ((aio->is_cint_want_data==0) || (size == 0)) {
                         _ready_go_and_return(aio, size);
                     } else {
                         aio->want_read_len = size;
-                        _enter_incoming(aio);
+                        _zaio_enter_incoming(aio);
                         return;
                     }
                 }
                 shift += 7;
             }
         }
-        int ret = _io_read(aio, buf, aio_rwbuf_size);
+        int ret = _zaio_io_read(aio, buf, aio_rwbuf_size);
         if (ret < 0) {
-            _event_monitor(aio, monitor_clear);
+            _zaio_event_monitor(aio, monitor_clear);
             _ready_go_and_return(aio, -1);
         } else if (ret == 0) {
             aio->ret = 0;
-            _event_monitor(aio, monitor_active);
+            _zaio_event_monitor(aio, monitor_active);
             return;
         }
         ___zaio_cache_append(aio, &(aio->read_cache), buf, ret);
@@ -864,7 +1006,7 @@ void zaio_get_cint(zaio_t *aio, void (*callback)(zaio_t *aio))
     aio->action_type = action_read_cint;
     aio->callback = callback;
 
-    _enter_incoming(aio);
+    _zaio_enter_incoming(aio);
 }
 
 void zaio_get_cint_and_data(zaio_t *aio, void (*callback)(zaio_t *aio))
@@ -874,7 +1016,7 @@ void zaio_get_cint_and_data(zaio_t *aio, void (*callback)(zaio_t *aio))
     aio->action_type = action_read_cint;
     aio->callback = callback;
 
-    _enter_incoming(aio);
+    _zaio_enter_incoming(aio);
 }
 
 /* }}} */
@@ -889,11 +1031,11 @@ static void _active_writeable(zaio_t *aio)
             _ready_go_and_return(aio, -2);
         }
     } else if (aio->active_stage == active_stage_epoll) {
-        _event_monitor(aio, monitor_none);
+        _zaio_event_monitor(aio, monitor_none);
         _ready_go_and_return(aio, 1);
     }
     _want_read_or_write(aio, 0, 1);
-    _event_monitor(aio, monitor_active);
+    _zaio_event_monitor(aio, monitor_active);
 }
 
 void zaio_writeable(zaio_t *aio, void (*callback)(zaio_t *aio))
@@ -901,7 +1043,7 @@ void zaio_writeable(zaio_t *aio, void (*callback)(zaio_t *aio))
     aio->action_type = action_writeable;
     aio->callback = callback;
 
-    _enter_incoming(aio);
+    _zaio_enter_incoming(aio);
 }
 
 static void _active_writen(zaio_t *aio)
@@ -920,15 +1062,15 @@ static void _active_writen(zaio_t *aio)
     while (1) {
         ___zaio_cache_first_line(aio, &(aio->write_cache), &data, &ret);
         if (ret == 0) {
-            _event_monitor(aio, monitor_none);
+            _zaio_event_monitor(aio, monitor_none);
             _ready_go_and_return(aio, 1);
         }
-        if ((ret = _io_write(aio, data, ret)) < 0) {
-            _event_monitor(aio, monitor_clear);
+        if ((ret = _zaio_io_write(aio, data, ret)) < 0) {
+            _zaio_event_monitor(aio, monitor_clear);
             _ready_go_and_return(aio, -1);
         } else if (ret == 0) {
             aio->ret = 0;
-            _event_monitor(aio, monitor_active);
+            _zaio_event_monitor(aio, monitor_active);
             return;
         }
         ___zaio_cache_shift(aio, &(aio->write_cache), 0, ret);
@@ -1012,7 +1154,7 @@ void zaio_cache_flush(zaio_t *aio, void (*callback)(zaio_t *aio))
     aio->action_type = action_writen;
     aio->callback = callback;
 
-    _enter_incoming(aio);
+    _zaio_enter_incoming(aio);
 }
 /* }}} */
 
@@ -1026,7 +1168,7 @@ static void _active_sleep(zaio_t *aio)
             _ready_go_and_return(aio, 1);
         }
     }
-    _event_monitor(aio, monitor_active);
+    _zaio_event_monitor(aio, monitor_active);
 }
 
 void zaio_sleep(zaio_t *aio, void (*callback)(zaio_t *aio), int timeout)
@@ -1035,7 +1177,7 @@ void zaio_sleep(zaio_t *aio, void (*callback)(zaio_t *aio), int timeout)
     aio->sleep_timeout = timeout;
     aio->callback = callback;
 
-    _enter_incoming(aio);
+    _zaio_enter_incoming(aio);
 }
 /* }}} */
 
@@ -1072,7 +1214,7 @@ void zaio_disable(zaio_t *aio)
     aio->in_base_context = 0;
 
     _clear_read_write_flag(aio);
-    _event_monitor(aio, monitor_clear);
+    _zaio_event_monitor(aio, monitor_clear);
 }
 /* }}} */
 
@@ -1088,12 +1230,14 @@ zaio_t *zaio_create_by_fd(int fd, zaio_base_t *aiobase)
     return aio;
 }
 
-zaio_t *zaio_create_by_ssl(SSL *ssl, zaio_base_t *aiobase)
+
+static void _zaio_free_release_no_ssl(zaio_t *aio)
 {
-    zaio_t *aio = zaio_create_by_fd(zopenssl_SSL_get_fd(ssl), aiobase);
-    aio->ssl = ssl;
-    return aio;
+    if (aio->fd > -1) {
+        zclose(aio->fd);
+    }
 }
+void (*_zaio_free_release)(zaio_t *aio) = _zaio_free_release_no_ssl;
 
 void zaio_free(zaio_t *aio, int close_fd_and_release_ssl)
 {
@@ -1115,13 +1259,7 @@ void zaio_free(zaio_t *aio, int close_fd_and_release_ssl)
         ___zaio_cache_shift(aio, &(aio->write_cache), 0, aio->write_cache.len);
     }
     if (close_fd_and_release_ssl) {
-        if (aio->ssl) {
-            zopenssl_SSL_free(aio->ssl);
-            aio->ssl = 0;
-        }
-        if (aio->fd > -1) {
-            zclose(aio->fd);
-        }
+        _zaio_free_release(aio);
     }
     zfree(aio);
 }
@@ -1157,11 +1295,6 @@ int zaio_get_result(zaio_t *aio)
 int zaio_get_fd(zaio_t *aio)
 {
     return aio->fd;
-}
-
-SSL *zaio_get_ssl(zaio_t *aio)
-{
-    return aio->ssl;
 }
 
 void zaio_set_context(zaio_t *aio, const void *ctx)
@@ -1470,6 +1603,8 @@ void zaio_base_run(zaio_base_t *eb, void (*loop_fn)())
 }
 
 /* }}} */
+
+#endif /* ___ZC_AIO_USE_SSL_INNER___ */
 
 #pragma pack(pop)
 

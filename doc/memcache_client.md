@@ -5,11 +5,18 @@ memcache客户端. 源码见 src/memcache/
 ---
 
 ```
-/* 创建连接器; destination: 见 zconnect; cmd_timeout: 连接超时,单位秒; auto_reconnect: 是否自动重连 */
-zmemcache_client_t *zmemcache_client_connect(const char *destination, int cmd_timeout, zbool_t auto_reconnect);
+/* 创建连接器; destination: 见 zconnect; timeout: connect超时,单位秒; auto_reconnect: 是否自动重连 */
+zmemcache_client_t *zmemcache_client_connect(const char *destination, int connect_timeout, zbool_t auto_reconnect);
 
-/* 设置命令超时时间, 单位秒 */
-void zmemcache_client_set_cmd_timeout(zmemcache_client_t *mc, int timeout);
+/* 设置connect超时时间, 单位秒 */
+void zmemcache_client_set_connect_timeout(zmemcache_client_t *mc, int connect_timeout);
+
+/* 设置可读超时时间, 单位秒 */
+void zmemcache_client_set_read_wait_timeout(zmemcache_client_t *mc, int read_wait_timeout);
+
+/* 设置可写超时时间, 单位秒 */
+void zmemcache_client_set_write_wait_timeout(zmemcache_client_t *mc, int write_wait_timeout);
+
 
 /* 设置是否自动重连 */
 void zmemcache_client_set_auto_reconnect(zmemcache_client_t *mc, zbool_t auto_reconnect);
