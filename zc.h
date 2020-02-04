@@ -1229,14 +1229,14 @@ int ztimed_read_write_wait_millisecond(int fd, long read_write_wait_timeout, int
 int ztimed_read_wait_millisecond(int fd, long read_wait_timeout);
 int ztimed_read_wait(int fd, int read_wait_timeout);
 
-/* < 0: 出错, >0: 正常, 0: 不可读 */
+/* <0: 出错, >0: 正常, 0: 不可读 */
 int ztimed_read(int fd, void *buf, int size, int read_wait_timeout);
 
-/* <-: 出错  0: 不可写, 1: 可写或socket异常 */
+/* <0: 出错  0: 不可写, 1: 可写或socket异常 */
 int ztimed_write_wait_millisecond(int fd, long write_wait_timeout);
 int ztimed_write_wait(int fd, int write_wait_timeout);
 
-/* < 0: 出错, >0: 正常, 0: 不可写 */
+/* <0: 出错, >0: 正常, 0: 不可写 */
 int ztimed_write(int fd, const void *buf, int size, int write_wait_timeout);
 
 /* tcp socket ##################################################### */
@@ -2035,7 +2035,7 @@ void zmime_header_line_element_vector_free(const zvector_t *element_vector);
 /* 对邮件头行做分解并转码, 目标字符集UTF-8, ... 参考 zmime_iconv */
 void zmime_header_line_get_utf8(const char *src_charset_def, const char *in_line, int in_len, zbuf_t *result);
 
-/* 对符合RFC2232的邮件头行做分解并转码, 如上 */
+/* 对符合RFC2231的邮件头行做分解并转码, 如上 */
 void zmime_header_line_get_utf8_2231(const char *src_charset_def, const char *in_line, int in_len, zbuf_t *result, int with_charset_flag);
 
 /* 对邮件头行做处理, value 得到 第一个单词, params存储key<=>value */
@@ -2055,7 +2055,7 @@ struct zmime_address_t {
 /* 分解邮件头行为多个邮件地址并返回, 这个时候不处理 name_utf8 */
 zvector_t *zmime_header_line_get_address_vector(const char *in_str, int in_len);
 
-/* 分解邮件头行为多个邮件地址并返回, 这个时候不处理 name_utf8 */
+/* 分解邮件头行为多个邮件地址并返回 */
 zvector_t *zmime_header_line_get_address_vector_utf8(const char *src_charset_def, const char *in_str, int in_len);
 void zmime_header_line_address_vector_free(zvector_t *address_vector);
 
