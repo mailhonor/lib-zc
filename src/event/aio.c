@@ -250,7 +250,7 @@ static int _zaio_io_read_with_ssl(zaio_t *aio, void *buf, int len)
     }
 }
 
-extern int (*_zaio_io_write)(zaio_t *aio, void *buf, int len);
+extern int (*_zaio_io_write)(zaio_t *aio, const void *buf, int len);
 static int _zaio_io_write_with_ssl(zaio_t *aio, const void *buf, int len)
 {
     int ret;

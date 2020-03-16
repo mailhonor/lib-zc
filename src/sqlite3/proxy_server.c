@@ -309,15 +309,19 @@ static void do_slqite3_service(int fd)
 
 void (*zsqlite3_proxy_server_before_service)() = 0;
 void (*zsqlite3_proxy_server_before_softstop)() = 0;
-void (*zsqlite3_proxy_server_service_register) (const char *service, int fd, int fd_type) = 0;
+static zbool_t _register_default(const char *service, int fd, int fd_type)
+{
+    return 0;
+}
+zbool_t (*zsqlite3_proxy_server_service_register)(const char *service, int fd, int fd_type) = _register_default;
 
 static void ___service_register(const char *service_name, int fd, int fd_type)
 {
-    if (zempty(service_name)||(!strcmp(service_name, "sqlite3"))||(!zsqlite3_proxy_server_service_register)) {
-        zaio_server_general_aio_register(zvar_default_aio_base, fd, fd_type, do_slqite3_service);
-    } else {
-        zsqlite3_proxy_server_service_register(service_name, fd, fd_type);
+    if (zsqlite3_proxy_server_service_register(service_name, fd, fd_type) == 1){
+        return;
     }
+
+    zaio_server_general_aio_register(zvar_default_aio_base, fd, fd_type, do_slqite3_service);
 }
 
 static void signal_stop_handler(int sig)

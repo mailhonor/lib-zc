@@ -24,6 +24,10 @@ void zqp_decode_2045(const void *src, int src_size, zbuf_t *str)
     char c0, c1, c2;
     char addch;
 
+    if (src_size < 0) {
+        src_size = strlen((const char *)src);
+    }
+
     while (1) {
         ___get_next_ch(c0);
         if (c0 != '=') {
@@ -57,6 +61,10 @@ void zqp_decode_2047(const void *src, int src_size, zbuf_t *str)
     char c0, c1, c2;
     char addch;
 
+    if (src_size < 0) {
+        src_size = strlen((const char *)src);
+    }
+
     while (1) {
         ___get_next_ch(c0);
         if (c0 == '_') {
@@ -82,6 +90,10 @@ int zqp_decode_get_valid_len(const void *src, int src_size)
     unsigned char *src_c = (unsigned char *)src;
     int i;
     unsigned char ch;
+
+    if (src_size < 0) {
+        src_size = strlen((const char *)src);
+    }
 
     for (i = 0; i < src_size; i++) {
         ch = src_c[i];

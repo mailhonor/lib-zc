@@ -1,82 +1,88 @@
 ## 邮件解析
-mime/tnef格式邮件解析. 源码见 src/mime/
 
----
+支持EML格式邮件解析
+
+## 解信步骤
+
+*一步完成*
 
 ```
-typedef struct zmail_t zmail_t;
-typedef struct zmime_t zmime_t;
+/* 从文件名 eml_fn, 创建解析器 */
+zmail_t *parser = zmail_create_parser_from_pathname(eml_fn, "");
+```
 
-extern const char *zvar_mime_type_application_cotet_stream /* = "application/octet-stream" */;
+**或者**
 
-/* 返回mime类型, 如 txt => text/plain */
-const char *zget_mime_type_from_suffix(const char *suffix, const char *def);
-const char *zget_mime_type_from_pathname(const char *pathname, const char *def);
+```
+/* 从内存mail_data, 创建解析器 */
+zmail_t *zmail_create_parser_from_data(const char *mail_data, int mail_data_len, const char *default_charset)
+```
 
+**最后**
 
-/* 假设邮件头逻辑行最长长度不超过 zvar_mime_header_line_max_length */
-#define zvar_mime_header_line_max_length   1024000
+```
+/* 释放解析器 */
+void zmail_free(zmail_t *parser);
+```
 
-/* 邮件用, 字符集转码 */
-/* 目标字符集为 UTF-8 */
-/* from_charset: 原字符集, 为空则探测字符集, 探测失败则取值 GB18030 */
-void zmime_iconv(const char *from_charset, const char *data, int size, zbuf_t *result);
+## 基本API: 读取 邮件头属性相关
 
-/* 解码原始邮件头行 */
-void zmime_raw_header_line_unescape(const char *in_line, int in_len, zbuf_t *result);
+```
+/* 获取原始邮件头 */
+const char *zmail_get_subject(zmail_t *parser);
+/* 获取解码后,且字符集转为UTF-8的主题 */
+const char *zmail_get_subject_utf8(zmail_t *parser);
+/* 还有获取 收件人, 发件人, 等等 */
+/* ... */
+```
 
-/* 获取邮件头行的第一个单词, trim两侧的 " \t<?\"'" */
-void zmime_header_line_get_first_token(const char *in_line, int in_len, zbuf_t *result);
+## 基本API: 获取 mime part
 
-/* 邮件头行单词节点 */
-typedef struct zmime_header_line_element_t zmime_header_line_element_t;
-struct zmime_header_line_element_t {
-    char *charset; /* 可能为空 */
-    char *data;
-    int dlen;
-    char encode_type; /* 'B':base64, 'Q':qp, 0:unknown */
-};
+```
+/* 注意 mime_part 的 struct 类型为 zmime_t */
 
-/* 分解邮件头行 */
-const zvector_t *zmime_header_line_get_element_vector(const char *in_line, int in_len);
-void zmime_header_line_element_vector_free(const zvector_t *element_vector);
+/* 全部text/html,text/plain类型的mime */
+const zvector_t *zmail_get_text_mimes(zmail_t *parser);
 
-/* 对邮件头行做分解并转码, 目标字符集UTF-8, ... 参考 zmime_iconv */
-void zmime_header_line_get_utf8(const char *src_charset_def, const char *in_line, int in_len, zbuf_t *result);
+/* 应该在客户端显示的mime, alternative情况首选html */
+const zvector_t *zmail_get_show_mimes(zmail_t *parser);
 
-/* 对符合RFC2232的邮件头行做分解并转码, 如上 */
-void zmime_header_line_get_utf8_2231(const char *src_charset_def, const char *in_line, int in_len, zbuf_t *result, int with_charset_flag);
+/* 所有附件类型的mime, 包括内嵌图片 */
+const zvector_t *zmail_get_attachment_mimes(zmail_t *parser);
+```
 
-/* 对邮件头行做处理, value 得到 第一个单词, params存储key<=>value */
-void zmime_header_line_get_params(const char *in_line, int in_len, zbuf_t *value, zdict_t *params);
+PS: 遍历 上述vector
 
-/* 解码 Date 字段 */
-long zmime_header_line_decode_date(const char *str);
+```
+/* 已知 zvector_t *vec */
+int count = zvector_len(vec);
+char  ** mpp = vector_data9vec);
+for (int i = 0; i < count; i++) {
+    /* 得到 zmime_t */
+	zmime_t *mime = (zmime_t *)(mpp[i]);
+}
 
-/* 邮件地址 */
-typedef struct zmime_address_t zmime_address_t;
-struct zmime_address_t {
-    char *name; /* 原始名称 */
-    char *address; /* email 地址 */
-    char *name_utf8; /* 原始名称转码为UTF-8 字符集 */
-};
+```
+## 基本API: 获取mime part的属性
+````
+/* 获取name的原始值*/
+const char *zmime_get_name(zmime_t *mime);
 
-/* 分解邮件头行为多个邮件地址并返回, 这个时候不处理 name_utf8 */
-zvector_t *zmime_header_line_get_address_vector(const char *in_str, int in_len);
+/* 获取name的值,解开,且字符集转为UTF-8 */
+const char *zmime_get_name_utf8(zmime_t *mime);
 
-/* 分解邮件头行为多个邮件地址并返回, 这个时候不处理 name_utf8 */
-zvector_t *zmime_header_line_get_address_vector_utf8(const char *src_charset_def, const char *in_str, int in_len);
-void zmime_header_line_address_vector_free(zvector_t *address_vector);
+/* 等等  ... */
+````
 
-/* 邮件解析mime节点函数列表, 全部只读 */
-
+## 全部(zmime_t)相关 API
+```
 /* type */
 const char *zmime_get_type(zmime_t *mime);
 
 /* 编码 */
 const char *zmime_get_encoding(zmime_t *mime);
 
-/* 字符街 */
+/* 字符集 */
 const char *zmime_get_charset(zmime_t *mime);
 
 /* disposition */
@@ -145,7 +151,6 @@ int zmime_get_raw_header_line(zmime_t *mime, const char *header_name, zbuf_t *re
 
 /* 获取第sn个名称为header_name的行的值, 返回 -1: 不存在 */
 int zmime_get_header_line_value(zmime_t *mime, const char *header_name, zbuf_t *result, int sn);
-
 /* 获取解码(base64, qp)后的mime邮件体 */
 void zmime_get_decoded_content(zmime_t *mime, zbuf_t *result);
 
@@ -154,9 +159,11 @@ void zmime_get_decoded_content_utf8(zmime_t *mime, zbuf_t *result);
 
 /* 是不是 tnef(application/ms-tnef) 类型的附件 */
 zbool_t zmime_is_tnef(zmime_t *mime);
+```
 
-/* 下面是邮件解析函数 */
+## 全部邮件(zmail_t)相关API
 
+```
 /* 创建邮件解析器, default_charset: 默认字符集 */
 zmail_t *zmail_create_parser_from_data(const char *mail_data, int mail_data_len, const char *default_charset);
 zmail_t *zmail_create_parser_from_pathname(const char *pathname, const char *default_charset);
@@ -213,7 +220,6 @@ const zmime_address_t *zmail_get_from(zmail_t *parser);
 
 /* From并且处理name_utf8 */
 const zmime_address_t *zmail_get_from_utf8(zmail_t *parser);
-
 /* Sender */
 const zmime_address_t *zmail_get_sender(zmail_t *parser);
 
@@ -241,7 +247,6 @@ const zmime_t *zmail_get_top_mime(zmail_t *parser);
 
 /* 全部mime */
 const zvector_t *zmail_get_all_mimes(zmail_t *parser); /* zmime_t* */
-
 /* 全部text/html,text/plain类型的mime */
 const zvector_t *zmail_get_text_mimes(zmail_t *parser);
 
@@ -261,69 +266,61 @@ int zmail_get_raw_header_line(zmail_t *parser, const char *header_name, zbuf_t *
 
 /* 获取第sn个名称为header_name的行的值, 返回 -1: 不存在 */
 int zmail_get_header_line_value(zmail_t *parser, const char *header_name, zbuf_t *result, int sn);
-
 ```
 
----
+## 邮件相关的几个API
+```
+/* 解码原始邮件头行 */
+void zmime_raw_header_line_unescape(const char *in_line, int in_len, zbuf_t *result);
 
+/* 获取邮件头行的第一个单词, trim两侧的 " \t<?\"'" */
+void zmime_header_line_get_first_token(const char *in_line, int in_len, zbuf_t *result);
 
+/* 对邮件头行做分解并转码, 目标字符集UTF-8 */
+void zmime_header_line_get_utf8(const char *src_charset_def, const char *in_line, int in_len, zbuf_t *result);
+
+/* 对符合RFC2231的邮件头行做分解并转码, 如上 */
+void zmime_header_line_get_utf8_2231(const char *src_charset_def, const char *in_line, int in_len, zbuf_t *result, int with_c
+harset_flag);
+
+/* 对邮件头行做处理, value 得到 第一个单词, params存储key<=>value */
+void zmime_header_line_get_params(const char *in_line, int in_len, zbuf_t *value, zdict_t *params);
+
+/* 解码 Date 字段 */
+long zmime_header_line_decode_date(const char *str);
+
+/* 分解邮件头行为多个邮件地址并返回, 这个时候不处理 name_utf8 */
+zvector_t *zmime_header_line_get_address_vector(const char *in_str, int in_len);
+
+/* 分解邮件头行为多个邮件地址并返回 */
+zvector_t *zmime_header_line_get_address_vector_utf8(const char *src_charset_def, const char *in_str, int in_len);
+
+void zmime_header_line_address_vector_free(zvector_t *address_vector);
 ```
 
-/* 解析 tnef(application/ms-tnef) */
-typedef struct ztnef_t ztnef_t;
-typedef struct ztnef_mime_t ztnef_mime_t;
+## benchmark
+*简单的结论就是: 每秒解析大小为 **G** 级别的邮件*
 
-/* type */
-const char *ztnef_mime_get_type(ztnef_mime_t *mime);
-
-/* filename_utf8 */
-const char *ztnef_mime_get_show_name(ztnef_mime_t *mime);
-
-/* filename */
-const char *ztnef_mime_get_filename(ztnef_mime_t *mime);
-
-/* filename_utf8 */
-const char *ztnef_mime_get_filename_utf8(ztnef_mime_t *mime);
-
-/* Content-ID */
-const char *ztnef_mime_get_content_id(ztnef_mime_t *mime);
-
-/* mime_body 便宜 */
-int ztnef_mime_get_body_offset(ztnef_mime_t *mime);
-
-/* mime_body 长度 */
-int ztnef_mime_get_body_len(ztnef_mime_t *mime);
-
-/* 如果是text类型的mime, 则返回其文本字符集 */
-const char *ztnef_mime_get_charset(ztnef_mime_t *mime);
+```
+[xxx@zytest mime]$ ./mime_benchmark ./61cb81dee3633aa7c8d1d937918a07c3.eml -loop 10000 --onlymime
+eml     : ./61cb81dee3633aa7c8d1d937918a07c3.eml
+size    : 334244(bytes)
+loop    : 10000
+total   : 3,342,440,000(bytes)
+elapse  : 0.975(second)
+%second : 3,428,143,589(bytes)
 
 
-/* 创建tnef解析器 */
-ztnef_t * ztnef_create_parser_from_data(const char *tnef_data, int tnef_data_len, const char *default_charset);
-ztnef_t *ztnef_create_parser_from_pathname(const char *pathname, const char *default_charset);
-void ztnef_free(ztnef_t *parser);
-
-/* 原始数据 */
-const char *ztnef_get_data(ztnef_t *parser);
-
-/* 原始数据长度 */
-int ztnef_get_len(ztnef_t *parser);
-
-/* 全部 mime */
-const zvector_t *ztnef_get_all_mimes(ztnef_t *parser);
-
-/* 全部附件 mime */
-const zvector_t *ztnef_get_attachment_mimes(ztnef_t *parser);
-
-/* 全部文本(应该作为正文显示) mime, 包括 plain, html, 和 rtf */
-const zvector_t *ztnef_get_text_mimes(ztnef_t *parser);
-
-
-/* debug输出 */
-void ztnef_debug_show(ztnef_t *parser);
-
-#endif /*___ZC_LIB_INCLUDE___ */
+[xxx@zytest mime]$ ./mime_benchmark ./08822e157fbd0e30dded7548f4ea5f3c.eml -loop 10000 --onlymime
+eml     : ./08822e157fbd0e30dded7548f4ea5f3c.eml
+size    : 172513(bytes)
+loop    : 10000
+total   : 1,725,130,000(bytes)
+elapse  : 0.764(second)
+%second : 2,258,023,560(bytes)
 ```
 
-### 例子
-见源码 sample/mime/
+## 其他
+
+[解析 winmail.dat(tnef)格式附件](./tnef.md)
+

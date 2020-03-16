@@ -20,11 +20,12 @@ int main(int argc, char **argv)
 
     zredis_client_t *rc;
     char *server = zconfig_get_str(zvar_default_config, "server", "127.0.0.1:6379");
-    rc = zredis_client_connect(server, 0, 10, 1);
+    rc = zredis_client_connect(server, 0, 10);
     if (!rc) {
         printf("ERR can not open %s(%m)\n", server);
         usage();
     }
+    zredis_client_set_auto_reconnect(rc, 1);
     char *channel = zconfig_get_str(zvar_default_config, "channel", 0);
     if (zempty(channel)) {
         usage();
@@ -56,7 +57,7 @@ int main(int argc, char **argv)
 
     zargv_free(channel_argv);
     zbuf_vector_free(msg_vec);
-    zredis_client_free(rc);
+    zredis_client_disconnect(rc);
 
     return 0;
 }

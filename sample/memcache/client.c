@@ -20,7 +20,7 @@ int main(int argc, char **argv)
     str = zbuf_create(1024);
     server = zconfig_get_str(zvar_default_config, "sever", "127.0.0.1:11211");
     do {
-        if ((mc = zmemcache_client_connect(server, 10, 0)) == 0) {
+        if ((mc = zmemcache_client_connect(server, 10)) == 0) {
             printf("ERR can not connect %s(%m)\n", server);
             break;
         }

@@ -15,7 +15,7 @@
 struct zmemcache_client_t {
     char *destination;
     int fd:31;
-    unsigned int auto_reconnect;
+    unsigned int auto_reconnect:1;
     int connect_timeout;
     int read_wait_timeout;
     int write_wait_timeout;
@@ -55,7 +55,7 @@ static void zmemcache_client_connect_inner(zmemcache_client_t *mc)
     znonblocking(mc->fd, 1);
 }
 
-zmemcache_client_t *zmemcache_client_connect(const char *destination, int connect_timeout, zbool_t auto_reconnect)
+zmemcache_client_t *zmemcache_client_connect(const char *destination, int connect_timeout)
 {
     int fd = zconnect(destination, connect_timeout);
     if (fd < 0) {
@@ -68,7 +68,7 @@ zmemcache_client_t *zmemcache_client_connect(const char *destination, int connec
     mc->connect_timeout = connect_timeout;
     mc->read_wait_timeout = -1;
     mc->write_wait_timeout = -1;
-    mc->auto_reconnect = auto_reconnect;
+    mc->auto_reconnect = 0;
     return mc;
 }
 

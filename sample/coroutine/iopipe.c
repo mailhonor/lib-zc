@@ -155,7 +155,7 @@ void * do_after_accept(void *arg)
         }
         return 0;
     }
-    zcoroutine_go_iopipe(proxy_fd, proxy_ssl, dest_fd, dest_ssl, after_close, 0);
+    zcoroutine_go_iopipe(proxy_fd, proxy_ssl, dest_fd, dest_ssl, 0, after_close, 0);
     return 0;
 }
 

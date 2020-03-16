@@ -2,11 +2,13 @@ all: target
 
 .PHONY: tags
 
-CC=gcc
-CFLAGS= -std=gnu99 -ggdb -Wall -Winline -I../../ -O2
-GLOBAL_LIBS=
+include ../../makefiles/defined.include
 
-ALL_LIBS = 
+CC ?= gcc
+CFLAGS := -std=gnu99 -ggdb -Wall -Winline -I../../ -O2 $(EXTRA_CFLAGS)
+GLOBAL_LIBS :=
+
+ALL_LIBS := 
 SRCS=${shell find -type f -name "*.c"}
 DEST := $(SRCS:.c=)
 .c:

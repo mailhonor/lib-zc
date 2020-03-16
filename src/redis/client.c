@@ -500,7 +500,7 @@ struct zredis_client_standalone_t {
     zstream_t *fp;
 };
 
-zredis_client_t *zredis_client_connect(const char *destination, const char *password, int connect_timeout, zbool_t auto_reconnect)
+zredis_client_t *zredis_client_connect(const char *destination, const char *password, int connect_timeout)
 {
     int fd = zconnect(destination, connect_timeout);
     if (fd < 0) {
@@ -517,7 +517,7 @@ zredis_client_t *zredis_client_connect(const char *destination, const char *pass
     rc->read_wait_timeout = -1;
     rc->write_wait_timeout = -1;
     rc->cluster_mode = 0;
-    rc->auto_reconnect = auto_reconnect;
+    rc->auto_reconnect = 0;
     sc->fd = fd;
     return rc;
 }
@@ -595,7 +595,7 @@ struct zredis_client_cluster_t {
     zstream_t *fp;
 };
 
-zredis_client_t *zredis_client_connect_cluster(const char *destination, const char *password, int connect_timeout, zbool_t auto_reconnect)
+zredis_client_t *zredis_client_connect_cluster(const char *destination, const char *password, int connect_timeout)
 {
     int fd = zconnect(destination, connect_timeout);
     if (fd < 0) {
@@ -612,7 +612,7 @@ zredis_client_t *zredis_client_connect_cluster(const char *destination, const ch
     rc->read_wait_timeout = -1;
     rc->write_wait_timeout = -1;
     rc->cluster_mode = 1;
-    rc->auto_reconnect = auto_reconnect;
+    rc->auto_reconnect = 0;
 
     cc->connection_size = 16;
     cc->connection_used = 1;
@@ -847,7 +847,7 @@ static void zredis_client_free_cluster_inner(zredis_client_t *rc)
 /* }}} */
 
 /* {{{ client ############################################################# */
-void zredis_client_free(zredis_client_t *rc)
+void zredis_client_disconnect(zredis_client_t *rc)
 {
     if (!rc) {
         return;

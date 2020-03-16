@@ -1,3 +1,5 @@
-SUFFIX_LIBS= -lssl -lcrypto -lsqlite3 -lpthread
-LIB_escape= -static
+${shell touch extra.makefile}
+include extra.makefile
+SUFFIX_LIBS := -lpthread $(my_extra_cflags)
+LIB_escape := -static
 include ../../makefiles/sample.makefile

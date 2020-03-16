@@ -5,28 +5,7 @@ LIB-ZC 是一个Linux平台通用C扩展库
 
 开源, 仓库地址 https://gitee.com/linuxmail/lib-zc
 
-- [通用配置](./doc/config.md), [通用命令行参数](./doc/main_argument.md), [通用日志](./doc/log.md)
-- 封装了常见的数据结构和算法<BR/>
-  [链表/容器](./doc/list.md), [链表/数据结构](./doc/link.md), [链表/宏](./doc/macro_link.md)<BR/>
-  [RBTREE/数据结构](./doc/rbtree.md), [RBTREE/宏](./doc/macro_rbtree.md)<BR/>
-  [词典](./doc/dict.md), [MAP](./doc/map.md)<BR/>
-  [VECTOR](./doc/vector.md), [ARGV](./doc/argv.md), [不定长字符串](./doc/buf.md)
-- 封装了常用编解码 [base64/quoted-printable/hex/url/ncr](./doc/encode.md)
-- 封装了常见的[io函数](./doc/io.md), [超时io函数](./doc/timed_io.md), [tcp socket](./doc/tcp_socket.md), [dns函数](./doc/dns.md)
-- 封装了常见的[字符串函数](./doc/string.md), [时间函数](./doc/time.md), [文件操作函数](./doc/file.md)
-- 封装了[openssl函数](./doc/openssl.md), 线程安全, 异步SSL, 支持 SNI
-- 封装了[io流](./doc/stream.md), 支持ssl
-- master/server服务管理框架, server包括异步io模式和协程模式
-- [异步io开发框架](./doc/aio.md). 包括 triger, 异步io, 缓存读写, 定时器, 支持ssl
-- [协程开发框架](./doc/coroutine.md), 支持文件类(read, lseek, link等)操作协程化,支持锁和条件
-- [io管道(代理)库](./doc/iopipe.md), 协程风格和异步IO风格
-- [json 解析库](./doc/json.md)
-- mime 邮件解析库, [tnef邮件解析库](./doc/tnef.md)
-- [redis客户端(支持集群)](doc/redis_client.md), [memcache客户端](doc/memcache_client.md)
-- 类redis服务器端
-- sqlite3 代理服务器/客户端
-- http服务器库
-- 一个全新的[const db](./doc/cdb.md)库
+帮助文档 [http://linuxmail.cn/lib-zc/](http://linuxmail.cn/lib-zc/)
 
 ## 背景
 在Linux平台, 仅基于GNU C标准库, 开发一个全新的完整的邮件系统, 包括

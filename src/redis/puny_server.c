@@ -1769,14 +1769,14 @@ static void *do_accept(void *arg)
 
 static void ___service_register(const char *service_name, int fd, int fd_type)
 {
-    if (zempty(service_name) || (!strcmp(service_name, "redis")) || (!zredis_puny_server_service_register)) {
-        ztype_convert_t ct;
-        ct.fdinfo.fd = fd;
-        ct.fdinfo.fd_type = fd_type;
-        zcoroutine_go(do_accept, ct.VOID_PTR, 16);
-    } else {
-        zredis_puny_server_service_register(service_name, fd, fd_type);
+    if (zredis_puny_server_service_register(service_name, fd, fd_type) == 1) {
+        return;
     }
+
+    ztype_convert_t ct;
+    ct.fdinfo.fd = fd;
+    ct.fdinfo.fd_type = fd_type;
+    zcoroutine_go(do_accept, ct.VOID_PTR, 16);
 }
 
 static void *do_timeout(void *arg)
@@ -1803,7 +1803,11 @@ static void *do_timeout(void *arg)
 
 void (*zredis_puny_server_before_service)() = 0;
 void (*zredis_puny_server_before_softstop)() = 0;
-void (*zredis_puny_server_service_register) (const char *service, int fd, int fd_type) = 0;
+static zbool_t _register_default(const char *service, int fd, int fd_type)
+{
+    return 0;
+}
+zbool_t (*zredis_puny_server_service_register)(const char *service, int fd, int fd_type) = _register_default;
 
 static void ___before_service_prepare_load(char *fn)
 {

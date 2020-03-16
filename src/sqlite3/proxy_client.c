@@ -21,7 +21,7 @@ struct zsqlite3_proxy_client_t {
     unsigned short int query_over:1;
 };
 
-zsqlite3_proxy_client_t *zsqlite3_proxy_client_connect(const char *destination, zbool_t auto_reconnect)
+zsqlite3_proxy_client_t *zsqlite3_proxy_client_connect(const char *destination)
 {
     int fd = zconnect(destination, 0);
     if (fd < 0) {
@@ -30,7 +30,7 @@ zsqlite3_proxy_client_t *zsqlite3_proxy_client_connect(const char *destination, 
     znonblocking(fd, 1);
     zsqlite3_proxy_client_t *client = (zsqlite3_proxy_client_t *)zcalloc(1, sizeof(zsqlite3_proxy_client_t));
     client->destination = zstrdup(destination);
-    client->auto_reconnect = auto_reconnect;
+    client->auto_reconnect = 0;
     client->fp = zstream_open_fd(fd);
     client->error_msg = zbuf_create(128);
     client->column_count = 0;
@@ -54,6 +54,11 @@ void zsqlite3_proxy_client_close(zsqlite3_proxy_client_t *client)
         zfree(client->row);
     }
     zfree(client);
+}
+
+void zsqlite3_proxy_client_set_auto_reconnect(zsqlite3_proxy_client_t *client, zbool_t auto_reconnect)
+{
+    client->auto_reconnect = auto_reconnect;
 }
 
 static zbool_t _zsqlite3_proxy_client_connect(zsqlite3_proxy_client_t *client, zbool_t force)

@@ -1,9 +1,9 @@
 /* 
- *================================
- *eli960@qq.com
- *https://blog.csdn.net/eli960
- *2017-02-18
- *================================
+ * ================================
+ * eli960@qq.com
+ * http://linuxmail.cn/
+ * 2017-02-18
+ * ================================
  */
 
 #pragma once
@@ -551,10 +551,10 @@ zlink_node_t *zlink_push(zlink_t *link, zlink_node_t *node);
 /* 把尾部节点弹出并返回 */
 zlink_node_t *zlink_pop(zlink_t *link);
 
-/* 把首部节点弹出并返回 */
+/* 把节点追加到首部 */
 zlink_node_t *zlink_unshift(zlink_t *link, zlink_node_t *node);
 
-/* 把节点追加到首部 */
+/* 把首部节点弹出并返回 */
 zlink_node_t *zlink_shift(zlink_t *link);
 
 /* 返回首部节点 */
@@ -870,7 +870,7 @@ zdict_node_t *zdict_find_near_next(const zdict_t *dict, const char *key, zbuf_t 
 /* 删除并释放键为key的节点 */
 void zdict_delete(zdict_t *dict, const char *key);
 
-/* 移除节点n */
+/* 删除节点n */
 void zdict_delete_node(zdict_t *dict, zdict_node_t *n);
 
 /* 第一个节点 */
@@ -1552,10 +1552,10 @@ const char *zget_mime_type_from_pathname(const char *pathname, const char *def);
 char *zbuild_unique_id(char *buf);
 
 /* 从唯一id中获得时间戳(秒)并返回 */
-long zget_time_from_unique_id(char *buf);
+long zget_time_from_unique_id(const char *buf);
 
 /* 检测是不是唯一id格式 */
-zbool_t zis_unique_id(char *buf);
+zbool_t zis_unique_id(const char *buf);
 
 /* system ########################################################### */
 /* 如果user_name非空, 则改变实际用户为user_name */
@@ -1881,7 +1881,7 @@ int zcoroutine_block_unlink(const char *pathname);
 #endif
 
 /* io 映射 */
-void zcoroutine_go_iopipe(int fd1, SSL *ssl1, int fd2, SSL *ssl2, void (*after_close)(void *ctx), void *ctx);
+void zcoroutine_go_iopipe(int fd1, SSL *ssl1, int fd2, SSL *ssl2, zcoroutine_base_t *cobs, void (*after_close)(void *ctx), void *ctx);
 
 /* master, src/master/ ################################################ */
 /* master/server 进程服务管理框架, 例子见 sample/master/ */
@@ -2410,11 +2410,11 @@ zjson_t *zjson_array_push(zjson_t *j, zjson_t *element);
 zbool_t zjson_array_pop(zjson_t *j, zjson_t **element);
 
 
-/* 如果不是数组,先转为数组, 存在则返回1, 否则返回 0;
- * element不为0,则unshift出来的json赋值给*element, 否则销毁 */
+/* 如果不是数组,先转为数组, 在数组前追加element(json). 返回element */
 zjson_t *zjson_array_unshift(zjson_t *j, zjson_t *element);
 
-/* 如果不是数组,先转为数组, 在数组前追加element(json). 返回element */
+/* 如果不是数组,先转为数组, 存在则返回1, 否则返回 0;
+ * element不为0,则shift出来的json赋值给*element, 否则销毁 */
 zbool_t zjson_array_shift(zjson_t *j, zjson_t **element);
 
 /* 已知 json = [1, {}, "ss" "aaa"]
@@ -2465,8 +2465,8 @@ zjson_t *zjson_get_top(zjson_t *j);
 /* memcache client, src/memcache/ ##################################### */
 /* memcache 客户端, 例子见 sample/memcache/ */
 
-/* 创建连接器; destination: 见 zconnect; timeout: connect超时,单位秒; auto_reconnect: 是否自动重连 */
-zmemcache_client_t *zmemcache_client_connect(const char *destination, int connect_timeout, zbool_t auto_reconnect);
+/* 创建连接器; destination: 见 zconnect; timeout: connect超时,单位秒; */
+zmemcache_client_t *zmemcache_client_connect(const char *destination, int connect_timeout);
 
 /* 设置connect超时时间, 单位秒 */
 void zmemcache_client_set_connect_timeout(zmemcache_client_t *mc, int connect_timeout);
@@ -2518,11 +2518,10 @@ int zmemcache_client_version(zmemcache_client_t *mc, zbuf_t *version);
 /* destinations: 见 zconnect */
 /* password: 密码, 空: 没有密码 */
 /* connect_timeout: 连接超时,单位秒 */
-/* auto_reconnect: 是否自动重连 */
-zredis_client_t *zredis_client_connect(const char *destination, const char *password, int connect_timeout, zbool_t auto_reconnect);
+zredis_client_t *zredis_client_connect(const char *destination, const char *password, int connect_timeout);
 
 /* 创建连接器, 同上. 连接集群 */
-zredis_client_t *zredis_client_connect_cluster(const char *destination, const char *password, int connect_timeout, zbool_t auto_reconnect);
+zredis_client_t *zredis_client_connect_cluster(const char *destination, const char *password, int connect_timeout);
 
 /* 设置命令超时时间, 单位秒 */
 void zredis_client_set_connect_timeout(zredis_client_t *rc, int connect_timeout);
@@ -2540,7 +2539,7 @@ void zredis_client_set_auto_reconnect(zredis_client_t *rc, zbool_t auto_reconnec
 const char * zredis_client_get_error_msg(zredis_client_t *rc);
 
 /* 释放 */
-void zredis_client_free(zredis_client_t *rc);
+void zredis_client_disconnect(zredis_client_t *rc);
 
 /* redis命令返回结果可以抽象为json, 绝大部分可以简化为4类:
  * 1: 成功/失败, 2: 整数, 3: 字符串, 4:字符换vecgtor */
@@ -2597,7 +2596,8 @@ int zredis_client_fetch_channel_message(zredis_client_t *rc, zvector_t *vector_r
 /* 模拟标准redis服务, 部分支持 键/字符串/哈希表 */
 extern void (*zredis_puny_server_before_service)(void);
 extern void (*zredis_puny_server_before_softstop)(void);
-extern void (*zredis_puny_server_service_register) (const char *service, int fd, int fd_type);
+/* 返回1: 表明调用者成功注册了这个服务 */
+extern zbool_t (*zredis_puny_server_service_register) (const char *service, int fd, int fd_type);
 int zredis_puny_server_main(int argc, char **argv);
 void zredis_puny_server_exec_cmd(zvector_t *cmd);
 
@@ -2812,13 +2812,16 @@ const char *zhttpd_get_prefix_log_msg(zhttpd_t *httpd);
 /* zsqlite3_proxd based on zaio_server */
 extern void (*zsqlite3_proxy_server_before_service)(void);
 extern void (*zsqlite3_proxy_server_before_softstop)(void);
-extern void (*zsqlite3_proxy_server_service_register) (const char *service, int fd, int fd_type);
+/* 返回1, 表明调用者成功注册了这个服务 */
+extern zbool_t (*zsqlite3_proxy_server_service_register) (const char *service, int fd, int fd_type);
 int zsqlite3_proxy_server_main(int argc, char **argv);
 
 /* client */
+/* 因为一般用于本地, 所以没有超时设置 */
 zbuf_t *zsqlite3_escape_append(zbuf_t *sql, const void *data, int len);
-zsqlite3_proxy_client_t *zsqlite3_proxy_client_connect(const char *destination, zbool_t auto_reconnect);
+zsqlite3_proxy_client_t *zsqlite3_proxy_client_connect(const char *destination);
 void zsqlite3_proxy_client_close(zsqlite3_proxy_client_t *client);
+void zsqlite3_proxy_client_set_auto_reconnect(zsqlite3_proxy_client_t *client, zbool_t auto_reconnect);
 int zsqlite3_proxy_client_log(zsqlite3_proxy_client_t *client, const char *sql, int len);
 int zsqlite3_proxy_client_exec(zsqlite3_proxy_client_t *client, const char *sql, int len);
 int zsqlite3_proxy_client_query(zsqlite3_proxy_client_t *client, const char *sql, int len);

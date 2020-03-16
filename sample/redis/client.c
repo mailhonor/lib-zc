@@ -68,9 +68,9 @@ int main(int argc, char **argv)
     char *server = zconfig_get_str(zvar_default_config, "server", "127.0.0.1:6379");
     int ex = zconfig_get_bool(zvar_default_config, "cluster", 0);
     if (ex) {
-        rc = zredis_client_connect_cluster(server, 0, 10, 1);
+        rc = zredis_client_connect_cluster(server, 0, 10);
     } else {
-        rc = zredis_client_connect(server, 0, 10, 1);
+        rc = zredis_client_connect(server, 0, 10);
     }
 
     sval = zbuf_create(-13);
@@ -82,6 +82,7 @@ int main(int argc, char **argv)
         printf("ERR can not connect %s\n", server);
         goto over;
     }
+    zredis_client_set_auto_reconnect(rc, 1);
 
     if (zvar_main_redundant_argc > 0 ) {
         _test___json(zredis_client_get_json(rc, jval, "P", zvar_main_redundant_argv));
@@ -108,7 +109,7 @@ over:
     zbuf_vector_free(vval);
     zjson_free(jval);
     if(rc) {
-        zredis_client_free(rc);
+        zredis_client_disconnect(rc);
     }
     usage();
     return 0;

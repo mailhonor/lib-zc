@@ -52,7 +52,7 @@ char *zbuild_unique_id(char *buf)
     return buf;
 }
 
-long zget_time_from_unique_id(char *buf)
+long zget_time_from_unique_id(const char *buf)
 {
     long r = 0;
     for (int i = 6; i < 14; i++) {
@@ -61,7 +61,7 @@ long zget_time_from_unique_id(char *buf)
     return r;
 }
 
-zbool_t zis_unique_id(char *buf)
+zbool_t zis_unique_id(const char *buf)
 {
     int i=0, ch;
     for(i=0;i<zvar_unique_id_size+1;i++) {

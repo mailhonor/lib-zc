@@ -52,9 +52,8 @@ static zbool_t _zhttpd_response_file(zhttpd_t *httpd, const char *pathname, cons
 
     rwdata = (char *)zmalloc(4096+1);
     new_etag = rwdata + 3000;
-    *new_etag = 0;
+    sprintf(new_etag, "\"%lx_%lx\"", st.st_size, st.st_mtime);
     if (*old_etag) {
-        sprintf(new_etag, "\"%lx_%lx\"", st.st_size, st.st_mtime);
         if (!strcmp(old_etag, new_etag)) {
             if (zvar_httpd_no_cache == 0) {
                 zhttpd_response_304(httpd, new_etag);
@@ -123,9 +122,9 @@ static zbool_t _zhttpd_response_file(zhttpd_t *httpd, const char *pathname, cons
             max_age = 3600 * 24 * 10;
         }
         if (max_age > 0) {
-            sprintf(rwdata, "max-age=%d", httpd->response_max_age);
+            sprintf(rwdata, "max-age=%d", max_age);
             zhttpd_response_header(httpd, "Cache-Control", rwdata);
-            zhttpd_response_header_date(httpd, "Expires", httpd->response_expires + 1 + time(0));
+            zhttpd_response_header_date(httpd, "Expires", max_age + 1 + time(0));
         } else if (max_age == 0) {
             zhttpd_response_header(httpd, "Cache-Control", "no-cache");
         }

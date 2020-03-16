@@ -243,7 +243,7 @@ static void *coroutine_go_iopipe_go(void *ctx)
     return 0;
 }
 
-void zcoroutine_go_iopipe(int fd1, SSL *ssl1, int fd2, SSL *ssl2, void (*after_close)(void *ctx), void *ctx)
+void zcoroutine_go_iopipe(int fd1, SSL *ssl1, int fd2, SSL *ssl2, zcoroutine_base_t *cobs, void (*after_close)(void *ctx), void *ctx)
 {
     fd_attrs_go_t *fgo = (fd_attrs_go_t *)zmalloc(sizeof(fd_attrs_go_t));
     fd_attrs_init(&(fgo->fass0));
@@ -258,5 +258,5 @@ void zcoroutine_go_iopipe(int fd1, SSL *ssl1, int fd2, SSL *ssl2, void (*after_c
     fgo->after_close = after_close;
     fgo->ctx = ctx;
 
-    zcoroutine_go(coroutine_go_iopipe_go, fgo, 16);
+    zcoroutine_advanced_go(cobs, coroutine_go_iopipe_go, fgo, 16);
 }

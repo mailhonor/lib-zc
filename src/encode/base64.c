@@ -52,6 +52,10 @@ void zbase64_encode(const void *src, int src_size, zbuf_t *str, int mime_flag)
     char tmp[5]= {0,0,0,0,0};
     int src_pos;
     int mime_count = 0;
+    
+    if (src_size < 0) {
+        src_size = strlen((const char *)src);
+    }
 
     for (src_pos = 0; src_pos < src_size;) {
         tmp[0] = b64enc[src_c[src_pos] >> 2];
@@ -105,6 +109,10 @@ void zbase64_decode(const void *src, int src_size, zbuf_t *str, int *dealed_size
 #endif
     int missing = 0;
     int dealed_size2 = 0;
+
+    if (src_size < 0) {
+        src_size = strlen((const char *)src);
+    }
 
 #define ___get_next_ch(c0123, br)    while(1){ \
     if(src_pos >= src_size){ if(br) {c0123='='; missing = 1; break;}  goto over; } \
@@ -199,6 +207,10 @@ int zbase64_decode_get_valid_len(const void *src, int src_size)
 {
     unsigned char *src_c = (unsigned char *)src, ch;
     int i;
+
+    if (src_size < 0) {
+        src_size = strlen((const char *)src);
+    }
 
     for (i = 0; i < src_size; i++) {
         ch = src_c[i];

@@ -56,8 +56,6 @@ struct zhttpd_t {
     unsigned int ssl_mode:1;
     unsigned int enable_form_data:1;
     /* */
-    int response_max_age;
-    int response_expires;
     int keep_alive_timeout;
     int request_header_timeout;
     int read_wait_timeout;

@@ -165,9 +165,13 @@ void zhttpd_close(zhttpd_t *httpd, zbool_t close_fd_and_release_ssl)
     zhttpd_response_flush(httpd);
     zstream_close(httpd->fp, close_fd_and_release_ssl);
     zbuf_free(httpd->prefix_log_msg);
-    zfree(httpd->method);
-    zfree(httpd->host);
-    zfree(httpd->path);
+#define ___FR(m) zfree(m); m=zblank_buffer;
+    ___FR(httpd->method);
+    ___FR(httpd->host);
+    ___FR(httpd->uri);
+    ___FR(httpd->path);
+    ___FR(httpd->version);
+#undef ___FR
 
     zdict_free(httpd->request_query_vars);
     zdict_free(httpd->request_post_vars);
@@ -629,7 +633,9 @@ static void zhttpd_loop_clear(zhttpd_t *httpd)
 #define ___FR(m) zfree(m); m=zblank_buffer;
     ___FR(httpd->method);
     ___FR(httpd->host);
+    ___FR(httpd->uri);
     ___FR(httpd->path);
+    ___FR(httpd->version);
 #undef ___FR
     httpd->port = -1;
 
@@ -662,8 +668,8 @@ static void zhttpd_loop_clear(zhttpd_t *httpd)
 
 static void zhttpd_request_header_do(zhttpd_t * httpd, zbuf_t *linebuf)
 {
-    char *p, *ps;
-    int ret, llen, first = httpd->first;
+    char *p, *ps, *ps2;
+    int ret, first = httpd->first;
 
     /* read first header line */
     if (httpd->first) {
@@ -698,16 +704,17 @@ static void zhttpd_request_header_do(zhttpd_t * httpd, zbuf_t *linebuf)
         return;
     }
     zbuf_trim_right_rn(linebuf);
-    llen = zbuf_len(linebuf);
-    httpd->method = zmemdupnull(zbuf_data(linebuf), llen);
-    ps = httpd->method;
+
+    ps = zbuf_data(linebuf);
     p = strchr(ps, ' ');
     if (!p) {
         zhttpd_show_log(httpd, "exception banner no blank");
         httpd->exception = 1;
         return;
     }
-    *p = 0;
+    ps2 = p + 1;
+    httpd->method = zmemdupnull(ps, p - ps);
+    ps = httpd->method;
     zstr_toupper(ps);
     if (ZSTR_EQ(ps, "GET")) {
         httpd->handler_protocal = httpd->handler;
@@ -730,43 +737,70 @@ static void zhttpd_request_header_do(zhttpd_t * httpd, zbuf_t *linebuf)
         httpd->exception = 1;
         return;
     }
-    llen -= (p - ps) + 1;
-    ps = httpd->uri = p + 1;
 
-    if (llen < 10) {
-        zhttpd_show_log(httpd, "exception banner line too short");
-        httpd->exception = 1;
-        return;
-    }
-    p += llen;
-    for (;p > ps; p--) {
-        if (*p ==' ') {
-            break;
-        }
-    }
-    if (ps == p) {
-        zhttpd_show_log(httpd, "exception banner line no version token");
-        httpd->exception = 1;
-        return;
-    }
-    *p = 0;
-    httpd->version = p + 1;
-    zstr_toupper(httpd->version);
+    ps = ps2;
 
-    ps = httpd->uri;
-    p = strchr(ps, '?');
-    if (!p) {
-        httpd->path = zstrdup(ps);
+    p = strchr(ps, ' ');
+    if (p) {
+        httpd->version = zstrdup(p+1);
+        zstr_toupper(httpd->version);
+        *p = 0;
     } else {
-        httpd->path = zmemdupnull(ps, p - ps);
-        ps = p + 1;
-        p = strchr(ps, '#');
-        if (p) {
-            *p = 0;
+        httpd->version = zstrdup("HTTP/1.0");
+    }
+
+    ps2 = ps;
+    if (ps[0] != '/') {
+        if (!strncasecmp(ps, "http://", 7)) {
+            ps += 7;
+        } else if (!strncasecmp(ps, "https://", 8)){
+            ps += 8;
+        } else {
+            zhttpd_show_log(httpd, "exception bad request");
+            httpd->exception = 1;
+            return;
         }
-        zurl_query_parse(ps, httpd->request_query_vars);
+        p = strchr(ps, '/');
         if (p) {
-            *p = '#';
+            ps2 = p;
+            *ps2 = 0;
+        } else {
+            ps2 = 0;
+        }
+        p = strchr(ps, ':');
+        if (p) {
+            httpd->host = zstrndup(ps, p-ps);
+            httpd->port = atoi(p+1);
+        } else {
+            httpd->host = zstrdup(ps);
+            httpd->port = -1;
+        }
+        if (ps2) {
+            *ps2 = '/';
+        }
+    }
+
+
+    ps = ps2;
+    if (!ps) {
+        httpd->uri = zstrdup("/");
+        httpd->path = zstrdup("/");
+    } else {
+        httpd->uri = zstrdup(ps);
+        p = strchr(ps, '?');
+        if (!p) {
+            httpd->path = zstrdup(ps);
+        } else {
+            httpd->path = zmemdupnull(ps, p - ps);
+            ps = p + 1;
+            p = strchr(ps, '#');
+            if (p) {
+                *p = 0;
+            }
+            zurl_query_parse(ps, httpd->request_query_vars);
+            if (p) {
+                *p = '#';
+            }
         }
     }
 
@@ -802,6 +836,7 @@ static void zhttpd_request_header_do(zhttpd_t * httpd, zbuf_t *linebuf)
         if (p[0] == 'h') {
             if (!strcmp(p, "host")) {
                 p = strchr(ps, ':');
+                zfree(httpd->host);
                 if (p) {
                     httpd->host = zstrndup(ps, p-ps);
                     httpd->port = atoi(p+1);

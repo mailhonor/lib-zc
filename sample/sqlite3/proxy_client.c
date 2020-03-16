@@ -6,6 +6,8 @@
  * ================================
  */
 
+#ifdef _LIB_ZC_SQLITE3_
+
 #include "zc.h"
 
 static void usage()
@@ -32,11 +34,12 @@ int main(int argc, char **argv)
         usage();
     }
 
-    zsqlite3_proxy_client_t *pr = zsqlite3_proxy_client_connect(server, 1);
+    zsqlite3_proxy_client_t *pr = zsqlite3_proxy_client_connect(server);
     if (pr == 0) {
         printf("ERR can not open %s(%m)\n", server);
         exit(1);
     }
+    zsqlite3_proxy_client_set_auto_reconnect(pr, 1);
     if (op == 'q') {
         ret = zsqlite3_proxy_client_query(pr, sentense, strlen(sentense));
         if (ret < 1) {
@@ -77,3 +80,14 @@ int main(int argc, char **argv)
     }
     zsqlite3_proxy_client_close(pr);
 }
+#else
+#include <stdio.h>
+int main(int argc, char **argv)
+{
+    printf("need defined _LIB_ZC_SQLITE3_\n");
+    printf("cat makefiles/defined.include\n");
+    printf("\n");
+    printf("EXTRA_CFLAGS = -D_LIB_ZC_SQLITE3_\n");
+    return 0;
+}
+#endif
