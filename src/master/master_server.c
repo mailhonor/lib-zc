@@ -590,7 +590,7 @@ static void prepare_server_by_config(zconfig_t *cf)
     zvector_push(server_info_vec, server);
     server->config_fn = zstrdup(fn);
     server->cmd = zstrdup(cmd);
-    server->proc_limit = zconfig_get_int(cf, "server-proc-count", 1, 1, 1000);
+    server->proc_limit = zconfig_get_int(cf, "server-proc-count", 1);
     server->proc_count = 0;
     if (zempty(fn)) {
         zbuf_t *kk = zbuf_create(-1);
@@ -793,7 +793,7 @@ static void init_all(int argc, char **argv)
     ___init_flag = 1;
 
     zmain_argument_run(argc, argv, 0);
-    int sl = zconfig_get_int(zvar_default_config, "sleep", 0, 0, 1000); 
+    int sl = zconfig_get_int(zvar_default_config, "sleep", 0); 
     if (sl > 0) {
         zsleep_millisecond(sl);
         exit(0);

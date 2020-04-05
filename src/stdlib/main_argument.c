@@ -107,7 +107,7 @@ void zmain_argument_run(int argc, char **argv, unsigned int (*self_argument_fn)(
         }
     }
 
-    i = zconfig_get_second(zvar_default_config, "exit-after", 0, 0, 3600L * 24 * 365 * 10);
+    i = zconfig_get_second(zvar_default_config, "exit-after", 0);
     if (i > 0) {
         alarm(0);
         signal(SIGALRM, ___timeout_do);

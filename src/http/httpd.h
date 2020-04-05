@@ -57,7 +57,6 @@ struct zhttpd_t {
     unsigned int enable_form_data:1;
     /* */
     int keep_alive_timeout;
-    int request_header_timeout;
     int read_wait_timeout;
     int write_wait_timeout;
     int max_length_for_post;

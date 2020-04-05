@@ -12,7 +12,6 @@ static void zhttpd_loop_clear(zhttpd_t *httpd);
 static void zhttpd_request_header_do(zhttpd_t * httpd, zbuf_t *linebuf);
 static void zhttpd_request_data_do(zhttpd_t *httpd, zbuf_t *linebuf);
 
-zbool_t zvar_httpd_debug = 0;
 zbool_t zvar_httpd_no_cache = 0;
 
 const char *zhttpd_uploaded_file_get_name(zhttpd_uploaded_file_t *fo)
@@ -129,7 +128,6 @@ zhttpd_t * _zhttpd_malloc_struct_general()
     httpd->request_deflate = 0;
 
     httpd->keep_alive_timeout = -1;
-    httpd->request_header_timeout = -1;
     httpd->read_wait_timeout = -1;
     httpd->write_wait_timeout = -1;
     httpd->max_length_for_post = -1;
@@ -238,11 +236,6 @@ void zhttpd_set_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd))
 void zhttpd_set_keep_alive_timeout(zhttpd_t *httpd, int timeout)
 {
     httpd->keep_alive_timeout = timeout;
-}
-
-void zhttpd_set_request_header_timeout(zhttpd_t *httpd, int timeout)
-{
-    httpd->request_header_timeout = timeout;
 }
 
 void zhttpd_set_read_wait_timeout(zhttpd_t *httpd, int read_wait_timeout)
@@ -674,20 +667,13 @@ static void zhttpd_request_header_do(zhttpd_t * httpd, zbuf_t *linebuf)
     /* read first header line */
     if (httpd->first) {
         httpd->first = 0;
-        ret = zstream_timed_read_wait(httpd->fp, httpd->request_header_timeout);
-        if (ret < 1) {
-            zhttpd_show_log(httpd, "exception wait read");
-            httpd->exception = 1;
-            return;
-        }
-    } else {
         ret = zstream_timed_read_wait(httpd->fp, httpd->keep_alive_timeout);
         if (ret < 1) {
             httpd->exception = 1;
             return;
         }
-    }
-    zstream_timed_read_wait(httpd->fp, httpd->request_header_timeout);
+    } 
+
     ret = zstream_gets(httpd->fp, linebuf, zvar_httpd_header_line_max_size);
     if (ret < 0) {
         zhttpd_show_log(httpd, "exception read banner line");
@@ -1091,7 +1077,7 @@ static void zhttpd_request_data_do(zhttpd_t *httpd, zbuf_t *linebuf)
 }
 
 /* log */
-const char *zhttpd_get_prefix_log_msg(zhttpd_t *httpd)
+static const char *zhttpd_get_prefix_log_msg_default(zhttpd_t *httpd)
 {
     if (httpd->prefix_log_msg == 0) {
         httpd->prefix_log_msg = zbuf_create(512);
@@ -1127,3 +1113,5 @@ const char *zhttpd_get_prefix_log_msg(zhttpd_t *httpd)
 
     return zbuf_data(logbf);
 }
+
+const char *(*zhttpd_get_prefix_log_msg)(zhttpd_t *httpd) = zhttpd_get_prefix_log_msg_default;

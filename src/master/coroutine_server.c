@@ -246,7 +246,7 @@ static void zcoroutine_server_init(int argc, char ** argv)
         }
     }
 
-    long ea = zconfig_get_second(zvar_default_config, "exit-after", 0, 3600L * 24 * 365 * 10, 0);
+    long ea = zconfig_get_second(zvar_default_config, "exit-after", 0);
     if (ea > 0) {
         alarm(0);
         zcoroutine_go(do_exit_after, (void *)ea, 4);

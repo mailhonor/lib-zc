@@ -91,7 +91,7 @@ void zconfig_get_bool_table(zconfig_t * cf, zconfig_bool_table_t * table)
     { \
         while (table->name) \
         { \
-            table->target[0] = zconfig_get_ ## ttype(cf, table->name, table->defval, table->min, table->max); \
+            table->target[0] = zconfig_get_ ## ttype(cf, table->name, table->defval); \
             table++; \
         } \
     }

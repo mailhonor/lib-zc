@@ -62,7 +62,7 @@ int main(int argc, char **argv)
     zbuf_t *eml_data_buf = zbuf_create(102400);
     long t;
 
-    times = zconfig_get_int(zvar_default_config, "loop", 1000, 1, 1000000);
+    times = zconfig_get_int(zvar_default_config, "loop", 1000);
     int onlymime = zconfig_get_bool(zvar_default_config, "onlymime", 0);
 
     if (zvar_main_redundant_argc == 0) {

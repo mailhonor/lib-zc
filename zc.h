@@ -891,17 +891,17 @@ char *zdict_get_str(const zdict_t *dict, const char *name, const char *def);
 /* 查找键为name的节点, 如果存在则返回zstr_to_bool(其值), 否则返回def */
 int zdict_get_bool(const zdict_t *dict, const char *name, int def);
 
-/* 查找键为name的节点, 如果存在且{ min < foo(其值) < max }则返回foo(其值), 否则返回def; foo 为 atoi */
-int zdict_get_int(const zdict_t *dict, const char *name, int def, int min, int max);
+/* 查找键为name的节点, 如果存在则返回foo(其值), 否则返回def; foo 为 atoi */
+int zdict_get_int(const zdict_t *dict, const char *name, int def);
 
 /* 如上, foo 为 atol */
-long zdict_get_long(const zdict_t *dict, const char *name, long def, long min, long max);
+long zdict_get_long(const zdict_t *dict, const char *name, long def);
 
 /* 如上, foo 为 zstr_to_second */
-long zdict_get_second(const zdict_t *dict, const char *name, long def, long min, long max);
+long zdict_get_second(const zdict_t *dict, const char *name, long def);
 
 /* 如上, foo 为 zstr_to_size */
-long zdict_get_size(const zdict_t *dict, const char *name, long def, long min, long max);
+long zdict_get_size(const zdict_t *dict, const char *name, long def);
 
 /* debug输出 */
 void zdict_debug_show(const zdict_t *dict);
@@ -1146,15 +1146,11 @@ typedef struct {
     const char *name;
     int defval;
     int *target;
-    int min;
-    int max;
 } zconfig_int_table_t;
 typedef struct {
     const char *name;
     long defval;
     long *target;
-    long min;
-    long max;
 } zconfig_long_table_t;
 typedef struct {
     const char *name;
@@ -1895,6 +1891,9 @@ extern void (*zmaster_server_load_config)(zvector_t *cfs);
 
 /* master进入服务管理前执行的函数 */
 extern void (*zmaster_server_before_service)();
+
+/* master 每次事件(epoll)循环执行的函数 */
+extern void (*zmaster_server_event_loop)();
 
 /* 一个通用的加载一个目录下所有服务配置的函数 */
 void zmaster_server_load_config_from_dirname(const char *config_dir_pathname, zvector_t *cfs);
@@ -2644,7 +2643,6 @@ char *zhttp_cookie_build_item(const char *name, const char *value, long expires,
 
 /* httpd, src/http/ ############################################### */
 /* httpd, 例子见 sample/http/ */
-extern zbool_t zvar_httpd_debug;
 extern zbool_t zvar_httpd_no_cache;
 
 /* 从fd, 或ssl 创建http对象 */
@@ -2670,11 +2668,8 @@ void *zhttpd_get_context(zhttpd_t *httpd);
 /* 停止httpd */
 void zhttpd_set_stop(zhttpd_t *httpd);
 
-/* 设置keep-alive时间, timeout: 秒 */
+/* 设置keep-alive超时时间, timeout: 秒 */
 void zhttpd_set_keep_alive_timeout(zhttpd_t *httpd, int timeout);
-
-/* 设置http协议头超时时间 */
-void zhttpd_set_request_header_timeout(zhttpd_t *httpd, int timeout);
 
 /* 通用超时等待可读, 单位秒, timeout<0: 表示无限长 */
 void zhttpd_set_read_wait_timeout(zhttpd_t *httpd, int read_wait_timeout);
@@ -2745,7 +2740,6 @@ void zhttpd_set_404_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 void zhttpd_set_500_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 void zhttpd_set_501_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 
-void zhttpd_show_log_inner(zhttpd_t *httpd, const char *code, int length);
 /* 输出 initialization; version: "http/1.0", "http/1.1", 0(采用请求值); status: 如 "200 XXX"  */
 void zhttpd_response_header_initialization(zhttpd_t *httpd, const char *version, const char *status);
 
@@ -2806,7 +2800,7 @@ void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *pathname, const 
 
 /* 日志 */
 #define zhttpd_show_log(httpd, fmt, args...) { zinfo("%s "fmt, zhttpd_get_prefix_log_msg(httpd), ##args) }
-const char *zhttpd_get_prefix_log_msg(zhttpd_t *httpd);
+extern const char *(*zhttpd_get_prefix_log_msg)(zhttpd_t *httpd);
 
 /* sqlite3 ################################################## */
 /* zsqlite3_proxd based on zaio_server */

@@ -256,54 +256,38 @@ int zdict_get_bool(const zdict_t * dict, const char *name, int def)
     return def;
 }
 
-int zdict_get_int(const zdict_t * dict, const char *name, int def, int min, int max)
+int zdict_get_int(const zdict_t * dict, const char *name, int def)
 {
-    int r = def;
     char *str_val = zdict_get_str(dict, name, 0);
     if (str_val && *str_val) {
-        r = atoi(str_val);
-        if ((r < min) || (r > max)) {
-            return def;
-        }
+        return atoi(str_val);
     }
-    return r;
+    return def;
 }
 
-long zdict_get_long(const zdict_t * dict, const char *name, long def, long min, long max)
+long zdict_get_long(const zdict_t * dict, const char *name, long def)
 {
-    long r = def;
     char *str_val = zdict_get_str(dict, name, 0);
     if (str_val && *str_val) {
-        r = atol(str_val);
-        if ((r < min) || (r > max)) {
-            return def;
-        }
+        return atol(str_val);
     }
-    return r;
+    return def;
 }
 
-long zdict_get_second(const zdict_t *dict, const char *name, long def, long min, long max)
+long zdict_get_second(const zdict_t *dict, const char *name, long def)
 {
-    long r = def;
     char *str_val = zdict_get_str(dict, name, 0);
     if (str_val && *str_val) {
-        r = zstr_to_second(str_val, def);
-        if ((r < min) || (r > max)) {
-            return def;
-        }
+        return zstr_to_second(str_val, def);
     }
-    return r;
+    return def;
 }
 
-long zdict_get_size(const zdict_t *dict, const char *name, long def, long min, long max)
+long zdict_get_size(const zdict_t *dict, const char *name, long def)
 {
-    long r = def;
     char *str_val = zdict_get_str(dict, name, 0);
     if (str_val && *str_val) {
-        r = zstr_to_size(str_val, def);
-        if ((r < min) || (r > max)) {
-            return def;
-        }
+        return zstr_to_size(str_val, def);
     }
-    return r;
+    return def;
 }

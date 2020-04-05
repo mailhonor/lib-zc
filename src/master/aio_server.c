@@ -320,7 +320,7 @@ static void zaio_server_init(int argc, char **argv)
         }
     }
 
-    long ea = zconfig_get_second(zvar_default_config, "exit-after", 0, 3600L * 24 * 365 * 10, 0);
+    long ea = zconfig_get_second(zvar_default_config, "exit-after", 0);
     if (ea > 0) {
         alarm(0);
         exit_after_timer = zaio_create(-1, zvar_default_aio_base);

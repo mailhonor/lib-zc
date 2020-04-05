@@ -206,8 +206,8 @@ int main(int argc, char **argv)
 {
     zmain_argument_run(argc, argv, 0);
     
-    read_wait_timeout = zconfig_get_second(zvar_default_config, "read_wait_timeout", 3600*24, -1, 3600*24);
-    write_wait_timeout = zconfig_get_second(zvar_default_config, "write_wait_timeout", 3600*24, -1, 3600*24);
+    read_wait_timeout = zconfig_get_second(zvar_default_config, "read_wait_timeout", 3600*24);
+    write_wait_timeout = zconfig_get_second(zvar_default_config, "write_wait_timeout", 3600*24);
 
     char *listen = zconfig_get_str(zvar_default_config, "listen", 0);
     if (zempty(listen)) {

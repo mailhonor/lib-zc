@@ -64,7 +64,7 @@ static void parameters_do(int argc, char **argv)
 
     ssl_key = zconfig_get_str(zvar_default_config, "ssl-key", 0);
     ssl_cert = zconfig_get_str(zvar_default_config, "ssl-cert", 0);
-    times = zconfig_get_int(zvar_default_config, "times", 9999991, 0, 9999999);
+    times = zconfig_get_int(zvar_default_config, "times", 9999991);
 
     if (proxy_is_ssl && dest_is_ssl) {
         proxy_is_ssl = 0;
