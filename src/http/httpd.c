@@ -1063,6 +1063,9 @@ static void zhttpd_request_data_do(zhttpd_t *httpd, zbuf_t *linebuf)
     }
 
     char *p = zdict_get_str(httpd->request_headers,"content-type", 0);
+    if (zempty(p)) {
+        return;
+    }
 
     if (!strncasecmp(p, "application/x-www-form-urlencoded", 33)) {
         _zhttpd_request_data_do_x_www_form_urlencoded(httpd, linebuf);
