@@ -56,7 +56,7 @@ void zmail_debug_show(zmail_t *parser)
     printf("%15s: %ld\n","", zmail_get_date_unix(parser));
     printf("\n");
     printf(fmt, "Subject", zmail_get_subject(parser));
-    printf(fmt, "", zmail_get_subject_utf8(parser));
+    printf(fmt, "Subject_utf8", zmail_get_subject_utf8(parser));
     printf("\n");
     _debug_show_addr(parser, "From", zmail_get_from_utf8(parser));
     printf("\n");

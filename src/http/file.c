@@ -42,6 +42,10 @@ static zbool_t _zhttpd_response_file(zhttpd_t *httpd, const char *pathname, cons
         zhttpd_response_500(httpd);
         goto over;
     }
+    if (!S_ISREG(st.st_mode)) {
+        zhttpd_response_404(httpd);
+        goto over;
+    }
 
     range = zdict_get_str(httpd->request_headers,"range", "");
     old_etag = zdict_get_str(httpd->request_headers,"if-none-match", "");
