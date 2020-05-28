@@ -23,9 +23,18 @@ static void  write_line_read_line(zstream_t *fp, zbuf_t *tmpline, const char *qu
     zstream_puts(fp, "\r\n");
     printf("C: %s\r\n", query);
 
-    zbuf_reset(tmpline);
-    zstream_gets(fp, tmpline, 10240);
-    printf("S: %s", zbuf_data(tmpline));
+    while(1) {
+        zbuf_reset(tmpline);
+        zstream_gets(fp, tmpline, 10240);
+        char *p = zbuf_data(tmpline);
+        printf("S: %s", p);
+        if (zbuf_len(tmpline)< 3) {
+            break;
+        }
+        if (p[3] == ' ') {
+            break;
+        }
+    }
 }
 
 int main(int argc, char **argv)
@@ -74,7 +83,7 @@ int main(int argc, char **argv)
     zstream_gets(fp, tmpline, 10240);
     printf("S: %s", zbuf_data(tmpline));
 
-    write_line_read_line(fp, tmpline, "helo goodtest");
+    write_line_read_line(fp, tmpline, "ehlo xxx1");
     if (tls_mode && !ssl_mode) {
         write_line_read_line(fp, tmpline, "STARTTLS");
         if (zstream_tls_connect(fp, ssl_ctx) < 0) {
@@ -82,6 +91,7 @@ int main(int argc, char **argv)
             goto over;
         }
     }
+    write_line_read_line(fp, tmpline, "ehlo xxx2");
     write_line_read_line(fp, tmpline, "mail from: <xxx@163.com>");
     write_line_read_line(fp, tmpline, "quit");
 

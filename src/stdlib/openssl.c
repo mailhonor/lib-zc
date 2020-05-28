@@ -17,6 +17,8 @@
 #include <openssl/err.h>
 
 zbool_t zvar_openssl_debug = 0;
+zbool_t zvar_openssl_disable_server_tls1_0 = 0;
+zbool_t zvar_openssl_disable_client_tls1_0 = 0;
 
 /* {{{ pthread safe */
 static pthread_mutex_t *var_pthread_safe_lock_vec = 0;
@@ -160,7 +162,11 @@ SSL_CTX *zopenssl_SSL_CTX_create_client(void)
     SSL_CTX_set_options(ctx, SSL_OP_ALL);
 
 #ifdef SSL_CTX_set_min_proto_version
-    SSL_CTX_set_min_proto_version(ctx, TLS1_1_VERSION);
+    if (zvar_openssl_disable_client_tls1_0) {
+        SSL_CTX_set_min_proto_version(ctx, TLS1_1_VERSION);
+    } else {
+        SSL_CTX_set_min_proto_version(ctx, TLS1_VERSION);
+    }
     SSL_CTX_set_max_proto_version(ctx, TLS_MAX_VERSION);
 #endif
 
@@ -185,7 +191,11 @@ SSL_CTX *zopenssl_SSL_CTX_create_server(const char *cert_file, const char *key_f
     SSL_CTX_set_options(ctx, SSL_OP_ALL);
 
 #ifdef SSL_CTX_set_min_proto_version
-    SSL_CTX_set_min_proto_version(ctx, TLS1_1_VERSION);
+    if (zvar_openssl_disable_server_tls1_0) {
+        SSL_CTX_set_min_proto_version(ctx, TLS1_1_VERSION);
+    } else {
+        SSL_CTX_set_min_proto_version(ctx, TLS1_VERSION);
+    }
     SSL_CTX_set_max_proto_version(ctx, TLS_MAX_VERSION);
 #endif
 
