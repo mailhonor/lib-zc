@@ -2822,6 +2822,7 @@ int zsqlite3_proxy_client_query(zsqlite3_proxy_client_t *client, const char *sql
 int zsqlite3_proxy_client_get_row(zsqlite3_proxy_client_t *client, zbuf_t ***rows);
 int zsqlite3_proxy_client_get_column(zsqlite3_proxy_client_t *client);
 const char *zsqlite3_proxy_client_get_error_msg(zsqlite3_proxy_client_t *client);
+void zsqlite3_proxy_client_set_error_log(zsqlite3_proxy_client_t *client, int flag);
 
 /* cdb, src/cdb/ ###################################################### */
 /* 一种新的静态db, 不支持修改, 例子见 sample/cdb/ */

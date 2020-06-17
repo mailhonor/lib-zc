@@ -19,6 +19,7 @@ struct zsqlite3_proxy_client_t {
     short int column_count;
     unsigned short int auto_reconnect:1;
     unsigned short int query_over:1;
+    unsigned short int error_log_flag:1;
 };
 
 zsqlite3_proxy_client_t *zsqlite3_proxy_client_connect(const char *destination)
@@ -142,6 +143,9 @@ int zsqlite3_proxy_client_log(zsqlite3_proxy_client_t *client, const char *sql, 
     if (zstream_is_exception(client->fp)) {
         proxy_set_errmsg("write");
         _zsqlite3_proxy_client_disconnect(client);
+        if (client->error_log_flag) {
+            zinfo("ERR zsqlite3_proxy_client_log: write");
+        }
         return -1;
     }
     return 1;
@@ -169,6 +173,9 @@ int zsqlite3_proxy_client_exec(zsqlite3_proxy_client_t *client, const char *sql,
     if (zstream_is_exception(client->fp)) {
         proxy_set_errmsg("write");
         _zsqlite3_proxy_client_disconnect(client);
+        if (client->error_log_flag) {
+            zinfo("ERR zsqlite3_proxy_client_exec: write");
+        }
         return -1;
     }
 
@@ -176,6 +183,9 @@ int zsqlite3_proxy_client_exec(zsqlite3_proxy_client_t *client, const char *sql,
     if ((len < 1) || (len > 10000)) {
         proxy_set_errmsg("read");
         _zsqlite3_proxy_client_disconnect(client);
+        if (client->error_log_flag) {
+            zinfo("ERR zsqlite3_proxy_client_exec: read");
+        }
         return -1;
     }
     int r = zstream_getc(client->fp);
@@ -191,11 +201,17 @@ int zsqlite3_proxy_client_exec(zsqlite3_proxy_client_t *client, const char *sql,
     } else if (r < 0) {
         _zsqlite3_proxy_client_disconnect(client);
         proxy_set_errmsg("read");
+        if (client->error_log_flag) {
+            zinfo("ERR zsqlite3_proxy_client_exec: read");
+        }
         return -1;
     } else {
         zstream_readn(client->fp, client->error_msg, len-1);
         if (zstream_is_exception(client->fp)) {
             _zsqlite3_proxy_client_disconnect(client);
+        }
+        if (client->error_log_flag) {
+            zinfo("ERR zsqlite3_proxy_client_exec: server return: %s", zbuf_data(client->error_msg));
         }
         return -1;
     }
@@ -232,6 +248,9 @@ int zsqlite3_proxy_client_query(zsqlite3_proxy_client_t *client, const char *sql
     if (zstream_is_exception(client->fp)) {
         proxy_set_errmsg("write");
         _zsqlite3_proxy_client_disconnect(client);
+        if (client->error_log_flag) {
+            zinfo("ERR zsqlite3_proxy_client_query: write");
+        }
         return -1;
     }
 
@@ -245,8 +264,12 @@ int zsqlite3_proxy_client_query(zsqlite3_proxy_client_t *client, const char *sql
     if (r == 'E') {
         if (len > 1) {
             zstream_readn(client->fp, client->error_msg, len-1);
+            if (client->error_log_flag) {
+                zinfo("ERR zsqlite3_proxy_client_query: server return: %s", zbuf_data(client->error_msg));
+            }
         } else {
             proxy_set_errmsg("unknown error");
+            zinfo("ERR zsqlite3_proxy_client_query: unknown server error");
         }
         if (zstream_is_exception(client->fp)) {
             _zsqlite3_proxy_client_disconnect(client);
@@ -256,11 +279,17 @@ int zsqlite3_proxy_client_query(zsqlite3_proxy_client_t *client, const char *sql
     } else if (r < 0) {
         _zsqlite3_proxy_client_disconnect(client);
         proxy_set_errmsg("read");
+        if (client->error_log_flag) {
+            zinfo("ERR zsqlite3_proxy_client_query: read");
+        }
         return -1;
     } else {
         zstream_readn(client->fp, client->error_msg, len-1);
         if (zstream_is_exception(client->fp)) {
             _zsqlite3_proxy_client_disconnect(client);
+            if (client->error_log_flag) {
+                zinfo("ERR zsqlite3_proxy_client_query: server return: %s", zbuf_data(client->error_msg));
+            }
             return -1;
         }
         client->column_count = atoi(zbuf_data(client->error_msg));
@@ -284,21 +313,33 @@ int zsqlite3_proxy_client_get_row(zsqlite3_proxy_client_t *client, zbuf_t ***row
     }
     int len = zstream_get_cint(client->fp);
     if (len < 1) {
-        proxy_set_errmsg("read");
         _zsqlite3_proxy_client_disconnect(client);
+        proxy_set_errmsg("read");
+        if (client->error_log_flag) {
+            zinfo("ERR zsqlite3_proxy_client_get_row: read");
+        }
         return -1;
     }
     int r = zstream_getc(client->fp);
     if (r<0) {
-        proxy_set_errmsg("read");
         _zsqlite3_proxy_client_disconnect(client);
+        proxy_set_errmsg("read");
+        if (client->error_log_flag) {
+            zinfo("ERR zsqlite3_proxy_client_get_row: read");
+        }
         return -1;
     }
     if (r == 'E') {
         if (len > 1) {
             zstream_readn(client->fp, client->error_msg, len-1);
+            if (client->error_log_flag) {
+                zinfo("ERR zsqlite3_proxy_client_get_row: server return: %s", zbuf_data(client->error_msg));
+            }
         } else {
             proxy_set_errmsg("unknown error");
+            if (client->error_log_flag) {
+                zinfo("ERR zsqlite3_proxy_client_get_row: unknown server error");
+            }
         }
         if (zstream_is_exception(client->fp)) {
             _zsqlite3_proxy_client_disconnect(client);
@@ -311,6 +352,9 @@ int zsqlite3_proxy_client_get_row(zsqlite3_proxy_client_t *client, zbuf_t ***row
         client->query_over = 1;
         if (len > 1) {
             zstream_readn(client->fp, client->error_msg, len-1);
+            if (client->error_log_flag) {
+                zinfo("ERR zsqlite3_proxy_client_get_row: server return: %s", zbuf_data(client->error_msg));
+            }
         }
         if (zstream_is_exception(client->fp)) {
             _zsqlite3_proxy_client_disconnect(client);
@@ -321,8 +365,11 @@ int zsqlite3_proxy_client_get_row(zsqlite3_proxy_client_t *client, zbuf_t ***row
     }
 
     if (r != '*') {
-        proxy_set_errmsg("read star");
         _zsqlite3_proxy_client_disconnect(client);
+        proxy_set_errmsg("read star");
+        if (client->error_log_flag) {
+            zinfo("ERR zsqlite3_proxy_client_get_row: read");
+        }
         return -1;
     }
 
@@ -344,9 +391,12 @@ int zsqlite3_proxy_client_get_row(zsqlite3_proxy_client_t *client, zbuf_t ***row
         int result_len;
         int offset = zcint_data_unescape(ps, len, (void **)&result_data, &result_len);
         if ((offset < 0) || (offset > len)) {
-            proxy_set_errmsg("unescape row");
-            _zsqlite3_proxy_client_disconnect(client);
             zbuf_free(cbuf);
+            _zsqlite3_proxy_client_disconnect(client);
+            proxy_set_errmsg("unescape row");
+            if (client->error_log_flag) {
+                zinfo("ERR zsqlite3_proxy_client_get_row: unescape row");
+            }
             return -1;
         }
 
@@ -373,3 +423,9 @@ const char *zsqlite3_proxy_client_get_error_msg(zsqlite3_proxy_client_t *client)
 {
     return zbuf_data(client->error_msg);
 }
+
+void zsqlite3_proxy_client_set_error_log(zsqlite3_proxy_client_t *client, int flag)
+{
+    client->error_log_flag = (flag?1:0);
+}
+

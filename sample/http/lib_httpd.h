@@ -71,8 +71,14 @@ static void explore_data_fini()
 
 static void explore_page(zhttpd_t *httpd)
 {
-    const char *uri = zhttpd_request_get_uri(httpd) + 8;
+    char uri[4096+1];
     struct stat st;
+    strncpy(uri, zhttpd_request_get_uri(httpd) + 8, 4096);
+    char *p = strchr(uri, '?');
+    if (p) {
+        *p = 0;
+    }
+
     if (stat(uri, &st) < 0) {
         zhttpd_response_500(httpd);
         return;
