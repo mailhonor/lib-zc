@@ -132,9 +132,6 @@ static char * ___fetch_string(char *ps, char *str_end, zbuf_t *str)
                 case 't':
                     ch3 = '\t';
                     break;
-                case '0':
-                    ch3 = '\0';
-                    break;
                 }
             }
             if (ch3) {
@@ -355,36 +352,53 @@ err:
 
 static void ___serialize_string(zbuf_t *result, const char *data, int size)
 {
+    const char *json_hex_chars = "0123456789abcdef";
     zbuf_put(result, '"');
-    char *ps = (char *)data;
+    unsigned char *ps = (unsigned char *)data;
     for (int i = 0; i < size; i++) {
-        unsigned char ch = ps[i];
-        if (ch == '\\') {
-            zbuf_put(result, '\\');
-            zbuf_put(result, '\\');
-        } else if (ch == '\"') {
-            zbuf_put(result, '\\');
-            zbuf_put(result, '"');
-        } else if (ch == '\b') {
-            zbuf_put(result, '\\');
-            zbuf_put(result, 'b');
-        } else if (ch == '\f') {
-            zbuf_put(result, '\\');
-            zbuf_put(result, 'f');
-        } else if (ch == '\r') {
-            zbuf_put(result, '\\');
-            zbuf_put(result, 'r');
-        } else if (ch == '\n') {
-            zbuf_put(result, '\\');
-            zbuf_put(result, 'n');
-        } else if (ch == '\t') {
-            zbuf_put(result, '\\');
-            zbuf_put(result, 't');
-        } else if (ch == '\0') {
-            zbuf_put(result, '\\');
-            zbuf_put(result, '\0');
-        }else {
-            zbuf_put(result, ch);
+        int ch = ps[i];
+        switch(ch) {
+            case '\\':
+                zbuf_put(result, '\\');
+                zbuf_put(result, '\\');
+                break;
+            case '/':
+                zbuf_put(result, '\\');
+                zbuf_put(result, '/');
+                break;
+            case '\"':
+                zbuf_put(result, '\\');
+                zbuf_put(result, '"');
+                break;
+            case '\b':
+                zbuf_put(result, '\\');
+                zbuf_put(result, 'b');
+                break;
+            case '\f':
+                zbuf_put(result, '\\');
+                zbuf_put(result, 'f');
+                break;
+            case '\n':
+                zbuf_put(result, '\\');
+                zbuf_put(result, 'n');
+                break;
+            case '\r':
+                zbuf_put(result, '\\');
+                zbuf_put(result, 'r');
+                break;
+            case '\t':
+                zbuf_put(result, '\\');
+                zbuf_put(result, 't');
+                break;
+            default:
+                if (ch < ' ') {
+                    zbuf_strcat(result, "\\u00");
+                    zbuf_put(result, json_hex_chars[ch>>4]);
+                    zbuf_put(result, json_hex_chars[ch&0X0F]);
+                } else {
+                    zbuf_put(result, ch);
+                }
+                break;
         }
     }
     zbuf_put(result, '"');
