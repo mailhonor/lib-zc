@@ -16,9 +16,6 @@
 #include <signal.h>
 #include <sqlite3.h>
 
-#define zpthread_lock(l)    {if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}}
-#define zpthread_unlock(l)  {if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}}
-
 static int flag_stop = 0;
 static void after_response(zaio_t *aio);
 static char *sqlite3_proxy_pathname = 0;
@@ -332,8 +329,8 @@ static void signal_stop_handler(int sig)
 static void ___before_service()
 {
     do {
-        signal(SIGTERM, signal_stop_handler);
-        signal(SIGHUP, signal_stop_handler);
+        zsignal(SIGTERM, signal_stop_handler);
+        zsignal(SIGHUP, signal_stop_handler);
     } while(0);
 
     do {

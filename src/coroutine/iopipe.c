@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2017-07-18
  * ================================
  */
@@ -145,7 +145,7 @@ static void *coroutine_go_iopipe_go(void *ctx)
 {
     fd_attrs_go_t *fgo = (fd_attrs_go_t *)ctx;
     int need_stop = 0;
-    int no_pool = 0;
+    int no_pool0 = 0, no_pool1 = 0;
     struct pollfd pollfds[2];
     fd_attrs_t *fass0 = &(fgo->fass0);
     fd_attrs_t *fass1 = &(fgo->fass1);
@@ -155,17 +155,17 @@ static void *coroutine_go_iopipe_go(void *ctx)
 
     if (fass0->ssl) {
         pollfds[0].revents = POLLIN;
-        no_pool = 1;
+        no_pool0 = 1;
     }
     if (fass1->ssl) {
         pollfds[1].revents = POLLIN;
-        no_pool = 1;
+        no_pool1 = 1;
     }
 
     while(1) {
         rlen = 0;
         fass_w = 0;
-        if (no_pool) {
+        if (no_pool0 || no_pool1) {
             poll_ret = 1;
         } else {
             fd_attrs_prepare_get_data(fass0, pollfds);
@@ -182,35 +182,36 @@ static void *coroutine_go_iopipe_go(void *ctx)
         case 0:
             continue;
         default:
-            if (pollfds[0].revents & (POLLIN | POLLOUT)) {
+            if (no_pool0 || (pollfds[0].revents & (POLLIN | POLLOUT))) {
                 rlen = fd_attrs_try_read(fass0, rbuf, 4096);
                 if (rlen > 0) {
                     pollfds[0].revents = POLLIN;
                     pollfds[1].revents = 0;
-                    no_pool = 1;
+                    no_pool0 = 1;
                     fass_w = &(fgo->fass1);
                     break;
-                }
-                if (rlen == 0) {
+                } else if (rlen == 0) {
                     need_stop = 1;
                     break;
+                } else {
+                    no_pool0 = 0;
                 }
             }
-            if ((rlen <= 0) && (pollfds[1].revents & (POLLIN | POLLOUT))) {
+            if ((rlen <= 0) && (no_pool1 || (pollfds[1].revents & (POLLIN | POLLOUT)))) {
                 rlen = fd_attrs_try_read(fass1, rbuf, 4096);
                 if (rlen > 0) {
                     fass_w = &(fgo->fass0);
                     pollfds[0].revents = 0;
                     pollfds[1].revents = POLLIN;
-                    no_pool = 1;
+                    no_pool1 = 1;
                     break;
-                }
-                if (rlen == 0) {
+                } else if (rlen == 0) {
                     need_stop = 1;
                     break;
+                } else {
+                    no_pool1 = 0;
                 }
             }
-            no_pool = 0;
             break;
         }
         if (need_stop) {
@@ -228,7 +229,6 @@ static void *coroutine_go_iopipe_go(void *ctx)
             break;
         }
 
-        no_pool = 0;
         fass0->want_read = 1;
         fass0->want_write = 0;
         fass1->want_read = 1;

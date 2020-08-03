@@ -180,6 +180,7 @@ static void *do_listen(void * arg)
         if (fd < 0) {
             continue;
         }
+        znonblocking(fd, 1);
         zcoroutine_go(do_after_accept, (void *)(long)(fd), 0);
     }
 

@@ -253,6 +253,11 @@ int zunlink(const char *pathname)
     ___ROBUST_DO(unlink(pathname));
 }
 
+int zlink(const char *oldpath, const char *newpath)
+{
+    ___ROBUST_DO(link(oldpath, newpath));
+}
+
 /* postfix src/util/unix_send_fd.c */
 int zsend_fd(int fd, int sendfd)
 {

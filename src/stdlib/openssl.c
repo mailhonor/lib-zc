@@ -8,9 +8,6 @@
 
 #pragma GCC diagnostic ignored "-Wunused-function"
 
-#define zpthread_lock(l)    if(l){if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}}
-#define zpthread_unlock(l)  if(l){if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}}
-
 #include "zc.h"
 #include <pthread.h>
 #include <openssl/ssl.h>

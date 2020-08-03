@@ -54,6 +54,11 @@ int zget_hostaddr(const char *host, zargv_t *addrs)
         return zget_localaddr(addrs);
     }
 
+    if (INADDR_NONE != inet_addr(host)) {
+        zargv_add(addrs, host); 
+        return 1;
+    }
+
     tmpbuf = (char *)zmalloc(tmpbuflen + 1);
     while (gethostbyname_r(host, &htt, tmpbuf, tmpbuflen, &htr, &hterror)) {
         if (hterror == NETDB_INTERNAL && errno == ERANGE) {
@@ -74,6 +79,14 @@ int zget_hostaddr(const char *host, zargv_t *addrs)
     zfree(tmpbuf);
 
     return ret_count;
+}
+
+int zis_ip(const char *ip)
+{
+    if (INADDR_NONE != inet_addr(ip)) {
+        return 1;
+    }
+    return 0;
 }
 
 int zget_peername(int sockfd, int *host, int *port)

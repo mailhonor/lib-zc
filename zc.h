@@ -75,6 +75,7 @@ typedef struct zsqlite3_proxy_client_t zsqlite3_proxy_client_t;
 typedef struct zcdb_t zcdb_t;
 typedef struct zcdb_walker_t zcdb_walker_t;
 typedef struct zcdb_builder_t zcdb_builder_t;
+typedef struct zmsearch_t zmsearch_t;
 
 #define zinline inline __attribute__((always_inline))
 
@@ -83,6 +84,9 @@ zinline int zempty(const void *ptr) { return ((!ptr)||(!(*(const char *)(ptr))))
 #define ZCONTAINER_OF(ptr,app_type,member) ((app_type *) (((char *) (ptr)) - offsetof(app_type,member)))
 #define ZCONTAINER_OF2(ptr,app_type,offset) ((app_type *) (((char *) (ptr)) - offset))
 #define ZCONVERT_CHAR_PTR(const_void_ptr)   (char *)(void*)(const_void_ptr)
+
+#define zpthread_lock(l)    if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}
+#define zpthread_unlock(l)  if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}
 
 union ztype_convert_t {
     const void *CONST_VOID_PTR;
@@ -1207,6 +1211,7 @@ int zflock_exclusive(int fd);
 int zfunlock(int fd);
 int zrename(const char *oldpath, const char *newpath);
 int zunlink(const char *pathname);
+int zlink(const char *oldpath, const char *newpath);
 
 /* 进程间传递fd, 返回 -1: 错, >-1: 成功 */
 int zsend_fd(int fd, int sendfd);
@@ -1355,6 +1360,15 @@ zinline zbool_t zstream_is_exception(zstream_t *fp) { return (fp->eof)||(fp->err
 
 /* 可读缓存的长度 */
 zinline int zstream_get_read_cache_len(zstream_t *fp) { return ((fp)->read_buf_p2-(fp)->read_buf_p1); }
+
+/* 读缓存的指针 */
+zinline char * zstream_get_read_cache(zstream_t *fp) { return (char *)((fp)->read_buf); }
+
+/* 已经写入的缓存的长度 */
+zinline int zstream_get_write_cache_len(zstream_t *fp) { return ((fp)->write_buf_len); }
+
+/* 写缓存的指针 */
+zinline char * zstream_get_write_cache(zstream_t *fp) { return (char *)((fp)->write_buf); }
 
 /* 基于文件描述符fd创建stream */
 zstream_t *zstream_open_fd(int fd);
@@ -1511,6 +1525,9 @@ zbool_t zget_peername(int sockfd, int *host, int *port);
 /* ip(struct in_addr)转ip地址(1.1.1.1), 结果存储在ipstr, 并返回 */
 char *zget_ipstring(int ip, char *ipstr);
 
+/* 是不是 IP 地址, 返回 1 或 0 */
+int zis_ip(const char *ip);
+
 /* zget_ipstring 的反操作 */
 int zget_ipint(const char *ipstr);
 
@@ -1585,8 +1602,15 @@ struct zmmap_reader_t {
 int zmmap_reader_init(zmmap_reader_t *reader, const char *pathname);
 int zmmap_reader_fini(zmmap_reader_t *reader);
 
+/* touch */
+int ztouch(const char *pathname);
+
 /* 获取mac地址; 返回个数, -1: 错; src/stdlib/mac_address.c */
 int zget_mac_address(zargv_t *mac_list);
+
+/* signal */
+void zsignal(int signum, void (*handler)(int));
+void zsignal_ignore(int signum);
 
 /* main_parameter, src/stdlib/main_argument.c ########################### */
 extern char *zvar_progname;
@@ -2823,6 +2847,8 @@ int zsqlite3_proxy_client_get_row(zsqlite3_proxy_client_t *client, zbuf_t ***row
 int zsqlite3_proxy_client_get_column(zsqlite3_proxy_client_t *client);
 const char *zsqlite3_proxy_client_get_error_msg(zsqlite3_proxy_client_t *client);
 void zsqlite3_proxy_client_set_error_log(zsqlite3_proxy_client_t *client, int flag);
+/* utils */
+int zsqlite3_proxy_client_quick_fetch_one_row(zsqlite3_proxy_client_t *db, const char *sql, int len, zbuf_t ***result_row);
 
 /* cdb, src/cdb/ ###################################################### */
 /* 一种新的静态db, 不支持修改, 例子见 sample/cdb/ */
@@ -2859,6 +2885,23 @@ void zcdb_builder_update(zcdb_builder_t *builder, const void *key, int klen, con
 
 /* 生成zcddb文件, 保存(覆盖写)在 dest_db_pathname */
 int zcdb_builder_build(zcdb_builder_t *builder, const char *dest_db_pathname);
+
+/* msearch ###################################################### */
+/* 多字符串匹配 */
+extern zbool_t zvar_msearch_error_msg;
+
+zmsearch_t *zmsearch_create();
+void zmsearch_free(zmsearch_t *ms);
+void zmsearch_add_token(zmsearch_t *ms, const char *word, int len);
+void zmsearch_add_over(zmsearch_t *ms);
+int zmsearch_match(zmsearch_t *ms, const char *str, int len, int *offset);
+int zmsearch_add_token_from_pathname(zmsearch_t *ms, const char *pathname);
+
+zmsearch_t *zmsearch_create_from_data(const void *data);
+zmsearch_t *zmsearch_create_from_pathname(const char *pathname);
+
+const void *zmsearch_get_compiled_data(zmsearch_t *ms);
+int zmsearch_get_compiled_len(zmsearch_t *ms);
 
 /* END ################################################################ */
 #ifdef ZC_NAMESAPCE_NO_MALLOC

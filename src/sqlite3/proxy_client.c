@@ -429,3 +429,32 @@ void zsqlite3_proxy_client_set_error_log(zsqlite3_proxy_client_t *client, int fl
     client->error_log_flag = (flag?1:0);
 }
 
+int zsqlite3_proxy_client_quick_fetch_one_row(zsqlite3_proxy_client_t *db, const char *sql, int len, zbuf_t ***result_row)
+{
+    if (len < 0) {
+        len = strlen(sql);
+    }
+
+    if (zsqlite3_proxy_client_query(db, sql, len) < 0) {
+        return -1;
+    }
+
+    zbuf_t **row;
+    int exists = 0;
+    while (1) {
+        int r = zsqlite3_proxy_client_get_row(db, &row);
+        if (r < 0) {
+            return -1;
+        }
+        if (r == 0) {
+            break;
+        }
+        exists = 1;
+        if (result_row) {
+            *result_row = row;
+        }
+        break;
+    }
+    return exists;
+}
+

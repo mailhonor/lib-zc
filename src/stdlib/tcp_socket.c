@@ -424,6 +424,12 @@ int zinet_connect(const char *dip, int port, int timeout)
 int zhost_connect(const char *host, int port, int timeout)
 {
     int sock = -1;
+
+    if (INADDR_NONE != inet_addr(host)) {
+        sock = zinet_connect(host, port, timeout);
+        return sock;
+    }
+
     zargv_t *addrs = zargv_create(0);
 
     zget_hostaddr(host, addrs);

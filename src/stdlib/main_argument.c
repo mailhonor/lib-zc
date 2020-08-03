@@ -38,7 +38,7 @@ static void ___timeout_do2(int pid)
 static void ___timeout_do(int pid)
 { 
     alarm(0);
-    signal(SIGALRM, ___timeout_do2);
+    zsignal(SIGALRM, ___timeout_do2);
     alarm(2);
 }
 
@@ -110,16 +110,16 @@ void zmain_argument_run(int argc, char **argv, unsigned int (*self_argument_fn)(
     i = zconfig_get_second(zvar_default_config, "exit-after", 0);
     if (i > 0) {
         alarm(0);
-        signal(SIGALRM, ___timeout_do);
+        zsignal(SIGALRM, ___timeout_do);
         alarm(i);
     }
 
     zvar_memleak_check = zconfig_get_bool(zvar_default_config, "memleak-check", zvar_memleak_check);
     if (zvar_memleak_check) {
-        signal(SIGINT, sigint_handler);
+        zsignal(SIGPIPE, sigint_handler);
     }
 
-    signal(SIGPIPE, SIG_IGN);
+    zsignal_ignore(SIGPIPE);
 }
 
 

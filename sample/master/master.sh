@@ -38,7 +38,6 @@ case $subcmd in
 			$INFO the system is already running
 			exit 1
 		}
-		$INFO starting the system
 		cmdrun="$master_cmd -C $service_dir -pid-file $pid_file"
 		[ "$log_service" = "" ] || {
 			cmdrun=" $cmdrun -log-service $log_service"
@@ -47,6 +46,11 @@ case $subcmd in
 			cmdrun=" $cmdrun -server-log $server_log"
 		}
 		$cmdrun &
+		$master_cmd -pid-file $pid_file --try-lock 2>/dev/null && {
+			$INFO "starting the system ERROR"
+			exit 1
+		}
+		$INFO starting the system OK
 		;;
 
 	stop)

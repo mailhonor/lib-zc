@@ -26,8 +26,6 @@
 #include <time.h>
 
 #define mydebug(fmt,args...) { if(zvar_master_server_log_debug_enable){zinfo(fmt, ##args);} }
-#define zpthread_lock(l)    {if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}}
-#define zpthread_unlock(l)  {if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}}
 
 int zvar_master_server_reload_signal = SIGHUP;
 zbool_t zvar_master_server_log_debug_enable = 0;
@@ -767,10 +765,10 @@ static void sigterm_handler(int sig)
 
 static void set_signal_handler()
 {
-    signal(SIGPIPE, SIG_IGN);
-    signal(SIGCHLD, SIG_IGN);
+    zsignal(SIGPIPE, SIG_IGN);
+    zsignal(SIGCHLD, SIG_IGN);
 
-    signal(SIGTERM, sigterm_handler);
+    zsignal(SIGTERM, sigterm_handler);
 
     struct sigaction sig;
     sigemptyset(&sig.sa_mask);

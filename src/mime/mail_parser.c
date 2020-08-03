@@ -498,7 +498,7 @@ int zmail_get_header_offset(zmail_t *parser)
     return parser->top_mime->header_offset;
 }
 
-int zmail_get_header_size(zmail_t *parser)
+int zmail_get_header_len(zmail_t *parser)
 {
     return parser->top_mime->header_len;
 }

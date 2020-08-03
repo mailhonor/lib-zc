@@ -170,7 +170,7 @@ int zmmap_reader_init(zmmap_reader_t * reader, const char *pathname)
         return -1;
     }
     size = st.st_size;
-    data = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+    data = mmap(NULL, size+1, PROT_READ, MAP_PRIVATE, fd, 0);
     if (data == MAP_FAILED) {
         errno2 = errno;
         close(fd);
@@ -191,4 +191,18 @@ int zmmap_reader_fini(zmmap_reader_t * reader)
     close(reader->fd);
 
     return 0;
+}
+
+int ztouch(const char *pathname)
+{
+    int fd = open(pathname, O_WRONLY|O_CREAT|O_NONBLOCK, 0666);
+    if (fd < 0) {
+        return -1;
+    }
+    if (futimens(fd, 0) < 0) {
+        close(fd);
+        return -1;
+    }
+    close(fd);
+    return 1;
 }

@@ -268,7 +268,7 @@ static void zaio_server_init(int argc, char **argv)
         zfatal("FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]", argv[0]);
     }
 
-    signal(SIGPIPE, SIG_IGN);
+    zsignal_ignore(SIGPIPE);
     prctl(PR_SET_PDEATHSIG, SIGHUP);
     parent_pid = getppid();
 
