@@ -8,10 +8,10 @@
 
 #pragma GCC diagnostic ignored "-Wunused-function"
 
-#include "zc.h"
-#include <pthread.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <pthread.h>
+#include "zc.h"
 
 zbool_t zvar_openssl_debug = 0;
 zbool_t zvar_openssl_disable_server_tls1_0 = 0;

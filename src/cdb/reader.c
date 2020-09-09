@@ -82,9 +82,9 @@ zcdb_t *zcdb_open2(const char *cdb_pathname, zbuf_t *error_msg)
         goto err;
     }
     int file_len = zint_unpack(data+8);
-    if (file_len != len) {
+    if (file_len > len) {
         if (error_msg) {
-            zbuf_printf_1024(error_msg, "data length mismatch, data format error");
+            zbuf_printf_1024(error_msg, "data short data format error");
         }
         goto err;
     }

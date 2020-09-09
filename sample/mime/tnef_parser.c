@@ -58,7 +58,7 @@ static int save_all_attachments(ztnef_t *parser)
 
 static void do_parse(char *eml_fn)
 {
-    ztnef_t *parser = ztnef_create_parser_from_pathname(eml_fn, "");
+    ztnef_t *parser = ztnef_create_parser_from_pathname(eml_fn, 0);
     if (parser == 0) {
         printf("ERR open %s (%m)\n", eml_fn);
         exit(1);
@@ -76,13 +76,36 @@ int main(int argc, char **argv)
 {
     zmain_argument_run(argc, argv, 0);
     enable_att = zconfig_get_bool(zvar_default_config, "att", 0);
+    int times = zconfig_get_int(zvar_default_config, "loop", 0);
 
-    if (zvar_main_redundant_argc == 0) {
-        printf("USAGE: %s [--att] tnef_fn...\n", zvar_progname);
-        exit(0);
-    }
-    for (int i = 0; i < zvar_main_redundant_argc; i++) {
-        do_parse(zvar_main_redundant_argv[i]);
+    if (times < 1) {
+        if (zvar_main_redundant_argc == 0) {
+            printf("USAGE: %s [--att] tnef_fn...\n", zvar_progname);
+            exit(0);
+        }
+        for (int i = 0; i < zvar_main_redundant_argc; i++) {
+            do_parse(zvar_main_redundant_argv[i]);
+        }
+    } else {
+        zbuf_t *data_buf = zbuf_create(102400);
+        if (zfile_get_contents_sample(zvar_main_redundant_argv[0], data_buf) < 0) {
+            printf("ERR open %s(%m)\n", zvar_main_redundant_argv[0]);
+            exit(1);
+        }
+        const char *data = zbuf_data(data_buf);
+        int len = zbuf_len(data_buf);
+
+        printf("eml     : %s\n", zvar_main_redundant_argv[0]);
+        printf("size    : %d(bytes)\n", len);
+        printf("loop    : %d\n", times);
+        long t = zmillisecond();
+        for (int i = 0; i < times; i++) {
+            ztnef_free(ztnef_create_parser_from_data(data, len, 0));
+        }
+        t = zmillisecond() - t;
+        printf("elapse  : %ld.%03ld(second)\n", t / 1000, t % 1000);
+        printf("%%second : %lf(bytes)\n", ((long)len * times) / (((1.0 * t) / 1000) * 1024 * 1024));
+        zbuf_free(data_buf);
     }
 
     return 0;

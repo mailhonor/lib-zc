@@ -97,7 +97,7 @@ void zbase64_encode(const void *src, int src_size, zbuf_t *str, int mime_flag)
     zbuf_terminate(str);
 }
 
-void zbase64_decode(const void *src, int src_size, zbuf_t *str, int *dealed_size)
+void zbase64_decode(const void *src, int src_size, zbuf_t *str)
 {
     unsigned char *src_c = (unsigned char *)src;
     int src_pos = 0;
@@ -107,43 +107,26 @@ void zbase64_decode(const void *src, int src_size, zbuf_t *str, int *dealed_size
 #if 0
     int illegal = 0;
 #endif
-    int missing = 0;
-    int dealed_size2 = 0;
 
     if (src_size < 0) {
         src_size = strlen((const char *)src);
     }
 
 #define ___get_next_ch(c0123, br)    while(1){ \
-    if(src_pos >= src_size){ if(br) {c0123='='; missing = 1; break;}  goto over; } \
+    if(src_pos >= src_size){ if(br) {c0123='='; break;}  goto over; } \
     c0123 = src_c[src_pos++]; \
     if(c0123==' ' || c0123 =='\r' || c0123 == '\n'){ continue; } \
     break; \
     }
 
-
-    if (dealed_size) {
-        *dealed_size = 0;
-    }
 retry:
     ret = -1;
     while (src_pos < src_size) {
         ret = -1;
-        missing = 0;
-        if (dealed_size) {
-            *dealed_size = src_pos;
-        }
         ___get_next_ch(c0, 0);
         ___get_next_ch(c1, 0);
         ___get_next_ch(c2, 1);
         ___get_next_ch(c3, 1);
-        dealed_size2 = src_pos;
-        if (dealed_size) {
-            if (missing) {
-                break;
-            }
-            *dealed_size = dealed_size2;
-        }
         input[0] = b64dec[c0];
         if (input[0] == 0xff) {
 #if 0
@@ -200,7 +183,6 @@ retry:
     }
 over:
     zbuf_terminate(str);
-    return;
 }
 
 int zbase64_decode_get_valid_len(const void *src, int src_size)

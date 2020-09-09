@@ -26,6 +26,7 @@ LIB-ZC 是一个Linux平台通用C扩展库
 * [REDIS 客户端(支持集群)](http://linuxmail.cn/lib-zc/redis_client.html), [MEMCACHE 客户端](http://linuxmail.cn/lib-zc/memcache_client.html)
 * [httpd服务器库](http://linuxmail.cn/lib-zc/httpd.html), [httpd服务开发通用模版](https://gitee.com/linuxmail/lib-zc/blob/master/sample/http/general_coroutine_server_httpd.c), [URL编解码](http://linuxmail.cn/lib-zc/url.html)
 * [一个全新的CONST DB库](http://linuxmail.cn/lib-zc/cdb.html)
+* [多关键字搜索](http://linuxmail.cn/lib-zc/msearch.html)
 * SQLITE3 代理服务器/客户端
 * 类 REDIS 服务器端
 * [一种简单的序列号](http://linuxmail.cn/lib-zc/license.html)

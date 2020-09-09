@@ -17,6 +17,7 @@
 struct ztnef_mime_t {
     char *type;
     char *filename;
+    char *filename_utf8;
     char *content_id;
     char *body_data;
     int body_len;
@@ -66,6 +67,7 @@ static void ztnef_mime_free(ztnef_mime_t *mime)
     }
     zfree(mime->type);
     zfree(mime->filename);
+    zfree(mime->filename_utf8);
     zfree(mime->content_id);
     zfree(mime->body_data2);
     zfree(mime);
@@ -76,9 +78,28 @@ const char *ztnef_mime_get_type(ztnef_mime_t *mime)
     return mime->type;
 }
 
+static void ztnef_mime_get_filename_utf8_deal(ztnef_mime_t *mime)
+{
+    if (mime->filename_utf8) {
+        return;
+    }
+    int len = strlen(mime->filename);
+    zbuf_t *result = zbuf_create(len*2+1);
+    char *charset = mime->parser->charset;
+    if (zempty(charset)) {
+        charset = mime->parser->src_charset_def;
+    }
+    zmime_iconv(charset, mime->filename, len, result);
+    mime->filename_utf8 = zmemdupnull(zbuf_data(result), zbuf_len(result));
+    zbuf_free(result);
+}
+
 const char *ztnef_mime_get_show_name(ztnef_mime_t *mime)
 {
-    return mime->filename;
+    if (mime->filename_utf8 == 0) {
+        ztnef_mime_get_filename_utf8_deal(mime);
+    }
+    return mime->filename_utf8;
 }
 
 const char *ztnef_mime_get_filename(ztnef_mime_t *mime)
@@ -88,7 +109,10 @@ const char *ztnef_mime_get_filename(ztnef_mime_t *mime)
 
 const char *ztnef_mime_get_filename_utf8(ztnef_mime_t *mime)
 {
-    return mime->filename;
+    if (mime->filename_utf8 == 0) {
+        ztnef_mime_get_filename_utf8_deal(mime);
+    }
+    return mime->filename_utf8;
 }
 
 const char *ztnef_mime_get_content_id(ztnef_mime_t *mime)
@@ -119,7 +143,7 @@ void ___ztnef_init_parser(ztnef_t *parser, const char *tnef_data, int tnef_data_
     parser->charset = zblank_buffer;
     parser->tnef_data = (char *)(void *)tnef_data;
     parser->tnef_size = tnef_data_len;
-    parser->src_charset_def = zstrdup(default_charset);
+    parser->src_charset_def = zstrdup(zempty(default_charset)?"GB18030":default_charset);
 
     parser->all_mimes = zvector_create(-1);
     parser->text_mimes = zvector_create(-1);

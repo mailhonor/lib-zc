@@ -321,7 +321,7 @@ void zmime_header_line_get_utf8(const char *src_charset_def, const char *in_line
         ret = 0;
         zbuf_reset(out_string);
         if (mt->encode_type == 'B') {
-            zbase64_decode(p, plen, out_string, 0);
+            zbase64_decode(p, plen, out_string);
         } else if (mt->encode_type == 'Q') {
             zqp_decode_2047(p, plen, out_string);
         }
@@ -549,7 +549,7 @@ void zmime_header_line_get_utf8_inner(zmail_t *parser, const char *in_line, int 
         ret = 0;
         zbuf_reset(out_string);
         if (mt->encode_type == 'B') {
-            zbase64_decode(p, plen, out_string, 0);
+            zbase64_decode(p, plen, out_string);
         } else if (mt->encode_type == 'Q') {
             zqp_decode_2047(p, plen, out_string);
         }

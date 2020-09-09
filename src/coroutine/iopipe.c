@@ -6,10 +6,10 @@
  * ================================
  */
 
+#include <openssl/ssl.h>
 #include "zc.h"
 #include <errno.h>
 #include <poll.h>
-#include <openssl/ssl.h>
 
 typedef struct fd_attrs_t fd_attrs_t;
 struct fd_attrs_t {

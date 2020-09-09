@@ -531,3 +531,11 @@ int zmsearch_get_compiled_len(zmsearch_t *ms)
     }
     return ms->engine->data_len;
 }
+
+int zmsearch_build(zmsearch_t *ms, const char *dest_db_pathname)
+{
+    if (!(ms->engine)) {
+        zfatal("should excute zmsearch_add_over first");
+    }
+    return zfile_put_contents(dest_db_pathname, ms->engine, ms->engine->data_len);
+}

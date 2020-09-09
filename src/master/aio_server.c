@@ -374,7 +374,7 @@ static void zaio_server_fini()
 static int loop_times = 0;
 static void zaio_server_main_loop()
 {
-    if (flag_stop) {
+    if (flag_stop || zvar_sigint_flag) {
         zaio_base_stop_notify(zvar_default_aio_base);
         return;
     }

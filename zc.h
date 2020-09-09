@@ -28,8 +28,10 @@
 extern "C" {
 #endif
 
+#ifndef HEADER_OPENSSL_TYPES_H
 typedef struct ssl_st SSL;
 typedef struct ssl_ctx_st SSL_CTX;
+#endif
 
 /* ################################################################## */
 typedef int zbool_t;
@@ -1087,11 +1089,13 @@ void zmpool_reset(zmpool_t * mp);
 
 /* base64 */
 void zbase64_encode(const void *src, int src_size, zbuf_t *str, int mime_flag);
-void zbase64_decode(const void *src, int src_size, zbuf_t *str, int *dealed_size);
+void zbase64_decode(const void *src, int src_size, zbuf_t *str);
 int zbase64_decode_get_valid_len(const void *src, int src_size);
 int zbase64_encode_get_min_len(int in_len, int mime_flag);
 
 /* quoted-printable */
+void zqp_encode_2045(const void *src, int src_size, zbuf_t *result, zbool_t mime_flag);
+void zqp_encode_2047(const void *src, int src_size, zbuf_t *result);
 void zqp_decode_2045(const void *src, int src_size, zbuf_t *str);
 void zqp_decode_2047(const void *src, int src_size, zbuf_t *str);
 int zqp_decode_get_valid_len(const void *src, int src_size);
@@ -2485,6 +2489,9 @@ zinline zjson_t *zjson_get_parent(zjson_t *j) { return j->parent; }
 /* 返回祖先 */
 zjson_t *zjson_get_top(zjson_t *j);
 
+/* xml */
+void zxml_unescape_string(zbuf_t *content, const char *data, int len);
+
 /* memcache client, src/memcache/ ##################################### */
 /* memcache 客户端, 例子见 sample/memcache/ */
 
@@ -2822,6 +2829,9 @@ void zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *gzip_pathname, 
 /* 输出一个文件 */
 void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *pathname, const char *gzip_pathname, const char *content_type, int max_age);
 
+/* 输出一个(文件)data */
+void zhttpd_response_file_data(zhttpd_t *httpd, const void *data, long size, const char *content_type, int max_age, long mtime, const char *etag, zbool_t is_gzip);
+
 /* 日志 */
 #define zhttpd_show_log(httpd, fmt, args...) { zinfo("%s "fmt, zhttpd_get_prefix_log_msg(httpd), ##args) }
 extern const char *(*zhttpd_get_prefix_log_msg)(zhttpd_t *httpd);
@@ -2902,6 +2912,7 @@ zmsearch_t *zmsearch_create_from_pathname(const char *pathname);
 
 const void *zmsearch_get_compiled_data(zmsearch_t *ms);
 int zmsearch_get_compiled_len(zmsearch_t *ms);
+int zmsearch_build(zmsearch_t *ms, const char *dest_db_pathname);
 
 /* END ################################################################ */
 #ifdef ZC_NAMESAPCE_NO_MALLOC
@@ -2914,8 +2925,6 @@ int zmsearch_get_compiled_len(zmsearch_t *ms);
 #undef zmemdup
 #undef zmemdupnull
 #endif
-
-#undef zinline
 
 #ifdef  __cplusplus
 }

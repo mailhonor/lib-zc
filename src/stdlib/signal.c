@@ -14,7 +14,7 @@ void zsignal(int signum, void (*handler)(int))
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
     action.sa_handler = handler;
-    if (sigaction(SIGTERM, &action, (struct sigaction *) 0) < 0){
+    if (sigaction(signum, &action, (struct sigaction *) 0) < 0){
         zfatal("FATAL sigaction: %m");
     }
 }
@@ -25,7 +25,7 @@ void zsignal_ignore(int signum)
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
     action.sa_handler = SIG_IGN;
-    if (sigaction(SIGTERM, &action, (struct sigaction *) 0) < 0){
+    if (sigaction(signum, &action, (struct sigaction *) 0) < 0){
         zfatal("FATAL sigaction: %m");
     }
 }

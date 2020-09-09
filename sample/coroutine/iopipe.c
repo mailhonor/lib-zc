@@ -6,10 +6,10 @@
  * ================================
  */
 
+#include <openssl/ssl.h>
 #include "zc.h"
 #include <errno.h>
 #include <poll.h>
-#include <openssl/ssl.h>
 
 static char *proxy_address = 0;
 static int proxy_is_ssl = 0;

@@ -37,7 +37,7 @@ int zhttpd_uploaded_file_get_size(zhttpd_uploaded_file_t *fo)
     }
     zbuf_t *data = zbuf_create(4096);
     if (fo->encoding == 'B') {
-        zbase64_decode(reader.data + fo->offset, fo->raw_len, data, 0);
+        zbase64_decode(reader.data + fo->offset, fo->raw_len, data);
     } else if (fo->encoding == 'Q') {
         zqp_decode_2045(reader.data + fo->offset, fo->raw_len, data);
     } else {
@@ -58,7 +58,7 @@ int zhttpd_uploaded_file_save_to(zhttpd_uploaded_file_t *fo, const char *pathnam
     }
     zbuf_t *data = zbuf_create(4096);
     if (fo->encoding == 'B') {
-        zbase64_decode(reader.data + fo->offset, fo->raw_len, data, 0);
+        zbase64_decode(reader.data + fo->offset, fo->raw_len, data);
     } else if (fo->encoding == 'Q') {
         zqp_decode_2045(reader.data + fo->offset, fo->raw_len, data);
     } else {
@@ -79,7 +79,7 @@ int zhttpd_uploaded_file_get_data(zhttpd_uploaded_file_t *fo, zbuf_t *data)
         return -1;
     }
     if (fo->encoding == 'B') {
-        zbase64_decode(reader.data + fo->offset, fo->raw_len, data, 0);
+        zbase64_decode(reader.data + fo->offset, fo->raw_len, data);
     } else if (fo->encoding == 'Q') {
         zqp_decode_2045(reader.data + fo->offset, fo->raw_len, data);
     } else {

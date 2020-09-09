@@ -1,43 +1,56 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
- * 2015-12-04
+ * http://linuxmail.cn/
+ * 2015-12-03
  * ================================
  */
 
 #include "zc.h"
 
-void usage(void)
+static void usage(void)
 {
-    printf("USAGE:\n\t%s filename\n", zvar_progname);
+    printf("USAGE:\n\t%s -decode filename\n\t%s -encode filename\n", zvar_progname, zvar_progname);
     exit(1);
 }
 
 int main(int argc, char **argv)
 {
-    char *fn = 0;
     zmmap_reader_t reader;
-    zbuf_t *result;
+    char *fn = 0;
+    int is_encode = 1;
 
-    zvar_progname = argv[0];
+    zmain_argument_run(argc, argv, 0);
 
-    if (argc < 2) {
+    fn = zconfig_get_str(zvar_default_config, "encode", "");
+    if (zempty(fn)) {
+        is_encode = 0;
+        fn = zconfig_get_str(zvar_default_config, "decode", "");
+    }
+
+    if (zempty(fn)) {
         usage();
     }
-    fn = argv[1];
 
     if (zmmap_reader_init(&reader, fn) < 0) {
-        printf("error, read %s:%m", fn);
+        printf("ERR read %s:%m", fn);
         exit(1);
     }
 
-    result = zbuf_create(1);
-    zqp_decode_2045(reader.data, reader.len, result);
-    zmmap_reader_fini(&reader);
+    zbuf_t *bf = zbuf_create(102400);
 
-    printf("result:%s\n", zbuf_data(result));
-    zbuf_free(result);
+    if (is_encode) {
+        zqp_encode_2045(reader.data, reader.len, bf, 1);
+    } else {
+        zqp_decode_2045(reader.data, reader.len, bf);
+    }
+    int result_len = zbuf_len(bf);
+
+    printf("result: %d\n%s\n", result_len, zbuf_data(bf));
+
+    zbuf_free(bf);
+
+    zmmap_reader_fini(&reader);
 
     return 0;
 }

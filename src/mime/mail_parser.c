@@ -383,7 +383,7 @@ void zmime_get_decoded_content(zmime_t *mime, zbuf_t *result)
 
     if (!ZEMPTY(enc)) {
         if (!strcmp(enc, "base64")) {
-            zbase64_decode(in_src, in_len, result, 0);
+            zbase64_decode(in_src, in_len, result);
             return;
         } else if (!strcmp(enc, "quoted-printable")) {
             zqp_decode_2045(in_src, in_len, result);
@@ -407,7 +407,7 @@ void zmime_get_decoded_content_utf8(zmime_t *mime, zbuf_t *result)
     if ((!strcmp(enc, "base64")) || (!strcmp(enc, "quoted-printable"))) {
         tmp_cache_buf = zmail_zbuf_cache_require(mime->parser, in_len < 128?128:in_len);
         if (*enc == 'b') {
-            zbase64_decode(in_src, in_len, tmp_cache_buf, 0);
+            zbase64_decode(in_src, in_len, tmp_cache_buf);
         } else {
             zqp_decode_2045(in_src, in_len, tmp_cache_buf);
         }

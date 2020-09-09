@@ -8,6 +8,57 @@
 
 #include "zc.h"
 
+static const char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+
+void zqp_encode_2045(const void *src, int src_size, zbuf_t *result, zbool_t mime_flag)
+{
+    int col_count = 0, i, byte;
+    const char *ptr = (const char *)src;
+    if (src_size < 0) {
+        src_size = strlen(ptr);
+    }
+    for (i = 0; i < src_size; ++i) {
+        byte = ptr[i];
+        if ((byte == ' ') || ((byte >= 33) && (byte <= 126)  && (byte != '='))) {
+            zbuf_put(result, byte);
+            col_count++;
+        } else {
+            zbuf_put(result, '=');
+            zbuf_put(result, hex[((byte >> 4) & 0x0F)]);
+            zbuf_put(result, hex[(byte & 0x0F)]);
+            col_count += 3;
+        }
+        if (col_count > 76) {
+            if (mime_flag) {
+                zbuf_strcat(result, "=\r\n");
+            }
+            col_count = 0;
+        }
+    }
+}
+
+void zqp_encode_2047(const void *src, int src_size, zbuf_t *result)
+{
+    const char *ptr = (const char *)src;
+    int i, byte;
+    if (src_size < 0) {
+        src_size = strlen(ptr);
+    }
+    for (i = 0; i < src_size; ++i) {
+        byte = ptr[i];
+        if (byte == ' ') {
+            zbuf_put(result, byte);
+            zbuf_put(result, '_');
+        } else if (((byte >= 33) && (byte <= 126)  && (byte != '='))) {
+            zbuf_put(result, byte);
+        } else {
+            zbuf_put(result, '=');
+            zbuf_put(result, hex[((byte >> 4) & 0x0F)]);
+            zbuf_put(result, hex[(byte & 0x0F)]);
+        }
+    }
+}
+
 /* should check c1 and c2 are hex */
 #define ___hex_val(ccc) { ccc = zchar_xdigitval_vector[(unsigned char)ccc];}
 

@@ -6,6 +6,10 @@
  * ================================
  */
 
+#ifdef ___INNER_USE_SSL___
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#endif
 
 #include "zc.h"
 #include <time.h>
@@ -17,10 +21,6 @@
 #include <errno.h>
 #include <dirent.h>
 #include <signal.h>
-#ifdef ___INNER_USE_SSL___
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#endif
 
 #ifdef ___INNER_USE_SSL___
 static int is_ssl = 0;

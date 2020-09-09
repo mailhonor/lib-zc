@@ -6,9 +6,9 @@
  * ================================
  */
 
+#include <openssl/ssl.h>
 #include "zc.h"
 #include <errno.h>
-#include <openssl/ssl.h>
 #include <signal.h>
 
 static zaio_base_t *aiobase;

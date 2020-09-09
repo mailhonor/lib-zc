@@ -1,2 +1,2 @@
-SUFFIX_LIBS = ../../libzc_coroutine.a  -lrt -lcrypto -lssl -lpthread -ldl
+SUFFIX_LIBS = ../../libzc_coroutine.a  -lrt -lssl -lcrypto -lz -lpthread -ldl
 include ../../makefiles/sample.makefile

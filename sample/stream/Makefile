@@ -1,4 +1,4 @@
 SUFFIX_LIBS = 
-io_LIB = -lrt -lcrypto -lssl
-test_LIB = -lrt -lcrypto -lssl
+LIB_io = -lrt -lssl -lcrypto -lz -lpthread -ldl
+LIB_test = -lrt -lssl -lcrypto -lz -lpthread -ldl
 include ../../makefiles/sample.makefile

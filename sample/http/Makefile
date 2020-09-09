@@ -1,11 +1,11 @@
 ${shell mkdir -p uploaded_files; }
 DELS=uploaded_files
 
-LIB_coroutine_httpd = ../../libzc_coroutine.a -lssl -lcrypto -lpthread
-LIB_no_ssl_coroutine_httpd = ../../libzc_coroutine.a -lpthread
-LIB_general_coroutine_server_httpd = ../../libzc_coroutine.a -lssl -lcrypto -lpthread
+LIB_coroutine_httpd = ../../libzc_coroutine.a -lssl -lcrypto -lz -lpthread -ldl
+LIB_no_ssl_coroutine_httpd = ../../libzc_coroutine.a -lpthread -ldl
+LIB_general_coroutine_server_httpd = ../../libzc_coroutine.a -lssl -lcrypto -lz -lpthread -ldl
 
-LIB_simple_httpd = -lssl -lcrypto
+LIB_simple_httpd = -lssl -lcrypto -lz -lpthread -ldl
 LIB_no_sslsimple_httpd =
 
 include ../../makefiles/sample.makefile

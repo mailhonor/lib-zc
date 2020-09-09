@@ -116,7 +116,7 @@ void zmain_argument_run(int argc, char **argv, unsigned int (*self_argument_fn)(
 
     zvar_memleak_check = zconfig_get_bool(zvar_default_config, "memleak-check", zvar_memleak_check);
     if (zvar_memleak_check) {
-        zsignal(SIGPIPE, sigint_handler);
+        zsignal(SIGINT, sigint_handler);
     }
 
     zsignal_ignore(SIGPIPE);

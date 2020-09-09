@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2015-12-03
  * ================================
  */
@@ -42,7 +42,7 @@ int main(int argc, char **argv)
     if (is_encode) {
         zbase64_encode(reader.data, reader.len, bf, 1);
     } else {
-        zbase64_decode(reader.data, reader.len, bf, 0);
+        zbase64_decode(reader.data, reader.len, bf);
     }
     int result_len = zbuf_len(bf);
 
