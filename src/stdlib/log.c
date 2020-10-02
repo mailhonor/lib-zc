@@ -159,6 +159,12 @@ static void clear_masterlog(void)
     }
 }
 
+#include <sys/syscall.h>
+zinline static int ___syscall_socket(int domain, int type, int protocol)
+{
+    return syscall(__NR_socket, domain, type, protocol);
+}
+
 void zlog_use_masterlog(const char *identity, const char *dest)
 {
     zlog_vprintf = vprintf_masterlog;
@@ -167,8 +173,7 @@ void zlog_use_masterlog(const char *identity, const char *dest)
     zvar_master_log_prefix = zstrdup(buf);
     zvar_master_log_prefix_len = strlen(buf);
 
-    int zsyscall_socket(int domain, int type, int protocol);
-    if ((zvar_master_log_sock = zsyscall_socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
+    if ((zvar_master_log_sock = ___syscall_socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
         fprintf(stderr, "ERR socket (%m)");
         exit(1);
     }

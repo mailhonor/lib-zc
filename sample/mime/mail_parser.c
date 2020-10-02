@@ -24,16 +24,18 @@ static char *name_char_validate(char *abc)
 
 }
 
-static int save_att(zmail_t * parser, zmime_t * mime, int i)
+static int idx = 0;
+static int save_att(zmail_t * parser, zmime_t * mime)
 {
     const char *sname;
     char tmpname[256];
 
+    idx++;
     sname = zmime_get_show_name(mime);
     if (zempty(sname)) {
-        sprintf(tmpname, "atts/unknown_%d.dat", i);
+        sprintf(tmpname, "atts/%d_unknown.dat", idx);
     } else {
-        snprintf(tmpname, 255, "atts/%s", sname);
+        snprintf(tmpname, 255, "atts/%d_%s", idx, sname);
         name_char_validate(tmpname+5);
     }
     zbuf_t *dcon = zbuf_create(-1);
@@ -50,11 +52,9 @@ static int save_att(zmail_t * parser, zmime_t * mime, int i)
 
 static int save_all_attachments(zmail_t *parser)
 {
-    int i = 0;
     const zvector_t *allm = zmail_get_attachment_mimes(parser);
     ZVECTOR_WALK_BEGIN(allm, zmime_t *, m) {
-        i++;
-        save_att(parser, m, i);
+        save_att(parser, m);
     } ZVECTOR_WALK_END;
     return 0;
 }

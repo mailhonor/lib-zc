@@ -5,6 +5,8 @@
  * 2017-06-26
  * ================================
  */
+
+#if 0
 #include "zc.h"
 #include <dlfcn.h>
 #include <errno.h>
@@ -361,7 +363,6 @@ int zsyscall_utimes(const char *filename, const struct timeval times[2])
     return syscall(__NR_utimes, filename, times);
 }
 
-#if 0
 int zsyscall_futimes(int fd, const struct timeval tv[2])
 {
     return syscall(__NR_futimes, fd, tv);

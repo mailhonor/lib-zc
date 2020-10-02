@@ -2489,6 +2489,9 @@ zinline zjson_t *zjson_get_parent(zjson_t *j) { return j->parent; }
 /* 返回祖先 */
 zjson_t *zjson_get_top(zjson_t *j);
 
+/* debug */
+void zjson_debug_show(zjson_t *j);
+
 /* xml */
 void zxml_unescape_string(zbuf_t *content, const char *data, int len);
 
