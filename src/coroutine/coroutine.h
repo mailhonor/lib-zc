@@ -107,14 +107,17 @@ void zcoroutine_cond_signal(zcoroutine_cond_t *);
 /* 条件广播, 参考 pthread_cond_broadcast */
 void zcoroutine_cond_broadcast(zcoroutine_cond_t *);
 
+/* UDP 默认禁用协程切换 */
+extern zbool_t zvar_coroutine_enable_udp/* = 0 */;
+
 /* 启用limit个线程池, 用于文件io,和 block_do */
-extern int zvar_coroutine_block_pthread_count_limit;
+extern int zvar_coroutine_block_pthread_count_limit/* = 0 */;
 
 /* 如果
       zvar_coroutine_block_pthread_count_limit > 0 且
       zvar_coroutine_fileio_use_block_pthread == 1
    则 文件io在线程池执行, 否则在当前线程执行 */
-extern zbool_t zvar_coroutine_fileio_use_block_pthread;
+extern zbool_t zvar_coroutine_fileio_use_block_pthread/* = 0 */;
 
 /* 如果 zvar_coroutine_block_pthread_count_limit > 0
    则 block_func(ctx) 在线程池执行, 否则在当前程直接执行 */

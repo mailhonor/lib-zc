@@ -106,6 +106,10 @@
 
 #pragma pack(push, 4)
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 /* {{{ zcoroutine_type_convert_t */
 
 typedef union zcoroutine_type_convert_t zcoroutine_type_convert_t;
@@ -1422,6 +1426,7 @@ static pthread_mutex_t zvar_coroutine_base_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int zvar_coroutine_block_pthread_count_limit = 0;
 zbool_t zvar_coroutine_fileio_use_block_pthread = 0;
+zbool_t zvar_coroutine_enable_udp = 0;
 
 int zvar_coroutine_max_fd = 0;
 
@@ -2998,6 +3003,40 @@ int dup2(int oldfd, int newfd)
 }
 /* }}} */
 
+/* {{{ dup3 hook */
+int dup3(int oldfd, int newfd, int flags)
+{
+    int ret;
+    zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
+    if ((ret = _syscall_dup3(oldfd, newfd, flags)) < 0) {
+        return ret;
+    }
+    if (!cobs) {
+        return ret;
+    }
+    zcoroutine_fd_attribute *cfa = zcoroutine_fd_attribute_get(oldfd);
+    if (cfa && (cfa->pseudo_mode == 0)) {
+        cfa = zcoroutine_fd_attribute_get(newfd);
+        if (cfa) {
+            zcoroutine_fatal("the newfd be used by other zcoroutine_t");
+#if 0
+            /* note: the newfd be used by other zcoroutine_t. */
+            zcoroutine_fd_attribute_free(newfd);
+            zcoroutine_fd_attribute_create(newfd);
+#endif
+        } else {
+            zcoroutine_fd_attribute *new_cfa = zcoroutine_fd_attribute_create(newfd);
+            new_cfa->is_regular_file = cfa->is_regular_file;
+            new_cfa->pseudo_mode = cfa->pseudo_mode;
+            new_cfa->read_timeout = cfa->read_timeout;
+            new_cfa->write_timeout = cfa->write_timeout;
+        }
+        fcntl(newfd, F_SETFL, fcntl(newfd, F_GETFL, 0));
+    }
+    return ret;
+}
+/* }}} */
+
 /* {{{ socketpair hook */
 int socketpair(int domain, int type, int protocol, int sv[2])
 {
@@ -3088,6 +3127,9 @@ int socket(int domain, int type, int protocol)
 {
     int fd = _syscall_socket(domain, type, protocol);
     if(fd < 0) {
+        return fd;
+    }
+    if ((zvar_coroutine_enable_udp == 0) && (type & SOCK_DGRAM)) {
         return fd;
     }
 
@@ -4370,6 +4412,10 @@ int zcoroutine_block_unlink(const char *pathname)
 }
 
 /* }}} */
+
+#ifdef  __cplusplus
+}
+#endif
 
 #pragma pack(pop)
 
