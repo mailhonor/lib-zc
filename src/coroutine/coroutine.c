@@ -3125,12 +3125,9 @@ int socket(int domain, int type, int protocol)
     if (cobs == 0) {
         return fd;
     }
-
-    if ((zvar_coroutine_disable_udp_53 == 1) && (type & SOCK_DGRAM)) {
-        _co_fd_attribute_t *cfa = _co_fd_attribute_create(fd);
-        if (cfa) {
-            cfa->is_udp = 1;
-        }
+    _co_fd_attribute_t *cfa = _co_fd_attribute_create(fd);
+    if (cfa && (zvar_coroutine_disable_udp_53 == 1) && (type & SOCK_DGRAM)) {
+        cfa->is_udp = 1;
     }
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0));
 
