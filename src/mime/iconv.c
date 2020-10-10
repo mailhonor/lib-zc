@@ -33,7 +33,7 @@ void zmime_iconv(const char *from_charset, const char *data, int size, zbuf_t *r
         f_charset = zcharset_correct_charset(f_charset);
     }
 
-    if (zcharset_iconv(f_charset, data, size,
+    if (zcharset_convert(f_charset, data, size,
                 "UTF-8", result, 0,
                 -1, 0) > 0) {
         zmail_clear_null_inner(zbuf_data(result), zbuf_len(result));
@@ -53,7 +53,7 @@ void zmime_iconv(const char *from_charset, const char *data, int size, zbuf_t *r
         f_charset = "GB18030";
     }
     zbuf_reset(result);
-    if (zcharset_iconv(f_charset, data, size,
+    if (zcharset_convert(f_charset, data, size,
                 "UTF-8", result, 0,
                 -1, 0) > 0) {
         zmail_clear_null_inner(zbuf_data(result), zbuf_len(result));

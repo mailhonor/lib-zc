@@ -2,7 +2,7 @@ all: target
 
 .PHONY: tags
 
-include ../../makefiles/defined.include
+-include ../../makefiles/defined.include
 
 CC ?= gcc
 CFLAGS := -std=gnu99 -ggdb -Wall -Winline -I../../ -O2 $(EXTRA_CFLAGS)

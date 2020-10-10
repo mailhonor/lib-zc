@@ -1,7 +1,7 @@
 all: libzc.a libzc_coroutine.a
 
 include OBJS_DEST/depend
-include makefiles/defined.include
+-include makefiles/defined.include
 
 CC ?= gcc.sh
 CFLAGS := -std=gnu99 -Wall -Winline -I./ -O2 -g -ggdb $(EXTRA_CFLAGS)
@@ -26,7 +26,7 @@ libzc_coroutine.a: $(OBJS_COROUTINE)
 	ar r libzc_coroutine.a $(OBJS_COROUTINE)
 	ranlib libzc_coroutine.a
 
-include makefiles/special_src.include
+-include makefiles/special_src.include
 SPECIAL_OBJS_DEST = $(patsubst %.c, OBJS_DEST/%.o, $(SPECIAL_SRC))
 $(SPECIAL_OBJS_DEST):OBJS_DEST/%.o:%.c
 	$(CC) $(CFLAGS) -c $< -o $@

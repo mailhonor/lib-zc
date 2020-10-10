@@ -6,6 +6,8 @@
 
 本协程库是从 [https://gitee.com/linuxmail/lib-zc](https://gitee.com/linuxmail/lib-zc)抽出来的. 可单独使用
 
+帮助文档 [http://linuxmail.cn/lib-zc/coroutine.html](http://linuxmail.cn/lib-zc/coroutine.html)
+
 ## 感谢
 
 本协程库的实现参考了 libco, libgo, nodejs 的实现
@@ -21,6 +23,8 @@
 慢操作协程化
 
 支持sleep
+
+可以禁用 UDP 协程切换
 
 部分支持dns协议
 
@@ -54,10 +58,17 @@ chmod, fchmod, chown, fchown, lchown, utime, utimes,
 
 ## dns协议
 
-部分glibc版本不支持dns解析. 简单的说
+部分 glibc 版本不支持 DNS 解析, 具体版本不清楚, 至少 glibc 版本 2.12, 2.17, 2,26, 2.27, 2.28没问题
 
-如果 resolv 库支持 res\_ninit, 就会出现bug, 其他 版本没问题
+如果有问题, 建议:
 
+* 如果需要查询常用域名的 IP 地址, 可以写到 hosts 文件
+* 复杂的 DNS 操作, 可以考虑 "慢操作协程化"
+* 可以禁用 53 端口(既 DNS)的 UDP 协程切换
+
+## 可以禁用 UDP 协程切换
+
+可以禁用 UDP 协程切换, 可以禁用 53 端口(既 DNS)的 UDP 协程切换
 
 ## 源码目录
 

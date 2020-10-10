@@ -59,10 +59,6 @@ typedef struct zstream_t zstream_t;
 typedef struct zmmap_reader_t zmmap_reader_t;
 typedef struct zaio_t zaio_t;
 typedef struct zaio_base_t zaio_base_t;
-typedef struct zcoroutine_base_t zcoroutine_base_t;
-typedef struct zcoroutine_t zcoroutine_t;
-typedef struct zcoroutine_mutex_t zcoroutine_mutex_t;
-typedef struct zcoroutine_cond_t zcoroutine_cond_t;
 typedef struct zmail_t zmail_t;
 typedef struct zmime_t zmime_t;
 typedef struct ztnef_t ztnef_t;
@@ -1806,6 +1802,11 @@ void zaio_iopipe_enter(zaio_t *client, zaio_t *server, zaio_base_t *aiobase, voi
 /* coroutine, src/coroutine/ ########################################## */
 /* 协程框架, 本协程不得跨线程操作 例子见 sample/coroutine/ */
 
+typedef struct zcoroutine_base_t zcoroutine_base_t;
+typedef struct zcoroutine_t zcoroutine_t;
+typedef struct zcoroutine_mutex_t zcoroutine_mutex_t;
+typedef struct zcoroutine_cond_t zcoroutine_cond_t;
+
 extern int zvar_coroutine_max_fd; /* 10240 */
 
 /* 在线程内初始化协程基础环境 */
@@ -1823,7 +1824,7 @@ void zcoroutine_base_stop_notify(zcoroutine_base_t *cobs);
 /* 回收协程框架资源 */
 void zcoroutine_base_fini();
 
-/* 进入协程, 然后, 执行 start_job, 参数为ctx */
+/* 进入协程, 然后, 执行 start_job, 参数为 ctx */
 /* stack_size: 协程栈大小(单位K), 建议不小于16 */
 void zcoroutine_go(void *(*start_job)(void *ctx), void *ctx, int stack_kilobyte);
 /* 同 zcoroutine_go, 指定协程环境 */
@@ -1879,6 +1880,12 @@ void zcoroutine_cond_signal(zcoroutine_cond_t *);
 
 /* 条件广播, 参考 pthread_cond_broadcast */
 void zcoroutine_cond_broadcast(zcoroutine_cond_t *);
+
+/* 禁用 UDP 协程切换 */
+extern zbool_t zvar_coroutine_disable_udp/* = 0 */;
+
+/* 禁用 53 端口的 UDP 协程切换 */
+extern zbool_t zvar_coroutine_disable_udp_53/* = 0 */;
 
 /* 启用limit个线程池, 用于文件io,和 block_do */
 extern int zvar_coroutine_block_pthread_count_limit;
@@ -2015,19 +2022,14 @@ char *zcharset_detect_cjk(const char *data, int size, zbuf_t *charset_result);
 /* *src_converted_len = (成功转码的字节数); */
 /* omit_invalid_bytes_limit: 设置可忽略的错误字节个数, <0: 无限大 */
 /* *omit_invalid_bytes_count = (实际忽略字节数); */
-int zcharset_iconv(const char *from_charset, const char *src, int src_len,
-        const char *to_charset, zbuf_t *result, int *src_converted_len,
-        int omit_invalid_bytes_limit, int *omit_invalid_bytes_count);
 
-#ifdef ZC_USE_LIBICONV
-#include <iconv.h>
-typeof(iconv) libiconv;
-typeof(iconv_open) libiconv_open;
-typeof(iconv_close) libiconv_close;
-iconv_t iconv_open(const char *t, const char *f) { return libiconv_open(t, f); }
-size_t iconv(iconv_t cd, char **a, size_t *b, char **c, size_t *d) { return libiconv(cd, a, b, c, d); }
-int iconv_close(iconv_t cd) { return libiconv_close(cd); }
-#endif
+extern int (*zcharset_convert)(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *result, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count);
+
+int zcharset_iconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *result, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count);
+
+void zcharset_convert_use_uconv();
+int zcharset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count);
+
 
 /* mime utils, src/mime/ ############################################# */
 /* 邮件解码工具 例子见 sample/mime/ */

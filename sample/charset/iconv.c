@@ -11,7 +11,7 @@
 
 static void ___usage()
 {
-    printf("USAGE: %s -f from_charset -t to_charset [ --c ] < input \n", zvar_progname);
+    printf("USAGE: %s -f from_charset -t to_charset [ --c ] [ --uconv ] < input \n", zvar_progname);
     exit(1);
 }
 
@@ -25,6 +25,9 @@ int main(int argc, char **argv)
     ignore_bytes = (zconfig_get_bool(zvar_default_config, "c", 0)?-1:0);
     from_charset = zconfig_get_str(zvar_default_config, "f", 0);
     to_charset = zconfig_get_str(zvar_default_config, "t", 0);
+    if(zconfig_get_bool(zvar_default_config, "uconv", 0)) {
+        zcharset_convert_use_uconv();
+    }
 
     if (zempty(from_charset) || zempty(to_charset)) {
         ___usage();
@@ -47,7 +50,9 @@ int main(int argc, char **argv)
             printf("ERR illegal char too much > %d\n", ignore_bytes);
         }
     } else {
-        printf("%s\n", zbuf_data(result));
+        if (zbuf_len(result)) {
+            fwrite(zbuf_data(result), 1, zbuf_len(result), stdout);
+        }
     }
 
     zbuf_free(content);

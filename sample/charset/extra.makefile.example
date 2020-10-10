@@ -1,0 +1,3 @@
+
+SUFFIX_LIBS = -licuuc -licudata -licui18n  -lstdc++ -lpthread -lm -ldl
+

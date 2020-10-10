@@ -6,9 +6,8 @@ all: libzc
 DIRS=${shell find src -type d}
 DIRS_DEST = $(patsubst %, OBJS_DEST/%, $(DIRS))
 ${shell mkdir -p $(DIRS_DEST)}
-${shell touch makefiles/defined.include makefiles/special_src.include}
 
-include makefiles/special_src.include
+-include makefiles/special_src.include
 ifdef SPECIAL_SRC
 	libzc_special_target=special_src
 endif

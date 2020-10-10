@@ -30,13 +30,15 @@ char *zcharset_correct_charset(const char *charset)
 
     if (ZSTR_CASE_EQ(charset, "gb2312")) {
         charset = "GB18030";
+#if 0
     } else if (ZSTR_CASE_EQ(charset, "CHINESEBIG5_CHARSET")) {
         charset = "BIG5";
     } else if (ZSTR_CASE_EQ(charset, "GB2312_CHARSET")) {
         charset = "GB18030";
+#endif
     } else if (ZSTR_CASE_EQ(charset, "GBK")) {
         charset = "GB18030";
-    } else if (ZSTR_N_CASE_EQ(charset, "ks_c_5601", 9)) {
+    } else if (ZSTR_N_CASE_EQ(charset, "KS_C_5601", 9)) {
         charset = "ISO-2022-KR";
     } else if (ZSTR_N_CASE_EQ(charset, "KS_C_5861", 9)) {
         charset = "EUC-KR";
@@ -136,9 +138,7 @@ static inline int charset_iconv_base(charset_iconv_t * ic, char *_in_str, int _i
     return out_converted_len;
 }
 
-int zcharset_iconv(const char *from_charset, const char *src, int src_len,
-        const char *to_charset, zbuf_t *dest, int *src_converted_len,
-        int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
+int zcharset_iconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
 {
     charset_iconv_t ic_buf, *ic = &ic_buf;
     char buf[4910];
@@ -196,6 +196,7 @@ int zcharset_iconv(const char *from_charset, const char *src, int src_len,
 
     return out_converted_len;
 }
+int (*zcharset_convert)(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *result, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count) = zcharset_iconv;
 
 /*
  * iconv static lib, missing libiconv and GCONV_PATH mismatched.
