@@ -1461,16 +1461,6 @@ struct zgethostbyname_buf_t
     int h_errno2;
 };
 
-#if ((__GLIBC__ == 2) && (__GLIBC_MINOR__ >= 26))
-struct resolv_context {
-    struct __res_state *resp;
-    struct resolv_conf *conf;
-    size_t __refcount;
-    int __from_res;
-    struct resolv_context *__next;
-};
-#endif
-
 union zcoroutine_hook_arg_t {
     const void *const_void_ptr_t;
     void *void_ptr_t;
@@ -1605,7 +1595,6 @@ struct  zcoroutine_t {
     _co_list_t *mutex_list; /* zcoroutine_mutex_t* */
     struct __res_state *res_state;
     zgethostbyname_buf_t *gethostbyname;
-    struct resolv_context *resolv_ctx;
     long id;
     /* flags */
     unsigned char ended:1;
@@ -4116,72 +4105,25 @@ int utimes(const char *filename, const struct timeval times[2])
 
 /* }}} */
 
-/* {{{ resolv */
 /* {{{ __res_state hook */
 extern __thread struct __res_state __resp;
 struct __res_state *__res_state()
 {
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
     if (cobs == 0) {
-#if ((__GLIBC__ == 2) && (__GLIBC_MINOR__ >= 26))
         if (__resp.options == 0) {
             res_ninit(&__resp);
         }
-#endif
         return &__resp;
     }
     if (cobs->current_coroutine->res_state == 0) {
         cobs->current_coroutine->res_state = (struct __res_state *)_co_mem_calloc(1, sizeof(struct __res_state));
-#if ((__GLIBC__ == 2) && (__GLIBC_MINOR__ >= 26))
         if (cobs->current_coroutine->res_state->options == 0) {
             res_ninit(cobs->current_coroutine->res_state);
         }
-#endif
     }
     return cobs->current_coroutine->res_state;
 }
-/* }}} */
-
-/* {{{ res_init */
-#if ((__GLIBC__ == 2) && (__GLIBC_MINOR__ >= 26))
-int __res_init(void)
-{
-    return 0;
-}
-
-void __res_close(void)
-{
-    struct __res_state *r = __res_state();
-    void __res_iclose(struct __res_state *, int);
-    __res_iclose(r, 1);
-    r->options = 0;
-}
-
-int __res_query(const char *dname, int class, int type, unsigned char *answer, int anslen)
-{
-    return res_nquery(__res_state(), dname, class, type, answer, anslen);
-}
-
-int __res_search(const char *dname, int class, int type, unsigned char *answer, int anslen)
-{
-    return res_nsearch(__res_state(), dname, class, type, answer, anslen);
-}
-
-int __res_querydomain(const char *name, const char *domain, int class, int type, unsigned char *answer, int anslen)
-{
-    return res_nquerydomain(__res_state(), name, domain, class, type, answer, anslen);
-}
-
-int __res_mkquery(int op, const char *dname, int class, int type, const unsigned char *data, int datalen, const unsigned char *newrr, unsigned char *buf, int buflen)
-{
-    return res_nmkquery(__res_state(), op, dname, class, type, data, datalen, newrr, buf, buflen);
-}
-
-int __res_send(const unsigned char *msg, int msglen, unsigned char *answer, int anslen)
-{
-    return res_nsend(__res_state(), msg, msglen, answer, anslen);
-}
-#endif
 /* }}} */
 
 /* {{{ gethostbyname hook */
@@ -4290,7 +4232,6 @@ struct hostent *gethostbyaddr(const void *addr, socklen_t len, int type)
     return 0;
 }
 
-/* }}} */
 /* }}} */
 
 /* {{{ block common utils  */
