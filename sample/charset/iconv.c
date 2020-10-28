@@ -37,7 +37,7 @@ int main(int argc, char **argv)
     zbuf_t *result = zbuf_create(0);
     zstdin_get_contents(content);
 
-    if ((zcharset_iconv(from_charset, zbuf_data(content), zbuf_len(content),
+    if ((zcharset_convert(from_charset, zbuf_data(content), zbuf_len(content),
                     to_charset , result, &converted_len 
                     ,ignore_bytes, 0)) < 0) {
         printf("ERR can not convert\n");

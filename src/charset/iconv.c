@@ -196,8 +196,6 @@ int zcharset_iconv(const char *from_charset, const char *src, int src_len, const
 
     return out_converted_len;
 }
-int (*zcharset_convert)(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *result, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count) = zcharset_iconv;
-
 /*
  * iconv static lib, missing libiconv and GCONV_PATH mismatched.
  * 1, download latest libiconv; 
@@ -205,3 +203,57 @@ int (*zcharset_convert)(const char *from_charset, const char *src, int src_len, 
  * 3, make 
  * 4, ls lib/.libs/iconv.o lib/.libs/localcharset.o lib/.libs/relocatable.o 
  */
+
+int (*zcharset_convert)(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *result, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count) = zcharset_iconv;
+
+
+void zcharset_convert_to_utf8(const char *from_charset, const char *data, int size, zbuf_t *result)
+{
+    ZSTACK_BUF(f_charset_buf, zvar_charset_name_max_size);
+    const char *f_charset = from_charset;
+    int detected = 0;
+
+    zbuf_reset(result);
+
+    if (size < 1) {
+        goto over;
+    }
+
+    if (ZEMPTY(f_charset)) {
+        detected = 1;
+        zbuf_reset(f_charset_buf);
+        if (zcharset_detect_cjk(data, size, f_charset_buf)) {
+            f_charset = zbuf_data(f_charset_buf);
+        } else  {
+            f_charset = "GB18030";
+        }
+    } else {
+        f_charset = zcharset_correct_charset(f_charset);
+    }
+
+    if (zcharset_convert(f_charset, data, size, "UTF-8", result, 0, -1, 0) > 0) {
+        goto over;
+    }
+
+    if(detected) {
+        zbuf_memcpy(result, data, size);
+        goto over;
+    }
+
+    zbuf_reset(f_charset_buf);
+    if (zcharset_detect_cjk(data, size, f_charset_buf)) {
+        f_charset = zbuf_data(f_charset_buf);
+    } else  {
+        f_charset = "GB18030";
+    }
+    zbuf_reset(result);
+    if (zcharset_convert(f_charset, data, size, "UTF-8", result, 0, -1, 0) > 0) {
+        goto over;
+    }
+
+    zbuf_memcpy(result, data, size);
+
+over:
+    return;
+}
+

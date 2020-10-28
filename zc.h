@@ -2030,6 +2030,8 @@ int zcharset_iconv(const char *from_charset, const char *src, int src_len, const
 void zcharset_convert_use_uconv();
 int zcharset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count);
 
+void zcharset_convert_to_utf8(const char *from_charset, const char *data, int size, zbuf_t *result);
+
 
 /* mime utils, src/mime/ ############################################# */
 /* 邮件解码工具 例子见 sample/mime/ */

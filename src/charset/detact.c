@@ -122,9 +122,9 @@ char *zcharset_detect(const char **charset_list, const char *data, int size, zbu
         result_score = 0;
         fromcode = charset_list[i];
 
-        ret = zcharset_iconv(fromcode, data, len_to_use, "UTF-8", out_bf, &converted_len, -1, &omit_invalid_bytes_count);
+        ret = zcharset_convert(fromcode, data, len_to_use, "UTF-8", out_bf, &converted_len, -1, &omit_invalid_bytes_count);
         if (ret < 0) {
-            mydebug("        # %-20s, iconv failure", fromcode);
+            mydebug("        # %-20s, convert failure", fromcode);
             continue;
         }
         if (omit_invalid_bytes_count > 5) {
