@@ -11,7 +11,7 @@
 
 void zvector_init_mpool(zvector_t *v, int size, zmpool_t *mpool);
 
-int zmime_header_line_address_tok(char **str, int *len, char **rname, char **raddress, char *tmp_cache, int tmp_cache_size)
+static int zmime_header_line_address_tok(char **str, int *len, char **rname, char **raddress, char *tmp_cache, int tmp_cache_size)
 {
     char *pstr = *str;
     int c;

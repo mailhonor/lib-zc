@@ -16,7 +16,7 @@ static void ___usage()
 
 static void dorun(const char *fn)
 {
-    zbuf_t *charset = zbuf_create(0);
+    char charset[zvar_charset_name_max_size + 1];
     zbuf_t *content = zbuf_create(0);
 
     zfile_get_contents_sample(fn, content);
@@ -24,10 +24,9 @@ static void dorun(const char *fn)
     if (zcharset_detect_cjk(zbuf_data(content), zbuf_len(content), charset) == 0) {
         printf("%-30s: not found, maybe ASCII\n", fn);
     } else {
-        printf("%-30s: %s\n", fn, zbuf_data(charset));
+        printf("%-30s: %s\n", fn, charset);
     }
 
-    zbuf_free(charset);
     zbuf_free(content);
 }
 

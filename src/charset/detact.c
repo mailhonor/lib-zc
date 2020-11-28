@@ -94,7 +94,7 @@ static double chinese_get_score(const char *fromcode, char *str, int len, int om
     return ((double)score / (count + omit_invalid_bytes_count));
 }
 
-char *zcharset_detect(const char **charset_list, const char *data, int size, zbuf_t *charset_result)
+char *zcharset_detect(const char **charset_list, const char *data, int size, char *charset_result)
 {
     int i;
     int ret, max_i;
@@ -103,7 +103,6 @@ char *zcharset_detect(const char **charset_list, const char *data, int size, zbu
     double result_score, max_score;
     zbuf_t *out_bf = zbuf_create(1024);
     int converted_len, omit_invalid_bytes_count;
-    zbuf_reset(charset_result);
 
     list_len = 0;
     len_to_use = (size>4096?4096:size);
@@ -145,12 +144,12 @@ char *zcharset_detect(const char **charset_list, const char *data, int size, zbu
     if (max_i == (ssize_t)-1) {
         return 0;
     }
-    zbuf_puts(charset_result, charset_list[max_i]);
+    strncpy(charset_result, charset_list[max_i], zvar_charset_name_max_size);
 
-    return zbuf_data(charset_result);
+    return charset_result;
 }
 
-char *zcharset_detect_cjk(const char *data, int size, zbuf_t *charset_result)
+char *zcharset_detect_cjk(const char *data, int size, char *charset_result)
 {
     return zcharset_detect(zvar_charset_cjk, data, size, charset_result);
 }

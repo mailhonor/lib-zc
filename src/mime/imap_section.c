@@ -62,6 +62,7 @@ void zmail_set_imap_section(zmail_t *parser)
             ZMLINK_DETACH(rhead, rtail, rnode, prev, next);
             zmail_zbuf_cache_release(parser, rnode->nsection);
             zargv_free(rnode->argv);
+            zfree(rnode);
             continue;
         }
         if (rnode->i == -1) {
@@ -78,6 +79,7 @@ void zmail_set_imap_section(zmail_t *parser)
             ZMLINK_DETACH(rhead, rtail, rnode, prev, next);
             zmail_zbuf_cache_release(parser, rnode->nsection);
             zargv_free(rnode->argv);
+            zfree(rnode);
             continue;
         }
 

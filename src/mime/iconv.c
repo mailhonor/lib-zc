@@ -15,7 +15,7 @@ void zmime_iconv(const char *from_charset, const char *data, int size, zbuf_t *r
         return;
     }
 
-    ZSTACK_BUF(f_charset_buf, zvar_charset_name_max_size);
+    char f_charset_buf[zvar_charset_name_max_size+1];
     const char *f_charset;
     int detected = 0;
 
@@ -23,9 +23,8 @@ void zmime_iconv(const char *from_charset, const char *data, int size, zbuf_t *r
     f_charset = from_charset;
     if (ZEMPTY(f_charset)) {
         detected = 1;
-        zbuf_reset(f_charset_buf);
         if (zcharset_detect_cjk(data, size, f_charset_buf)) {
-            f_charset = zbuf_data(f_charset_buf);
+            f_charset = f_charset_buf;
         } else  {
             f_charset = "GB18030";
         }
@@ -46,9 +45,8 @@ void zmime_iconv(const char *from_charset, const char *data, int size, zbuf_t *r
         return;
     }
 
-    zbuf_reset(f_charset_buf);
     if (zcharset_detect_cjk(data, size, f_charset_buf)) {
-        f_charset = zbuf_data(f_charset_buf);
+        f_charset = f_charset_buf;
     } else  {
         f_charset = "GB18030";
     }

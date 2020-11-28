@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2015-12-09
  * ================================
  */
@@ -9,6 +9,7 @@
 #include "zc.h"
 #include "mime.h"
 
+/* {{{ zmime_raw_header_line_unescape */
 void zmime_raw_header_line_unescape(const char *in_line, int in_len, zbuf_t *result)
 {
     int ch;
@@ -79,7 +80,9 @@ int zmime_raw_header_line_unescape_inner(zmail_t *parser, const char *data, int 
 
     return rlen;
 }
+/* }}} */
 
+/* {{{ zmime_header_line_get_first_token */
 int zmime_header_line_get_first_token_inner(const char *line_, int in_len, char **val)
 {
     int i, vlen, ch, len = in_len;
@@ -124,117 +127,134 @@ void zmime_header_line_get_first_token(const char *in_line, int in_len, zbuf_t *
         zbuf_memcat(result, v, l);
     }
 }
+/* }}} */
 
-const zvector_t *zmime_header_line_get_element_vector(const char *in_line, int in_len)
+/* {{{ zmime_header_line_get_element_vector */
+typedef struct zmime_header_line_element2_t zmime_header_line_element2_t;
+struct zmime_header_line_element2_t {
+    const char *charset;
+    const char *data;
+    int dlen;
+    int clen;
+    char encode_type; /* 'B':base64, 'Q':qp, 0:unknown */
+};
+
+static int zmime_header_line_get_element_vector_inner(const char *in_line, int in_len, zmime_header_line_element2_t *mt_vec, int max_count)
 {
-    if (in_len == -1) {
+    if (in_len < 0) {
         in_len = strlen(in_line);
     }
     if (in_len < 1) {
         return 0;
     }
-    char *ps = (char *)(void *)in_line, *in_end = ps + in_len;
-    char *p1, *p3, *p, *pf, *pf_e, *pch, *pch_e, *pen, *pdata, *pdata_e;
-    zmime_header_line_element_t *mt;
-    int tmp_len;
+    int count = 0, clen, dlen, found, encode;
+    zmime_header_line_element2_t *mt;
+    const char *ps = in_line, *pend = ps + in_len, *p, *p_s, *p_charset, *p_encode, *p_data, *ps_next;
+    while ((ps < pend) && (pend - ps > 6)) {
+        found = 0;
+        p_s = ps;
+        while ((p_s < pend) && (pend - p_s > 6)) {
+            if (!(p_s = memmem(p_s, pend - p_s, "=?", 2))) {
+                break;
+            }
+            if ((pend <= p_s) || (pend - p_s < 6)) {
+                break;
+            }
+            p_charset = p_s + 2;
 
-    zvector_t *element_vector = zvector_create(10);
-
-#define element_vector_add_one_element(mt) { \
-    if (mt==0) { \
-        mt = (zmime_header_line_element_t *)zmalloc(sizeof(zmime_header_line_element_t)); \
-        mt->charset = zblank_buffer; \
-        zvector_add(element_vector, mt); \
-    } \
-}
-    mt = 0;
-    while (in_end > ps) {
-        p = (char *)memmem(ps, in_end - ps, "=?", 2);
-        pf = ps;
-        pf_e = p - 1;
-        while (p) {
-            pch = p + 2;
-            p1 = pch;
-            p3 = 0;
-            while(p1 < in_end) {
-                p1 = memchr(p1, '?', in_end-p1);
-                if (!p1) {
-                    break;
-                }
-                if (in_end - p1 < 3) {
-                    break;
-                }
-                if (p1[2]!='?') {
-                    p1++;
-                    continue;
-                }
-                if ((p1[1]!='b') && (p1[1]!='B') && (p1[1]!='q') && (p1[1]!='Q')) {
-                    p1++;
-                    continue;
-                }
-                p3 = p1;
+            if (!(p_encode = memchr(p_charset, '?', pend - p_charset))) {
                 break;
             }
-            if (!p3) {
-                p = 0;
+            clen = p_encode - p_charset;
+            if (pend - p_encode < 3) {
                 break;
             }
-            pch_e = p3 - 1;
-            pen = p3 + 1;
-            pdata = p3 + 3;
-            p = (char *)memmem(pdata, in_end - pdata, "?=", 2);
-            if (!p) {
+            p_encode++;
+            encode = ztoupper(p_encode[0]);
+            if (((encode!='B') && (encode != 'Q')) || (p_encode[1]!='?')) {
+                p_s = p_encode - 1;
+                continue;
+            }
+            p_data = p_encode + 2;
+            if (pend <= p_data) {
                 break;
             }
-            pdata_e = p - 1;
-            ps = p + 2;
-            element_vector_add_one_element(mt);
-            mt->encode_type = 0;
-            mt->dlen = pf_e - pf + 1;
-            mt->data = zmemdupnull(pf, mt->dlen);
-            mt = 0;
-            element_vector_add_one_element(mt);
-            {
-                char c = (int)ztoupper(*pen);
-                if (c == 'B') {
-                    mt->encode_type = 'B';
-                } else if ( c == 'Q') {
-                    mt->encode_type = 'Q';
-               } else  {
-                    mt->encode_type = 0;
-                }
-            }
-            tmp_len = pch_e - pch + 1;
-            if (tmp_len < 1) {
-                mt->charset = zblank_buffer;
+            found = 1;
+            p = memmem(p_data, pend - p_data, "?=", 2);
+            if (p) {
+                ps_next = p + 2;
+                dlen = p - p_data;
             } else {
-                mt->charset = zmemdupnull(pch, tmp_len);
+                ps_next = pend;
+                dlen = pend - p_data;
             }
-            {
-                /* rfc 2231 */
-                char *p = strchr(mt->charset, '*');
-                if (p) {
-                    *p = 0;
-                }
-            }
-            mt->dlen = pdata_e - pdata + 1;
-            mt->data = zmemdupnull(pdata, mt->dlen);
-            mt = 0;
-            p = (char *)in_line;
             break;
         }
-        if (!p) {
-            element_vector_add_one_element(mt);
-            mt->encode_type = 0;
-            mt->dlen = strlen(ps);
-            mt->data = zmemdupnull(ps, mt->dlen);
-            mt = 0;
+        if (!found) {
             break;
         }
-    }
-#undef element_vector_add_one_element
+        if (ps < p_s) {
+            mt = mt_vec + count++;
+            memset(mt, 0, sizeof(zmime_header_line_element2_t));
+            mt->data = ps;
+            mt->dlen = p_s - ps;
+        }
 
-    return element_vector;
+        mt = mt_vec + count++;
+        memset(mt, 0, sizeof(zmime_header_line_element2_t));
+        mt->data = p_data;
+        mt->dlen = dlen;
+        mt->charset = p_charset;
+        mt->clen = clen;
+        mt->encode_type = encode;
+
+        ps = ps_next;
+    }
+    if (ps < pend) {
+        mt = mt_vec + count++;
+        memset(mt, 0, sizeof(zmime_header_line_element2_t));
+        mt->data = ps;
+        mt->dlen = pend - ps;
+    }
+
+    return count;
+}
+
+const zvector_t *zmime_header_line_get_element_vector(const char *in_line, int in_len)
+{
+    if (in_len < 0) {
+        in_len = strlen(in_line);
+    }
+
+    int i, mt_count = 0;
+    const char *p = in_line;
+
+    for (i = 0; i < in_len; i++, p++){
+        if ((p[0] != '=') || (p[1] != '?')) {
+            continue;
+        }
+        mt_count++;
+        i++;
+        p++;
+    }
+    mt_count = mt_count*2 + 10;
+    zmime_header_line_element2_t *mt_vec = (zmime_header_line_element2_t *)zmalloc(mt_count * sizeof(zmime_header_line_element2_t));
+    mt_count = zmime_header_line_get_element_vector_inner(in_line, in_len, mt_vec, mt_count);
+    zvector_t *rv = zvector_create(mt_count + 1);
+    for (i = 0 ; i < mt_count; i++) {
+        zmime_header_line_element2_t *mt = mt_vec + i;
+        zmime_header_line_element_t *element = zcalloc(1, sizeof(zmime_header_line_element_t));
+        char *tmpp = (mt->clen?zmemdupnull(mt->charset, mt->clen):0);
+        if (tmpp) {
+            zstr_tolower(tmpp);
+        }
+        element->charset = tmpp;
+        element->data = zmemdupnull(mt->data, mt->dlen);
+        element->dlen = mt->dlen;
+        element->encode_type = mt->encode_type;
+        zvector_push(rv, element);
+    }
+    return rv;
 }
 
 void zmime_header_line_element_vector_free(const zvector_t *element_vector)
@@ -250,224 +270,10 @@ void zmime_header_line_element_vector_free(const zvector_t *element_vector)
     zvector_free((zvector_t *)(void *)element_vector);
 }
 
-void zmime_header_line_get_utf8(const char *src_charset_def, const char *in_line, int in_len, zbuf_t *result)
-{
-    zbuf_reset(result);
-    if (in_len == -1){
-        in_len = strlen(in_line);
-    }
-    if (in_len < 1) {
-        return;
-    }
-    int ret, i, plen, mt_count;
-    char *in_src = (char *)(void *)in_line, *p;
-    zmime_header_line_element_t *mt, *mtn;
-    const zvector_t *mt_vec;
+/* }}} */
 
-    mt_vec = zmime_header_line_get_element_vector(in_src, in_len);
-    if (!mt_vec) {
-        return;
-    }
-    mt_count = zvector_len(mt_vec);
-
-    zbuf_t *bq_join = zbuf_create(0);
-    zbuf_t *out_string = zbuf_create(0);
-
-    for (i = 0; i < mt_count; i++) {
-        mt = (zmime_header_line_element_t *)(zvector_data(mt_vec)[i]);
-        if (mt->dlen == 0) {
-            continue;
-        }
-        if ((mt->encode_type != 'B') && (mt->encode_type != 'Q')) {
-            zbuf_reset(out_string);
-            zmime_iconv(src_charset_def, mt->data, mt->dlen, out_string);
-            zbuf_append(result, out_string);
-            continue;
-        }
-        zbuf_memcpy(bq_join, mt->data, mt->dlen);
-        mtn = (zmime_header_line_element_t *)(zvector_data(mt_vec)[i+1]);
-        while (1) {
-            if (i + 1 >= mt_count) {
-                break;
-            }
-            if (mtn->encode_type == 0) {
-                int j;
-                char c;
-                for (j = 0; j < mtn->dlen; j++) {
-                    c = mtn->data[j];
-                    if (c == ' ') {
-                        continue;
-                    }
-                    break;
-                }
-                if (j == mtn->dlen) {
-                    i++;
-                    mtn = (zmime_header_line_element_t *)(zvector_data(mt_vec)[i+1]);
-                    continue;
-                }
-                break;
-            }
-            if ((mt->encode_type == mtn->encode_type) && (*(mt->charset)) && (*(mtn->charset)) && (!strcasecmp(mt->charset, mtn->charset))) {
-                zbuf_memcat(bq_join, mtn->data, mtn->dlen);
-                i++;
-                mtn = (zmime_header_line_element_t *)(zvector_data(mt_vec)[i+1]);
-                continue;
-            }
-            break;
-        }
-        p = zbuf_data(bq_join);
-        plen = zbuf_len(bq_join);
-        p[plen] = 0;
-        ret = 0;
-        zbuf_reset(out_string);
-        if (mt->encode_type == 'B') {
-            zbase64_decode(p, plen, out_string);
-        } else if (mt->encode_type == 'Q') {
-            zqp_decode_2047(p, plen, out_string);
-        }
-        ret = zbuf_len(out_string);
-
-        if (ret < 1) {
-            continue;
-        }
-        zbuf_memcpy(bq_join, zbuf_data(out_string), zbuf_len(out_string));
-        zbuf_reset(out_string);
-        zmime_iconv(mt->charset, zbuf_data(bq_join), zbuf_len(bq_join), out_string);
-        zbuf_append(result, out_string);
-    }
-    zmime_header_line_element_vector_free(mt_vec);
-    zbuf_free(bq_join);
-    zbuf_free(out_string);
-}
-
-/* ###################################################### */
-typedef struct zmime_header_line_element2_t zmime_header_line_element2_t;
-struct zmime_header_line_element2_t {
-    char *charset;
-    char *data;
-    int dlen;
-    int clen;
-    char encode_type; /* 'B':base64, 'Q':qp, 0:unknown */
-};
-
-static int zmime_header_line_get_element_vector_inner(const char *in_line, int in_len, zmime_header_line_element2_t *vec, int max_count)
-{
-    if (in_len == -1) {
-        in_len = strlen(in_line);
-    }
-    if (in_len < 1) {
-        return 0;
-    }
-    char *ps = (char *)(void *)in_line, *in_end = ps + in_len;
-    char *p1, *p3, *p, *pf, *pf_e, *pch, *pch_e, *pen, *pdata, *pdata_e;
-    zmime_header_line_element2_t *mt;
-    int count=0, tmp_len;
-
-    mt = 0;
-    while (in_end > ps) {
-        p = (char *)memmem(ps, in_end - ps, "=?", 2);
-        pf = ps;
-        pf_e = p - 1;
-        while (p) {
-            pch = p + 2;
-            p1 = pch;
-            p3 = 0;
-            while(p1 < in_end) {
-                p1 = memchr(p1, '?', in_end-p1);
-                if (!p1) {
-                    break;
-                }
-                if (in_end - p1 < 3) {
-                    break;
-                }
-                if (p1[2]!='?') {
-                    p1++;
-                    continue;
-                }
-                if ((p1[1]!='b') && (p1[1]!='B') && (p1[1]!='q') && (p1[1]!='Q')) {
-                    p1++;
-                    continue;
-                }
-                p3 = p1;
-                break;
-            }
-            if (!p3) {
-                p = 0;
-                break;
-            }
-            pch_e = p3 - 1;
-            pen = p3 + 1;
-            pdata = p3 + 3;
-            p = (char *)memmem(pdata, in_end - pdata, "?=", 2);
-            if (!p) {
-                break;
-            }
-            pdata_e = p - 1;
-            ps = p + 2;
-            mt = vec + count++;
-            if (count > max_count) {
-                return count - 1;
-            }
-            mt->charset = zblank_buffer;
-            mt->clen = 0;
-            mt->encode_type = 0;
-            mt->dlen = pf_e - pf + 1;
-            mt->data = pf;
-            mt = vec + count++;
-            if (count > max_count) {
-                return count - 1;
-            }
-            {
-                char c = (int)ztoupper(*pen);
-                if (c == 'B') {
-                    mt->encode_type = 'B';
-                } else if ( c == 'Q') {
-                    mt->encode_type = 'Q';
-               } else  {
-                    mt->encode_type = 0;
-                }
-            }
-            tmp_len = pch_e - pch + 1;
-            if (tmp_len < 1) {
-                mt->charset = zblank_buffer;
-                mt->clen = 0;
-            } else {
-                mt->charset = pch;
-                mt->clen = tmp_len;
-            }
-            if (mt->clen) {
-                /* rfc 2231 */
-                char *p = memchr(mt->charset, '*', mt->clen);
-                if (p) {
-                    *p = 0;
-                    mt->clen = p - mt->charset;
-                }
-            }
-            mt->dlen = pdata_e - pdata + 1;
-            mt->data = pdata;
-            mt = 0;
-            p = (char *)in_line;
-            break;
-        }
-        if (!p) {
-            mt = vec + count++;
-            if (count > max_count) {
-                return count - 1;
-            }
-            mt->charset = zblank_buffer;
-            mt->clen = 0;
-            mt->encode_type = 0;
-            mt->dlen = strlen(ps);
-            mt->data = ps;
-            mt = 0;
-            break;
-        }
-    }
-
-    return count;
-}
-
-void zmime_header_line_get_utf8_inner(zmail_t *parser, const char *in_line, int in_len, zbuf_t *result)
+/* {{{ zmime_header_line_get_utf8 */
+static void zmime_header_line_get_utf8_engine(const char *src_charset_def, const char *in_line, int in_len, zbuf_t *result, zbuf_t *bq_join, zbuf_t *out_string)
 {
     zbuf_reset(result);
     if (in_len == -1){
@@ -498,9 +304,6 @@ void zmime_header_line_get_utf8_inner(zmail_t *parser, const char *in_line, int 
         return;
     }
 
-    zbuf_t *bq_join = zmail_zbuf_cache_require(parser, -1);
-    zbuf_t *out_string = zmail_zbuf_cache_require(parser, -1);
-
     for (i = 0; i < mt_count; i++) {
         mt = mt_vec + i;
         if (mt->dlen == 0) {
@@ -508,7 +311,7 @@ void zmime_header_line_get_utf8_inner(zmail_t *parser, const char *in_line, int 
         }
         if ((mt->encode_type != 'B') && (mt->encode_type != 'Q')) {
             zbuf_reset(out_string);
-            zmime_iconv(parser->src_charset_def, mt->data, mt->dlen, out_string);
+            zmime_iconv(src_charset_def, mt->data, mt->dlen, out_string);
             zbuf_append(result, out_string);
             continue;
         }
@@ -571,6 +374,27 @@ void zmime_header_line_get_utf8_inner(zmail_t *parser, const char *in_line, int 
         zbuf_append(result, out_string);
     }
     zfree(mt_vec);
+}
+
+void zmime_header_line_get_utf8_inner(zmail_t *parser, const char *in_line, int in_len, zbuf_t *result)
+{
+    zbuf_t *bq_join = zmail_zbuf_cache_require(parser, -1);
+    zbuf_t *out_string = zmail_zbuf_cache_require(parser, -1);
+    zmime_header_line_get_utf8_engine(parser->src_charset_def, in_line, in_len, result, bq_join, out_string);
     zmail_zbuf_cache_release(parser, bq_join);
     zmail_zbuf_cache_release(parser, out_string);
 }
+
+void zmime_header_line_get_utf8(const char *src_charset_def, const char *in_line, int in_len, zbuf_t *result)
+{
+    zbuf_t *bq_join = zbuf_create(-1);
+    zbuf_t *out_string = zbuf_create(-1);
+    zmime_header_line_get_utf8_engine(src_charset_def, in_line, in_len, result, bq_join, out_string);
+    zbuf_free(bq_join);
+    zbuf_free(out_string);
+}
+/* }}} */
+
+/*
+vim600: fdm=marker
+*/

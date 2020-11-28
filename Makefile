@@ -7,11 +7,6 @@ DIRS=${shell find src -type d}
 DIRS_DEST = $(patsubst %, OBJS_DEST/%, $(DIRS))
 ${shell mkdir -p $(DIRS_DEST)}
 
--include makefiles/special_src.include
-ifdef SPECIAL_SRC
-	libzc_special_target=special_src
-endif
-
 libzc lib: depend
 	make -f makefiles/lib.makefile $(libzc_special_target)
 

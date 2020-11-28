@@ -2010,10 +2010,10 @@ char *zcharset_correct_charset(const char *charset);
 
 /* 探测字符串data是什么字符集, 结果存储在charset_result, 并返回 */
 /* charset_list 是 字符集名称的指针输入, 结尾为 0 */
-char *zcharset_detect(const char **charset_list, const char *data, int size, zbuf_t *charset_result);
+char *zcharset_detect(const char **charset_list, const char *data, int size, char *charset_result);
 
 /* 如上. charset_list = zvar_charset_cjk; */
-char *zcharset_detect_cjk(const char *data, int size, zbuf_t *charset_result);
+char *zcharset_detect_cjk(const char *data, int size, char *charset_result);
 
 /* 字符集转码, 有点复杂哈, 建议再次封装 */
 /* 返回目标字符串的长度, -1: 错; */
@@ -2053,8 +2053,8 @@ void zmime_header_line_get_first_token(const char *in_line, int in_len, zbuf_t *
 /* 邮件头行单词节点 */
 typedef struct zmime_header_line_element_t zmime_header_line_element_t;
 struct zmime_header_line_element_t {
-    char *charset; /* 可能为空 */
-    char *data;
+    const char *charset; /* 可能为空 */
+    const char *data;
     int dlen;
     char encode_type; /* 'B':base64, 'Q':qp, 0:unknown */
 };
@@ -2275,7 +2275,6 @@ const zvector_t *zmail_get_attachment_mimes(zmail_t *parser);
 
 /* 获取所有邮件头 */
 const zvector_t *zmail_get_raw_header_line_vector(zmail_t *parser); /* zsize_data_t* */
-
 
 /* 获取第sn个名称为header_name的原始逻辑行, 返回 -1: 不存在 */
 /* sn -1: 倒数第一个, 0:第一个, 1: 第二个, ... 下同 */
@@ -2937,5 +2936,101 @@ int zmsearch_build(zmsearch_t *ms, const char *dest_db_pathname);
 }
 #endif
 
+/* ################################################################## */
+/* CPP */
+/* ################################################################## */
+#ifdef  __cplusplus
+#include <string>
+#include <vector>
+namespace zcc
+{
+
+/* std utils ######################################################## */
+std::string &vsprintf_1024(std::string &str, const char *format, va_list ap);
+std::string &sprintf_1024(std::string &str, const char *format, ...);
+std::string &tolower(std::string &str);
+std::string &toupper(std::string &str);
+std::string &trim_right(std::string &str, const char *delims=0);
+std::vector<std::string> split(const char *s, const char *delims = 0);
+inline std::vector<std::string> split(const std::string &s, const char *delims=0) {
+    return split(s.c_str(), delims);
+}
+
+class string: public std::string
+{
+public:
+    typedef std::string stdstring;
+    using stdstring::stdstring;
+    using stdstring::append;
+    string &printf_1024(const char *format, ...);
+    inline string &append(int i) {return printf_1024("%d", i);}
+    inline string &append(unsigned int i) {return printf_1024("%u", i);}
+    inline string &append(long int i) {return printf_1024("%ld", i);}
+    inline string &append(unsigned long i) {return printf_1024("%lu", i);}
+    inline string &append(double i) {return printf_1024("%f", i);}
+    inline string &append(float i) {return printf_1024("%f", i);}
+    inline string &clear() {std::string::clear(); return *this;}
+    inline string &push_back(char c) {std::string::push_back(c); return *this;}
+    inline string &tolower() {zcc::tolower(*this); return *this;}
+    inline string &toupper() {zcc::toupper(*this);;return *this;}
+    inline string &trim_right(const char *delims=0) {zcc::trim_right(*this, delims); return *this;}
+    std::vector<std::string> split(const char *delims=0) {return zcc::split(*this, delims);}
+};
+
+/* encode/decode, ################################################## */
+void base64_encode(const void *src, int src_size, std::string &str, bool mime_flag = false);
+void base64_decode(const void *src, int src_size, std::string &str);
+void qp_encode_2045(const void *src, int src_size, std::string &result, bool mime_flag = false);
+void qp_encode_2047(const void *src, int src_size, std::string &result);
+void qp_decode_2045(const void *src, int src_size, std::string &str);
+void qp_decode_2047(const void *src, int src_size, std::string &str);
+void hex_encode(const void *src, int src_size, std::string &str);
+void hex_decode(const void *src, int src_size, std::string &str);
+void url_hex_decode(const void *src, int src_size, std::string &str);
+void url_hex_encode(const void *src, int src_size, std::string &str, bool strict_flag = false);
+void xml_unescape_string(std::string &content, const char *data, int len);
+
+/* config ########################################################## */
+class config {
+public:
+    config();
+    config(zconfig_t *cf);
+    ~config();
+    config &update(const char *key, const char *val);
+    config &update(const char *key, std::string &val);
+    config &remove(const char *key);
+    bool load_from_pathname(const char *pathname);
+    config &load_annother(zconfig_t *another);
+    config &load_annother(config &another);
+    config &debug_show();
+    inline zconfig_t *c_config() { return cf_; }
+private:
+    zconfig_t *cf_;
+    bool new_flag_;
+};
+extern config var_default_config;
+
+/* charset ######################################################### */
+inline char *charset_detect(const char **charset_list, const char *data, int size, char *charset_result) {
+    return zcharset_detect(charset_list, data, size, charset_result);
+}
+const char *charset_detect(const char **charset_list, const char *data, int size, std::string &charset_result);
+inline char *charset_detect_cjk(const char *data, int size, char *charset_result) {
+    return zcharset_detect_cjk(data, size, charset_result);
+}
+const char *charset_detect_cjk(const char *data, int size, std::string charset_result);
+extern int (*charset_convert)(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &result, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count);
+int charset_iconv(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &result, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count);
+void charset_convert_use_uconv();
+int charset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count);
+void charset_convert_to_utf8(const char *from_charset, const char *data, int size, std::string &result);
+
+} /* namespace zcc */
+#endif /* __cplusplus */
+
 #pragma pack(pop)
+
+#ifdef ___ZC_DEV_MODE___
+#include "src/cpp/cpp_dev.h"
+#endif
 #endif /*___ZC_LIB_INCLUDE___ */

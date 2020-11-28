@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2015-12-10
  * ================================
  */
@@ -9,15 +9,17 @@
 #include "zc.h"
 #include "mime.h"
 
-static void *trim_zmpool_memdupnull(zmpool_t * mp, const void *ptr, int n)
+static void *trim_zmpool_memdupnull(zmpool_t * mp, const void *ptr, int n, zbool_t token_mode)
 {
     if (n == 0) {
         return zmpool_memdupnull(mp, ptr, 0);
     }
     const char *ps = ptr, *pe = ps + n;
     for (;ps < pe; ps++) {
-        if ((*ps == '<')||(*ps == '>')) {
-            continue;
+        if (token_mode) {
+            if ((*ps == '<')||(*ps == '>')) {
+                continue;
+            }
         }
         if (zistrim(*ps)) {
             continue;
@@ -26,8 +28,10 @@ static void *trim_zmpool_memdupnull(zmpool_t * mp, const void *ptr, int n)
     }
     pe--;
     for (;ps <= pe; pe--) {
-        if ((*pe == '<')||(*pe == '>')) {
-            continue;
+        if (token_mode) {
+            if ((*pe == '<')||(*pe == '>')) {
+                continue;
+            }
         }
         if (zistrim(*pe)) {
             continue;
@@ -144,7 +148,7 @@ const char *zmime_get_name_utf8(zmime_t *mime)
     if (len > 0) {
         zbuf_t *tmpbf = zmail_zbuf_cache_require(mime->parser, 256);
         zmime_header_line_get_utf8_inner(mime->parser, mime->name, len, tmpbf);
-        mime->name_utf8 = trim_zmpool_memdupnull(mime->parser->mpool, zbuf_data(tmpbf), zbuf_len(tmpbf));
+        mime->name_utf8 = trim_zmpool_memdupnull(mime->parser->mpool, zbuf_data(tmpbf), zbuf_len(tmpbf), 0);
         zmail_zbuf_cache_release(mime->parser, tmpbf);
     }
     return mime->name_utf8;
@@ -173,7 +177,7 @@ const char *zmime_get_filename_utf8(zmime_t *mime)
     } else  if (!ZEMPTY(mime->filename)) {
         zmime_header_line_get_utf8_inner(mime->parser, mime->filename, -1, uname);
     }
-    mime->filename_utf8 = trim_zmpool_memdupnull(mime->parser->mpool, zbuf_data(uname), zbuf_len(uname));
+    mime->filename_utf8 = trim_zmpool_memdupnull(mime->parser->mpool, zbuf_data(uname), zbuf_len(uname), 0);
     zmail_zbuf_cache_release(mime->parser, uname);
     return mime->filename_utf8;
 }
@@ -206,7 +210,7 @@ const char *zmime_get_content_id(zmime_t *mime)
         char *v;
         int len = zmime_header_line_get_first_token_inner(zbuf_data(tmpbf), zbuf_len(tmpbf), &v);
         if (len > 0) {
-            mime->content_id = trim_zmpool_memdupnull(mime->parser->mpool, v, len);
+            mime->content_id = trim_zmpool_memdupnull(mime->parser->mpool, v, len, 1);
         }
         zmail_zbuf_cache_release(mime->parser, tmpbf);
     }
@@ -529,7 +533,7 @@ const char *zmail_get_message_id(zmail_t *parser)
         char *v;
         int len = zmime_header_line_get_first_token_inner(zbuf_data(tmpbf), zbuf_len(tmpbf), &v);
         if (len > 0) {
-            parser->message_id = trim_zmpool_memdupnull(parser->mpool, v, len);
+            parser->message_id = trim_zmpool_memdupnull(parser->mpool, v, len, 1);
         }
         zmail_zbuf_cache_release(parser, tmpbf);
     }
@@ -543,7 +547,7 @@ const char *zmail_get_subject(zmail_t *parser)
         zbuf_t *tmpbf = zmail_zbuf_cache_require(parser, 256);
         if (zmime_get_header_line_value(parser->top_mime, "Subject:", tmpbf, 0) > -1) {
             if (zbuf_len(tmpbf)) {
-                parser->subject = trim_zmpool_memdupnull(parser->mpool, zbuf_data(tmpbf), zbuf_len(tmpbf));
+                parser->subject = trim_zmpool_memdupnull(parser->mpool, zbuf_data(tmpbf), zbuf_len(tmpbf), 0);
             }
         }
         zmail_zbuf_cache_release(parser, tmpbf);
@@ -562,7 +566,7 @@ const char *zmail_get_subject_utf8(zmail_t *parser)
         if (len > 0) {
             zbuf_t *tmpbf = zmail_zbuf_cache_require(parser, 256);
             zmime_header_line_get_utf8_inner(parser, parser->subject, len, tmpbf);
-            parser->subject_utf8 = trim_zmpool_memdupnull(parser->mpool, zbuf_data(tmpbf), zbuf_len(tmpbf));
+            parser->subject_utf8 = trim_zmpool_memdupnull(parser->mpool, zbuf_data(tmpbf), zbuf_len(tmpbf), 0);
             zmail_zbuf_cache_release(parser, tmpbf);
         }
     }
@@ -576,7 +580,7 @@ const char *zmail_get_date(zmail_t *parser)
         zbuf_t *tmpbf = zmail_zbuf_cache_require(parser, 256);
         if (zmime_get_header_line_value(parser->top_mime, "Date:", tmpbf, 0) > -1) {
             if (zbuf_len(tmpbf)) {
-                parser->date = trim_zmpool_memdupnull(parser->mpool, zbuf_data(tmpbf), zbuf_len(tmpbf));
+                parser->date = trim_zmpool_memdupnull(parser->mpool, zbuf_data(tmpbf), zbuf_len(tmpbf), 1);
             }
         }
         zmail_zbuf_cache_release(parser, tmpbf);
@@ -636,7 +640,7 @@ const zmime_address_t *zmail_get_from_utf8(zmail_t *parser)
         if (len > 0) {
             zbuf_t *tmpbf = zmail_zbuf_cache_require(parser, 256);
             zmime_header_line_get_utf8_inner(parser, parser->from->name, len, tmpbf);
-            parser->from->name_utf8 = trim_zmpool_memdupnull(parser->mpool, zbuf_data(tmpbf), zbuf_len(tmpbf));
+            parser->from->name_utf8 = trim_zmpool_memdupnull(parser->mpool, zbuf_data(tmpbf), zbuf_len(tmpbf), 0);
             zmail_zbuf_cache_release(parser, tmpbf);
         }
     }
@@ -668,7 +672,7 @@ const char *zmail_get_in_reply_to(zmail_t *parser)
         char *v;
         int len = zmime_header_line_get_first_token_inner(zbuf_data(tmpbf), zbuf_len(tmpbf), &v);
         if (len > 0) {
-            parser->in_reply_to = trim_zmpool_memdupnull(parser->mpool, v, len);
+            parser->in_reply_to = trim_zmpool_memdupnull(parser->mpool, v, len, 1);
         }
     }
     return parser->in_reply_to;
@@ -705,7 +709,7 @@ const zvector_t *zmail_get_to(zmail_t *parser) /* zmime_address_t* */
                 if (tmpbf == 0) { tmpbf = zmail_zbuf_cache_require(parser, 256); } \
                 zbuf_reset(tmpbf); \
                 zmime_header_line_get_utf8_inner(parser, addr->name, len, tmpbf); \
-                addr->name_utf8 = trim_zmpool_memdupnull(parser->mpool, zbuf_data(tmpbf), zbuf_len(tmpbf)); \
+                addr->name_utf8 = trim_zmpool_memdupnull(parser->mpool, zbuf_data(tmpbf), zbuf_len(tmpbf), 0); \
             } \
         } ZVECTOR_WALK_END; \
     } \

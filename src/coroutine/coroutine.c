@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://linuxmail.cn/
+ * http://linuxmail.cn/
  * 2017-06-26
  * ================================
  */
@@ -288,7 +288,12 @@ zinline static int _syscall_poll(struct pollfd fds[], nfds_t nfds, int timeout)
 #ifdef __NR_poll
     return syscall(__NR_poll, fds, nfds, timeout);
 #else
-    return syscall(__NR_ppoll, fds, nfds, 0, 0);
+    struct timespec tmo;
+    if (timeout > -1) {
+        tmo.tv_sec = timeout/1000;
+        tmo.tv_nsec = 1000000L * (timeout%1000);
+    }
+    return syscall(__NR_ppoll, fds, nfds, ((timeout>-1)?(&tmo):0), 0);
 #endif
 }
 

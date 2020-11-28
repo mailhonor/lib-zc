@@ -1,12 +1,14 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2015-12-02
  * ================================
  */
 
+#ifndef ___ZC_ZCC_MODE___
 #include "zc.h"
+#endif
 
 static const char b64enc[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -46,7 +48,11 @@ static const unsigned char b64dec[256] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 };
 
+#ifndef ___ZC_ZCC_MODE___
 void zbase64_encode(const void *src, int src_size, zbuf_t *str, int mime_flag)
+#else
+void base64_encode(const void *src, int src_size, std::string &str, bool mime_flag)
+#endif
 {
     unsigned char *src_c = (unsigned char *)src;
     char tmp[5]= {0,0,0,0,0};
@@ -80,24 +86,28 @@ void zbase64_encode(const void *src, int src_size, zbuf_t *str, int mime_flag)
             break;
         }
 
-        ZBUF_PUT(str, tmp[0]);
-        ZBUF_PUT(str, tmp[1]);
-        ZBUF_PUT(str, tmp[2]);
-        ZBUF_PUT(str, tmp[3]);
+        zbuf_put_cpp(str, tmp[0]);
+        zbuf_put_cpp(str, tmp[1]);
+        zbuf_put_cpp(str, tmp[2]);
+        zbuf_put_cpp(str, tmp[3]);
 
         if (mime_flag) {
             mime_count++;
             if (mime_count == 19) {
                 mime_count = 0;
-                ZBUF_PUT(str, '\r');
-                ZBUF_PUT(str, '\n');
+                zbuf_put_cpp(str, '\r');
+                zbuf_put_cpp(str, '\n');
             }
         }
     }
-    zbuf_terminate(str);
+    zbuf_terminate_cpp(str);
 }
 
+#ifndef ___ZC_ZCC_MODE___
 void zbase64_decode(const void *src, int src_size, zbuf_t *str)
+#else
+void base64_decode(const void *src, int src_size, std::string &str)
+#endif
 {
     unsigned char *src_c = (unsigned char *)src;
     int src_pos = 0;
@@ -152,7 +162,7 @@ retry:
 #endif
                 break;
             }
-            ZBUF_PUT(str, output[0]);
+            zbuf_put_cpp(str, output[0]);
             ret = 1;
             break;
         }
@@ -166,25 +176,27 @@ retry:
 #endif
                 break;
             }
-            ZBUF_PUT(str, output[0]);
-            ZBUF_PUT(str, output[1]);
+            zbuf_put_cpp(str, output[0]);
+            zbuf_put_cpp(str, output[1]);
             ret = 1;
             break;
         }
 
         output[2] = ((input[2] << 6) & 0xc0) | input[3];
-        ZBUF_PUT(str, output[0]);
-        ZBUF_PUT(str, output[1]);
-        ZBUF_PUT(str, output[2]);
+        zbuf_put_cpp(str, output[0]);
+        zbuf_put_cpp(str, output[1]);
+        zbuf_put_cpp(str, output[2]);
     }
 
     if (ret == 1) {
         goto retry;
     }
 over:
-    zbuf_terminate(str);
+    zbuf_terminate_cpp(str);
+#undef ___get_next_ch
 }
 
+#ifndef ___ZC_ZCC_MODE___
 int zbase64_decode_get_valid_len(const void *src, int src_size)
 {
     unsigned char *src_c = (unsigned char *)src, ch;
@@ -219,3 +231,4 @@ int zbase64_encode_get_min_len(int in_len, int mime_flag)
 
     return ret;
 }
+#endif

@@ -6,9 +6,16 @@
  * ================================
  */
 
-#include <zc.h>
+#include "../cpp/cpp_dev.h"
+#ifndef ___ZC_ZCC_MODE___
+#include "zc.h"
+#endif
 
+#ifndef ___ZC_ZCC_MODE___
 void zxml_unescape_string(zbuf_t *content, const char *data, int len)
+#else
+void xml_unescape_string(std::string &content, const char *data, int len)
+#endif
 {
     if (len < 0) {
         len = strlen(data);
@@ -37,7 +44,7 @@ void zxml_unescape_string(zbuf_t *content, const char *data, int len)
                 char wchar[6 + 1];
                 int nlen =  zncr_decode(u, wchar);
                 if (nlen > 0) {
-                    zbuf_memcat(content, wchar, nlen);
+                    zbuf_memcat_cpp(content, wchar, nlen);
                 }
             } else{
                 if (!strncmp(ps, "lt;", 3)) {
@@ -59,11 +66,11 @@ void zxml_unescape_string(zbuf_t *content, const char *data, int len)
                     ch = 0;
                 }
                 if (ch) {
-                    zbuf_put(content, ch);
+                    zbuf_put_cpp(content, ch);
                 }
             }
         } else {
-            zbuf_put(content, ch);
+            zbuf_put_cpp(content, ch);
         }
     }
 }

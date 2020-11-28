@@ -6,20 +6,26 @@
  * ================================
  */
 
-#ifdef _LIB_ZC_UCONV_
+#ifndef ___ZC_ZCC_MODE___
 #include "zc.h"
 #include <ctype.h>
 #include <unicode/utypes.h>
 #include <unicode/ucnv.h>
+#endif
 
+#ifdef _LIB_ZC_UCONV_
 extern zbool_t zvar_charset_debug;
 #define mydebug(fmt, args...)   if (zvar_charset_debug) { zinfo(fmt, ##args); }
 
+#ifndef ___ZC_ZCC_MODE___
 int zcharset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
+#else
+int charset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
+#endif
 {
     int ret = -1;
 
-    zbuf_reset(dest);
+    zbuf_reset_cpp(dest);
     int omit_invalid_bytes_count_tmp = 0;
     if (omit_invalid_bytes_count) {
         *omit_invalid_bytes_count = 0;
@@ -119,10 +125,10 @@ int zcharset_uconv(const char *from_charset, const char *src, int src_len, const
         err = U_ZERO_ERROR;
         ucnv_fromUnicode(to_conv, &to_p, to_end, (const UChar **)&from_p, (const UChar *)from_end, 0, 1, &err);
         if (to_p - to_last > 0) {
-            zbuf_memcat(dest, to_last, to_p - to_last);
+            zbuf_memcat_cpp(dest, to_last, to_p - to_last);
         }
     }
-    ret = zbuf_len(dest);
+    ret = zbuf_len_cpp(dest);
 
 over:
     zbuf_free(uni_bf);
@@ -139,22 +145,39 @@ over:
     return ret;
 }
 
+#ifndef ___ZC_ZCC_MODE___
 void zcharset_convert_use_uconv()
 {
     zcharset_convert = zcharset_uconv;
 }
+#else
+void charset_convert_use_uconv()
+{
+    charset_convert = charset_uconv;
+    zcharset_convert = zcharset_uconv;
+}
+#endif
+
 #else
 #include "zc.h"
 static void ___fatal_uconv()
 {
     zfatal("need defined _LIB_ZC_UCONV_\ncat makefiles/defined.include\n\nEXTRA_CFLAGS = -D_LIB_ZC_UCONV_");
 }
+#ifndef ___ZC_ZCC_MODE___
 int zcharset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
+#else
+int charset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
+#endif
 {
     ___fatal_uconv();
     return -1;
 }
+#ifndef ___ZC_ZCC_MODE___
 void zcharset_convert_use_uconv()
+#else
+void charset_convert_use_uconv()
+#endif
 {
     ___fatal_uconv();
 }

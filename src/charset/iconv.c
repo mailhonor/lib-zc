@@ -6,11 +6,14 @@
  * ================================
  */
 
+#include "../cpp/cpp_dev.h"
+#ifndef ___ZC_ZCC_MODE___
 #include "zc.h"
 #include <iconv.h>
 #include <errno.h>
-
-zbool_t zvar_charset_debug = 0;
+int zvar_charset_debug = 0;
+#else
+#endif
 
 #define ZCHARSET_ICONV_ERROR_OPEN       (-2016)
 
@@ -138,7 +141,11 @@ static inline int charset_iconv_base(charset_iconv_t * ic, char *_in_str, int _i
     return out_converted_len;
 }
 
+#ifndef ___ZC_ZCC_MODE___
 int zcharset_iconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
+#else
+int charset_iconv(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
+#endif
 {
     charset_iconv_t ic_buf, *ic = &ic_buf;
     char buf[4910];
@@ -148,7 +155,7 @@ int zcharset_iconv(const char *from_charset, const char *src, int src_len, const
     int out_converted_len = 0;
     char *str_running;
     int len_running;
-    zbuf_reset(dest);
+    zbuf_reset_cpp(dest);
 
     memset(ic, 0, sizeof(charset_iconv_t));
     ic->from_charset = (char *)(from_charset);
@@ -180,7 +187,7 @@ int zcharset_iconv(const char *from_charset, const char *src, int src_len, const
             break;
         }
         out_converted_len += len;
-        zbuf_memcat(dest, buf, len);
+        zbuf_memcat_cpp(dest, buf, len);
     }
 
     if ((ic->ic) && (ic->ic != (iconv_t) - 1)) {
@@ -204,16 +211,23 @@ int zcharset_iconv(const char *from_charset, const char *src, int src_len, const
  * 4, ls lib/.libs/iconv.o lib/.libs/localcharset.o lib/.libs/relocatable.o 
  */
 
+#ifndef ___ZC_ZCC_MODE___
 int (*zcharset_convert)(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *result, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count) = zcharset_iconv;
+#else
+int (*charset_convert)(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &result, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count) = charset_iconv;
+#endif
 
-
+#ifndef ___ZC_ZCC_MODE___
 void zcharset_convert_to_utf8(const char *from_charset, const char *data, int size, zbuf_t *result)
+#else
+void charset_convert_to_utf8(const char *from_charset, const char *data, int size, std::string &result)
+#endif
 {
-    ZSTACK_BUF(f_charset_buf, zvar_charset_name_max_size);
+    char f_charset_buf[zvar_charset_name_max_size+1];
     const char *f_charset = from_charset;
     int detected = 0;
 
-    zbuf_reset(result);
+    zbuf_reset_cpp(result);
 
     if (size < 1) {
         goto over;
@@ -221,9 +235,8 @@ void zcharset_convert_to_utf8(const char *from_charset, const char *data, int si
 
     if (ZEMPTY(f_charset)) {
         detected = 1;
-        zbuf_reset(f_charset_buf);
         if (zcharset_detect_cjk(data, size, f_charset_buf)) {
-            f_charset = zbuf_data(f_charset_buf);
+            f_charset = f_charset_buf;
         } else  {
             f_charset = "GB18030";
         }
@@ -231,27 +244,26 @@ void zcharset_convert_to_utf8(const char *from_charset, const char *data, int si
         f_charset = zcharset_correct_charset(f_charset);
     }
 
-    if (zcharset_convert(f_charset, data, size, "UTF-8", result, 0, -1, 0) > 0) {
+    if (zcharset_convert_cpp(f_charset, data, size, "UTF-8", result, 0, -1, 0) > 0) {
         goto over;
     }
 
     if(detected) {
-        zbuf_memcpy(result, data, size);
+        zbuf_memcpy_cpp(result, data, size);
         goto over;
     }
 
-    zbuf_reset(f_charset_buf);
     if (zcharset_detect_cjk(data, size, f_charset_buf)) {
-        f_charset = zbuf_data(f_charset_buf);
+        f_charset = f_charset_buf;
     } else  {
         f_charset = "GB18030";
     }
-    zbuf_reset(result);
-    if (zcharset_convert(f_charset, data, size, "UTF-8", result, 0, -1, 0) > 0) {
+    zbuf_reset_cpp(result);
+    if (zcharset_convert_cpp(f_charset, data, size, "UTF-8", result, 0, -1, 0) > 0) {
         goto over;
     }
 
-    zbuf_memcpy(result, data, size);
+    zbuf_memcpy_cpp(result, data, size);
 
 over:
     return;
