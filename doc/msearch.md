@@ -32,10 +32,12 @@ struct zmsearch_t {
 
 * 增加条目完毕, 之后不能再执行 zmsearch_add_token
 
-### int zmsearch_match(zmsearch_t *ms, const char *str, int len, int *offset);
+### int zmsearch_match(zmsearch_t *ms, const char *str, int len, const char **matched_ptr, int *matched_len);
 
 * 在长度为 len 的 str 中做多关键字搜索
-* 返回匹配的偏移(相对于 str), *offset 存储匹配的长度
+* 返回 &gt; 0: 匹配成功
+    * *matched_ptr 保存匹配的子字符串指针
+    * *matched_len 保存匹配的子字符串长度
 * 返回 0: 没搜索到
 * 返回 &lt; 0: 系统错误
 
@@ -98,13 +100,13 @@ zmsearch_add_over(ms);
 ### 第四步, 搜索
 
 ```
-int offset;
-int len = zmsearch_match(ms, "ABcXYZanotherKKKFSFSF", -1, &offset);
-/*
-应该是匹配成功了 "anotherKKK"
-返回 strlen("anotherKKK")
-offset 等于 6
-*/
+const char *str = "ABcXYZanotherKKKFSFSF";
+const char *result;
+int len;
+int ok = zmsearch_match(ms, "ABcXYZanotherKKKFSFSF", -1, &result, &len);
+/* 应该是匹配成功了 */
+/*    *result =  str + 6; */
+/*     len = strlen(str); */
 ```
 
 ### 第五步, 释放资源
@@ -124,8 +126,8 @@ zmsearch_t *ms = zmsearch_create_from_pathname("some_msearch_mmap_file.db");
 ### 第二步, 搜索
 
 ```
-int offset;
-int len = zmsearch_match(ms, "ABcXYZanotherKKKFSFSF", -1, &offset);
+/* (同搜索1) */
+
 ```
 
 ### 第三步, 释放资源

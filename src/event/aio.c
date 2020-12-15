@@ -1223,7 +1223,7 @@ zaio_t *zaio_create_by_fd(int fd, zaio_base_t *aiobase)
 {
     zaio_t *aio = (zaio_t *)calloc(1, sizeof(zaio_t));
     aio->fd = fd;
-    aio->aiobase = aiobase;
+    aio->aiobase = (aiobase?aiobase:zvar_default_aio_base);
     aio->ret = 1;
     aio->read_wait_timeout = -1;
     aio->write_wait_timeout = -1;
@@ -1272,7 +1272,7 @@ void zaio_rebind_aio_base(zaio_t *aio, zaio_base_t *aiobase)
     if ((!is_self) && (aio->in_base_context)) {
         zfatal("FATAL cannot operate the same zaio_t instance in another thread at the same time");
     }
-    aio->aiobase = aiobase;
+    aio->aiobase = (aiobase?aiobase:zvar_default_aio_base);
 }
 /* }}} */
 

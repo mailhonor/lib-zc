@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * www.mailhonor.com
+ * http://linuxmail.cn
  * 2016-01-15
  * ================================
  */
@@ -127,7 +127,61 @@ struct zcdb_builder_t {
     int count;
     int val_length_min;
     int val_length_max;
+    /* myfile */
+    char *_data;
+    int _capability;
+    int _size;
+    int _cursor;
+    char _error;
+    char _over;
 };
+
+static int _zcdb_builder_fseek(zcdb_builder_t *builder, int offset, int whence)
+{
+    int cursor;
+    if (whence == SEEK_SET) {
+        cursor = offset;
+    } else if (whence == SEEK_END) {
+        cursor = builder->_size - offset;
+    } else {
+        zfatal("unknown whence: %d", whence);
+    }
+    if (cursor > builder->_size) {
+        cursor = builder->_size;
+    }
+    if (cursor < 0) {
+        cursor = 0;
+    }
+    builder->_cursor = cursor;
+    return 0;
+}
+
+static int _zcdb_builder_fwrite(const void *ptr, int size, int nmemb, zcdb_builder_t *builder)
+{
+    if (builder->_error) {
+        return -1;
+    }
+    int need = size * nmemb;
+    while (1) {
+        if (builder->_capability - builder->_cursor > need) {
+            break;
+        }
+        builder->_capability *= 2;
+        builder->_data = (char *)zrealloc( builder->_data, builder->_capability + 10);
+    }
+    memcpy(builder->_data + builder->_cursor, ptr, need);
+    builder->_cursor += need;
+
+    if (builder->_cursor > builder->_size) {
+        builder->_size = builder->_cursor;
+    }
+    return nmemb;
+}
+
+static int _zcdb_builder_ftell(zcdb_builder_t *builder)
+{
+    return builder->_cursor;
+}
 
 int zvar_zcdb_max_key_len = 4096;
 zcdb_builder_t *zcdb_builder_create()
@@ -138,6 +192,13 @@ zcdb_builder_t *zcdb_builder_create()
     builder->count = 0;
     builder->val_length_min = 0;
     builder->val_length_max = 0;
+    /* myfile */
+    builder->_capability = 1024;
+    builder->_data = (char *)malloc(1024+10);
+    builder->_size = 0;
+    builder->_cursor = 0;
+    builder->_error = 0;
+    builder->_over = 0;
     return builder;
 }
 
@@ -149,6 +210,7 @@ void zcdb_builder_free(zcdb_builder_t *builder)
         }
     }
     zfree(builder->table_vector);
+    zfree(builder->_data);
     zfree(builder);
 }
 
@@ -188,16 +250,18 @@ void zcdb_builder_update(zcdb_builder_t *builder, const void *key, int klen, con
     builder->count += builder->table_vector[klen]->count;
 }
 
-int zcdb_builder_build(zcdb_builder_t *builder, const char *dest_db_pathname)
+zbool_t zcdb_builder_compile(zcdb_builder_t *builder)
 {
-    unsigned char intbuf[64+1];
-    FILE *fp = 0;
-    int val_length;
-
-    fp = fopen(dest_db_pathname, "w");
-    if (!fp) {
-        return 0;
+    if (builder->_error) {
+        return -1;
     }
+    if (builder->_over) {
+        return 1;
+    }
+    builder->_over = 1;
+
+    unsigned char intbuf[64+1];
+    int val_length;
 
     strcpy((char *)intbuf, "ZCDB");
     strcpy((char *)intbuf+4, zvar_cdb_code_version);
@@ -213,59 +277,59 @@ int zcdb_builder_build(zcdb_builder_t *builder, const char *dest_db_pathname)
     }
     zint_pack(builder->count, intbuf + 4 + 4);
 
-    if (fwrite(intbuf, 1, 24, fp) != 24) {
+    if (_zcdb_builder_fwrite(intbuf, 1, 24, builder) != 24) {
     }
 
     for (int tbi = 0; tbi <= builder->max_klen; tbi++) {
-        if (fwrite("\0\0\0\0", 1, 4, fp) != 4) {
+        if (_zcdb_builder_fwrite("\0\0\0\0", 1, 4, builder) != 4) {
         }
     }
 
     for (int tbi = 0; tbi <= builder->max_klen; tbi++) {
-        fseek(fp, 0, SEEK_END);
-        unsigned int offset1 = ftell(fp);
-        fseek(fp, 24 + 4*tbi, SEEK_SET);
+        _zcdb_builder_fseek(builder, 0, SEEK_END);
+        unsigned int offset1 = _zcdb_builder_ftell(builder);
+        _zcdb_builder_fseek(builder, 24 + 4*tbi, SEEK_SET);
         builder_table_t *ht = builder->table_vector[tbi];
         if (ht == 0) {
-            fwrite("\0\0\0\0", 1, 4, fp);
+            _zcdb_builder_fwrite("\0\0\0\0", 1, 4, builder);
             continue;
         }
         zint_pack(offset1, intbuf);
-        fwrite(intbuf, 1, 4, fp);
-        fseek(fp, 0, SEEK_END);
+        _zcdb_builder_fwrite(intbuf, 1, 4, builder);
+        _zcdb_builder_fseek(builder, 0, SEEK_END);
 
         zint_pack((unsigned int )ht->hash_node_size, intbuf);
-        fwrite(intbuf, 1, 4, fp);
-        offset1 = ftell(fp);
+        _zcdb_builder_fwrite(intbuf, 1, 4, builder);
+        offset1 = _zcdb_builder_ftell(builder);
         for (int hi = 0; hi < ht->hash_node_size; hi++) {
-            fwrite("\0\0\0\0", 1, 4, fp);
+            _zcdb_builder_fwrite("\0\0\0\0", 1, 4, builder);
         }
         for (int hi = 0; hi < ht->hash_node_size; hi++) {
-            fseek(fp, 0, SEEK_END);
-            unsigned int offset2 = ftell(fp);
-            fseek(fp, offset1 + 4*hi, SEEK_SET);
+            _zcdb_builder_fseek(builder, 0, SEEK_END);
+            unsigned int offset2 = _zcdb_builder_ftell(builder);
+            _zcdb_builder_fseek(builder, offset1 + 4*hi, SEEK_SET);
             builder_node_t *node = ht->hash_node_vector[hi];
             if (node== 0) {
-                fwrite("\0\0\0\0", 1, 4, fp);
+                _zcdb_builder_fwrite("\0\0\0\0", 1, 4, builder);
                 continue;
             }
             zint_pack(offset2, intbuf);
-            fwrite(intbuf, 1, 4, fp);
+            _zcdb_builder_fwrite(intbuf, 1, 4, builder);
 
-            fseek(fp, 0, SEEK_END);
+            _zcdb_builder_fseek(builder, 0, SEEK_END);
             int ncount = 0;
             for (node = ht->hash_node_vector[hi]; node;node=node->next) {
                 ncount++;
             }
             zint_pack(ncount, intbuf);
-            fwrite(intbuf, 1, 4, fp);
+            _zcdb_builder_fwrite(intbuf, 1, 4, builder);
             if (val_length == 536870912) {
-                unsigned int offset3 = ftell(fp);
+                unsigned int offset3 = _zcdb_builder_ftell(builder);
                 for (node = ht->hash_node_vector[hi]; node;node=node->next) {
                     if (tbi) {
-                        fwrite(zbuf_data(&(node->key)), 1, tbi, fp);
+                        _zcdb_builder_fwrite(zbuf_data(&(node->key)), 1, tbi, builder);
                     }
-                    fwrite("\0\0\0\0", 1, 4, fp);
+                    _zcdb_builder_fwrite("\0\0\0\0", 1, 4, builder);
                 }
                 int ni = 0;
                 for (node = ht->hash_node_vector[hi]; node;node=node->next, ni++) {
@@ -273,44 +337,63 @@ int zcdb_builder_build(zcdb_builder_t *builder, const char *dest_db_pathname)
                     if (vlen == 0) {
                         continue;
                     }
-                    fseek(fp, 0, SEEK_END);
-                    unsigned int offset4 = ftell(fp);
+                    _zcdb_builder_fseek(builder, 0, SEEK_END);
+                    unsigned int offset4 = _zcdb_builder_ftell(builder);
                     int slen = zcint_put(vlen, (char *)intbuf);
-                    fwrite(intbuf, 1, slen, fp);
-                    fwrite(zbuf_data(&(node->val)), 1, vlen, fp);
-                    fseek(fp, (offset3 + (tbi+4)*ni) + tbi, SEEK_SET);
+                    _zcdb_builder_fwrite(intbuf, 1, slen, builder);
+                    _zcdb_builder_fwrite(zbuf_data(&(node->val)), 1, vlen, builder);
+                    _zcdb_builder_fseek(builder, (offset3 + (tbi+4)*ni) + tbi, SEEK_SET);
                     zint_pack(offset4, intbuf);
-                    fwrite(intbuf, 1, 4, fp);
+                    _zcdb_builder_fwrite(intbuf, 1, 4, builder);
                 }
             } else {
                 for (node = ht->hash_node_vector[hi]; node;node=node->next) {
                     if (tbi) {
-                        fwrite(zbuf_data(&(node->key)), 1, tbi, fp);
+                        _zcdb_builder_fwrite(zbuf_data(&(node->key)), 1, tbi, builder);
                     }
                     if (val_length) {
-                        fwrite(zbuf_data(&(node->val)), 1, val_length, fp);
+                        _zcdb_builder_fwrite(zbuf_data(&(node->val)), 1, val_length, builder);
                     }
                 }
             }
         }
     }
 
-    fseek(fp, 0, SEEK_END);
-    unsigned dblen= ftell(fp);
-    fseek(fp, 8, SEEK_SET);
+    _zcdb_builder_fseek(builder, 0, SEEK_END);
+    unsigned dblen= _zcdb_builder_ftell(builder);
+    _zcdb_builder_fseek(builder, 8, SEEK_SET);
     zint_pack(dblen, intbuf);
-    fwrite(intbuf, 1, 4, fp);
+    _zcdb_builder_fwrite(intbuf, 1, 4, builder);
 
-    fseek(fp, 20, SEEK_SET);
+    _zcdb_builder_fseek(builder, 20, SEEK_SET);
     zint_pack(val_length, intbuf);
-    fwrite(intbuf, 1, 4, fp);
-    fflush(fp);
+    _zcdb_builder_fwrite(intbuf, 1, 4, builder);
 
-    if (ferror(fp)) {
-        fclose(fp);
+    if (builder->_error) {
         return -1;
     }
-    fclose(fp);
 
     return 1;
 }
+
+int zcdb_builder_build(zcdb_builder_t *builder, const char *dest_db_pathname)
+{
+    if (!zcdb_builder_compile(builder)) {
+        return -1;
+    }
+    if (zfile_put_contents(dest_db_pathname, builder->_data, builder->_size) < 1) {
+        return -1;
+    }
+    return 1;
+}
+
+const void *zcdb_builder_get_compiled_data(zcdb_builder_t *builder)
+{
+    return builder->_data;
+}
+
+int zcdb_builder_get_compiled_len(zcdb_builder_t *builder)
+{
+    return builder->_size;
+}
+

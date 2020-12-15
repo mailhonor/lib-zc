@@ -8,9 +8,11 @@
 
 #ifndef ___ZC_ZCC_MODE___
 #include "zc.h"
+#ifdef _LIB_ZC_UCONV_
 #include <ctype.h>
 #include <unicode/utypes.h>
 #include <unicode/ucnv.h>
+#endif
 #endif
 
 #ifdef _LIB_ZC_UCONV_
@@ -158,7 +160,7 @@ void charset_convert_use_uconv()
 }
 #endif
 
-#else
+#else /* ___ZC_ZCC_MODE___ */
 #include "zc.h"
 static void ___fatal_uconv()
 {

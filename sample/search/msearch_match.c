@@ -31,8 +31,7 @@ int main(int argc, char **argv)
         exit(1);
     }
     if (fread(buf, 1, 8, fp) != 8) {
-        printf("ERR read %s(%m)\n", listfn);
-        exit(1);
+        buf[0] = 0;
     }
     fclose(fp);
     if (!memcmp(buf, "ZMSH", 4)) {
@@ -54,14 +53,14 @@ int main(int argc, char **argv)
     zfile_get_contents_sample(textfn, con);
 
     int offset;
-    int len = zmsearch_match(ms, zbuf_data(con), zbuf_len(con), &offset);
+    const char *result;
+    int len = zmsearch_match(ms, zbuf_data(con), zbuf_len(con), &result, &offset);
     if (len < 1) {
         printf("NOT FOUND\n");
     } else {
-        char *found = zmemdupnull(zbuf_data(con) + offset, len);
         printf("FOUND:\n");
-        puts(found);
-        zfree(found);
+        fwrite(result, 1, offset, stdout);
+        printf("\n");
     }
 
     zbuf_free(con);

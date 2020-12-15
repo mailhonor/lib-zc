@@ -2873,7 +2873,7 @@ int zsqlite3_proxy_client_quick_fetch_one_row(zsqlite3_proxy_client_t *db, const
 
 /* 打开句柄 */
 zcdb_t *zcdb_open(const char *cdb_pathname);
-zcdb_t *zcdb_open2(const char *cdb_pathname, zbuf_t *error_msg);
+zcdb_t *zcdb_open_from_data(const void *data);
 void zcdb_close(zcdb_t *cdb);
 
 /* cdb成员个数 */
@@ -2902,6 +2902,11 @@ void zcdb_builder_update(zcdb_builder_t *builder, const void *key, int klen, con
 /* 生成zcddb文件, 保存(覆盖写)在 dest_db_pathname */
 int zcdb_builder_build(zcdb_builder_t *builder, const char *dest_db_pathname);
 
+zbool_t zcdb_builder_compile(zcdb_builder_t *builder);
+
+const void *zcdb_builder_get_compiled_data(zcdb_builder_t *builder);
+int zcdb_builder_get_compiled_len(zcdb_builder_t *builder);
+
 /* msearch ###################################################### */
 /* 多字符串匹配 */
 extern zbool_t zvar_msearch_error_msg;
@@ -2910,7 +2915,7 @@ zmsearch_t *zmsearch_create();
 void zmsearch_free(zmsearch_t *ms);
 void zmsearch_add_token(zmsearch_t *ms, const char *word, int len);
 void zmsearch_add_over(zmsearch_t *ms);
-int zmsearch_match(zmsearch_t *ms, const char *str, int len, int *offset);
+int zmsearch_match(zmsearch_t *ms, const char *str, int len, const char **matched_ptr, int *matched_len);
 int zmsearch_add_token_from_pathname(zmsearch_t *ms, const char *pathname);
 
 zmsearch_t *zmsearch_create_from_data(const void *data);
@@ -3004,6 +3009,7 @@ public:
     config &load_annother(config &another);
     config &debug_show();
     inline zconfig_t *c_config() { return cf_; }
+    bool get_bool(const char *key, bool default_val = false);
 private:
     zconfig_t *cf_;
     bool new_flag_;

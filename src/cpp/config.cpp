@@ -72,4 +72,9 @@ config &config::debug_show()
     return *this;
 }
 
+bool config::get_bool(const char *key, bool default_val)
+{
+    return (zconfig_get_bool(cf_, key, (default_val?1:0))?1:0);
+}
+
 }

@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * www.mailhonor.com
+ * http://linuxmail.cn
  * 2019-01-24
  * ================================
  */
@@ -16,13 +16,11 @@ int main(int argc, char **argv)
     }
     char *fn = argv[1];
     char *key = argv[2];
-    zbuf_t *error_msg = zbuf_create(128);
-    zcdb_t *cdb = zcdb_open2(fn, error_msg);
+    zcdb_t *cdb = zcdb_open(fn);
     if (!cdb) {
-        printf("ERR can not open zcdb %s, %s\n", fn, zbuf_data(error_msg));
+        printf("ERR can not open zcdb %s\n", fn);
         exit(1);
     }
-    zbuf_free(error_msg);
     char *val;
     int vlen;
     int ret = zcdb_find(cdb, key, -1, (void **)&val, &vlen);

@@ -327,7 +327,7 @@ void zmsearch_add_over(zmsearch_t *ms)
     zmsearch_add_over_finished(ms);
 }
 
-int zmsearch_match(zmsearch_t *ms, const char *str, int len, int *offset)
+int zmsearch_match(zmsearch_t *ms, const char *str, int len, const char **matched_ptr, int *matched_len)
 {
     if (len < 0) {
         len = strlen(str);
@@ -357,8 +357,8 @@ int zmsearch_match(zmsearch_t *ms, const char *str, int len, int *offset)
         if (plen < 1) {
             return 0;
         } 
-        if (offset) {
-            *offset = i;
+        if (matched_ptr) {
+            *matched_ptr = str + i;
         }
         firstch = a_data[ps[0]];
         if (firstch & 0X01) {
@@ -424,7 +424,10 @@ int zmsearch_match(zmsearch_t *ms, const char *str, int len, int *offset)
             } else {
                 int r = memcmp(ps, tdata, tlen);
                 if (r == 0) {
-                    return tlen;
+                    if (matched_len) {
+                        *matched_len = tlen;
+                    }
+                    return 1;
                 } else if (r < 0) {
                     edi = mdi;
                     continue;

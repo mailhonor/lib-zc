@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * www.mailhonor.com
+ * http://linuxmail.cn
  * 2016-01-15
  * ================================
  */
@@ -40,72 +40,78 @@
 
 struct zcdb_t {
     zmmap_reader_t reader;
+    char *data;
     int max_key_length;
     int val_length;
     int count;
+    char reader_used_flag;
 };
 
-zcdb_t *zcdb_open2(const char *cdb_pathname, zbuf_t *error_msg)
+static zbool_t _zcdb_open(zcdb_t *reader, const void *data)
 {
-    if (error_msg) {
-        zbuf_reset(error_msg);
-    }
-    zcdb_t *reader = (zcdb_t *)zcalloc(1, sizeof(zcdb_t));
-    if (zmmap_reader_init(&(reader->reader), cdb_pathname) < 1) {
-        zfree(reader);
-        if (error_msg) {
-            zbuf_printf_1024(error_msg, "can not open(%m)");
-        }
-        return 0;
-    }
-    char *data = reader->reader.data;
-    int len = reader->reader.len;
-    if (len < 12) {
-        if (error_msg) {
-            zbuf_printf_1024(error_msg, "data too short, data format error");
-        }
-        goto err;
-    }
     if (strncmp(data, "ZCDB", 4)) {
-        if (error_msg) {
-            zbuf_printf_1024(error_msg, "not zc-cdb file, data format error");
-        }
         goto err;
     }
     if (strncmp(data+4, zvar_cdb_code_version, 4)) {
-        if (error_msg) {
-            char buf[8];
+        if (1) {
+            char buf[5];
             memcpy(buf, data+4, 4);
             buf[4] = 0;
-            zbuf_printf_1024(error_msg, "version mismatch, code version:%s, data version:%s", zvar_cdb_code_version, buf);
+            zinfo("WARN zcdb version mismatch, code version:%s, data version:%s", zvar_cdb_code_version, buf);
         }
+        goto err;
+    }
+    reader->data = (char *)(void *)data;
+    reader->count = zint_unpack(data + 12);
+    reader->max_key_length = zint_unpack(data + 16);
+    reader->val_length = zint_unpack(data + 20);
+    return 1;
+err:
+    return 0;
+}
+
+
+zcdb_t *zcdb_open_from_data(const void *data)
+{
+    zcdb_t *reader = (zcdb_t *)zcalloc(1, sizeof(zcdb_t));
+    if (!_zcdb_open(reader, data)) {
+        zfree(reader);
+        reader = 0;
+    }
+    return reader;
+}
+
+zcdb_t *zcdb_open(const char *cdb_pathname)
+{
+    zcdb_t *reader = (zcdb_t *)zcalloc(1, sizeof(zcdb_t));
+    if (zmmap_reader_init(&(reader->reader), cdb_pathname) < 1) {
+        zfree(reader);
+        return 0;
+    }
+    reader->reader_used_flag = 1;
+    char *data = reader->reader.data;
+    int len = reader->reader.len;
+    if (len < 12) {
         goto err;
     }
     int file_len = zint_unpack(data+8);
     if (file_len > len) {
-        if (error_msg) {
-            zbuf_printf_1024(error_msg, "data short data format error");
-        }
         goto err;
     }
-    reader->count = zint_unpack(data + 12);
-    reader->max_key_length = zint_unpack(data + 16);
-    reader->val_length = zint_unpack(data + 20);
+    if (!_zcdb_open(reader, data)) {
+        goto err;
+    }
     return reader;
+
 err:
     zmmap_reader_fini(&(reader->reader));
     zfree(reader);
     return 0;
 }
 
-zcdb_t *zcdb_open(const char *cdb_pathname)
-{
-    return zcdb_open2(cdb_pathname, 0);
-}
-
 int zcdb_find(zcdb_t *cdb, const void *key, int klen, void **val, int *vlen)
 {
-    char *data_begin = cdb->reader.data, *data;
+    char *data_begin = cdb->data, *data;
     int offset, hash_vector_size, ncount;
     
     if (val) {
@@ -221,7 +227,9 @@ void zcdb_close(zcdb_t *cdb)
     if (!cdb) {
         return;
     }
-    zmmap_reader_fini(&(cdb->reader));
+    if (cdb->reader_used_flag) {
+        zmmap_reader_fini(&(cdb->reader));
+    }
     zfree(cdb);
 }
 
@@ -301,7 +309,7 @@ int zcdb_walker_walk(zcdb_walker_t *walker, void **key, int *klen, void **val, i
     }
 
     zcdb_t *cdb = walker->cdb;
-    char *data_begin = cdb->reader.data;
+    char *data_begin = cdb->data;
 
     if (walker->klen == -1) {
         walker->klen = 0;

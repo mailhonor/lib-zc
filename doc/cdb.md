@@ -23,10 +23,13 @@ struct zcdb_builder_t {
 
 ## 函数: 阅读器
 
-### zcdb_t *zcdb_open(const char *cdb_pathname);<BR />zcdb_t *zcdb_open2(const char *cdb_pathname, zbuf_t *error_msg);
+### zcdb_t *zcdb_open(const char *cdb_pathname);
 
-* 打开cdb文件 cdb_pathname
-* 返回 0: 失败, 失败原因存储到 error_msg
+* 打开cdb文件 cdb_pathname, mmap映射为 zcdb_t *
+* 返回 0: 失败
+
+### zcdb_t *zcdb_open_from_data(const void *data);
+* 映射为 zcdb_t *
 
 ### void zcdb_close(zcdb_t *cdb);
 
@@ -80,10 +83,22 @@ struct zcdb_builder_t {
 * 键为 key/klen
 * 值为 val/vlen 
 
+### zbool_t zcdb_builder_compile(zcdb_builder_t *builder);
+
+* 编译
+
 ### int zcdb_builder_build(zcdb_builder_t *builder, const char *dest_db_pathname);
 
-* 生成 cdb 文件
-* 保存(覆盖写)到文件 dest_db_pathname
+* 生成zcdb文件
+* 保存(覆盖写)在 dest_db_pathname
+
+### const void *zcdb_builder_get_compiled_data(zcdb_builder_t *builder);
+
+* 获取编译后数据
+
+### int zcdb_builder_get_compiled_len(zcdb_builder_t *builder);
+
+* 获取编译后数据长度
 
 ## 例子
 
