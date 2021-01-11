@@ -4,7 +4,7 @@ all: target
 
 -include ../../makefiles/defined.include
 
-CC ?= gcc
+GCC ?= gcc
 CPP ?= g++
 
 FLAGS := -std=gnu99 -ggdb -Wall -Winline -I../../ -O2 $(EXTRA_CFLAGS)
@@ -18,7 +18,7 @@ ALL_LIBS :=
 SRCS_C=$(wildcard *.c)
 DEST_C := $(SRCS_C:%.c=%)
 $(DEST_C):%:%.c
-	$(CC) $*.c -o $* $(CFLAGS) $($*_LIB) $(PREFIX_LIBS) ../../libzc.a $(SUFFIX_LIBS) $(LIB_$*) $(GLOBAL_LIBS)
+	$(GCC) $*.c -o $* $(CFLAGS) $($*_LIB) $(PREFIX_LIBS) ../../libzc.a $(SUFFIX_LIBS) $(LIB_$*) $(GLOBAL_LIBS)
 
 SRCS_CPP=$(wildcard *.cpp)
 DEST_CPP := $(SRCS_CPP:%.cpp=%)

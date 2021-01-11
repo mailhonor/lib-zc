@@ -1080,7 +1080,15 @@ static void zhttpd_request_data_do(zhttpd_t *httpd, zbuf_t *linebuf)
 }
 
 /* log */
-static const char *zhttpd_get_prefix_log_msg_default(zhttpd_t *httpd)
+zbuf_t *zhttpd_get_prefix_log_msg_buf(zhttpd_t *httpd)
+{
+    if (httpd->prefix_log_msg == 0) {
+        httpd->prefix_log_msg = zbuf_create(512);
+    }
+    return httpd->prefix_log_msg;
+}
+
+const char *zhttpd_get_prefix_log_msg_default(zhttpd_t *httpd)
 {
     if (httpd->prefix_log_msg == 0) {
         httpd->prefix_log_msg = zbuf_create(512);

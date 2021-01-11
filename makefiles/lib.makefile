@@ -3,8 +3,8 @@ all: libzc.a libzc_coroutine.a
 include OBJS_DEST/depend
 -include makefiles/defined.include
 
-CC ?= gcc
-CPP ?= g++
+GCC := gcc
+CPP := g++
 
 FLAGS := -fPIC -shared -Wall -Winline -I./ -O2 -g -ggdb -D___ZC_DEV_MODE___ $(EXTRA_CFLAGS)
 CFLAGS := -std=gnu99 $(FLAGS)
@@ -26,7 +26,7 @@ SRCS_ZCC := ${shell find src -type f -name "*.cpp"|grep -v "^src/coroutine/"}
 OBJS_ZCC := $(patsubst %.cpp, OBJS_DEST/%.o, $(SRCS_ZCC))
 
 $(OBJS_C):OBJS_DEST/%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(GCC) $(CFLAGS) -c $< -o $@
 
 $(OBJS_CPP):OBJS_DEST/%.o: %.cpp
 	$(CPP) $(CPPFLAGS) -c $< -o $@

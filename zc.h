@@ -317,6 +317,7 @@ zinline void zbuf_append(zbuf_t *bf, zbuf_t *bf2) { return zbuf_memcat(bf, zbuf_
 
 /* zbuf_printf_1024 意思 { char buf[1024+1], snprintf(buf, 1024, format, ...); zbuf_cat(bf, buf); } */
 void zbuf_printf_1024(zbuf_t *bf, const char *format, ...);
+void zbuf_vprintf_1024(zbuf_t *bf, const char *format, va_list ap);
 
 /* 删除右侧的\r\n */
 void zbuf_trim_right_rn(zbuf_t *bf);
@@ -2839,8 +2840,10 @@ void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *pathname, const 
 void zhttpd_response_file_data(zhttpd_t *httpd, const void *data, long size, const char *content_type, int max_age, long mtime, const char *etag, zbool_t is_gzip);
 
 /* 日志 */
-#define zhttpd_show_log(httpd, fmt, args...) { zinfo("%s "fmt, zhttpd_get_prefix_log_msg(httpd), ##args) }
+#define zhttpd_show_log(httpd, fmt, args...) { zinfo("%s " fmt, zhttpd_get_prefix_log_msg(httpd), ##args) }
 extern const char *(*zhttpd_get_prefix_log_msg)(zhttpd_t *httpd);
+const char *zhttpd_get_prefix_log_msg_default(zhttpd_t *httpd);
+zbuf_t *zhttpd_get_prefix_log_msg_buf(zhttpd_t *httpd);
 
 /* sqlite3 ################################################## */
 /* zsqlite3_proxd based on zaio_server */
@@ -2941,12 +2944,15 @@ int zmsearch_build(zmsearch_t *ms, const char *dest_db_pathname);
 }
 #endif
 
+#pragma pack(pop)
+
 /* ################################################################## */
 /* CPP */
 /* ################################################################## */
 #ifdef  __cplusplus
 #include <string>
 #include <vector>
+#pragma pack(push, 4)
 namespace zcc
 {
 
@@ -3032,9 +3038,8 @@ int charset_uconv(const char *from_charset, const char *src, int src_len, const 
 void charset_convert_to_utf8(const char *from_charset, const char *data, int size, std::string &result);
 
 } /* namespace zcc */
-#endif /* __cplusplus */
-
 #pragma pack(pop)
+#endif /* __cplusplus */
 
 #ifdef ___ZC_DEV_MODE___
 #include "src/cpp/cpp_dev.h"

@@ -218,6 +218,15 @@ void zbuf_printf_1024(zbuf_t *bf, const char *format, ...)
     zbuf_memcat(bf, buf, len);
 }
 
+void zbuf_vprintf_1024(zbuf_t *bf, const char *format, va_list ap)
+{
+    char buf[1024+1];
+    int len;
+    len = vsnprintf(buf, 1024, format, ap);
+    len = ((len<1024)?len:(1024-1));
+    zbuf_memcat(bf, buf, len);
+}
+
 void zbuf_trim_right_rn(zbuf_t *bf)
 {
     unsigned char *data = (unsigned char *)(bf->data);

@@ -7,9 +7,11 @@
  */
 
 #include "zc.h"
+#ifdef _LIB_ZC_UCONV_
 #include <ctype.h>
 #include <unicode/utypes.h>
 #include <unicode/ucnv.h>
+#endif
 
 namespace zcc
 {
