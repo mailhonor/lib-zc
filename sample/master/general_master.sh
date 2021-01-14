@@ -46,9 +46,13 @@ case $subcmd in
 			cmdrun=" $cmdrun -server-log $server_log"
 		}
 		$cmdrun &
+		$master_cmd -sleep 100
 		$master_cmd -pid-file $pid_file --try-lock 2>/dev/null && {
-			$INFO "starting the system ERROR"
-			exit 1
+			$master_cmd -sleep 1000
+			$master_cmd -pid-file $pid_file --try-lock 2>/dev/null && {
+				$INFO "starting the system ERROR"
+				exit 1
+			}
 		}
 		$INFO starting the system OK
 		;;

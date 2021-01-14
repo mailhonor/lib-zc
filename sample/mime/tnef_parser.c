@@ -63,6 +63,9 @@ static void do_parse(char *eml_fn)
         printf("ERR open %s (%m)\n", eml_fn);
         exit(1);
     }
+
+    printf("\n");
+    printf("fn: %s\n", eml_fn);
     ztnef_debug_show(parser);
 
     if (enable_att) {

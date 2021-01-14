@@ -24,6 +24,7 @@ struct ztnef_mime_t {
     char *body_data2;
     ztnef_t *parser;
     unsigned char is_att:1;
+    unsigned char is_szMAPI_UNICODE_STRING:1;
 };
 
 typedef struct ztnef_reader_t ztnef_reader_t;
@@ -85,7 +86,10 @@ static void ztnef_mime_get_filename_utf8_deal(ztnef_mime_t *mime)
     }
     int len = strlen(mime->filename);
     zbuf_t *result = zbuf_create(len*2+1);
-    char *charset = mime->parser->charset;
+    const char *charset = mime->parser->charset;
+    if (mime->is_szMAPI_UNICODE_STRING) {
+        charset = "UTF-8";
+    }
     if (zempty(charset)) {
         charset = mime->parser->src_charset_def;
     }
@@ -868,7 +872,7 @@ static char *tnef_unicode_to_utf8 (int type, char *_buf, int len)
     int i = 0;
     int j = 0;
     unsigned char *buf = (unsigned char *)_buf;
-    unsigned char *utf8 = (unsigned char *)malloc (3 * len/2 + 1); /* won't get any longer than this */
+    unsigned char *utf8 = (unsigned char *)zmalloc (3 * len/2 + 1); /* won't get any longer than this */
 
     if (len > 0) {
         for (i = 0; i < len - 1; i += 2) {
@@ -1167,6 +1171,10 @@ static int tnef_decode_extract_mapi_attrs(ztnef_t *parser, ztnef_reader_t *reade
                     case MAPI_ATTACH_LONG_FILENAME:
                         zfree(m->filename);
                         m->filename = zmail_clear_null_inner(tnef_unicode_to_utf8(type, vdata, vlen), -1);
+                        m->is_szMAPI_UNICODE_STRING = 0;
+                        if (type == szMAPI_UNICODE_STRING){
+                            m->is_szMAPI_UNICODE_STRING = 1;
+                        }
                         break;
                     case MAPI_ATTACH_DATA_OBJ:
                         m->body_data = vdata;
@@ -1216,6 +1224,10 @@ static int tnef_decode_attachment(ztnef_t *parser, ztnef_reader_t *reader, tnef_
             m = (ztnef_mime_t *)(zvector_data(parser->all_mimes)[zvector_len(parser->all_mimes)-1]);
             zfree(m->filename);
             m->filename = tnef_unicode_to_utf8(attr->type, attr->val, attr->vlen);
+            m->is_szMAPI_UNICODE_STRING = 0;
+            if (attr->type == szMAPI_UNICODE_STRING){
+                m->is_szMAPI_UNICODE_STRING = 1;
+            }
         }
         break;
     case attATTACHDATA:
