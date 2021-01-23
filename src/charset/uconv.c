@@ -147,14 +147,17 @@ over:
     return ret;
 }
 
+extern int zvar_charset_uconv_mode;
 #ifndef ___ZC_ZCC_MODE___
 void zcharset_convert_use_uconv()
 {
+    zvar_charset_uconv_mode = 1;
     zcharset_convert = zcharset_uconv;
 }
 #else
 void charset_convert_use_uconv()
 {
+    zvar_charset_uconv_mode = 1;
     charset_convert = charset_uconv;
     zcharset_convert = zcharset_uconv;
 }

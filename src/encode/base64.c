@@ -12,7 +12,7 @@
 
 static const char b64enc[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-static const unsigned char b64dec[256] = {
+const unsigned char zvar_base64_decode_table[256] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* 0-7 */
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* 8-15 */
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* 16-23 */
@@ -137,7 +137,7 @@ retry:
         ___get_next_ch(c1, 0);
         ___get_next_ch(c2, 1);
         ___get_next_ch(c3, 1);
-        input[0] = b64dec[c0];
+        input[0] = zvar_base64_decode_table[c0];
         if (input[0] == 0xff) {
 #if 0
             illegal = 1;
@@ -145,7 +145,7 @@ retry:
             break;
         }
 
-        input[1] = b64dec[c1];
+        input[1] = zvar_base64_decode_table[c1];
         if (input[1] == 0xff) {
 #if 0
             illegal = 1;
@@ -154,7 +154,7 @@ retry:
         }
         output[0] = (input[0] << 2) | (input[1] >> 4);
 
-        input[2] = b64dec[c2];
+        input[2] = zvar_base64_decode_table[c2];
         if (input[2] == 0xff) {
             if (c2 != '=' || c3 != '=') {
 #if 0
@@ -168,7 +168,7 @@ retry:
         }
 
         output[1] = (input[1] << 4) | (input[2] >> 2);
-        input[3] = b64dec[c3];
+        input[3] = zvar_base64_decode_table[c3];
         if (input[3] == 0xff) {
             if (c3 != '=') {
 #if 0
@@ -211,7 +211,7 @@ int zbase64_decode_get_valid_len(const void *src, int src_size)
         if ((ch == '\r') || (ch == '\n') || (ch == '=')) {
             continue;
         }
-        if (b64dec[ch] == 0xff) {
+        if (zvar_base64_decode_table[ch] == 0xff) {
             return i;
         }
     }

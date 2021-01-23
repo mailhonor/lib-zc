@@ -71,6 +71,61 @@ static inline __attribute__((always_inline)) unsigned long chinese_word_score(un
     return 0;
 }
 
+extern const unsigned char zvar_base64_decode_table[256];
+static void _check_info(unsigned char *str, int len, int *is_7bit, int *is_maybe_utf7)
+{
+    int i = 0, c, have_plus = 0;
+    int plus_count = 0, plus_error = 0;
+    for (; i < len; i++) {
+        c = str[i];
+        if (c & 0X80) {
+            return;
+        }
+        if (c == '+') {
+            if (have_plus == 0) {
+                plus_error = 1;
+            }
+            have_plus = 1;
+            continue;
+        }
+        if (c == '-') {
+            if (have_plus) {
+                plus_count++;
+            }
+            have_plus = 0;
+            continue;
+        }
+        if (c == '\n') {
+            if (have_plus) {
+                plus_count++;
+            }
+            have_plus = 0;
+            continue;
+        }
+        if (c == '\r') {
+            continue;
+        }
+        if (have_plus == 1) {
+            if (zvar_base64_decode_table[c] == 0XFF) {
+                break;
+            }
+        }
+    }
+
+    for (; i < len; i++) {
+        c = str[i];
+        if (c & 0X80) {
+            break;
+        }
+    }
+    if (i == len) {
+        *is_7bit = 1;
+        if ((plus_count > 0) && (plus_error < 1)) {
+            *is_maybe_utf7 = 1;
+        }
+    }
+}
+
 static double chinese_get_score(const char *fromcode, char *str, int len, int omit_invalid_bytes_count)
 {
     int i = 0, ulen;
@@ -86,11 +141,11 @@ static double chinese_get_score(const char *fromcode, char *str, int len, int om
         i += ulen;
     }
 
+    mydebug("        # %-20s, score:%lu, count:%lu, omit:%d" , fromcode, score, count, omit_invalid_bytes_count);
     if (count == 0) {
         return 0;
     }
 
-    mydebug("        # %-20s, score:%lu, count:%lu, omit:%d" , fromcode, score, count, omit_invalid_bytes_count);
     return ((double)score / (count + omit_invalid_bytes_count));
 }
 
@@ -103,6 +158,7 @@ char *zcharset_detect(const char **charset_list, const char *data, int size, cha
     double result_score, max_score;
     zbuf_t *out_bf = zbuf_create(1024);
     int converted_len, omit_invalid_bytes_count;
+    int is_7bit = 0, is_maybe_utf7 = 0;
 
     list_len = 0;
     len_to_use = (size>4096?4096:size);
@@ -114,10 +170,22 @@ char *zcharset_detect(const char **charset_list, const char *data, int size, cha
         list_len = 1000;
     }
 
+    _check_info((unsigned char *)(void *)data, size, &is_7bit, &is_maybe_utf7);
+
+    if (is_7bit) {
+        if (is_maybe_utf7 == 0) {
+            mydebug("        # %-20s, ASCII, NOT UTF-7", "");
+            strcpy(charset_result, "ASCII");
+            return charset_result;
+        }
+        mydebug("        # %-20s, ASCII, MAYBE UTF-7, continue", "");
+    }
+
     max_score = 0;
     max_i = -1;
     mydebug("###########");
     for (i = 0; i < list_len; i++) {
+        ret = 0;
         result_score = 0;
         fromcode = charset_list[i];
 
@@ -131,6 +199,7 @@ char *zcharset_detect(const char **charset_list, const char *data, int size, cha
             continue;
         }
         if (converted_len < 1) {
+            mydebug("        # %-20s, converted_len < 1", fromcode);
             continue;
         }
         result_score = chinese_get_score(fromcode, zbuf_data(out_bf), ret, omit_invalid_bytes_count);

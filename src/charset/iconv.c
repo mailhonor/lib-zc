@@ -12,6 +12,7 @@
 #include <iconv.h>
 #include <errno.h>
 int zvar_charset_debug = 0;
+int zvar_charset_uconv_mode = 0;
 #else
 #endif
 
