@@ -156,7 +156,6 @@ char *zcharset_detect(const char **charset_list, const char *data, int size, cha
     const char **csp, *fromcode;
     int len_to_use, list_len;
     double result_score, max_score;
-    zbuf_t *out_bf = zbuf_create(1024);
     int converted_len, omit_invalid_bytes_count;
     int is_7bit = 0, is_maybe_utf7 = 0;
 
@@ -181,6 +180,7 @@ char *zcharset_detect(const char **charset_list, const char *data, int size, cha
         mydebug("        # %-20s, ASCII, MAYBE UTF-7, continue", "");
     }
 
+    zbuf_t *out_bf = zbuf_create(1024);
     max_score = 0;
     max_i = -1;
     mydebug("###########");
