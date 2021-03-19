@@ -90,6 +90,8 @@ int zhttpd_uploaded_file_get_data(zhttpd_uploaded_file_t *fo, zbuf_t *data)
 }
 
 static void zhttpd_response_200_default(zhttpd_t *httpd, const char *data, int size);
+static void zhttpd_response_301_default(zhttpd_t *httpd, const char *url);
+static void zhttpd_response_302_default(zhttpd_t *httpd, const char *url);
 static void zhttpd_response_304_default(zhttpd_t *httpd, const char *etag);
 static void zhttpd_response_404_default(zhttpd_t *httpd);
 static void zhttpd_response_500_default(zhttpd_t *httpd);
@@ -134,6 +136,8 @@ zhttpd_t * _zhttpd_malloc_struct_general()
     httpd->tmp_path_for_post = zblank_buffer;
     httpd->gzip_file_suffix[0] = 0;
 
+    httpd->handler_301 = zhttpd_response_301_default;
+    httpd->handler_302 = zhttpd_response_302_default;
     httpd->handler_304 = zhttpd_response_304_default;
     httpd->handler_404 = zhttpd_response_404_default;
     httpd->handler_500 = zhttpd_response_500_default;
@@ -387,6 +391,16 @@ const zvector_t *zhttpd_request_get_uploaded_files(zhttpd_t *httpd)
 }
 
 /* response completely */
+void zhttpd_set_301_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *url))
+{
+    httpd->handler_301 = (handler?handler:zhttpd_response_301_default);
+}
+
+void zhttpd_set_302_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *url))
+{
+    httpd->handler_302 = (handler?handler:zhttpd_response_302_default);
+}
+
 void zhttpd_set_304_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *etag))
 {
     httpd->handler_304 = (handler?handler:zhttpd_response_304_default);
@@ -432,6 +446,42 @@ static void zhttpd_response_200_default(zhttpd_t *httpd, const char *data, int s
 void zhttpd_response_200(zhttpd_t *httpd, const char *data, int size)
 {
     httpd->handler_200(httpd, data, size);
+}
+
+static void zhttpd_response_301_default(zhttpd_t *httpd, const char *url)
+{
+    zhttpd_show_log(httpd, "301 -");
+    zstream_puts_const(httpd->fp, "HTTP/1.1 301 Moved Permanently\r\nContent-Length: 0\r\nServer: LIBZC HTTPD\r\nLocation: ");
+    zstream_puts(httpd->fp, url);
+    zstream_write(httpd->fp, "\r\n", 2);
+    if (httpd->request_keep_alive) {
+        zstream_puts_const(httpd->fp, "Connection: keep-alive\r\n");
+    }
+    zstream_write(httpd->fp, "\r\n", 2);
+    zhttpd_response_flush(httpd);
+}
+
+void zhttpd_response_301(zhttpd_t *httpd, const char *url)
+{
+    httpd->handler_301(httpd, url);
+}
+
+static void zhttpd_response_302_default(zhttpd_t *httpd, const char *url)
+{
+    zhttpd_show_log(httpd, "302 -");
+    zstream_puts_const(httpd->fp, "HTTP/1.1 302 Moved Temporarily\r\nContent-Length: 0\r\nServer: LIBZC HTTPD\r\nLocation: ");
+    zstream_puts(httpd->fp, url);
+    zstream_write(httpd->fp, "\r\n", 2);
+    if (httpd->request_keep_alive) {
+        zstream_puts_const(httpd->fp, "Connection: keep-alive\r\n");
+    }
+    zstream_write(httpd->fp, "\r\n", 2);
+    zhttpd_response_flush(httpd);
+}
+
+void zhttpd_response_302(zhttpd_t *httpd, const char *url)
+{
+    httpd->handler_302(httpd, url);
 }
 
 static void zhttpd_response_304_default(zhttpd_t *httpd, const char *etag)

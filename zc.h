@@ -54,6 +54,7 @@ typedef struct zdict_t zdict_t;
 typedef struct zmap_node_t zmap_node_t;
 typedef struct zmap_t zmap_t;
 typedef struct zmpool_t zmpool_t;
+typedef struct zmqueue_t zmqueue_t;
 typedef struct zstream_t zstream_t;
 #define zconfig_t zdict_t
 typedef struct zmmap_reader_t zmmap_reader_t;
@@ -74,6 +75,7 @@ typedef struct zcdb_t zcdb_t;
 typedef struct zcdb_walker_t zcdb_walker_t;
 typedef struct zcdb_builder_t zcdb_builder_t;
 typedef struct zmsearch_t zmsearch_t;
+typedef struct zpthread_pool_t zpthread_pool_t;
 
 #define zinline inline __attribute__((always_inline))
 
@@ -1080,6 +1082,13 @@ void *zmpool_memdup(zmpool_t * mp, const void *ptr, int n);
 void *zmpool_memdupnull(zmpool_t * mp, const void *ptr, int n);
 void zmpool_reset(zmpool_t * mp);
 
+/* 内存 queue */
+zmqueue_t *zmqueue_create(int element_size, int element_count_per_queue);
+void zmqueue_free(zmqueue_t *mq);
+void *zmqueue_require_and_push(zmqueue_t *mq);
+void zmqueue_release_and_shift(zmqueue_t *mq);
+void *zmqueue_get_head(zmqueue_t *mq);
+
 /* encode/decode, src/encode/ ###################################### */
 /* 请注意, src_size < 0, 则 src_size = strlen(src) */
 /* 函数内部重置 str, zbuf_reset(str) */
@@ -1183,6 +1192,28 @@ void zconfig_get_size_table(zconfig_t *cf, zconfig_size_table_t *table);
     for (___nd = zdict_first(cf);___nd;___nd=zdict_next(___nd)) { \
         key = zdict_node_key(___nd); value = zdict_node_value(___nd); {
 #define ZCONFIG_WALK_END }}}
+
+/* system ######################################################### */
+long zgettid(void);
+
+/* pthread pool ################################################### */
+zpthread_pool_t *zpthread_pool_create();
+void zpthread_pool_free(zpthread_pool_t *ptp);
+void zpthread_pool_set_debug_flag(zpthread_pool_t *ptp, zbool_t flag);
+void zpthread_pool_set_min_max_count(zpthread_pool_t *ptp, int min, int max);
+void zpthread_pool_set_idle_timeout(zpthread_pool_t *ptp, int timeout);
+int zpthread_pool_get_current_count(zpthread_pool_t *ptp);
+int zpthread_pool_get_queue_length(zpthread_pool_t *ptp);
+void zpthread_pool_set_pthread_init_handler(zpthread_pool_t *ptp, void (*pthread_init_handler)(zpthread_pool_t *ptp));
+void zpthread_pool_set_pthread_fini_handler(zpthread_pool_t *ptp, void (*pthread_fini_handler)(zpthread_pool_t *ptp));
+void zpthread_pool_set_context(zpthread_pool_t *ptp, void *ctx);
+void *zpthread_pool_get_context(zpthread_pool_t *ptp);
+zpthread_pool_t *zpthread_pool_get_current_zpthread_pool();
+void zpthread_pool_soft_stop(zpthread_pool_t *ptp);
+void zpthread_pool_wait_all_stopped(zpthread_pool_t *ptp, int max_second);
+void zpthread_pool_start(zpthread_pool_t *ptp);
+void zpthread_pool_job(zpthread_pool_t *ptp, void (*callback)(void *ctx), void *ctx);
+void zpthread_pool_timer(zpthread_pool_t *ptp, void (*callback)(void *ctx), void *ctx, int timeout);
 
 /* io ############################################################# */
 /* -1: 出错  0: 不可读写, 1: 可读写或socket异常  */
@@ -1369,7 +1400,9 @@ zinline char * zstream_get_read_cache(zstream_t *fp) { return (char *)((fp)->rea
 zinline int zstream_get_write_cache_len(zstream_t *fp) { return ((fp)->write_buf_len); }
 
 /* 写缓存的指针 */
-zinline char * zstream_get_write_cache(zstream_t *fp) { return (char *)((fp)->write_buf); }
+zinline char * zstream_get_write_cache(zstream_t *fp) {
+    fp->write_buf[fp->write_buf_len] = 0; return (char *)((fp)->write_buf);
+}
 
 /* 基于文件描述符fd创建stream */
 zstream_t *zstream_open_fd(int fd);
@@ -2766,6 +2799,8 @@ const zvector_t *zhttpd_request_get_uploaded_files(zhttpd_t *httpd); /* zhttpd_u
 
 /* 快速回复 */
 void zhttpd_response_200(zhttpd_t *httpd, const char *data, int size);
+void zhttpd_response_301(zhttpd_t *httpd, const char *url);
+void zhttpd_response_302(zhttpd_t *httpd, const char *url);
 void zhttpd_response_304(zhttpd_t *httpd, const char *etag);
 void zhttpd_response_404(zhttpd_t *httpd);
 void zhttpd_response_500(zhttpd_t *httpd);
@@ -2773,6 +2808,8 @@ void zhttpd_response_501(zhttpd_t *httpd);
 
 /* 设置 默认handler */
 void zhttpd_set_200_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *data, int size));
+void zhttpd_set_301_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *url));
+void zhttpd_set_302_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *url));
 void zhttpd_set_304_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *etag));
 void zhttpd_set_404_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
 void zhttpd_set_500_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));

@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2015-12-04
  * ================================
  */
@@ -187,7 +187,7 @@ int zmmap_reader_init(zmmap_reader_t * reader, const char *pathname)
 
 int zmmap_reader_fini(zmmap_reader_t * reader)
 {
-    munmap(reader->data, reader->len);
+    munmap(reader->data, reader->len + 1);
     close(reader->fd);
 
     return 0;

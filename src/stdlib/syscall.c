@@ -372,5 +372,19 @@ int zsyscall_lutimes(const char *filename, const struct timeval tv[2])
 {
     return syscall(__NR_lutimes, filename, tv);
 }
+#else
+#include <unistd.h>
+#include <sys/syscall.h>
+
+long zgettid(void)
+{
+#ifdef __NR_gettid
+    return syscall(__NR_gettid);
+#else
+    errno = ENOSYS;
+    return -1;
+#endif
+}
+
 #endif
 

@@ -2,6 +2,7 @@ ${shell mkdir -p uploaded_files; }
 DELS=uploaded_files
 
 LIB_coroutine_httpd = ../../libzc_coroutine.a -lssl -lcrypto -lz -lpthread -ldl
+LIB_explore_httpd = ../../libzc_coroutine.a -lssl -lcrypto -lz -lpthread -ldl
 LIB_no_ssl_coroutine_httpd = ../../libzc_coroutine.a -lpthread -ldl
 LIB_general_coroutine_server_httpd = ../../libzc_coroutine.a -lssl -lcrypto -lz -lpthread -ldl
 

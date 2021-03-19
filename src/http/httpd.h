@@ -62,6 +62,8 @@ struct zhttpd_t {
     int max_length_for_post;
     char *tmp_path_for_post;
     char gzip_file_suffix[8];
+    void (*handler_301)(zhttpd_t * httpd, const char *url);
+    void (*handler_302)(zhttpd_t * httpd, const char *url);
     void (*handler_304)(zhttpd_t * httpd, const char *etag);
     void (*handler_404)(zhttpd_t * httpd);
     void (*handler_500)(zhttpd_t * httpd);
