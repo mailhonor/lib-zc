@@ -130,6 +130,7 @@ struct zaio_t {
     unsigned char is_delimiter_checked:1;
     unsigned char is_ssl_error_or_closed:1;
     unsigned char is_cint_want_data:1;
+    unsigned char is_once_timer:1;
     unsigned char old_input_events:3;
     char delimiter;
     int ret;
@@ -1178,6 +1179,34 @@ void zaio_sleep(zaio_t *aio, void (*callback)(zaio_t *aio), int timeout)
     aio->callback = callback;
 
     _zaio_enter_incoming(aio);
+}
+/* }}} */
+
+/* {{{ timer */
+typedef struct _zaio_timer_t _zaio_timer_t;
+struct _zaio_timer_t{
+    void (*callback)(void *);
+    void *ctx;
+};
+static void _zaio_timer_callback(zaio_t *aio)
+{
+    _zaio_timer_t *at = (_zaio_timer_t *)zaio_get_context(aio);
+    zaio_free(aio, 1);
+    at->callback(at->ctx);
+    zfree(at);
+}
+
+void zaio_base_timer(zaio_base_t *eb, void (*callback)(void *ctx), void *ctx, int timeout)
+{
+    if (!callback) {
+        return;
+    }
+    zaio_t *aio = zaio_create(-1, eb);
+    _zaio_timer_t *at = (_zaio_timer_t *)zcalloc(1, sizeof(_zaio_timer_t));
+    at->callback = callback;
+    at->ctx = ctx;
+    zaio_set_context(aio, at);
+    zaio_sleep(aio, _zaio_timer_callback, timeout);
 }
 /* }}} */
 

@@ -43,6 +43,7 @@ struct zpthread_pool_t {
     int soft_stop_flag:2;
     int start_flag:2;
     int first_worker_flag:2;
+    int timeout_flag:2;
     int debug_flag:2;
 };
 
@@ -50,7 +51,7 @@ typedef struct _pthread_node_t _pthread_node_t;
 struct _pthread_node_t {
     zpthread_pool_t *ptp;
     int first_worker_flag:2;
-    int idle_flag:2;
+    int timeout_flag:2;
     int enter_flag_for_idle:2;
 };
 
@@ -90,6 +91,14 @@ void zpthread_pool_free(zpthread_pool_t *ptp)
         return;
     }
     zmqueue_free(ptp->data_node_queue);
+    if (zvar_memleak_check) {
+        zrbtree_node_t *rn;
+        while((rn = zrbtree_first(&(ptp->timeout_tree)))) {
+            zrbtree_detach(&(ptp->timeout_tree), rn);
+            _timeout_node_t *tn = ZCONTAINER_OF(rn, _timeout_node_t, rbnode_time);
+            zfree(tn);
+        }
+    }
     zfree(ptp);
 }
 
@@ -237,10 +246,14 @@ static void _pool_worker_run_fini(_pthread_node_t *ptn)
     if (ptp->pthread_fini_handler) {
         ptp->pthread_fini_handler(ptn->ptp);
     }
+    int timeout_flag = ptn->timeout_flag;
     zfree(ptn);
     POOL_INNER_LOCK();
     ptp->idle_count--;
     ptp->current_count--;
+    if (timeout_flag) {
+        ptp->timeout_flag = 0;
+    }
     POOL_DEBUG_STATUS("_pool_worker_run_fini");
     POOL_INNER_UNLOCK();
 }
@@ -315,12 +328,16 @@ static zbool_t _pool_worker_run_get(_pthread_node_t *ptn, _data_node_t *dnode)
             timedwait.tv_sec = time(0) + 1;
             timedwait.tv_nsec = 0;
         }
-        if (ptn->first_worker_flag == 0) {
-            if (ptp->min_count != ptp->max_count) {
-                if (timedwait.tv_sec - curstamp > ptp->idle_timeout + 1) {
-                    ptn->idle_flag = 1;
-                    POOL_DEBUG_STATUS("worker idle timeout");
-                    break;
+        if (ptp->timeout_flag == 0) {
+            if (ptn->first_worker_flag == 0) {
+                if (ptp->min_count != ptp->max_count) {
+                    if (ptp->current_count > ptp->min_count ) {
+                        if (timedwait.tv_sec - curstamp > ptp->idle_timeout + 1) {
+                            ptn->timeout_flag = 1;
+                            POOL_DEBUG_STATUS("worker idle timeout");
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -370,7 +387,7 @@ static void *_pool_worker_run(void *arg)
     _pthread_node_t *ptn = _pool_worker_run_init(ptp);
     _data_node_t dnode = { 0 };
     POOL_DEBUG_STATUS("worker start");
-    while ((!zvar_sigint_flag) && (!(ptp->soft_stop_flag) && (!(ptn->idle_flag)))) {
+    while ((!zvar_sigint_flag) && (!(ptp->soft_stop_flag) && (!(ptn->timeout_flag)))) {
         if (!_pool_worker_run_get(ptn, &dnode)) {
             continue;
         }

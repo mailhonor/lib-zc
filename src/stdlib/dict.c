@@ -241,6 +241,9 @@ void zdict_debug_show(const zdict_t * dict)
 char *zdict_get_str(const zdict_t * dict, const char *name, const char *def)
 {
     zbuf_t *str_val;
+    if (!dict) {
+        return (char *)(void *)def;
+    }
     if (!zdict_find(dict, name, &str_val)) {
         return (char *)(void *)def;
     }

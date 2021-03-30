@@ -11,7 +11,7 @@
 #define _MAX_LINE_SIZE  4096
 
 #define _CODE_ID        "ZMSH"
-#define _CODE_VERSION   "0001"
+#define _CODE_VERSION   "\x00\x01\x00\x01"
 
 zbool_t zvar_msearch_error_msg = 0;
 

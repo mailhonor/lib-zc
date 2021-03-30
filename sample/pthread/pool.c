@@ -54,6 +54,8 @@ int main(int argc, char **argv)
     zsleep(10 + 1);
     printf("wait idle pthread quit\n");
     zsleep(10 + 1);
+    printf("soft stop\n");
+    zsleep(1 + 1);
     zpthread_pool_soft_stop(ptp);
     zpthread_pool_wait_all_stopped(ptp, 2);
     zpthread_pool_free(ptp);

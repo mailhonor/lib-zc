@@ -126,16 +126,15 @@ void zmain_argument_run(int argc, char **argv, unsigned int (*self_argument_fn)(
     zsignal_ignore(SIGPIPE);
 }
 
-
 static zvector_t *___funcs_vec = 0;
-void ___before_exit(void)
+static void ___before_exit(void)
 {
-    ZVECTOR_WALK_BEGIN(___funcs_vec, void *, w) {
-        void (*f)() = (void *)w;
+    for (int i = ___funcs_vec->len - 1; i > -1; i--) {
+        void (*f)() = (void *)(___funcs_vec->data[i]);
         if(f) {
             f();
         }
-    } ZVECTOR_WALK_END;
+    }
     zvector_free(___funcs_vec);
 }
 

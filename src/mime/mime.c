@@ -9,6 +9,10 @@
 #include "zc.h"
 #include "mime.h"
 
+#if 1
+#define _DEV_DEUBG 1
+#endif
+
 typedef struct boundary_line_t boundary_line_t;
 struct boundary_line_t {
     int offset;
@@ -360,6 +364,7 @@ int zmail_decode_mime_inner(zmail_t * parser)
             bls = ctx->bls_ptr + (cnode->bls_idx + bls_idx);
             int len = bls->len - 2;
             char *boundary = parser->mail_data + bls->offset + 2;
+
             if ((cmime->boundary_len > len) || (!ZSTR_N_EQ(cmime->boundary, boundary, cmime->boundary_len))) {
                 continue;
             }
@@ -392,8 +397,20 @@ int zmail_decode_mime_inner(zmail_t * parser)
                 continue;
             }
         }
+
+#if 1
+        ctx->bls_idx = (bls2 - ctx->bls_ptr) + 1;
+        ctx->bls_len = cnode->bls_idx + cnode->bls_len - ctx->bls_idx;
+
+        if (ctx->bls_len < 0) {
+            ctx->bls_idx = -1;
+            ctx->bls_len = 0;
+        }
+#else
         ctx->bls_idx = -1;
         ctx->bls_len = 0;
+#endif
+
         ctx->part_mail_data = parser->mail_data + bls2->part_offset;
         ctx->part_mail_size = cnode->mail_data + cnode->mail_size - (parser->mail_data + bls2->part_offset);
         zmail_decode_mime_prepare_node(parser, ctx);

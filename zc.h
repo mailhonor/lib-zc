@@ -1681,8 +1681,11 @@ extern int zvar_main_redundant_argc;
  */
 void zmain_argument_run(int argc, char **argv, unsigned int (*self_argument_fn)(int argc, char **argv, int offset));
 
-/* 注册函数, 系统退出前执行, 按照注册顺序执行; 非线程安全 */
+/* 注册函数, 系统退出前执行, 按照注册相反的顺序执行; 非线程安全 */
 void zinner_atexit(void (*function)(void));
+
+/* 注册函数, 系统退出前执行, 按照注册相反的顺序执行; 程安全 */
+void zatexit(void (*func)(void *), void *);
 
 /* license, src/stdlib/license.c ####################################### */
 /* -1: 系统错, 0: 不匹配, 1: 匹配 */
@@ -1790,6 +1793,9 @@ int zaio_get_cache_size(zaio_t *aio);
 
 /* 请求sleep, sleep秒后回调执行callback */
 void zaio_sleep(zaio_t *aio, void (*callback)(zaio_t *aio), int timeout);
+
+/* sleep秒后回调执行callback, 只执行一次 callback(ctx) */
+void zaio_base_timer(zaio_base_t *eb, void (*callback)(void *ctx), void *ctx, int timeout);
 
 /* 设置/获取上下文 */
 void zaio_set_context(zaio_t *aio, const void *ctx);
@@ -2404,8 +2410,14 @@ zjson_t *zjson_create_bool(zbool_t b);
 /* long */
 zjson_t *zjson_create_long(long l);
 
-/* doube */
+/* double */
 zjson_t *zjson_create_double(double d);
+
+/* array */
+zjson_t *zjson_create_array();
+
+/* object */
+zjson_t *zjson_create_object();
 
 /* string */
 zjson_t *zjson_create_string(const void *s, int len);
@@ -2992,6 +3004,15 @@ int zmsearch_build(zmsearch_t *ms, const char *dest_db_pathname);
 #pragma pack(push, 4)
 namespace zcc
 {
+
+/* auto_delete ###################################################### */
+template <class T>
+class auto_delete {
+public:
+    inline auto_delete(T *obj) { obj_ = obj; }
+    inline ~auto_delete() { if (obj_) { delete obj_; } }
+    T *obj_;
+};
 
 /* std utils ######################################################## */
 std::string &vsprintf_1024(std::string &str, const char *format, va_list ap);

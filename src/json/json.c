@@ -54,6 +54,22 @@ zjson_t *zjson_create_string(const void *s, int len)
     return j;
 }
 
+zjson_t *zjson_create_array()
+{
+    zjson_t *j = (zjson_t *)zcalloc(1, sizeof(zjson_t));
+    j->type = zvar_json_type_array;
+    j->val.v = zvector_create(-1);
+    return j;
+}
+
+zjson_t *zjson_create_object()
+{
+    zjson_t *j = (zjson_t *)zcalloc(1, sizeof(zjson_t));
+    j->type = zvar_json_type_object;
+    j->val.m = zmap_create();
+    return j;
+}
+
 void zjson_free(zjson_t *j)
 {
     if (j==0) {
