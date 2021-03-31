@@ -362,6 +362,9 @@ int zmsearch_match(zmsearch_t *ms, const char *str, int len, const char **matche
         }
         firstch = a_data[ps[0]];
         if (firstch & 0X01) {
+            if (matched_len) {
+                *matched_len = 1;
+            }
             return 1;
         }
         while ((plen>1) && (firstch & 0X02) && (a_data[ps[1]] & 0X04)) {
@@ -379,6 +382,9 @@ int zmsearch_match(zmsearch_t *ms, const char *str, int len, const char **matche
                 v = the_data[2 * mdi];
                 v = (v << 8) + the_data[2*mdi+1];
                 if (hv == v) {
+                    if (matched_len) {
+                        *matched_len = 2;
+                    }
                     return 2;
                 }
                 if (hv < v) {
@@ -542,3 +548,125 @@ int zmsearch_build(zmsearch_t *ms, const char *dest_db_pathname)
     }
     return zfile_put_contents(dest_db_pathname, ms->engine, ms->engine->data_len);
 }
+
+typedef struct zmsearch_walker_t zmsearch_walker_t;
+struct zmsearch_walker_t {
+    zmsearch_t *ms;
+    unsigned char abc[256];
+    int stage;
+    int hv;
+    int idx;
+};
+
+static void _walker_init(zmsearch_walker_t *walker, zmsearch_t *ms)
+{
+    walker->ms = ms;
+    walker->stage = 0;
+    walker->hv = 0;
+    walker->idx = 0;
+    for (int i = 0; i < 256; i++) {
+        walker->abc[i] = i;
+    }
+}
+
+zmsearch_walker_t *zmsearch_walker_create(zmsearch_t *ms)
+{
+    zmsearch_walker_t *walker = (zmsearch_walker_t *)zcalloc(1, sizeof(zmsearch_walker_t));
+    _walker_init(walker, ms);
+    return walker;
+}
+
+void zmsearch_walker_free(zmsearch_walker_t *walker)
+{
+    zfree(walker);
+}
+
+int zmsearch_walker_walk(zmsearch_walker_t *walker, void **token, int *tlen)
+{
+    zmsearch_engine_t *engine = walker->ms->engine;
+    if (!engine) {
+        zfatal("should excute zmsearch_add_over first");
+    }
+
+    unsigned char *data = (unsigned char *)engine;
+    unsigned char *a_data = (unsigned char *)(engine->a_data);
+    int *ab_data = (int *)((char *)engine + engine->ab_data_offset);
+    int ab_size = engine->ab_size;
+    int *abc_data = (int *)((char *)engine + engine->abc_data_offset);
+    int abc_size = engine->abc_size;
+    int hv, off, sti, edi;
+    unsigned char *the_data;
+
+    if (walker->stage == 0) {
+        for (hv = walker->hv; hv < 256; hv ++) {
+            if (a_data[hv] & 0X01) {
+                *token = &(walker->abc[hv]);
+                if (tlen) {
+                    *tlen = 1;
+                }
+                walker->hv = hv + 1;
+                return 1;
+            }
+        }
+        walker->stage = 1;
+        walker->hv = 0;
+        walker->idx = 0;
+    }
+
+    if (walker->stage == 1) {
+        for (hv = walker->hv; hv < ab_size; hv ++) {
+            off = ab_data[hv];
+            if (!off) {
+                walker->idx = 0;
+                continue;
+            }
+            sti = walker->idx;
+            edi = ((_short_t *)(data + off))->i;
+            the_data = data + off + sizeof(_short_t);
+            while (sti < edi) {
+                *token = the_data + (2 * sti);
+                if (tlen) {
+                    *tlen = 2;
+                }
+                walker->hv = hv;
+                walker->idx = sti + 1;
+                return 1;
+            }
+        }
+        walker->stage = 3;
+        walker->hv = 0;
+        walker->idx = 0;
+    }
+
+    if (walker->stage == 3) {
+        for (hv = walker->hv; hv < abc_size; hv ++) {
+            off = abc_data[hv];
+            if (!off) {
+                walker->idx = 0;
+                continue;
+            }
+            sti = walker->idx;
+            edi = ((_int_t *)(data + off))->i;
+            int *the_int_data = (int *)(data + off + sizeof(_int_t));
+            while (sti < edi) {
+                zmsearch_token_t *t = (zmsearch_token_t *)(data + the_int_data[sti]);
+                *token = (char *)t + sizeof(zmsearch_token_t);
+                if (tlen) {
+                    *tlen = t->len;
+                }
+                walker->hv = hv;
+                walker->idx = sti + 1;
+                return 1;
+            }
+            walker->idx = 0;
+        }
+        walker->stage = -1;
+    }
+    return 0;
+}
+
+void zmsearch_walker_reset(zmsearch_walker_t *walker)
+{
+    _walker_init(walker, walker->ms);
+}
+

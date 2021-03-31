@@ -75,6 +75,7 @@ typedef struct zcdb_t zcdb_t;
 typedef struct zcdb_walker_t zcdb_walker_t;
 typedef struct zcdb_builder_t zcdb_builder_t;
 typedef struct zmsearch_t zmsearch_t;
+typedef struct zmsearch_walker_t zmsearch_walker_t;
 typedef struct zpthread_pool_t zpthread_pool_t;
 
 #define zinline inline __attribute__((always_inline))
@@ -2931,14 +2932,14 @@ void zcdb_close(zcdb_t *cdb);
 /* cdb成员个数 */
 int zcdb_get_count(zcdb_t *cdb);
 
-/* -1:出错, 0: 没找到, 1: 找到. 线程安全 */
+/* -1:出错, 0: 没找到, 1: 找到, 线程安全 */
 int zcdb_find(zcdb_t *cdb, const void *key, int klen, void **val, int *vlen);
 
 /* 创建遍历器 */
 zcdb_walker_t *zcdb_walker_create(zcdb_t *cdb);
 void zcdb_walker_free(zcdb_walker_t *walker);
 
-/* -1:出错, 0: 没找到, 1: 找到. 非线程安全 */
+/* -1:出错, 0: 没找到, 1: 找到, 非线程安全 */
 int zcdb_walker_walk(zcdb_walker_t *walker, void **key, int *klen, void **val, int *vlen);
 
 /* 重置 */
@@ -2976,6 +2977,16 @@ zmsearch_t *zmsearch_create_from_pathname(const char *pathname);
 const void *zmsearch_get_compiled_data(zmsearch_t *ms);
 int zmsearch_get_compiled_len(zmsearch_t *ms);
 int zmsearch_build(zmsearch_t *ms, const char *dest_db_pathname);
+
+/* 创建遍历器 */
+zmsearch_walker_t *zmsearch_walker_create(zmsearch_t *ms);
+void zmsearch_walker_free(zmsearch_walker_t *walker);
+
+/* -1:出错, 0: 没找到, 1: 找到, 非线程安全 */
+int zmsearch_walker_walk(zmsearch_walker_t *walker, void **token, int *tlen);
+
+/* 重置 */
+void zmsearch_walker_reset(zmsearch_walker_t *walker);
 
 /* END ################################################################ */
 #ifdef ZC_NAMESAPCE_NO_MALLOC
