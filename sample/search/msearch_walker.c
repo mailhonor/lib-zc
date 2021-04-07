@@ -51,7 +51,7 @@ int main(int argc, char **argv)
     zmsearch_walker_t *walker = zmsearch_walker_create(ms);
     char *token;
     int tlen;
-    while (zmsearch_walker_walk(walker, (void **)&token, &tlen) > 0) {
+    while (zmsearch_walker_walk(walker, (const char **)&token, &tlen) > 0) {
         fwrite(token, 1, tlen, stdout);
         printf("\n");
     }

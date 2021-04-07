@@ -38,6 +38,7 @@ static void _begin_read(zaio_t *aio)
 
     if (zaio_get_result(aio) < 1) {
         _release_pair(pair);
+        return;
     }
 
     zaio_read(pair->client, _iopipe_buffer_size, _after_read);

@@ -38,6 +38,9 @@
 #define _function_pthread_is_self(eb) (_zvar_current_base == (eb))
 
 #define _ready_go_and_return(aio, ret_value) { \
+    if ((aio->action_type != action_readable) && (aio->action_type != action_writeable)) { \
+        _zaio_event_monitor(aio, monitor_clear); \
+    } \
     aio->ret = ret_value; \
     aio->callback(aio); \
     return; \
@@ -328,10 +331,8 @@ static void _active_tls_connect(zaio_t *aio)
     }
 
     if (ret > 0) {
-        _zaio_event_monitor(aio, monitor_none);
         _ready_go_and_return(aio, 1);
     } else if (aio->is_ssl_error_or_closed) {
-        _zaio_event_monitor(aio, monitor_clear);
         _ready_go_and_return(aio, -1);
     } else if (aio->is_want_read || aio->is_want_write ) {
         aio->ret = 0;
@@ -363,10 +364,8 @@ static void _active_tls_accept(zaio_t *aio)
     }
 
     if (ret > 0) {
-        _zaio_event_monitor(aio, monitor_none);
         _ready_go_and_return(aio, 1);
     } else if (aio->is_ssl_error_or_closed) {
-        _zaio_event_monitor(aio, monitor_clear);
         _ready_go_and_return(aio, -1);
     } else if (aio->is_want_read || aio->is_want_write ) {
         aio->ret = 0;
@@ -544,7 +543,6 @@ static void ___zaio_cache_append(zaio_t *aio, zaio_rwbuf_list_t *ioc, const void
 /* {{{ monitor */ 
 void _zaio_event_monitor(zaio_t *aio, int monitor_cmd)
 {
-
     zaio_base_t *eb = aio->aiobase;
     unsigned char action_type = aio->action_type;
 
@@ -640,16 +638,21 @@ void _zaio_enter_incoming(zaio_t *aio)
     aio->in_base_context = 1;
     _clear_read_write_flag(aio);
 
-    if (is_self) {
-        aio->in_incoming_queue = 1;
-        ZMLINK_APPEND(eb->incoming_queue_head, eb->incoming_queue_tail, rn, zrbtree_left, zrbtree_right);
-    } else {
-        _base_lock_extern(eb);
-        aio->in_extern_incoming_queue = 1;
-        ZMLINK_APPEND(eb->extern_incoming_queue_head, eb->extern_incoming_queue_tail, rn, zrbtree_left, zrbtree_right);
-        _base_unlock_extern(eb);
-        zaio_base_touch(eb);
-    }
+        if (is_self) {
+            if (aio->in_incoming_queue == 0) {
+                aio->in_incoming_queue = 1;
+                ZMLINK_APPEND(eb->incoming_queue_head, eb->incoming_queue_tail, rn, zrbtree_left, zrbtree_right);
+            } else {
+            }
+        } else {
+            if (aio->in_extern_incoming_queue == 0) {
+                _base_lock_extern(eb);
+                aio->in_extern_incoming_queue = 1;
+                ZMLINK_APPEND(eb->extern_incoming_queue_head, eb->extern_incoming_queue_tail, rn, zrbtree_left, zrbtree_right);
+                _base_unlock_extern(eb);
+                zaio_base_touch(eb);
+            }
+        }
 }
 /* }}} */
 
@@ -735,14 +738,12 @@ static void _active_none(zaio_t *aio)
 static void _active_readable(zaio_t *aio)
 {
     if (aio->read_cache.len) {
-        _zaio_event_monitor(aio, monitor_none);
         _ready_go_and_return(aio, 1);
     }
 
     if (aio->active_stage == active_stage_timeout) {
         _ready_go_and_return(aio, -2);
     } else if (aio->active_stage == active_stage_epoll) {
-        _zaio_event_monitor(aio, monitor_none);
         _ready_go_and_return(aio, 1);
     }
 
@@ -773,7 +774,6 @@ static void _active_read(zaio_t *aio)
     int ret;
     char buf[aio_rwbuf_size + 1];
     if (aio->want_read_len < 1) {
-        _zaio_event_monitor(aio, monitor_none);
         _ready_go_and_return(aio, 0);
     }
 
@@ -785,7 +785,6 @@ static void _active_read(zaio_t *aio)
             _zaio_event_monitor(aio, monitor_active);
             return;
         } else {
-            _zaio_event_monitor(aio, monitor_clear);
             _ready_go_and_return(aio, -1);
         }
     }
@@ -795,7 +794,6 @@ static void _active_read(zaio_t *aio)
     } else {
         ret = aio->read_cache.len;
     }
-    _zaio_event_monitor(aio, monitor_none);
     _ready_go_and_return(aio, ret);
 }
 
@@ -825,7 +823,6 @@ static void _active_readn(zaio_t *aio)
     char buf[aio_rwbuf_size + 1];
 
     if (strict_len < 1) {
-        _zaio_event_monitor(aio, monitor_none);
         _ready_go_and_return(aio, 0);
     }
     while (1) {
@@ -838,12 +835,10 @@ static void _active_readn(zaio_t *aio)
             _zaio_event_monitor(aio, monitor_active);
             return;
         } else if (ret < 0) {
-            _zaio_event_monitor(aio, monitor_clear);
             _ready_go_and_return(aio, -1);
         }
         ___zaio_cache_append(aio, &(aio->read_cache), buf, ret);
     }
-    _zaio_event_monitor(aio, monitor_none);
     _ready_go_and_return(aio, strict_len);
 }
 
@@ -874,7 +869,6 @@ static void _active_read_delimiter(zaio_t *aio)
     char buf[aio_rwbuf_size + 1], *data;
 
     if (max_len < 1) {
-        _zaio_event_monitor(aio, monitor_none);
         _ready_go_and_return(aio, 0);
     }
 
@@ -897,14 +891,12 @@ static void _active_read_delimiter(zaio_t *aio)
             }
         }
         if (found ) {
-            _zaio_event_monitor(aio, monitor_none);
             _ready_go_and_return(aio, rlen);
         }
     }
 
     while (1) {
         if ((ret = _zaio_io_read(aio, buf, aio_rwbuf_size)) < 0) {
-            _zaio_event_monitor(aio, monitor_clear);
             _ready_go_and_return(aio, -1);
         } else if (ret == 0) {
             aio->ret = 0;
@@ -924,7 +916,6 @@ static void _active_read_delimiter(zaio_t *aio)
             }
         }
         if (rlen != -1) {
-            _zaio_event_monitor(aio, monitor_none);
             _ready_go_and_return(aio, rlen);
         }
     }
@@ -968,14 +959,12 @@ static void _active_read_cint(zaio_t *aio)
             for (int i = rwb->p1; i != end; i++) {
                 byte_count++;
                 if (byte_count > 4) {
-                    _zaio_event_monitor(aio, monitor_none);
                     _ready_go_and_return(aio, -1);
                 }
                 int ch = buf[i];
                 size |= ((ch & 0177) << shift);
                 if (ch & 0200) {
                     ___zaio_cache_shift(aio, &(aio->read_cache), 0, byte_count);
-                    _zaio_event_monitor(aio, monitor_none);
                     if ((aio->is_cint_want_data==0) || (size == 0)) {
                         _ready_go_and_return(aio, size);
                     } else {
@@ -989,7 +978,6 @@ static void _active_read_cint(zaio_t *aio)
         }
         int ret = _zaio_io_read(aio, buf, aio_rwbuf_size);
         if (ret < 0) {
-            _zaio_event_monitor(aio, monitor_clear);
             _ready_go_and_return(aio, -1);
         } else if (ret == 0) {
             aio->ret = 0;
@@ -1032,7 +1020,6 @@ static void _active_writeable(zaio_t *aio)
             _ready_go_and_return(aio, -2);
         }
     } else if (aio->active_stage == active_stage_epoll) {
-        _zaio_event_monitor(aio, monitor_none);
         _ready_go_and_return(aio, 1);
     }
     _want_read_or_write(aio, 0, 1);
@@ -1063,11 +1050,9 @@ static void _active_writen(zaio_t *aio)
     while (1) {
         ___zaio_cache_first_line(aio, &(aio->write_cache), &data, &ret);
         if (ret == 0) {
-            _zaio_event_monitor(aio, monitor_none);
             _ready_go_and_return(aio, 1);
         }
         if ((ret = _zaio_io_write(aio, data, ret)) < 0) {
-            _zaio_event_monitor(aio, monitor_clear);
             _ready_go_and_return(aio, -1);
         } else if (ret == 0) {
             aio->ret = 0;
@@ -1130,7 +1115,7 @@ void zaio_cache_write_direct(zaio_t *aio, const void *buf, int len)
         return;
     }
  
-    zaio_rwbuf_t *rwb = (zaio_rwbuf_t *)calloc(1, sizeof(zaio_rwbuf_t));
+    zaio_rwbuf_t *rwb = (zaio_rwbuf_t *)zcalloc(1, sizeof(zaio_rwbuf_t));
     rwb->next = 0;
     rwb->long_flag = 1;
     rwb->p1 = 0;
@@ -1250,7 +1235,7 @@ void zaio_disable(zaio_t *aio)
 /* {{{ create free */
 zaio_t *zaio_create_by_fd(int fd, zaio_base_t *aiobase)
 {
-    zaio_t *aio = (zaio_t *)calloc(1, sizeof(zaio_t));
+    zaio_t *aio = (zaio_t *)zcalloc(1, sizeof(zaio_t));
     aio->fd = fd;
     aio->aiobase = (aiobase?aiobase:zvar_default_aio_base);
     aio->ret = 1;
@@ -1549,11 +1534,21 @@ static void _check_incoming(zaio_base_t *eb)
     eb->incoming_queue_head = 0;
     eb->incoming_queue_tail = 0;
 
-    _base_lock_extern(eb);
-    ZMLINK_CONCAT(eb->tmp_queue_head, eb->tmp_queue_tail, eb->extern_incoming_queue_head, eb->extern_incoming_queue_tail, zrbtree_left, zrbtree_right);
-    eb->extern_incoming_queue_head = 0;
-    eb->extern_incoming_queue_tail = 0;
-    _base_unlock_extern(eb);
+    if (eb->extern_incoming_queue_head) {
+        _base_lock_extern(eb);
+#if 1
+        ZMLINK_CONCAT(eb->tmp_queue_head, eb->tmp_queue_tail, eb->extern_incoming_queue_head, eb->extern_incoming_queue_tail, zrbtree_left, zrbtree_right);
+#else
+        while(eb->extern_incoming_queue_head) {
+            zrbtree_node_t *n = eb->extern_incoming_queue_head;
+            ZMLINK_DETACH(eb->extern_incoming_queue_head, eb->extern_incoming_queue_tail, n, zrbtree_left, zrbtree_right);
+            ZMLINK_APPEND(eb->tmp_queue_head, eb->tmp_queue_tail, n, zrbtree_left, zrbtree_right);
+        }
+#endif
+        eb->extern_incoming_queue_head = 0;
+        eb->extern_incoming_queue_tail = 0;
+        _base_unlock_extern(eb);
+    }
 
     for (zrbtree_node_t *n = eb->tmp_queue_head; n; n = n->zrbtree_right) {
         zaio_t *aio = (ZCONTAINER_OF(n, zaio_t, rbnode_time));

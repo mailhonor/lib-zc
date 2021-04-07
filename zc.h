@@ -2983,7 +2983,7 @@ zmsearch_walker_t *zmsearch_walker_create(zmsearch_t *ms);
 void zmsearch_walker_free(zmsearch_walker_t *walker);
 
 /* -1:出错, 0: 没找到, 1: 找到, 非线程安全 */
-int zmsearch_walker_walk(zmsearch_walker_t *walker, void **token, int *tlen);
+int zmsearch_walker_walk(zmsearch_walker_t *walker, const char **token, int *tlen);
 
 /* 重置 */
 void zmsearch_walker_reset(zmsearch_walker_t *walker);

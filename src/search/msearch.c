@@ -581,7 +581,7 @@ void zmsearch_walker_free(zmsearch_walker_t *walker)
     zfree(walker);
 }
 
-int zmsearch_walker_walk(zmsearch_walker_t *walker, void **token, int *tlen)
+int zmsearch_walker_walk(zmsearch_walker_t *walker, const char **token, int *tlen)
 {
     zmsearch_engine_t *engine = walker->ms->engine;
     if (!engine) {
@@ -600,7 +600,7 @@ int zmsearch_walker_walk(zmsearch_walker_t *walker, void **token, int *tlen)
     if (walker->stage == 0) {
         for (hv = walker->hv; hv < 256; hv ++) {
             if (a_data[hv] & 0X01) {
-                *token = &(walker->abc[hv]);
+                *token = (char *)(&(walker->abc[hv]));
                 if (tlen) {
                     *tlen = 1;
                 }
@@ -624,7 +624,7 @@ int zmsearch_walker_walk(zmsearch_walker_t *walker, void **token, int *tlen)
             edi = ((_short_t *)(data + off))->i;
             the_data = data + off + sizeof(_short_t);
             while (sti < edi) {
-                *token = the_data + (2 * sti);
+                *token = (char *)(the_data + (2 * sti));
                 if (tlen) {
                     *tlen = 2;
                 }
