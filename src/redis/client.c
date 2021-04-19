@@ -496,8 +496,9 @@ static int ___query_get_hash_key_idx(const char *_cmd, int clen)
 typedef struct zredis_client_standalone_t zredis_client_standalone_t;
 struct zredis_client_standalone_t {
     zredis_client_t rc;
-    int fd;
     zstream_t *fp;
+    int fd:32;
+    int auto_authed:2;
 };
 
 zredis_client_t *zredis_client_connect(const char *destination, const char *password, int connect_timeout)
@@ -524,6 +525,7 @@ zredis_client_t *zredis_client_connect(const char *destination, const char *pass
 
 static int zredis_client_standalone_vget_inner(zredis_client_t *rc, long *number_ret, zbuf_t *string_ret, zvector_t *vector_ret, zjson_t *json_ret, zvector_t *query_vec)
 {
+    int ret;
     zredis_client_standalone_t *sc = (zredis_client_standalone_t *)rc;
     if (sc->fd < 0) {
         if (rc->auto_reconnect) {
@@ -542,7 +544,34 @@ static int zredis_client_standalone_vget_inner(zredis_client_t *rc, long *number
         zstream_set_read_wait_timeout(sc->fp, rc->read_wait_timeout);
         zstream_set_write_wait_timeout(sc->fp, rc->write_wait_timeout);
     }
-    int ret = ___query_by_io(rc, number_ret, string_ret, vector_ret, json_ret, query_vec, sc->fp);
+    if ((sc->auto_authed == 0) && (!zempty(rc->password))) {
+        zvector_t *auth_vec = zvector_create(3);
+        zbuf_t *cmd_bf = zbuf_create(5);
+        zbuf_t *password_bf = zbuf_create(32);
+        zbuf_strcpy(cmd_bf, "AUTH");
+        zbuf_strcpy(password_bf, rc->password);
+        zvector_push(auth_vec, cmd_bf);
+        zvector_push(auth_vec, password_bf);
+        ret = ___query_by_io(rc, 0, 0, 0, 0, auth_vec, sc->fp);
+        zbuf_vector_free(auth_vec);
+        sc->auto_authed = 1;
+        if (ret == -2) {
+            zstream_close(sc->fp, 1);
+            sc->fp = 0;
+            sc->fd = -1;
+            sc->auto_authed = 0;
+        } else if (ret == -1) {
+            if (!strstr(rc->error_msg, "no password is set")) {
+                return -1;
+            }
+            ret = 0;
+        }
+        if (ret < 0) {
+            return ret;
+        }
+    }
+
+    ret = ___query_by_io(rc, number_ret, string_ret, vector_ret, json_ret, query_vec, sc->fp);
     if ((zstream_get_read_cache_len(sc->fp) == 0) || (ret == -2)) {
         zstream_close(sc->fp, 0);
         sc->fp = 0;
@@ -550,6 +579,7 @@ static int zredis_client_standalone_vget_inner(zredis_client_t *rc, long *number
     if (ret == -2) {
         zclose(sc->fd);
         sc->fd = -1;
+        sc->auto_authed = 0;
         ret = -1;
     }
     return ret;
@@ -561,6 +591,7 @@ static void zredis_client_free_standalone_inner(zredis_client_t *rc)
     if (sc->fd > -1) {
         zclose(sc->fd);
         sc->fd = -1;
+        sc->auto_authed = 0;
     }
     zfree(rc->password);
     zfree(rc->destination);
@@ -573,7 +604,8 @@ typedef struct _cluster_connection_t _cluster_connection_t;
 struct _cluster_connection_t {
     int ip;
     int port;
-    int fd;
+    int fd:30;
+    int auto_authed:2;
 };
 
 typedef struct _cluster_slotrange_t _cluster_slotrange_t;
@@ -693,6 +725,32 @@ static _cluster_connection_t *_cluster_vget_inner_prepare(zredis_client_t *rc, z
         zstream_set_read_wait_timeout(cc->fp, rc->read_wait_timeout);
         zstream_set_write_wait_timeout(cc->fp, rc->write_wait_timeout);
     }
+    if ((connection->auto_authed == 0) && (!zempty(rc->password))) {
+        zvector_t *auth_vec = zvector_create(3);
+        zbuf_t *cmd_bf = zbuf_create(5);
+        zbuf_t *password_bf = zbuf_create(32);
+        zbuf_strcpy(cmd_bf, "AUTH");
+        zbuf_strcpy(password_bf, rc->password);
+        zvector_push(auth_vec, cmd_bf);
+        zvector_push(auth_vec, password_bf);
+        zstream_t *fp = zstream_open_fd(connection->fd);
+        rc->error_msg[0] = 0;
+        int ret = ___query_by_io(rc, 0, 0, 0, 0, auth_vec, fp);
+        zbuf_vector_free(auth_vec);
+        zstream_close(fp, 0);
+        connection->auto_authed = 1;
+
+        if (ret < 0) {
+            if (!strstr(rc->error_msg, "no password is set")) {
+                close(connection->fd);
+                connection->fd = -2;
+                connection->auto_authed = 0;
+            }
+        }
+    }
+    if (connection->fd < 0) {
+        return 0;
+    }
     return connection;
 }
 
@@ -764,6 +822,7 @@ static int _cluster_after_query(zredis_client_t *rc, short int slot_id)
             next_connection->ip = ipint;
             next_connection->port = port;
             next_connection->fd = -2;
+            next_connection->auto_authed = 0;
         }
         if (cc->slotrange_used == cc->slotrange_size) {
             if (cc->slotrange_used == cc->slotrange_size) {
@@ -810,6 +869,7 @@ static int zredis_client_cluster_vget_inner(zredis_client_t *rc, long *number_re
         if (ret == -2) {
             zclose(connection->fd);
             connection->fd = -1;
+            connection->auto_authed = 0;
             return -1;
         }
         if (ret > -1) {

@@ -17,18 +17,18 @@ static void ___usage()
     exit(1);
 }
 
-static void  write_line_read_line(zstream_t *fp, zbuf_t *tmpline, const char *query)
+static void  write_line_read_line(zcc::iostream &fp, std::string &tmpline, const char *query)
 {
-    zstream_puts(fp, query);
-    zstream_puts(fp, "\r\n");
+    fp.puts(query);
+    fp.puts( "\r\n");
     printf("C: %s\r\n", query);
 
     while(1) {
-        zbuf_reset(tmpline);
-        zstream_gets(fp, tmpline, 10240);
-        char *p = zbuf_data(tmpline);
+        tmpline.clear();
+        fp.gets(tmpline, 10240);
+        const char *p = tmpline.c_str();
         printf("S: %s", p);
-        if (zbuf_len(tmpline)< 3) {
+        if (tmpline.size()< 3) {
             break;
         }
         if (p[3] == ' ') {
@@ -49,8 +49,8 @@ int main(int argc, char **argv)
 
     SSL_CTX *ssl_ctx = 0;
     int fd = -1;
-    zstream_t *fp = 0;
-    zbuf_t *tmpline = 0;
+    zcc::iostream fp;
+    std::string tmpline;
 
     if (tls_mode || ssl_mode) {
         zopenssl_init();
@@ -74,19 +74,18 @@ int main(int argc, char **argv)
             printf("ERR ssl initialization error:%s\n", buf);
             goto over;
         }
-        fp = zstream_open_ssl(ssl);
+        fp.open_ssl(ssl);
     } else {
-        fp = zstream_open_fd(fd);
+        fp.open_fd(fd);
     }
     printf("connected\n");
-    tmpline = zbuf_create(0);
-    zstream_gets(fp, tmpline, 10240);
-    printf("S: %s", zbuf_data(tmpline));
+    fp.gets(tmpline, 10240);
+    printf("S: %s", tmpline.c_str());
 
     write_line_read_line(fp, tmpline, "ehlo xxx1");
     if (tls_mode && !ssl_mode) {
         write_line_read_line(fp, tmpline, "STARTTLS");
-        if (zstream_tls_connect(fp, ssl_ctx) < 0) {
+        if (fp.tls_connect(ssl_ctx) < 0) {
             printf("ERR STARTTLS error (%m)\n");
             goto over;
         }
@@ -96,13 +95,6 @@ int main(int argc, char **argv)
     write_line_read_line(fp, tmpline, "quit");
 
 over:
-    if (fp) {
-        zstream_close(fp, 1);
-        fd = -1;
-    }
-    if (tmpline) {
-        zbuf_free(tmpline);
-    }
     if (tls_mode || ssl_mode) {
         zopenssl_SSL_CTX_free(ssl_ctx);
         zopenssl_fini();

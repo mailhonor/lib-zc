@@ -82,6 +82,7 @@ struct zcdb_builder_t {
 * 添加或更新
 * 键为 key/klen
 * 值为 val/vlen 
+* 特别提示: 在某同一长度的键下, 如果所有的值的长度一样,将极大的节省空间(每键4字节)
 
 ### zbool_t zcdb_builder_compile(zcdb_builder_t *builder);
 

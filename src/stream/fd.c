@@ -14,6 +14,11 @@ struct ssl_ioctx_t {
     int fd;
 };
 
+static const char *fp_get_type()
+{
+    return "_Z_FD";
+}
+
 static int fp_close(zstream_t *fp, int release_ioctx)
 {
     ssl_ioctx_t *ioctx = (ssl_ioctx_t *)(fp->ioctx);
@@ -22,6 +27,7 @@ static int fp_close(zstream_t *fp, int release_ioctx)
     if (release_ioctx) {
         ret = zclose(ioctx->fd);
     }
+    zfree(ioctx);
 
     return ret;
 }
@@ -62,7 +68,7 @@ static int fp_get_fd(zstream_t *fp)
 }
 
 static zstream_engine_t fp_engine = {
-    "_Z_FD",
+    fp_get_type,
     fp_close,
     fp_read,
     fp_write,
@@ -71,9 +77,9 @@ static zstream_engine_t fp_engine = {
     fp_get_fd
 };
 
-zstream_t *zstream_open_fd(int fd)
+zstream_t *zstream_open_fd_engine(zstream_t *fp, int fd)
 {
-    zstream_t *fp = (zstream_t *)zmalloc(sizeof(zstream_t));
+    memset(fp, 0, sizeof(zstream_t));
     fp->read_buf_p1 = 0;
     fp->read_buf_p2 = 0;
     fp->write_buf_len = 0;
@@ -85,6 +91,12 @@ zstream_t *zstream_open_fd(int fd)
     fp->ioctx = (ssl_ioctx_t *)zcalloc(1, sizeof(ssl_ioctx_t));
     ((ssl_ioctx_t *)(fp->ioctx))->fd = fd;
     return fp;
+}
+
+zstream_t *zstream_open_fd(int fd)
+{
+    zstream_t *fp = (zstream_t *)zmalloc(sizeof(zstream_t));
+    return zstream_open_fd_engine(fp, fd);
 }
 
 zstream_t *zstream_open_destination(const char *destination, int timeout)

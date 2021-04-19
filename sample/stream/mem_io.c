@@ -17,18 +17,18 @@ static void ___usage()
     exit(1);
 }
 
-static void  write_line_read_line(zstream_t *fp, zbuf_t *tmpline, const char *query)
+static void  write_line_read_line(zstream_t *fp, char *tmpline, const char *query)
 {
     zstream_puts(fp, query);
     zstream_puts(fp, "\r\n");
     printf("C: %s\r\n", query);
 
     while(1) {
-        zbuf_reset(tmpline);
-        zstream_gets(fp, tmpline, 10240);
-        char *p = zbuf_data(tmpline);
+        tmpline[0] = 0;
+        zstream_gets_to_mem(fp, tmpline, 10240);
+        char *p = tmpline;
         printf("S: %s", p);
-        if (zbuf_len(tmpline)< 3) {
+        if (strlen(tmpline)< 3) {
             break;
         }
         if (p[3] == ' ') {
@@ -50,7 +50,7 @@ int main(int argc, char **argv)
     SSL_CTX *ssl_ctx = 0;
     int fd = -1;
     zstream_t *fp = 0;
-    zbuf_t *tmpline = 0;
+    char *tmpline = 0;
 
     if (tls_mode || ssl_mode) {
         zopenssl_init();
@@ -79,9 +79,10 @@ int main(int argc, char **argv)
         fp = zstream_open_fd(fd);
     }
     printf("connected\n");
-    tmpline = zbuf_create(0);
-    zstream_gets(fp, tmpline, 10240);
-    printf("S: %s", zbuf_data(tmpline));
+    tmpline = (char *)malloc(1024*1024);
+    tmpline[0] = 0;
+    zstream_gets_to_mem(fp, tmpline, 10240);
+    printf("S: %s", tmpline);
 
     write_line_read_line(fp, tmpline, "ehlo xxx1");
     if (tls_mode && !ssl_mode) {
@@ -100,9 +101,7 @@ over:
         zstream_close(fp, 1);
         fd = -1;
     }
-    if (tmpline) {
-        zbuf_free(tmpline);
-    }
+    zfree(tmpline);
     if (tls_mode || ssl_mode) {
         zopenssl_SSL_CTX_free(ssl_ctx);
         zopenssl_fini();

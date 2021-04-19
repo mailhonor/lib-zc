@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2017-08-11
  * ================================
  */
@@ -482,3 +482,4 @@ zjson_t *zjson_get_top(zjson_t *j)
     }
     return r;
 }
+

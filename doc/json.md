@@ -2,6 +2,8 @@
 
 ## JSON 库, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
 
+C++ 版本 json 库 https://gitee.com/linuxmail/lib-zc/blob/master/doc/json_cpp.md
+
 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持 JSON, 其 STRUCT 类型是 **zjson_t**
 
 ## 数据结构

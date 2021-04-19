@@ -10,6 +10,11 @@
 #include <errno.h>
 #include <fcntl.h>
 
+static const char *fp_get_type()
+{
+    return "_Z_FILE";
+}
+
 static int fp_close(zstream_t *fp, int release_ioctx)
 {
     ztype_convert_t ct;
@@ -77,7 +82,7 @@ static int fp_get_fd(zstream_t *fp)
 }
 
 static zstream_engine_t fp_engine = {
-    "_Z_FILE",
+    fp_get_type,
     fp_close,
     fp_read,
     fp_write,
@@ -86,7 +91,7 @@ static zstream_engine_t fp_engine = {
     fp_get_fd
 };
 
-zstream_t *zstream_open_file(const char *pathname, const char *mode)
+zstream_t *zstream_open_file_engine(zstream_t *fp, const char *pathname, const char *mode)
 {
     int flags = 0;
     if (*mode == 'r') {
@@ -112,7 +117,7 @@ zstream_t *zstream_open_file(const char *pathname, const char *mode)
         return 0;
     }
 
-    zstream_t *fp = (zstream_t *)zmalloc(sizeof(zstream_t));
+    memset(fp, 0, sizeof(zstream_t));
     fp->read_buf_p1 = 0;
     fp->read_buf_p2 = 0;
     fp->write_buf_len = 0;
@@ -126,3 +131,14 @@ zstream_t *zstream_open_file(const char *pathname, const char *mode)
     fp->ioctx = ct.VOID_PTR;
     return fp;
 }
+
+zstream_t *zstream_open_file(const char *pathname, const char *mode)
+{
+    zstream_t *fp = (zstream_t *)zmalloc(sizeof(zstream_t));
+    if (!zstream_open_file_engine(fp, pathname, mode)) {
+        zfree(fp);
+        fp = 0;
+    }
+    return fp;
+}
+

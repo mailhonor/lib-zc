@@ -5,36 +5,41 @@ all: target
 -include ../../makefiles/defined.include
 
 GCC ?= gcc
-CPP ?= g++
+GPP ?= g++
 
-FLAGS := -std=gnu99 -ggdb -Wall -Winline -I../../ -O2 $(EXTRA_CFLAGS)
-CFLAGS := -std=gnu99 $(FLAGS)
-CPPFLAGS := -std=gnu++11 $(FLAGS)
+FLAGS := -ggdb -Wall -Winline -I../../ -O2 $(EXTRA_CFLAGS)
+GCCFLAGS := -std=gnu99 $(FLAGS)
+GPPFLAGS := -std=gnu++11 $(FLAGS)
 
 GLOBAL_LIBS :=
 
 ALL_LIBS := 
 
-SRCS_C=$(wildcard *.c)
-DEST_C := $(SRCS_C:%.c=%)
-$(DEST_C):%:%.c
-	$(GCC) $*.c -o $* $(CFLAGS) $($*_LIB) $(PREFIX_LIBS) ../../libzc.a $(SUFFIX_LIBS) $(LIB_$*) $(GLOBAL_LIBS)
+SRCS_GCC=$(wildcard *.c)
+DEST_GCC := $(SRCS_GCC:%.c=%)
+$(DEST_GCC):%:%.c
+	$(GCC) $*.c -o $* $(GCCFLAGS) $($@_LIB) $(PREFIX_LIBS) ../../libzc.a $(SUFFIX_LIBS) $(LIB_$@) $(GLOBAL_LIBS)
 
-SRCS_CPP=$(wildcard *.cpp)
-DEST_CPP := $(SRCS_CPP:%.cpp=%)
-$(DEST_CPP):%:%.cpp
-	$(CPP) $*.cpp -o $* $(CPPFLAGS) $($*_LIB) $(PREFIX_LIBS) ../../libzc.a $(SUFFIX_LIBS) $(LIB_$*) $(GLOBAL_LIBS)
+SRCS_GPP=$(wildcard *.cpp)
+DEST_GPP := $(SRCS_GPP:%.cpp=%)
+$(DEST_GPP):%:%.cpp
+	$(GPP) $*.cpp -o $* $(GPPFLAGS) $($@_LIB) $(PREFIX_LIBS) ../../libzc.a $(SUFFIX_LIBS) $(LIB_$@) $(GLOBAL_LIBS)
 
-$(DEST_C) $(DEST_CPP): ../../libzc.a ../../libzc_coroutine.a ../../zc.h 
+$(DEST_GCC) $(DEST_GPP): ../../libzc.a ../../libzc_coroutine.a ../../zc.h 
 
-target: libzc $(DEST_C) $(DEST_CPP)
+target: libzc $(DEST_GCC) $(DEST_GPP)
 
-clean: CLEAN
-	@echo clean
+clean: CLEAN_WORKER
 
-CLEAN:
-	rm -f *~; rm -f $(DEST_C) $(DEST_CPP); rm -f tags gmon.out;rm -rf $(DELS);
-	find -type f -name "*~" -exec rm  {} \;
+cleanFromTop: CLEAN_WORKER
+
+CLEAN_WORKER:
+	rm -f *~
+	rm -f $(DEST_GCC) $(DEST_GPP)
+	rm -f tags gmon.out
+	rm -rf $(DELS)
+	find -type f -name "*~" -exec rm {} \;
+	@echo ""
 
 libzc:
 	@echo build global lib
@@ -43,4 +48,5 @@ libzc:
 tag tags:
 	cd ../../; make tags
 
-targetFromTop: $(DEST_C) $(DEST_CPP)
+targetFromTop: $(DEST_GCC) $(DEST_GPP)
+

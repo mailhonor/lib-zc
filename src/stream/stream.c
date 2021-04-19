@@ -8,6 +8,13 @@
 
 #include "zc.h"
 
+int zstream_close_engine(zstream_t *fp, int release_ioctx)
+{
+    int ret=zstream_flush(fp);
+    fp->engine->close_fn(fp, release_ioctx);
+    return ret;
+}
+
 int zstream_close(zstream_t *fp, int release_ioctx)
 {
     int ret=zstream_flush(fp);
@@ -119,6 +126,39 @@ int zstream_read(zstream_t *fp, zbuf_t *bf, int max_len)
     return zbuf_len(bf);
 }
 
+int zstream_read_to_mem(zstream_t *fp, void *mem, int max_len)
+{
+    if (max_len < 1) {
+        return 0;
+    }
+
+    char *ps = (char *)mem;
+    int left_len = max_len, ret_len = 0;
+    int ch;
+    int have_len = fp->read_buf_p2 - fp->read_buf_p1;
+    if (have_len == 0) {
+        ch = zstream_getc_do(fp);
+        if (ch == -1) {
+            if (fp->eof) {
+                return 0;
+            }
+            return -1;
+        }
+        *ps++ = ch;
+        have_len = fp->read_buf_p2 - fp->read_buf_p1;
+        left_len --;
+        ret_len ++;
+    }
+
+    if (left_len > have_len) {
+        left_len = have_len;
+    }
+    ret_len += left_len;
+    memcpy(ps, fp->read_buf, left_len);
+    fp->read_buf_p1 += left_len;
+    return ret_len;
+}
+
 int zstream_readn(zstream_t *fp, zbuf_t *bf, int strict_len)
 {
     if (strict_len < 1) {
@@ -151,6 +191,44 @@ int zstream_readn(zstream_t *fp, zbuf_t *bf, int strict_len)
     }
     if (bf) {
         zbuf_terminate(bf);
+    }
+
+    if (strict_len > left_len) {
+        return strict_len - left_len;
+    }
+    if (fp->eof) {
+        return 0;
+    }
+    return -1;
+}
+
+int zstream_readn_to_mem(zstream_t *fp, void *mem, int strict_len)
+{
+    if (strict_len < 1) {
+        return 0;
+    }
+
+    char *ps = (void *)mem;
+    int left_len = strict_len;
+    int ch;
+
+    if (mem) {
+        while (left_len > 0) {
+            ch = ZSTREAM_GETC(fp);
+            if (ch == -1) {
+                break;
+            }
+            *ps ++ = ch;
+            left_len--;
+        }
+    } else {
+        while (left_len > 0) {
+            ch = ZSTREAM_GETC(fp);
+            if (ch == -1) {
+                break;
+            }
+            left_len--;
+        }
     }
 
     if (strict_len > left_len) {
@@ -201,6 +279,51 @@ int zstream_read_delimiter(zstream_t *fp, zbuf_t *bf, int delimiter, int max_len
     if (bf) {
         zbuf_terminate(bf);
     }
+    if (max_len > left_len) {
+        return max_len - left_len;
+    }
+    if (fp->eof) {
+        return 0;
+    }
+    return -1;
+}
+
+int zstream_read_delimiter_to_mem(zstream_t *fp, void *mem, int delimiter, int max_len)
+{
+    if (max_len < 1) {
+        return 0;
+    }
+
+    char *ps = (char *)mem;
+    int left_len = max_len;
+    int ch;
+
+    if (ps) {
+        while(left_len > 0) {
+            ch = ZSTREAM_GETC(fp);
+            if (ch == -1) {
+                break;
+            }
+            *ps++ = ch;
+            left_len --;
+            if (ch == delimiter) {
+                break;
+            }
+        }
+    } else {
+        while(left_len > 0) {
+            ch = ZSTREAM_GETC(fp);
+            if (ch == -1) {
+                break;
+            }
+            left_len --;
+            if (ch == delimiter) {
+                break;
+            }
+        }
+    }
+
+    *ps = 0;
     if (max_len > left_len) {
         return max_len - left_len;
     }

@@ -1,25 +1,31 @@
-all: OBJS_DEST/depend
+all: .depend
 
-C_SRCS=${shell find src -type f -name "*.c"}
-C_DEPENDS = $(patsubst %.c, OBJS_DEST/%.c.depend, $(C_SRCS))
+-include makefiles/defined.include
 
-CPP_SRCS=${shell find src -type f -name "*.cpp"}
-CPP_DEPENDS = $(patsubst %.cpp, OBJS_DEST/%.cpp.depend, $(CPP_SRCS))
+GCC_SRCS = ${shell find src cpp_src -type f -name "*.c"}
+GCC_DEPENDS = $(patsubst %,%.depend, $(GCC_SRCS))
 
-$(C_DEPENDS):OBJS_DEST/%.c.depend: %.c
-	@echo -n OBJS_DEST/ > $@
-	@dirname $< | tr -d "\n" >> $@
-	@echo -n / >> $@
-	@gcc -E -MM $< -I./ >> $@
+GPP_SRCS = ${shell find src cpp_src -type f -name "*.cpp"}
+GPP_DEPENDS = $(patsubst %,%.depend, $(GPP_SRCS))
+
+$(GCC_DEPENDS):%.depend: %
 	@echo depend $<
+	@echo -n > $@.tmp
+	@dirname $< | tr -d "\n" >> $@.tmp
+	@echo -n / >> $@.tmp
+	@gcc -E -MM $< -I./ -D___ZC_DEV_MODE___ $(EXTRA_CFLAGS) >/dev/null || exit 1
+	@gcc -E -MM $< -I./ -D___ZC_DEV_MODE___ $(EXTRA_CFLAGS) | sed "s/\.o: /.c.o: /" >> $@.tmp
+	@mv $@.tmp $@
 
-$(CPP_DEPENDS):OBJS_DEST/%.cpp.depend: %.cpp
-	@echo -n OBJS_DEST/ > $@
-	@dirname $< | tr -d "\n" >> $@
-	@echo -n / >> $@
-	@g++ -E -MM $< -I./ >> $@
+$(GPP_DEPENDS):%.depend: %
 	@echo depend $<
+	@echo -n > $@.tmp
+	@dirname $< | tr -d "\n" >> $@.tmp
+	@echo -n / >> $@.tmp
+	@gcc -E -MM $< -I./ -D___ZC_DEV_MODE___ $(EXTRA_CFLAGS) >/dev/null || exit 1
+	@gcc -E -MM $< -I./ -D___ZC_DEV_MODE___ $(EXTRA_CFLAGS) | sed "s/\.o: /.cpp.o: /" >> $@.tmp
+	@mv $@.tmp $@
 
-OBJS_DEST/depend: $(C_DEPENDS) $(CPP_DEPENDS)
-	@cat $(C_DEPENDS)  $(CPP_DEPENDS) > OBJS_DEST/depend
+.depend: $(GCC_DEPENDS) $(GPP_DEPENDS)
+	@cat $(GCC_DEPENDS)  $(GPP_DEPENDS) > .depend
 

@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "../cpp/cpp_dev.h"
+#include "../../cpp_src/cpp_dev.h"
 #ifndef ___ZC_ZCC_MODE___
 #include "zc.h"
 #include <iconv.h>

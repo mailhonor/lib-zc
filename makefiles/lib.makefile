@@ -1,35 +1,32 @@
 all: libzc.a libzc_coroutine.a
 
-include OBJS_DEST/depend
+include .depend
 -include makefiles/defined.include
 
 GCC := gcc
-CPP := g++
+GPP := g++
 
 FLAGS := -fPIC -shared -Wall -Winline -I./ -O2 -g -ggdb -D___ZC_DEV_MODE___ $(EXTRA_CFLAGS)
-CFLAGS := -std=gnu99 $(FLAGS)
-CPPFLAGS := -std=gnu++11 $(FLAGS) -D___ZC_ZCC_MODE___
+GCCFLAGS := -std=gnu99 $(FLAGS)
+GPPFLAGS := -std=gnu++11 $(FLAGS) -D___ZC_ZCC_MODE___
 
-SRCS_C := ${shell find src -type f -name "*.c"}
-OBJS_C := $(patsubst %.c, OBJS_DEST/%.o, $(SRCS_C))
+SRCS_GCC := ${shell find src cpp_src -type f -name "*.c"}
+OBJS_GCC := $(patsubst %,%.o, $(SRCS_GCC))
 
-SRCS_CPP := ${shell find src -type f -name "*.cpp"|grep -v "^src/coroutine/"}
-OBJS_CPP := $(patsubst %.cpp, OBJS_DEST/%.o, $(SRCS_CPP))
+SRCS_GPP := ${shell find src cpp_src -type f -name "*.cpp"}
+OBJS_GPP := $(patsubst %,%.o, $(SRCS_GPP))
 
 SRCS_COROUTINE := ${shell find src/coroutine -type f -name "*.c"}
-OBJS_COROUTINE := $(patsubst %.c, OBJS_DEST/%.o, $(SRCS_COROUTINE))
+OBJS_COROUTINE := $(patsubst %,%.o, $(SRCS_COROUTINE))
 
-SRCS_ZC := ${shell find src -type f -name "*.c"|grep -v "^src/coroutine/"}
-OBJS_ZC := $(patsubst %.c, OBJS_DEST/%.o, $(SRCS_ZC))
+OBJS_ZC := $(filter-out src/coroutine/%o, $(OBJS_GCC))
+OBJS_ZCC := $(filter-out src/coroutine/%.o, $(OBJS_GPP))
 
-SRCS_ZCC := ${shell find src -type f -name "*.cpp"|grep -v "^src/coroutine/"}
-OBJS_ZCC := $(patsubst %.cpp, OBJS_DEST/%.o, $(SRCS_ZCC))
+$(OBJS_GCC):%.o: %
+	$(GCC) $(GCCFLAGS) -c $< -o $@
 
-$(OBJS_C):OBJS_DEST/%.o: %.c
-	$(GCC) $(CFLAGS) -c $< -o $@
-
-$(OBJS_CPP):OBJS_DEST/%.o: %.cpp
-	$(CPP) $(CPPFLAGS) -c $< -o $@
+$(OBJS_GPP):%.o: %
+	$(GPP) $(GPPFLAGS) -c $< -o $@
 
 libzc.a: $(OBJS_ZC) $(OBJS_ZCC)
 	ar r libzc.a $(OBJS_ZC) $(OBJS_ZCC)

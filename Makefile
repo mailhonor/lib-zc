@@ -3,10 +3,6 @@ all: libzc
 
 .PHONY: test sample
 
-DIRS=${shell find src -type d}
-DIRS_DEST = $(patsubst %, OBJS_DEST/%, $(DIRS))
-${shell mkdir -p $(DIRS_DEST)}
-
 libzc lib: depend
 	make -f makefiles/lib.makefile $(libzc_special_target)
 
@@ -22,6 +18,7 @@ tag tags:
 clean:
 	make -f makefiles/clean.makefile
 	make clean -f makefiles/sample_list.makefile
+	@echo -e "\nclean over \n"
 
 CLEAN: clean
 	rm -r tags

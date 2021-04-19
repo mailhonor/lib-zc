@@ -78,7 +78,9 @@ typedef struct zmsearch_t zmsearch_t;
 typedef struct zmsearch_walker_t zmsearch_walker_t;
 typedef struct zpthread_pool_t zpthread_pool_t;
 
+#ifndef zinline
 #define zinline inline __attribute__((always_inline))
+#endif
 
 zinline int zempty(const void *ptr) { return ((!ptr)||(!(*(const char *)(ptr)))); }
 #define ZEMPTY(str)                  (!(str)||!(*((const char *)str)))
@@ -125,7 +127,7 @@ union ztype_convert_t {
 #define ZSTR_N_EQ(a, b, n)            ((a[0] == b[0]) && (!strncmp(a,b,n)))
 #define ZSTR_EQ(a, b)                 ((a[0] == b[0]) && (!strcmp(a,b)))
 
-/* inline ######################################################### */
+/* zinline ######################################################### */
 zinline unsigned int zint_unpack(const void *buf)
 {
     unsigned char *p = (unsigned char *)buf;
@@ -1353,7 +1355,7 @@ int zopenssl_timed_write(SSL *ssl, const void *buf, int len, int read_wait_timeo
 
 typedef struct zstream_engine_t zstream_engine_t;
 struct zstream_engine_t {
-    const char *type;
+    const char *(*get_type)();
     int (*close_fn)(zstream_t *fp, int release_ioctx);
     int (*read_fn)(zstream_t *fp, void *buf, int len);
     int (*write_fn)(zstream_t *fp, const void *buf, int len);
@@ -1372,6 +1374,7 @@ struct zstream_t {
     short int write_buf_len;
     unsigned short int error:1;
     unsigned short int eof:1;
+    unsigned short int auto_release_ioctx:1;
     unsigned char read_buf[zvar_stream_rbuf_size];
     unsigned char write_buf[zvar_stream_wbuf_size];
 };
@@ -1459,16 +1462,22 @@ void zstream_ungetc(zstream_t *fp);
 
 /* 读 max_len个字节到bf, -1: 错, 0: 不可读, >0: 读取字节数 */
 int zstream_read(zstream_t *fp, zbuf_t *bf, int max_len);
+int zstream_read_to_mem(zstream_t *fp, void *mem, int max_len);
 
 /* 严格读取strict_len个字符 */
 int zstream_readn(zstream_t *fp, zbuf_t *bf, int strict_len);
+int zstream_readn_to_mem(zstream_t *fp, void *mem, int strict_len);
 
 /* 读取最多max_len个字符到bf, 读取到delimiter为止 */
 int zstream_read_delimiter(zstream_t *fp, zbuf_t *bf, int delimiter, int max_len);
+int zstream_read_delimiter_to_mem(zstream_t *fp, void *mem, int delimiter, int max_len);
 
 /* 读取一行 */
 zinline int zstream_gets(zstream_t *fp, zbuf_t *bf, int max_len) {
     return zstream_read_delimiter(fp, bf, '\n', max_len);
+}
+zinline int zstream_gets_to_mem(zstream_t *fp, void *mem, int max_len) {
+    return zstream_read_delimiter_to_mem(fp, mem, '\n', max_len);
 }
 
 int zstream_get_cint(zstream_t *fp);
@@ -2628,16 +2637,20 @@ void zredis_client_disconnect(zredis_client_t *rc);
  * 1: 成功/失败, 2: 整数, 3: 字符串, 4:字符换vecgtor */
 
 /* 下面的 (redis_fmt, ...) 介绍:
- * 's':  char *; 'S': zuf_t *; d: int; l: long int; f: double;
- * 'L': zlist_t * <zbuf_t *>
- * 'V': zvector_t * <zbuf_t *>
- * 'A': zargv_t *
- * 'P': char **, 0结尾
+ *  s: char *;
+ *  S: zuf_t *;
+ *  d: int;
+ *  l: long int;
+ *  f: double;
+ *  L: zlist_t * <zbuf_t *>
+ *  V: zvector_t * <zbuf_t *>
+ *  A: zargv_t *
+ *  P: char **, 0结尾
  * 例子1: 检查key是否存在:
  *      zredis_client_get_success(rc, "ss", "EXISTS", "somekey");
  * 例子2: 将 key 所储存的值加上增量 increment:
  *      zredis_client_get_long(rc, &number_ret, "ssl", "INRBY", "somekey", some_longint); 或
- *      zredis_client_get_long(rc, &number_ret, "sss", "INRBY", "somekey", "some_longint_string"); 或
+ *      zredis_client_get_long(rc, &number_ret, "sss", "INRBY", "somekey", "some_longint_string");
  * */
 
 /* 返回 -1: 错; 0: 失败/不存在/逻辑错误/...; 1: 成功/存在/逻辑正确/... */
@@ -3012,6 +3025,8 @@ void zmsearch_walker_reset(zmsearch_walker_t *walker);
 #ifdef  __cplusplus
 #include <string>
 #include <vector>
+#include <set>
+#include <map>
 #pragma pack(push, 4)
 namespace zcc
 {
@@ -3020,8 +3035,8 @@ namespace zcc
 template <class T>
 class auto_delete {
 public:
-    inline auto_delete(T *obj) { obj_ = obj; }
-    inline ~auto_delete() { if (obj_) { delete obj_; } }
+    zinline auto_delete(T *obj) { obj_ = obj; }
+    zinline ~auto_delete() { if (obj_) { delete obj_; } }
     T *obj_;
 };
 
@@ -3043,17 +3058,17 @@ public:
     using stdstring::stdstring;
     using stdstring::append;
     string &printf_1024(const char *format, ...);
-    inline string &append(int i) {return printf_1024("%d", i);}
-    inline string &append(unsigned int i) {return printf_1024("%u", i);}
-    inline string &append(long int i) {return printf_1024("%ld", i);}
-    inline string &append(unsigned long i) {return printf_1024("%lu", i);}
-    inline string &append(double i) {return printf_1024("%f", i);}
-    inline string &append(float i) {return printf_1024("%f", i);}
-    inline string &clear() {std::string::clear(); return *this;}
-    inline string &push_back(char c) {std::string::push_back(c); return *this;}
-    inline string &tolower() {zcc::tolower(*this); return *this;}
-    inline string &toupper() {zcc::toupper(*this);;return *this;}
-    inline string &trim_right(const char *delims=0) {zcc::trim_right(*this, delims); return *this;}
+    zinline string &append(int i) {return printf_1024("%d", i);}
+    zinline string &append(unsigned int i) {return printf_1024("%u", i);}
+    zinline string &append(long int i) {return printf_1024("%ld", i);}
+    zinline string &append(unsigned long i) {return printf_1024("%lu", i);}
+    zinline string &append(double i) {return printf_1024("%f", i);}
+    zinline string &append(float i) {return printf_1024("%f", i);}
+    zinline string &clear() {std::string::clear(); return *this;}
+    zinline string &push_back(char c) {std::string::push_back(c); return *this;}
+    zinline string &tolower() {zcc::tolower(*this); return *this;}
+    zinline string &toupper() {zcc::toupper(*this);;return *this;}
+    zinline string &trim_right(const char *delims=0) {zcc::trim_right(*this, delims); return *this;}
     std::vector<std::string> split(const char *delims=0) {return zcc::split(*this, delims);}
 };
 
@@ -3083,13 +3098,361 @@ public:
     config &load_annother(zconfig_t *another);
     config &load_annother(config &another);
     config &debug_show();
-    inline zconfig_t *c_config() { return cf_; }
+    zinline zconfig_t *c_config() { return cf_; }
     bool get_bool(const char *key, bool default_val = false);
 private:
     zconfig_t *cf_;
     bool new_flag_;
 };
 extern config var_default_config;
+
+/* json ############################################################ */
+#ifndef ___ZC_LIB_INCLUDE_JSON___
+#define ___ZC_LIB_INCLUDE_JSON___
+#pragma pack(push, 1)
+class json;
+const unsigned char json_type_null    = 0;
+const unsigned char json_type_string  = 1;
+const unsigned char json_type_long    = 2;
+const unsigned char json_type_double  = 3;
+const unsigned char json_type_object  = 4;
+const unsigned char json_type_array   = 5;
+const unsigned char json_type_bool    = 6;
+const unsigned char json_type_unknown = 7;
+class json
+{
+public:
+    json();
+    json(const std::string &val);
+    json(const char *val, int len = -1);
+    json(long val);
+    json(double val);
+    json(bool val);
+    json(const unsigned char type);
+    ~json();
+
+    /* 深度递归复制 */
+    json *deep_copy();
+
+    /* 首先重置本json为 null, 然后从文件加载json */
+    bool load_from_pathname(const char *pathname);
+
+    /* 首先重置本json为 null, 然后从jstr反序列化为json */
+    bool unserialize(const char *jstr, int jsize = -1);
+
+    /* 序列化 */
+    json *serialize(std::string &result, bool strict_flag = false);
+
+    /* 类型 */
+    zinline int get_type()   { return type_; }
+    zinline bool is_string() { return type_==json_type_string; }
+    zinline bool is_long()   { return type_==json_type_long; }
+    zinline bool is_double() { return type_==json_type_double; }
+    zinline bool is_object() { return type_==json_type_object; }
+    zinline bool is_array()  { return type_==json_type_array; }
+    zinline bool is_bool()   { return type_==json_type_bool; }
+    zinline bool is_null()   { return type_==json_type_null; }
+
+    /* 重置为 null */
+    json *reset();
+
+    /* 改变类型为 bool, 其他类似 */
+    json *used_for_bool();
+    json *used_for_long();
+    json *used_for_double();
+    json *used_for_string();
+    json *used_for_array();
+    json *used_for_object();
+
+    /* 获取 string 值; 如果不是 string 类型, 则首先转换为 string 类型, 值默认为 "" */
+    std::string &get_string_value();
+
+    /* 获取 long 值; 如果不是 long 类型, 则首先转换为 long 类型, 值默认为 0 */
+    long &get_long_value();
+
+    /* 获取 double 值; 如果不是 double 类型, 则首先转换为 double 类型, 值默认为 0 */
+    double &get_double_value();
+
+    /* 获取 bool 值; 如果不是 bool 类型, 则首先转换为 bool 类型, 值默认为 false */
+    bool &get_bool_value();
+
+    /* 如果想操作下面的vector/map, 记得给新 json 设置 set_parent */
+
+    /* 获取 array 值; 如果不是 array 类型, 则首先转换为 array 类型, 默认为 [] */
+    const std::vector<json *> &get_array_value();
+
+    /* 获取 object 值; 如果不是 object 类型, 则首先转换为 object 类型, 默认为 {} */
+    const std::map<std::string, json *> &get_object_value();
+
+    /* 设置值 */
+    json *set_string_value(const char *val, int len = -1);
+    zinline json *set_string_value(const std::string &val) { get_string_value() = val; return this; }
+    zinline json *set_long_value(long val) { get_long_value() = val; return this; }
+    zinline json *set_double_value(double val) { get_double_value() = val; return this; }
+    zinline json *set_bool_value(bool val) { get_bool_value() = val; return this; }
+
+    /* 获取下标为 idx 的 json 节点, 如果不是 array 类型, 则先转为 array 类型 */
+    json *array_get(int idx);
+
+    /* 获取 array 节点的个数, 如上 */
+    int array_size();
+
+    /* 在 idx 前, 插入 j */
+    json *array_insert(int idx, json *j, bool return_child = false);
+
+    /* 在最前面插入 j */
+    zinline json *array_unshift(json *j, bool return_child = false) {
+        return array_insert(0, j, return_child);
+    }
+
+    /* 在尾部追加节点 j */
+    zinline json *array_add(json *j, bool return_child = false) {
+        return array_insert(-1, j, return_child);
+    }
+    zinline json *array_push(json *j, bool return_child = false) { return array_add(j, return_child); }
+    zinline json *array_add(const char *val, int len) { return array_add(new json(val, len)); }
+    zinline json *array_push(const char *val, int len) { return array_add(new json(val, len)); }
+
+    /* 设置下表为 idx 的成员 j, 如果键idx存在则, 则把idx对应的json赋给 *old, 如果old为0, 则销毁 */
+    json *array_update(int idx, json *j, json **old, bool return_child = false);
+    zinline json *array_update(int idx, json *j, bool return_child = false) {
+        return array_update(idx, j, 0, return_child);
+    }
+    zinline json *array_update(size_t idx, const char *val, int len, bool return_child = false) {
+        return array_update(idx, new json(val, len), return_child);
+    }
+    zinline json *array_update(size_t idx, const char *val, int len, json **old, bool return_child = false) {
+        return array_update(idx, new json(val, len), old, return_child);
+    }
+
+
+    /* 删除下标为 idx的节点, 存在则返回true, 赋值给 *old, 如果 old为 0, 则销毁 */
+    bool array_delete(int idx, json **old);
+
+    /* 弹出第一个节点, 存在则返回true, 赋值给 *old, 如果 old为 0, 则销毁 */
+    zinline bool array_shift(json **old) { return array_delete(0, old); }
+
+    /* 弹出最后一个节点, 存在则返回true, 赋值给 *old, 如果 old为 0, 则销毁 */
+    zinline bool array_pop(json **old) { return array_delete(-1, old); }
+
+    /* 获取键为 key 的字json节点, 如果不是 object 类型, 则先转为 object 类型 */
+    json *object_get(const char *key);
+
+    /* 获取 object 节点的个数, 如上 */
+    int object_size();
+
+    /* 更新键为key的节点, 旧值赋值给 *old, 如果 old为 0, 则销毁 */
+    json *object_update(const char *key, json *j, json **old, bool return_child = false);
+    json *object_add(const char *key, json *j, json **old, bool return_child = false) {
+        return object_update(key, j, old, return_child);
+    }
+
+    zinline json *object_update(const char *key, json *j, bool return_child = false) {
+        return object_update(key, j, 0, return_child);
+    }
+    zinline json *object_add(const char *key, json *j, bool return_child = false) {
+        return object_update(key, j, 0, return_child);
+    }
+    zinline json *object_update(const char *key, const char *val, int len, json **old, bool return_child = false) {
+        return object_update(key, new json(val, len), old, return_child);
+    }
+    zinline json *object_add(const char *key, const char *val, int len, json **old, bool return_child = false) {
+        return object_update(key, new json(val, len), old, return_child);
+    }
+    zinline json *object_update(const char *key, const char *val, int len, bool return_child = false) {
+        return object_update(key, new json(val, len), return_child);
+    }
+    zinline json *object_add(const char *key, const char *val, int len, bool return_child = false) {
+        return object_update(key, new json(val, len), return_child);
+    }
+
+    /* 删除键为key的节点, 存在则返回true, 赋值给 *old, 如果 old为 0, 则销毁 */
+    bool object_delete(const char *key, json **old);
+
+#define ___zcc_json_update(TTT) \
+    json *array_insert(int idx, TTT val, bool return_child = false) { \
+        return array_insert(idx, new json(val), return_child); \
+    } \
+    zinline json *array_unshift(TTT val, bool return_child = false) { \
+        return array_insert(0, new json(val), return_child); \
+    } \
+    zinline json *array_add(TTT val, bool return_child = false) { \
+        return array_insert(-1, new json(val), return_child); \
+    } \
+    zinline json *array_push(TTT val, bool return_child = false) { \
+        return array_insert(-1, new json(val), return_child); \
+    } \
+    zinline json *array_update(int idx, TTT val, bool return_child = false) { \
+        return array_update(idx, new json(val), return_child); \
+    } \
+    zinline json *array_update(int idx, TTT val, json **old, bool return_child = false) { \
+        return array_update(idx, new json(val), old, return_child); \
+    } \
+    zinline json *object_update(const char *key, TTT val, bool return_child = false) { \
+        return object_update(key, new json(val), return_child); \
+    } \
+    zinline json *object_update(const char *key, TTT val, json **old, bool return_child = false) { \
+        return object_update(key, new json(val), old, return_child); \
+    } \
+    zinline json *object_add(const char *key, TTT val, bool return_child = false) { \
+        return object_update(key, new json(val), return_child); \
+    } \
+    zinline json *object_add(const char *key, TTT val, json **old, bool return_child = false) { \
+        return object_update(key, new json(val), old, return_child); \
+    }
+
+    /* 这几组方法类似 array_update, object_update, 只不过参数不同 */
+    ___zcc_json_update(const std::string &);
+    ___zcc_json_update(const char *);
+    ___zcc_json_update(long);
+    ___zcc_json_update(double);
+    ___zcc_json_update(bool);
+#undef ___zcc_json_update
+
+    /* @get_by_path 得到路径path对应的j son, 并返回, 如:
+     * 已知 json {group:{linux:[{}, {}, {me: {age:18, sex:"male"}}}}, 则
+     * get_by_path("group/linux/2/me") 返回的 应该是 {age:18, sex:"male"} */
+    json *get_by_path(const char *path);
+
+    /* 如: get_by_path_vec("group", "linux", "2", "me", 0); */
+    json *get_by_path_vec(const char *path0, ...);
+
+    /* 获取 路径 pathname 对应的节点 的 值 */
+    bool get_value_by_path(const char *pathname, std::string &value);
+    bool get_value_by_path(const char *pathname, long *value);
+
+    /* */
+    zinline json *get_parent() { return parent_; }
+    json *get_top();
+    json *set_parent(json *js);
+    json *debug_show();
+private:
+    unsigned char type_;
+    union {
+        bool b;
+        long l;
+        double d;
+        char s[sizeof(std::string)];
+        std::vector<json *> *v;
+        std::map<std::string, json *> *m;
+    } val_;
+    json *parent_;
+};
+#pragma pack(pop)
+#endif /*___ZC_LIB_INCLUDE_JSON___ */
+
+/* stream ########################################################## */
+class basic_stream {
+public:
+    struct basic_stream_worker {
+        short int read_buf_p1;
+        short int read_buf_p2;
+        short int write_buf_len;
+        unsigned short int error:1;
+        unsigned short int eof:1;
+        unsigned char read_buf[zvar_stream_rbuf_size];
+        unsigned char write_buf[zvar_stream_wbuf_size];
+    };
+    basic_stream();
+    ~basic_stream();
+    basic_stream &reset();
+public:
+    zinline bool is_error() { return (basic_worker_->error?true:false); }
+    zinline bool is_eof() { return (basic_worker_->eof?true:false); }
+    zinline basic_stream &set_error(bool tf = true) { basic_worker_->error = 1; return *this; }
+    zinline basic_stream &set_eof(bool tf = true) { basic_worker_->eof = 1; return *this; }
+    zinline bool is_exception() {
+        return (((basic_worker_->eof)||(basic_worker_->error))?true:false);
+    }
+    zinline int get_read_cache_len() {
+        return (basic_worker_->read_buf_p2 - basic_worker_->read_buf_p1);
+    }
+    zinline char * get_read_cache() { return (char *)(basic_worker_->read_buf); }
+    zinline int get_write_cache_len() { return (basic_worker_->write_buf_len); }
+    zinline char * get_write_cache() {
+        basic_worker_->write_buf[basic_worker_->write_buf_len] = 0;
+        return (char *)(basic_worker_->write_buf);
+    }
+    zinline int getc() {
+        return ((basic_worker_->read_buf_p1<basic_worker_->read_buf_p2)?((int)(basic_worker_->read_buf[basic_worker_->read_buf_p1++])):(getc_do()));
+    }
+    basic_stream &ungetc();
+    int read(zbuf_t *bf, int max_len);
+    int read(void *mem, int max_len);
+    int read(std::string &str, int max_len);
+    int readn(zbuf_t *bf, int strict_len);
+    int readn(void *mem, int strict_len);
+    int readn(std::string &str, int strict_len);
+    int read_delimiter(zbuf_t *bf, int delimiter, int max_len);
+    int read_delimiter(void *mem, int delimiter, int max_len);
+    int read_delimiter(std::string &str, int delimiter, int max_len);
+    zinline int gets(zbuf_t *bf, int max_len) { return read_delimiter(bf, '\n', max_len ); }
+    zinline int gets(void *mem, int max_len) { return read_delimiter(mem, '\n', max_len ); }
+    zinline int gets(std::string &str, int max_len) { return read_delimiter(str, '\n', max_len ); }
+    zinline int putc(int c) {
+        return ((basic_worker_->write_buf_len<zvar_stream_wbuf_size)?(basic_worker_->write_buf[basic_worker_->write_buf_len++]=(int)(c),(int)(c)):(putc_do(c)));
+    }
+    int flush();
+    int write(const void *buf, int len);
+    int puts(const char *s) { return write(s, -1); }
+    zinline int append(zbuf_t *bf) { return write(zbuf_data(bf), zbuf_len(bf)); }
+    zinline int append(std::string &str) { return write(str.c_str(), (int)str.size()); }
+    int printf_1024(const char *format, ...);
+    int get_cint();
+    int write_cint(int len);
+    int write_cint_and_int(int i);
+    int write_cint_and_long(long l);
+    int write_cint_and_data(const void *buf, int len);
+    zinline int write_cint_and_dict(zdict_t * zd);
+    zinline int write_cint_and_pp(const char **pp, int size);
+protected:
+    virtual int engine_read(void *buf, int len) = 0;
+    virtual int engine_write(const void *buf, int len) = 0;
+private:
+    int getc_do();
+    int putc_do(int ch);
+protected:
+    basic_stream_worker *basic_worker_;
+};
+
+class iostream: public basic_stream {
+public:
+    iostream();
+    iostream &open_fd(int fd);
+    iostream &open_ssl(SSL *ssl);
+    bool open_file(const char *pathname, const char *mode);
+    bool open_destination(const char *destination, int timeout);
+    zinline bool connect(const char *destination, int timeout) {
+        return open_destination(destination, timeout);
+    }
+    ~iostream();
+public:
+    zinline int get_fd() { return fd_; }
+    zinline SSL *get_ssl() { return ssl_; }
+    zinline int get_read_wait_timeout() { return read_wait_timeout_; }
+    zinline int get_write_wait_timeout() { return write_wait_timeout_; }
+    int tls_connect(SSL_CTX *ctx);
+    int tls_accept(SSL_CTX *ctx);
+    iostream &set_read_wait_timeout(int read_wait_timeout);
+    iostream &set_write_wait_timeout(int write_wait_timeout);
+    int timed_read_wait(int read_wait_timeout);
+    int timed_write_wait(int write_wait_timeout);
+    int close(bool close_fd_or_release_ssl);
+private:
+    int engine_read(void *buf, int len);
+    int engine_write(const void *buf, int len);
+private:
+    SSL *ssl_;
+    int fd_;
+    int read_wait_timeout_;
+    int write_wait_timeout_;
+    /* 之所以使用注册函数, 仅仅是因为 想和 SSL 库隔离 */
+    int (*engine_read_)(iostream &fp, void *buf, int len);
+    int (*engine_write_)(iostream &fp, const void *buf, int len);
+    int (*engine_timed_read_wait_)(iostream &fp, int read_wait_timeout);
+    int (*engine_timed_write_wait_)(iostream &fp, int write_wait_timeout);
+    int (*engine_close_)(iostream &fp, bool close_fd_or_release_ssl);
+};
 
 /* charset ######################################################### */
 inline char *charset_detect(const char **charset_list, const char *data, int size, char *charset_result) {
@@ -3111,6 +3474,6 @@ void charset_convert_to_utf8(const char *from_charset, const char *data, int siz
 #endif /* __cplusplus */
 
 #ifdef ___ZC_DEV_MODE___
-#include "src/cpp/cpp_dev.h"
+#include "cpp_src/cpp_dev.h"
 #endif
 #endif /*___ZC_LIB_INCLUDE___ */

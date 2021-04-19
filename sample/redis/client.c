@@ -17,7 +17,7 @@ static zjson_t *jval;
 static void usage()
 {
     printf("\n");
-    printf("%s [ -server 127.0.0.1:6379 ] redis_cmd arg1 arg2 ...\n", zvar_progname);
+    printf("%s [ -server 127.0.0.1:6379 ] [-password xxxxxx ] [ --cluster ] redis_cmd arg1 arg2 ...\n", zvar_progname);
     exit(1);
 }
 
@@ -66,11 +66,12 @@ int main(int argc, char **argv)
     zmain_argument_run(argc, argv, 0);
     zredis_client_t *rc;
     char *server = zconfig_get_str(zvar_default_config, "server", "127.0.0.1:6379");
+    char *password = zconfig_get_str(zvar_default_config, "password", 0);
     int ex = zconfig_get_bool(zvar_default_config, "cluster", 0);
     if (ex) {
-        rc = zredis_client_connect_cluster(server, 0, 10);
+        rc = zredis_client_connect_cluster(server, password, 10);
     } else {
-        rc = zredis_client_connect(server, 0, 10);
+        rc = zredis_client_connect(server, password, 10);
     }
 
     sval = zbuf_create(-13);

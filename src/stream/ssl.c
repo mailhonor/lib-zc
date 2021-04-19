@@ -14,6 +14,11 @@ struct ssl_ioctx_t {
     int fd;
 };
 
+static const char *fp_get_type()
+{
+    return "_Z_SSL_TLS";
+}
+
 static int fp_close(zstream_t *fp, int release_ioctx)
 {
     ssl_ioctx_t *ioctx = (ssl_ioctx_t *)(fp->ioctx);
@@ -75,7 +80,7 @@ static int fp_get_fd(zstream_t *fp)
 }
 
 static zstream_engine_t fp_engine = {
-    "_Z_SSL_TLS",
+    fp_get_type,
     fp_close,
     fp_read,
     fp_write,
@@ -84,9 +89,9 @@ static zstream_engine_t fp_engine = {
     fp_get_fd
 };
 
-zstream_t *zstream_open_ssl(SSL *ssl)
+zstream_t *zstream_open_ssl_engine(zstream_t *fp, SSL *ssl)
 {
-    zstream_t *fp = (zstream_t *)zmalloc(sizeof(zstream_t));
+    memset(fp, 0, sizeof(zstream_t));
     fp->read_buf_p1 = 0;
     fp->read_buf_p2 = 0;
     fp->write_buf_len = 0;
@@ -100,6 +105,11 @@ zstream_t *zstream_open_ssl(SSL *ssl)
     ioctx->fd = zopenssl_SSL_get_fd(ssl);
     fp->ioctx = ioctx;
     return fp;
+}
+
+zstream_t *zstream_open_ssl(SSL *ssl)
+{
+    return zstream_open_ssl_engine((zstream_t *)zmalloc(sizeof(zstream_t)), ssl);
 }
 
 SSL *zstream_get_ssl(zstream_t *fp)
