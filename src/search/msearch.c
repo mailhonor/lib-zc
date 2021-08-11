@@ -549,7 +549,6 @@ int zmsearch_build(zmsearch_t *ms, const char *dest_db_pathname)
     return zfile_put_contents(dest_db_pathname, ms->engine, ms->engine->data_len);
 }
 
-typedef struct zmsearch_walker_t zmsearch_walker_t;
 struct zmsearch_walker_t {
     zmsearch_t *ms;
     unsigned char abc[256];

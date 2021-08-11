@@ -15,7 +15,6 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <sys/prctl.h>
-#include <sys/eventfd.h>
 
 void (*zcoroutine_server_service_register) (const char *service, int fd, int fd_type) = 0;
 void (*zcoroutine_server_before_service) (void) = 0;

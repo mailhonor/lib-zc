@@ -50,6 +50,10 @@ static int encode_decode_lib(const char *type, const char *encode_or_decode, int
         } else {
             zqp_decode_2045(data, len, bf);
         }
+    } else if (!strcmp(type, "uu")) {
+        if (!strcmp(encode_or_decode, "decode")) {
+            zuudecode(data, len, bf);
+        }
     }
     zmmap_reader_fini(&reader);
 

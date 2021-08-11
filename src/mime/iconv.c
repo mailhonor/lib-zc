@@ -14,6 +14,11 @@ void zmime_iconv(const char *from_charset, const char *data, int size, zbuf_t *r
     if (size < 1) {
         return;
     }
+    const char *default_charset = "GB18030";
+    if (from_charset && (from_charset[0] == '?')) {
+        default_charset = from_charset + 1;
+        from_charset = 0;
+    }
 
     char f_charset_buf[zvar_charset_name_max_size+1];
     const char *f_charset;
@@ -26,7 +31,7 @@ void zmime_iconv(const char *from_charset, const char *data, int size, zbuf_t *r
         if (zcharset_detect_cjk(data, size, f_charset_buf)) {
             f_charset = f_charset_buf;
         } else  {
-            f_charset = "GB18030";
+            f_charset = default_charset;
         }
     } else {
         f_charset = zcharset_correct_charset(f_charset);

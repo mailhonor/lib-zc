@@ -21,6 +21,21 @@ static void test(const char *src, int len)
     zbuf_free(result);
 }
 
+static void test_loop(const char *src, int len, int times)
+{
+    if (times < 0) {
+        times = 1000;
+    }
+    src = zmemdupnull(src, len);
+    for (int i = 0; i < times; i++) {
+        zjson_t *j = zjson_create();
+        zjson_unserialize(j, src, len);
+        zjson_free(j);
+    }
+    zfree(src);
+}
+
+
 int main(int argc, char **argv)
 {
     zmain_argument_run(argc, argv, 0);
@@ -38,5 +53,8 @@ int main(int argc, char **argv)
 
     test(fmap.data, fmap.len);
 
+    if (zvar_main_redundant_argc > 1) {
+        test_loop(fmap.data, fmap.len, atoi(zvar_main_redundant_argv[1]));
+    }
     return 0;
 }

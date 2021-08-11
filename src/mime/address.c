@@ -15,7 +15,7 @@ static int zmime_header_line_address_tok(char **str, int *len, char **rname, cha
 {
     char *pstr = *str;
     int c;
-    int plen = *len, i, inquote = 0;
+    int plen = *len, i, inquote = 0, find_lt = 0;
     char *name = 0, *mail = 0, last = 0;
     int tmp_cache_idx = 0;
 #define  ___put(ch)  { if(tmp_cache_idx>tmp_cache_size) return -1;tmp_cache[tmp_cache_idx++] = (ch);}
@@ -40,6 +40,7 @@ static int zmime_header_line_address_tok(char **str, int *len, char **rname, cha
                 ___put(c);
             } else {
                 inquote = 1;
+                find_lt = 0;
             }
             continue;
         }
@@ -50,7 +51,18 @@ static int zmime_header_line_address_tok(char **str, int *len, char **rname, cha
         if (c == ',') {
             break;
         }
+        if (c == ';') {
+            break;
+        }
+        if (c == '<') {
+            find_lt = 1;
+        }
         ___put(c);
+        if (c == '>') {
+            if (find_lt == 1) {
+                break;
+            }
+        }
     }
     *len = *len - (pstr - *str);
     *str = pstr;

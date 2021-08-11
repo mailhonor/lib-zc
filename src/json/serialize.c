@@ -15,7 +15,7 @@ zbool_t zjson_load_from_pathname(zjson_t *j, const char *pathname)
 {
     zbool_t r = 0;
     zbuf_t *content = zbuf_create(-1);
-    if (zfile_get_contents(pathname, content) < 0) {
+    if (zfile_get_contents(pathname, content) > 0) {
         r = zjson_unserialize(j, zbuf_data(content), zbuf_len(content));
     }
     zbuf_free(content);

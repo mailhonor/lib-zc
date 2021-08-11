@@ -1101,6 +1101,7 @@ void zbase64_encode(const void *src, int src_size, zbuf_t *str, int mime_flag);
 void zbase64_decode(const void *src, int src_size, zbuf_t *str);
 int zbase64_decode_get_valid_len(const void *src, int src_size);
 int zbase64_encode_get_min_len(int in_len, int mime_flag);
+void zuudecode(const void *src, int src_size, zbuf_t *str);
 
 /* quoted-printable */
 void zqp_encode_2045(const void *src, int src_size, zbuf_t *result, zbool_t mime_flag);
@@ -3040,6 +3041,17 @@ public:
     T *obj_;
 };
 
+/* gloabal init ##################################################### */
+class global_init {
+public:
+    zinline global_init(void (*_init_fn)()) { _init_fn(); }
+    zinline global_init(void (*_init_fn)(void *ctx), void *ctx) { _init_fn(ctx); }
+    zinline global_init(void (*_init_fn)(int i), int i) { _init_fn(i); }
+    zinline ~global_init() { }
+public:
+    int unused;
+};
+
 /* std utils ######################################################## */
 std::string &vsprintf_1024(std::string &str, const char *format, va_list ap);
 std::string &sprintf_1024(std::string &str, const char *format, ...);
@@ -3084,6 +3096,7 @@ void hex_decode(const void *src, int src_size, std::string &str);
 void url_hex_decode(const void *src, int src_size, std::string &str);
 void url_hex_encode(const void *src, int src_size, std::string &str, bool strict_flag = false);
 void xml_unescape_string(std::string &content, const char *data, int len);
+void uudecode(const void *src, int src_size, std::string &str);
 
 /* config ########################################################## */
 class config {
