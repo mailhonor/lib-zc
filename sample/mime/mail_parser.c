@@ -9,6 +9,7 @@
 #include "zc.h"
 
 static int enable_att = 0;
+static const char *name_prefix = "";
 
 static char *name_char_validate(char *abc)
 {
@@ -33,9 +34,9 @@ static int save_att(zmail_t * parser, zmime_t * mime)
     idx++;
     sname = zmime_get_show_name(mime);
     if (zempty(sname)) {
-        sprintf(tmpname, "atts/%d_unknown.dat", idx);
+        sprintf(tmpname, "atts/%s%d_unknown.dat", name_prefix, idx);
     } else {
-        snprintf(tmpname, 255, "atts/%d_%s", idx, sname);
+        snprintf(tmpname, 255, "atts/%s%d_%s", name_prefix, idx, sname);
         name_char_validate(tmpname+5);
     }
     zbuf_t *dcon = zbuf_create(-1);
@@ -79,6 +80,7 @@ int main(int argc, char **argv)
 {
     zmain_argument_run(argc, argv, 0);
     enable_att = zconfig_get_bool(zvar_default_config, "att", 0);
+    name_prefix = zconfig_get_str(zvar_default_config, "np", "");
 
     if (zvar_main_redundant_argc == 0) {
         printf("USAGE: %s [--att] eml_fn...\n", zvar_progname);

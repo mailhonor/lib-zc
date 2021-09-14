@@ -80,7 +80,11 @@ static void explore_page(zhttpd_t *httpd)
     }
 
     if (stat(uri, &st) < 0) {
-        zhttpd_response_500(httpd);
+        if (errno == ENOENT) {
+            zhttpd_response_404(httpd);
+        } else {
+            zhttpd_response_500(httpd);
+        }
         return;
     }
     if (S_ISREG(st.st_mode)) {

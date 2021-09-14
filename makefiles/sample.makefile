@@ -25,9 +25,11 @@ DEST_GPP := $(SRCS_GPP:%.cpp=%)
 $(DEST_GPP):%:%.cpp
 	$(GPP) $*.cpp -o $* $(GPPFLAGS) $($@_LIB) $(PREFIX_LIBS) ../../libzc.a $(SUFFIX_LIBS) $(LIB_$@) $(GLOBAL_LIBS)
 
-$(DEST_GCC) $(DEST_GPP): ../../libzc.a ../../libzc_coroutine.a ../../zc.h 
+DEST = $(DEST_GCC) $(DEST_GPP)
 
-target: libzc $(DEST_GCC) $(DEST_GPP)
+$(DEST): ../../libzc.a ../../libzc_coroutine.a ../../zc.h 
+
+target: libzc $(DEST)
 
 clean: CLEAN_WORKER
 
@@ -35,7 +37,7 @@ cleanFromTop: CLEAN_WORKER
 
 CLEAN_WORKER:
 	rm -f *~
-	rm -f $(DEST_GCC) $(DEST_GPP)
+	rm -f $(DEST)
 	rm -f tags gmon.out
 	rm -rf $(DELS)
 	find -type f -name "*~" -exec rm {} \;

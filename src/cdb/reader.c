@@ -10,17 +10,17 @@
 /*
  * cdb 文件格式:
  * partA: 在文件开始
- * 4字节, 字符串, 文件类型,    ZCDB
- * 4字节, 字符串, 版本, 当前版本 0001
+ * 4字节, 字符串, 文件类型,       ZCDB
+ * 4字节, 字符串, 版本, 当前版本, 0001
  * 4字节, int_pack, 安全码, 文件长度
  * 4字节, int pack, 成员数量
  * 4字节, int pack, 最大的KEY的长度, 记为 LENGHT_V
- * 4字节, int pack, 值的长度属性, 536870912:长度不定, 其他值:长度固定(记为VL),特别的0表示没有值
+ * 4字节, int pack, 值的长度的属性, 536870912:长度不定, 其他值:长度固定(记为VL),特别的0表示没有值
  * 
- * partB, LENGHT_V 个 4字节(偏移), 按key的年度顺排
+ * partB, LENGHT_V 个 4字节(偏移), 按key的长度顺排
  * 4字节 * LENGHT_V, int pack, 偏移, 指向 partC
  *
- * partC, 
+ * partC,
  * 4字节, int pack, hash_vector_size != 0
  * 4字节 * hash_vector_size, int_pack, 指向 partD
  *

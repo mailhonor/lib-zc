@@ -105,7 +105,7 @@ static int ___get_header_line(mail_parser_node_t * cnode, char **ptr)
     int len = 0;
 
     *ptr = pbegin;
-    if (pbegin > pend) {
+    if (pbegin >= pend) {
         return 0;
     }
     if (pbegin[0] == '\n') {
@@ -260,7 +260,7 @@ static int zmail_decode_mime_get_all_boundary(zmail_t *parser, boundary_line_t *
             break;
         }
         if (ps[1]!='-') {
-            p = memchr(ps+1, '\n', len);
+            p = memchr(ps+1, '\n', len-1);
             if (p) {
                 ps = p + 1;
             } else {
@@ -325,7 +325,7 @@ static void zmail_decode_mime_free_context(mail_parser_context_t *ctx)
 int zmail_decode_mime_inner(zmail_t * parser)
 {
     mail_parser_context_t *ctx = zmail_decode_mime_prepare_context(parser);
-    mail_parser_node_t *cnode, *cnode_last = 0;
+    mail_parser_node_t *cnode = 0, *cnode_last = 0;
     while (zvector_len(ctx->node_vec)) {
         if (cnode_last) {
             zfree(cnode_last);

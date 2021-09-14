@@ -135,8 +135,6 @@ int zcoroutine_block_close(int fd);
 int zcoroutine_block_rename(const char *oldpath, const char *newpath);
 int zcoroutine_block_unlink(const char *pathname);
 
-#undef zinline
-
 #ifdef  __cplusplus
 }
 #endif
