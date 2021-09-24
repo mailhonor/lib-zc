@@ -2078,6 +2078,7 @@ extern int (*zcharset_convert)(const char *from_charset, const char *src, int sr
 
 int zcharset_iconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *result, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count);
 
+extern int zvar_charset_uconv_mode;
 void zcharset_convert_use_uconv();
 int zcharset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count);
 

@@ -16,6 +16,8 @@ int zvar_charset_uconv_mode = 0;
 #else
 #endif
 
+#define mydebug(fmt, args...)   if (zvar_charset_debug) { zinfo(fmt, ##args); }
+
 #define ZCHARSET_ICONV_ERROR_OPEN       (-2016)
 
 typedef struct charset_iconv_t charset_iconv_t;
@@ -148,6 +150,13 @@ int zcharset_iconv(const char *from_charset, const char *src, int src_len, const
 int charset_iconv(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
 #endif
 {
+    if (zvar_charset_uconv_mode) {
+#ifndef ___ZC_ZCC_MODE___
+        zfatal("FATAL: run zcharset_convert_use_uconv first");
+#else
+        zfatal("FATAL: run zcc::charset_convert_use_uconv instead of zcharset_convert_use_uconv first");
+#endif
+    }
     charset_iconv_t ic_buf, *ic = &ic_buf;
     char buf[4910];
     int len;

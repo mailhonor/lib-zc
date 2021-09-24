@@ -13,17 +13,25 @@
 #include <unicode/utypes.h>
 #include <unicode/ucnv.h>
 #endif
-#endif
+#endif /* ___ZC_ZCC_MODE___ */
 
 #ifdef _LIB_ZC_UCONV_
+
+#ifdef  __cplusplus
+extern "C" {
+#endif
 extern zbool_t zvar_charset_debug;
+#ifdef  __cplusplus
+}
+#endif
+
 #define mydebug(fmt, args...)   if (zvar_charset_debug) { zinfo(fmt, ##args); }
 
 #ifndef ___ZC_ZCC_MODE___
 int zcharset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
-#else
+#else /* ___ZC_ZCC_MODE___ */
 int charset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
-#endif
+#endif /* ___ZC_ZCC_MODE___ */
 {
     int ret = -1;
 
@@ -147,21 +155,20 @@ over:
     return ret;
 }
 
-extern int zvar_charset_uconv_mode;
 #ifndef ___ZC_ZCC_MODE___
 void zcharset_convert_use_uconv()
 {
     zvar_charset_uconv_mode = 1;
     zcharset_convert = zcharset_uconv;
 }
-#else
+#else /* ___ZC_ZCC_MODE___ */
 void charset_convert_use_uconv()
 {
     zvar_charset_uconv_mode = 1;
     charset_convert = charset_uconv;
     zcharset_convert = zcharset_uconv;
 }
-#endif
+#endif /* ___ZC_ZCC_MODE___ */
 
 #else /* ___ZC_ZCC_MODE___ */
 #include "zc.h"
