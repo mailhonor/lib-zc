@@ -57,7 +57,7 @@ int main(int argc, char **argv)
     printf("exit after 100s\n");
     printf("file io running in worker pthread\n");
     printf("strace -p pthrad_id\n");
-    zcoroutine_base_run(0);
+    zcoroutine_base_run();
     zcoroutine_base_fini();
     sleep(1);
     return 0;

@@ -294,7 +294,7 @@ int zbuf_put_do(zbuf_t *bf, int ch);
 
 /* 追加字节c到b, 建议使用 zbuf_put(b, c) */
 #define ZBUF_PUT(b, c)  \
-    (((b)->len<(b)->size)?((int)(((unsigned char *)((b)->data))[(b)->len++]=(int)(c))):(((b)->static_mode?0:zbuf_put_do((b), (c)))))
+    (((b)->len<(b)->size)?((int)(((unsigned char *)((b)->data))[(b)->len++]=(unsigned char)(c))):(((b)->static_mode?0:zbuf_put_do((b), (c)))))
 
 /* 追加写字节ch到bf. 返回ch */
 zinline void zbuf_put(zbuf_t *bf, int ch) { ZBUF_PUT(bf, ch); bf->data[bf->len] = 0; }
@@ -1384,7 +1384,7 @@ struct zstream_t {
 #define ZSTREAM_GETC(fp)            (((fp)->read_buf_p1<(fp)->read_buf_p2)?((int)((fp)->read_buf[(fp)->read_buf_p1++])):(zstream_getc_do(fp)))
 
 /* 宏, 写一个字符ch到fp, -1:错 */
-#define ZSTREAM_PUTC(fp, ch)        (((fp)->write_buf_len<zvar_stream_wbuf_size)?((fp)->write_buf[(fp)->write_buf_len++]=(int)(ch),(int)(ch)):(zstream_putc_do(fp, ch)))
+#define ZSTREAM_PUTC(fp, ch)        (((fp)->write_buf_len<zvar_stream_wbuf_size)?((fp)->write_buf[(fp)->write_buf_len++]=(unsigned char)(ch),(int)(ch)):(zstream_putc_do(fp, ch)))
 
 /* 是否出错 */
 zinline zbool_t zstream_is_error(zstream_t *fp) { return fp->error; }
@@ -1750,6 +1750,7 @@ void zaio_tls_accept(zaio_t *aio, SSL_CTX * ctx, void (*callback)(zaio_t *aio));
 /* 从缓存中获取数据 */
 int zaio_get_read_cache_size(zaio_t *aio);
 void zaio_get_read_cache(zaio_t *aio, zbuf_t *bf, int strict_len);
+void zaio_get_read_cache_to_buf(zaio_t *aio, char *buf, int strict_len);
 
 /* 获取缓存数据的长度 */
 int zaio_get_write_cache_size(zaio_t *aio);
@@ -1831,8 +1832,11 @@ void zaio_base_free(zaio_base_t *eb);
 /* 获取当前线程运行的 aio_base */
 zaio_base_t *zaio_base_get_current_pthread_aio_base();
 
+/* 设置 aio_base 每次epoll循环需要执行的函数 */
+void zaio_base_set_loop_fn(zaio_base_t *eb, void (*loop_fn)(zaio_base_t *eb));
+
 /* 运行 aio_base */
-void zaio_base_run(zaio_base_t *eb, void (*loop_fn)());
+void zaio_base_run(zaio_base_t *eb);
 
 /* 通知 aio_base 停止, 既 zaio_base_run 返回 */
 void zaio_base_stop_notify(zaio_base_t *eb);
@@ -1866,8 +1870,11 @@ zcoroutine_base_t *zcoroutine_base_init();
 /* 获取当前协程环境 */
 zcoroutine_base_t *zcoroutine_base_get_current();
 
+/* 设置当前协程环境每次epoll循环需要执行的函数 */
+void zcoroutine_base_set_loop_fn(void (*loop_fn)(zcoroutine_base_t *cb));
+
 /* 在线程内运行当前协程框架 */
-void zcoroutine_base_run(void (*loop_fn)());
+void zcoroutine_base_run(void);
 
 /* 通知协程环境(cobs==0,表示当前)退出, 既 zcoroutine_base_run() 返回 */
 void zcoroutine_base_stop_notify(zcoroutine_base_t *cobs);

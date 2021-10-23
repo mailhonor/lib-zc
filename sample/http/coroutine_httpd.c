@@ -68,7 +68,7 @@ int main(int argc, char **argv)
 
     zcoroutine_go(accept_incoming, linfo.ptr, -1);
 
-    zcoroutine_base_run(0);
+    zcoroutine_base_run();
 
     zclose(fd);
 

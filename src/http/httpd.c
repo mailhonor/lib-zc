@@ -550,8 +550,8 @@ void zhttpd_response_501(zhttpd_t *httpd)
 
 void zhttpd_response_header_initialization(zhttpd_t *httpd, const char *version, const char *status)
 {
-    char initialization[128];
-    sprintf(initialization, "%s %s", version?version:httpd->version, status);
+    char initialization[128 + 1];
+    snprintf(initialization, 128, "%s %s", version?version:httpd->version, status);
     zstream_puts(httpd->fp, initialization);
     zstream_puts_const(httpd->fp, "\r\n");
     httpd->response_initialization = 1;

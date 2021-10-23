@@ -372,7 +372,7 @@ static void zaio_server_fini()
 }
 
 static int loop_times = 0;
-static void zaio_server_main_loop()
+static void zaio_server_main_loop(zaio_base_t *eb)
 {
     if (flag_stop || zvar_sigint_flag) {
         zaio_base_stop_notify(zvar_default_aio_base);
@@ -389,7 +389,8 @@ static void zaio_server_main_loop()
 int zaio_server_main(int argc, char **argv)
 {
     zaio_server_init(argc, argv);
-    zaio_base_run(zvar_default_aio_base, zaio_server_main_loop);
+    zaio_base_set_loop_fn(zvar_default_aio_base, zaio_server_main_loop);
+    zaio_base_run(zvar_default_aio_base);
     zaio_server_fini();
     return 0;
 }

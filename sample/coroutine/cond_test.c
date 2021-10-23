@@ -65,7 +65,7 @@ int main(int argc, char **argv)
 {
     zcoroutine_base_init();
     zcoroutine_go(begin_my_test, 0, 0);
-    zcoroutine_base_run(0);
+    zcoroutine_base_run();
     printf("\n\nzcoroutine_base_run over, then zcoroutine_base_fini \n");
     zcoroutine_base_fini();
     printf("\n");

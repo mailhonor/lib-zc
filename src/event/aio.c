@@ -1348,6 +1348,11 @@ void zaio_get_read_cache(zaio_t *aio, zbuf_t *bf, int strict_len)
     zbuf_terminate(bf);
 }
 
+void zaio_get_read_cache_to_buf(zaio_t *aio, char *buf, int strict_len)
+{
+    ___zaio_cache_shift(aio, &(aio->read_cache), buf, strict_len);
+}
+
 void zaio_get_write_cache(zaio_t *aio, zbuf_t *bf, int strict_len)
 {
     zbuf_need_space(bf, strict_len+1);
@@ -1567,18 +1572,23 @@ static void _check_incoming(zaio_base_t *eb)
     }
 }
 
+void zaio_base_set_loop_fn(zaio_base_t *eb, void (*loop_fn)(zaio_base_t *eb))
+{
+    eb->loop_fn = loop_fn;
+}
+
 #define ___zaio_base_run_while_begin while(1) {
 #define ___zaio_base_run_while_end }
 #define ___zaio_base_check_stop if (eb->stop_flag) { break; }
 
-void zaio_base_run(zaio_base_t *eb, void (*loop_fn)())
+void zaio_base_run(zaio_base_t *eb)
 {
     _zvar_current_base = eb;
     ___zaio_base_run_while_begin;
     ___zaio_base_check_stop;
 
-    if (loop_fn) {
-        loop_fn();
+    if (eb->loop_fn) {
+        eb->loop_fn(eb);
     }
 
     if (eb->incoming_queue_head || eb->extern_incoming_queue_head) {

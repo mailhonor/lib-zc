@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2015-11-20
  * ================================
  */
@@ -79,3 +79,4 @@ void zmaster_log_use_inner(char *progname, char *log_uri)
 over:
     zargv_free(largv);
 }
+

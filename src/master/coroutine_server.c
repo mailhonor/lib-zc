@@ -260,7 +260,7 @@ static void alone_listen_fd_clear()
     zfree(alone_listen_fd_vector);
 }
 
-static void _loop()
+static void _loop(zcoroutine_base_t *cb)
 {
     if (zvar_sigint_flag) {
         zcoroutine_base_stop_notify(current_cobs);
@@ -270,7 +270,8 @@ static void _loop()
 int zcoroutine_server_main(int argc, char **argv)
 {
     zcoroutine_server_init(argc, argv);
-    zcoroutine_base_run(zvar_memleak_check?_loop:0);
+    zcoroutine_base_set_loop_fn(zvar_memleak_check?_loop:0);
+    zcoroutine_base_run();
     alone_listen_fd_clear();
     zcoroutine_base_fini();
     return 0;

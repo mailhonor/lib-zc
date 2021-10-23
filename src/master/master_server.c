@@ -884,7 +884,7 @@ static void fini_all()
     zaio_base_free(zvar_default_aio_base);
 }
 
-static void zmaster_server_main_loop()
+static void zmaster_server_main_loop(zaio_base_t *eb)
 {
     if (flag_stop) {
         zaio_base_stop_notify(zvar_default_aio_base);
@@ -903,7 +903,8 @@ int zmaster_server_main(int argc, char **argv)
     init_all(argc, argv);
     reload_server();
     flag_reload = 0;
-    zaio_base_run(zvar_default_aio_base, zmaster_server_main_loop);
+    zaio_base_set_loop_fn(zvar_default_aio_base, zmaster_server_main_loop);
+    zaio_base_run(zvar_default_aio_base);
     fini_all();
     return 0;
 }

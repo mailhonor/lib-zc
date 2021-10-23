@@ -82,7 +82,7 @@ static void _check_info(unsigned char *str, int len, int *is_7bit, int *is_maybe
             return;
         }
         if (c == '+') {
-            if (have_plus == 0) {
+            if (have_plus == 1) {
                 plus_error = 1;
             }
             have_plus = 1;
@@ -188,6 +188,16 @@ char *zcharset_detect(const char **charset_list, const char *data, int size, cha
         ret = 0;
         result_score = 0;
         fromcode = charset_list[i];
+        if (is_maybe_utf7 == 0) {
+            if ((fromcode[0] == 'u') || (fromcode[0] == 'U')) {
+                if ((fromcode[1] == 't') || (fromcode[1] == 'T')) {
+                    if ((!strcasecmp(fromcode + 2, "f7")) || (!strcasecmp(fromcode + 2, "f-7"))) {
+                        mydebug("        # %-20s, skip utf7", fromcode);
+                        continue;
+                    }
+                }
+            }
+        }
 
         ret = zcharset_convert(fromcode, data, len_to_use, "UTF-8", out_bf, &converted_len, -1, &omit_invalid_bytes_count);
         if (ret < 0) {

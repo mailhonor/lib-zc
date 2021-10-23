@@ -140,7 +140,7 @@ int main(int argc, char **argv)
         zcoroutine_go(foo, argv[2], 0);
     }
     zcoroutine_go(foo2, 0, 0);
-    zcoroutine_base_run(0);
+    zcoroutine_base_run();
     zcoroutine_base_fini();
     return 0;
 }

@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     zcoroutine_base_init();
     zcoroutine_go(test_sleep1, 0, 0);
     zcoroutine_go(test_sleep2, 0, 0);
-    zcoroutine_base_run(0);
+    zcoroutine_base_run();
     zcoroutine_base_fini();
     return 0;
 }

@@ -68,7 +68,7 @@ int main(int argc, char **argv)
         tm2 = tm;
     }
 
-    zaio_base_run(base, 0);
+    zaio_base_run(base);
     zaio_base_free(base);
 
     return 0;

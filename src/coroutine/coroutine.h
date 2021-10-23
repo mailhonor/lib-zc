@@ -40,8 +40,11 @@ zcoroutine_base_t *zcoroutine_base_init();
 /* 获取当前协程环境 */
 zcoroutine_base_t *zcoroutine_base_get_current();
 
+/* 设置当前协程环境每次epoll循环需要执行的函数 */
+void zcoroutine_base_set_loop_fn(void (*loop_fn)(zcoroutine_base_t *cb));
+
 /* 在线程内运行当前协程框架 */
-void zcoroutine_base_run(void (*loop_fn)());
+void zcoroutine_base_run();
 
 /* 通知协程环境(cobs==0,表示当前)退出, 既 zcoroutine_base_run() 返回 */
 void zcoroutine_base_stop_notify(zcoroutine_base_t *cobs);

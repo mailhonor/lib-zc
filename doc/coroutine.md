@@ -106,10 +106,13 @@ zcoroutine_base_fini();
 
 * 获取当前线程的协程环境
 
-### void zcoroutine_base_run(void (*loop_fn)());
+### void zcoroutine_base_set_loop_fn(void (*loop_fn)(zcoroutine_base_t *cb));
+
+* 设置当前协程环境每次epoll循环需要执行的函数
+
+### void zcoroutine_base_run();
 
 * 在线程内运行当前协程环境
-* 每次事件循环会执行 loop_fn()
 
 ### void zcoroutine_base_stop_notify(zcoroutine_base_t *cobs);
 

@@ -239,7 +239,7 @@ int main(int argc, char **argv)
     tm = zaio_create(-1, aiobase);
     zaio_sleep(tm, timer_cb, 1);
 
-    zaio_base_run(aiobase, 0);
+    zaio_base_run(aiobase);
 
     zaio_base_free(aiobase);
 

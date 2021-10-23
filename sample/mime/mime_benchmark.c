@@ -70,10 +70,7 @@ int main(int argc, char **argv)
     }
     eml_fn = zvar_main_redundant_argv[0];
 
-    if (zfile_get_contents_sample(eml_fn, eml_data_buf) < 0) {
-        printf("ERR open %s(%m)\n", eml_fn);
-        exit(1);
-    }
+    zfile_get_contents_sample(eml_fn, eml_data_buf);
     eml_data = zbuf_data(eml_data_buf);
     eml_size = zbuf_len(eml_data_buf);
 

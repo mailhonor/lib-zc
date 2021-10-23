@@ -73,7 +73,7 @@ zmsearch_t *zmsearch_create()
     ms->builder = (zmsearch_builder_t *)zcalloc(1, sizeof(zmsearch_builder_t));
     ms->builder->ab_data_tmp = zmap_create();
     ms->builder->abc_data_tmp = zmap_create();
-    ms->builder->tmpkey = (unsigned char *)malloc(_MAX_LINE_SIZE+1);
+    ms->builder->tmpkey = (unsigned char *)zmalloc(_MAX_LINE_SIZE+1);
     return ms;
 }
 
@@ -122,7 +122,7 @@ void zmsearch_add_token(zmsearch_t *ms, const char *word, int len)
         zfatal("zmsearch_add_over already excuted");
     }
     if (len < 0) {
-        len = strlen(word);
+        len = (int)strlen(word);
     }
     if (len < 1) {
         return;
@@ -149,7 +149,7 @@ void zmsearch_add_token(zmsearch_t *ms, const char *word, int len)
     builder->a_data[data[0]] |= 0X08;
     builder->a_data[data[1]] |= 0X10;
     builder->a_data[data[2]] |= 0X20;
-    memcpy(key, data, len);
+    memcpy(key, data, (size_t)len);
     key[len] = 0;
     zmap_update(builder->abc_data_tmp, (char *)key, 0, 0);
 }
@@ -164,7 +164,7 @@ int _mem_malloc(zmsearch_builder_t *m, int len)
     if (changed) {
         m->mem_data = (unsigned char *)zrealloc(m->mem_data, m->mem_capability + 1);
     }
-    memset(m->mem_data + m->mem_len, 0, len);
+    memset(m->mem_data + m->mem_len, 0, (size_t)len);
     int r = m->mem_len;
     m->mem_len += len;
     return r;
@@ -181,7 +181,7 @@ static void zmsearch_add_over_1(zmsearch_t *ms)
     }
 
     builder->mem_capability = 1024 * 1024;
-    builder->mem_data = (unsigned char *)malloc(builder->mem_capability + 1);
+    builder->mem_data = (unsigned char *)zmalloc(builder->mem_capability + 1);
 
     unsigned char **data = &(builder->mem_data);
     zmsearch_engine_t **engine = (zmsearch_engine_t **)data;

@@ -210,7 +210,7 @@ int main(int argc, char **argv)
         zaio_readable(listen_aio, start_one);
     } while(0);
 
-    zaio_base_run(aiobase, 0);
+    zaio_base_run(aiobase);
     zaio_base_free(aiobase);
     return 0;
 }

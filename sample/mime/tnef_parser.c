@@ -91,10 +91,7 @@ int main(int argc, char **argv)
         }
     } else {
         zbuf_t *data_buf = zbuf_create(102400);
-        if (zfile_get_contents_sample(zvar_main_redundant_argv[0], data_buf) < 0) {
-            printf("ERR open %s(%m)\n", zvar_main_redundant_argv[0]);
-            exit(1);
-        }
+        zfile_get_contents_sample(zvar_main_redundant_argv[0], data_buf);
         const char *data = zbuf_data(data_buf);
         int len = zbuf_len(data_buf);
 

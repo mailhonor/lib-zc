@@ -493,10 +493,13 @@ zaio_disable(aio);
 
 * 获取当前线程运行的 zaio_base_t
 
-### void zaio_base_run(zaio_base_t *eb, void (*loop_fn)());
+### void zaio_base_set_loop_fn(zaio_base_t *eb, void (*loop_fn)(zaio_base_t *eb));
+
+* 设置 aio_base 每次epoll循环需要执行的函数 
+
+### void zaio_base_run(zaio_base_t *eb);
 
 * 运行 zaio_base_t
-* loop_fn: 每次事件循环执行 loop_fn
 
 ### void zaio_base_stop_notify(zaio_base_t *eb);
 

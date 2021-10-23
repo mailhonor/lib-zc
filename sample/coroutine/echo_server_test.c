@@ -113,7 +113,7 @@ int main(int argc, char **argv)
     }
     zcoroutine_base_init();
     zcoroutine_go(do_listen, argv[1], 0);
-    zcoroutine_base_run(0);
+    zcoroutine_base_run();
     zcoroutine_base_fini();
     return 0;
 }

@@ -32,6 +32,7 @@
 #include <string.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
+#include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -144,6 +145,15 @@ union _co_type_convert_t {
 /* }}} */
 
 /* {{{ malloc */
+
+static void *_co_mem_valloc(int len)
+{
+    void *r;
+    if ((r = valloc(len)) == 0) {
+        zcoroutine_fatal("_co_mem_valloc: insufficient memory for %d bytes: %m", len);
+    }
+    return r;
+}
 
 static void *_co_mem_malloc(int len)
 {
@@ -1429,6 +1439,7 @@ static long zcoroutine_timeout_set_millisecond(long timeout)
 /* {{{ struct vars */
 static pthread_mutex_t zvar_coroutine_base_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+zbool_t zvar_coroutine_mprotect_flag = 0;
 int zvar_coroutine_block_pthread_count_limit = 0;
 zbool_t zvar_coroutine_fileio_use_block_pthread = 0;
 zbool_t zvar_coroutine_disable_udp = 0;
@@ -1606,6 +1617,7 @@ struct  zcoroutine_t {
     unsigned char ep_loop:1;
     unsigned char active_list:1;
     unsigned char inner_yield:1;
+    unsigned char mprotect_flag:1;
 };
 
 struct zcoroutine_base_t {
@@ -1627,6 +1639,7 @@ struct zcoroutine_base_t {
     zcoroutine_t *prepare_coroutines_tail;
     zcoroutine_t *deleted_coroutine_head;
     zcoroutine_t *deleted_coroutine_tail;
+    void (*loop_fn)(zcoroutine_base_t *cb);
     long id_plus;
     unsigned char ___break:1;
 };
@@ -1755,18 +1768,33 @@ zinline static void _co_fd_attribute_free(int fd)
 /* }}} */
 
 /* {{{ zcoroutine_t */
+static int var_page_size =  -1;
 static zcoroutine_t *zcoroutine_create(zcoroutine_base_t *base, int stack_kilobyte, void *self_buf)
 {
     if (stack_kilobyte < 1) {
         stack_kilobyte = 128;
     }
+    if (var_page_size == -1) {
+        var_page_size = sysconf(_SC_PAGE_SIZE);
+    }
+    int page_count = ((stack_kilobyte * 1024) / var_page_size);
+    if ((stack_kilobyte * 1024) % var_page_size) {
+        page_count += 1;
+    }
     zcoroutine_t *co = (zcoroutine_t *)(self_buf?self_buf:_co_mem_calloc(1, sizeof (zcoroutine_t)));
     co->base = base;
     co->id = base->id_plus++;
     memset(&(co->sys_context), 0, sizeof(zcoroutine_sys_context));
+    co->mprotect_flag = zvar_coroutine_mprotect_flag;
 #ifdef __x86_64__
-    co->sys_context.ss_sp = (char *)_co_mem_malloc(stack_kilobyte*1024 + 16 + 10);
-    co->sys_context.ss_size = stack_kilobyte*1024;
+    if (co->mprotect_flag) {
+        co->sys_context.ss_sp = ((char *)_co_mem_valloc((page_count + 2) * var_page_size) + var_page_size);
+        mprotect(co->sys_context.ss_sp - var_page_size, var_page_size, PROT_READ | PROT_WRITE);
+        mprotect(co->sys_context.ss_sp + (page_count + 1) * var_page_size , var_page_size, PROT_READ | PROT_WRITE);
+    } else {
+        co->sys_context.ss_sp = ((char *)_co_mem_valloc(page_count * var_page_size));
+    }
+    co->sys_context.ss_size = page_count * var_page_size;
     char *sp = co->sys_context.ss_sp + co->sys_context.ss_size;
     sp = (char*) ((unsigned long)sp & -16LL  );
     co->sys_context.regs[13] = sp - 8;
@@ -1774,8 +1802,14 @@ static zcoroutine_t *zcoroutine_create(zcoroutine_base_t *base, int stack_kiloby
     co->sys_context.regs[7] = (char *)co;
     co->sys_context.regs[8] = 0;
 #else
-    co->sys_context.uc_stack.ss_sp = (char *)_co_mem_malloc(stack_kilobyte*1024 + 16 + 10);
-    co->sys_context.uc_stack.ss_size = stack_kilobyte*1024;
+    if (co->mprotect_flag) {
+        co->sys_context.uc_stack.ss_sp = ((char *)_co_mem_valloc((page_count + 2) * var_page_size) + var_page_size);
+        mprotect(co->sys_context.uc_stack.ss_sp - var_page_size, var_page_size, PROT_READ | PROT_WRITE);
+        mprotect(co->sys_context.uc_stack.ss_sp + (page_count + 1) * var_page_size , var_page_size, PROT_READ | PROT_WRITE);
+    } else {
+        co->sys_context.ss_sp = ((char *)_co_mem_valloc(page_count * var_page_size));
+    }
+    co->sys_context.uc_stack.ss_size = page_count * var_page_size;
     co->sys_context.uc_link = NULL;
     makecontext(&(co->sys_context), (void (*)(void)) _co_start_wrap, 2, co, 0);
 #endif
@@ -1791,9 +1825,17 @@ static void zcoroutine_free(zcoroutine_t *co)
     }
     _co_mem_free(co->gethostbyname);
 #ifdef __x86_64__
-    _co_mem_free(co->sys_context.ss_sp);
+    if (co->mprotect_flag) {
+        _co_mem_free(co->sys_context.ss_sp - var_page_size);
+    } else {
+        _co_mem_free(co->sys_context.ss_sp);
+    }
 #else
-    _co_mem_free(co->sys_context.uc_stack.ss_sp);
+    if (co->mprotect_flag) {
+        _co_mem_free(co->sys_context.uc_stack.ss_sp - var_page_size);
+    } else {
+        _co_mem_free(co->sys_context.uc_stack.ss_sp);
+    }
 #endif
     _co_mem_free(co);
 }
@@ -2316,6 +2358,15 @@ void zcoroutine_base_stop_notify(zcoroutine_base_t *cobs)
 /* }}} */
 
 /* {{{ zcoroutine_base_run */
+void zcoroutine_base_set_loop_fn(void (*loop_fn)(zcoroutine_base_t *cb))
+{
+    zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
+    if (!cobs) {
+        zcoroutine_fatal("excute zcoroutine_enable() when the pthread begin");
+    }
+    cobs->loop_fn = loop_fn;
+}
+
 void zcoroutine_base_run(void (*loop_fn)())
 {
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
@@ -2328,8 +2379,8 @@ void zcoroutine_base_run(void (*loop_fn)())
     long delay, tmp_delay, tmp_ms;
 
     while(cobs->___break == 0) {
-        if (loop_fn) {
-            loop_fn();
+        if (cobs->loop_fn) {
+            cobs->loop_fn(cobs);
         }
         if (cobs->deleted_coroutine_head) {
             zcoroutine_base_remove_coroutine(cobs);

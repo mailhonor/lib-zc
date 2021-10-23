@@ -126,6 +126,7 @@ void base64_decode(const void *src, int src_size, std::string &str)
     if(src_pos >= src_size){ if(br) {c0123='='; break;}  goto over; } \
     c0123 = src_c[src_pos++]; \
     if(c0123==' ' || c0123 =='\r' || c0123 == '\n'){ continue; } \
+    if(c0123=='%') {src_pos+=2; continue; } \
     break; \
     }
 
