@@ -41,6 +41,9 @@ static int sane_accept(int sock, struct sockaddr *sa, socklen_t * len)
         if ((fd = accept(sock, sa, len)) < 0) {
             errno2 = errno;
             if (errno2 == EINTR) {
+                if (zvar_sigint_flag) {
+                    break;
+                }
                 continue;
             }
             for (count = 0; (err = accept_ok_errors[count]) != 0; count++) {

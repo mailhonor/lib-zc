@@ -45,10 +45,6 @@ zmaster_server_main 函数根据命令参数启用相应的功能
 
 * zmaster_server_main 执行具体业务前执行的函数
 
-### extern void (*zmaster_server_event_loop)() = 0;
-
-* zmaster_server_event_loop 每次事件(epoll)循环执行的函数
-
 ### extern void (*zmaster_server_load_config)(zvector_t *cfs) = 0;
 
 * zmaster_server_main (初始)重新加载各 server 配置的函数
@@ -160,12 +156,13 @@ int main(int argc, char **argv)
 ### extern void (*zaio_server_before_softstop)(void) = 0;
 
 * 接到 master 重启信号后执行的函数
-* 如果此函数为 0, zaio_server_main(epoll循环后)立即返回
-* 如果此函数不为 0 , zaio_server_main 3600 秒后返回
+* 首先, 假设配置项 server-stop-on-softstop-after 的值为 M(秒)
+* 如果此函数为 0, zaio_server_main(epoll循环后) M 秒后返回(M 可以是 0)
+* 如果此函数不为 0 , zaio_server_main M 秒后返回, 如果 M < 1, 则 M 取 3600
 
-### void zaio_server_stop_notify(void);
+### void zaio_server_stop_notify(int stop_after_second);
 
-* 手动通知主程序循环停止, 然后 zaio_server_main 返回
+* 手动通知主程序 stop_after_second 秒后循环停止, 然后 zaio_server_main 返回
 
 ### void zaio_server_detach_from_master();
 
@@ -244,12 +241,13 @@ int main(int argc, char **argv)
 ### extern void (*zcoroutine_server_before_softstop) (void);
 
 * 接到 master 重启信号后执行的函数
-* 如果此函数为 0, zcoroutine_server_main(epoll循环后)立即返回
-* 如果此函数不为 0 , zcoroutine_server_main 3600 秒后返回
+* 首先, 假设配置项 server-stop-on-softstop-after 的值为 M(秒)
+* 如果此函数为 0, zcoroutine_server_main(epoll循环后) M 秒后返回(M 可以是 0)
+* 如果此函数不为 0 , zcoroutine_server_main M 秒后返回, 如果 M < 1, 则 M 取 3600
 
-### void zcoroutine_server_stop_notify(void);
+### void zcoroutine_server_stop_notify(int stop_after_second);
 
-* 手动通知主程序循环停止, 然后 zcoroutine_server_main 返回
+* 手动通知主程序 stop_after_second 秒后循环停止, 然后 zcoroutine_server_main 返回
 
 ### void zcoroutine_server_detach_from_master();
 

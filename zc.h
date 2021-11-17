@@ -1145,7 +1145,10 @@ void zdefault_config_fini(void);
 #define zconfig_free    zdict_free
 #define zconfig_update  zdict_update
 #define zconfig_update_string  zdict_update_string
-#define zconfig_delete   zdict_delete
+#define zconfig_delete  zdict_delete
+#define zconfig_reset   zdict_reset
+#define zconfig_len     zdict_len
+#define zconfig_data    zdict_data
 #define zconfig_debug_show    zdict_debug_show
 
 /* 从文件pathname加载配置到cf, 同名则覆盖 */
@@ -1213,7 +1216,7 @@ void zpthread_pool_set_pthread_fini_handler(zpthread_pool_t *ptp, void (*pthread
 void zpthread_pool_set_context(zpthread_pool_t *ptp, void *ctx);
 void *zpthread_pool_get_context(zpthread_pool_t *ptp);
 zpthread_pool_t *zpthread_pool_get_current_zpthread_pool();
-void zpthread_pool_soft_stop(zpthread_pool_t *ptp);
+void zpthread_pool_softstop(zpthread_pool_t *ptp);
 void zpthread_pool_wait_all_stopped(zpthread_pool_t *ptp, int max_second);
 void zpthread_pool_start(zpthread_pool_t *ptp);
 void zpthread_pool_job(zpthread_pool_t *ptp, void (*callback)(void *ctx), void *ctx);
@@ -1659,14 +1662,19 @@ void zsignal_ignore(int signum);
 
 /* main_parameter, src/stdlib/main_argument.c ########################### */
 extern char *zvar_progname;
+
+extern int zvar_main_argc;
+extern char **zvar_main_argv;
+
 extern int zvar_memleak_check;
 extern int zvar_sigint_flag;
 
 extern char **zvar_main_redundant_argv;
 extern int zvar_main_redundant_argc;
-/* 处理 main函数 argc,argv, 和 config无缝结合, 很方便. 默认参数风格如下:
+
+/* 处理 main函数 argc/argv, 和 config 无缝结合, 很方便. 默认参数风格如下:
  * ./cmd -name1 val1 arg1 -name2 val2 --bool1 --bool2 ... arg2 arg3
-   执行 zmain_argument_run(argc, argv, 0) 后, 会自动创建一个全局配置文件
+   执行 zmain_argument_run(argc, argv) 后, 会自动创建一个全局配置词典
    zconfigt_t *zvar_default_config;
   
  * 而且, 逻辑上
@@ -1690,19 +1698,30 @@ extern int zvar_main_redundant_argc;
    后加载的配置项覆盖先加载的配置项
    命令行上的配置项覆盖配置文件中的配置项
  */
-void zmain_argument_run(int argc, char **argv, unsigned int (*self_argument_fn)(int argc, char **argv, int offset));
+void zmain_argument_run(int argc, char **argv);
 
 /* 注册函数, 系统退出前执行, 按照注册相反的顺序执行; 非线程安全 */
 void zinner_atexit(void (*function)(void));
 
-/* 注册函数, 系统退出前执行, 按照注册相反的顺序执行; 程安全 */
+/* 注册函数, 系统退出前执行, 按照注册相反的顺序执行; 线程安全 */
 void zatexit(void (*func)(void *), void *);
 
 /* license, src/stdlib/license.c ####################################### */
+char *zlicense_build(const char *salt, const char *target, char *new_license);
+#define  zvar_license_size  16
 /* -1: 系统错, 0: 不匹配, 1: 匹配 */
-int zlicense_mac_check(const char *salt, const char *license);
+int zlicense_check(const char *salt, const char *license /* target|new_license */);
+int zlicense_check_from_config_pathname(const char *salt, const char *config_file, const char *key);
+int zlicense_check_from_config_pathnames(const char *salt, const char **config_files, const char *key);
+#if 1
+/* 基于 MAC 地址的 license */
 void zlicense_mac_build(const char *salt, const char *_mac, zbuf_t *result);
-int zlicense_mac_check_from_config_pathname(const char *salt, const char *config_file, const char *key);
+/* -1: 系统错, 0: 不匹配, 1: 匹配 */
+zinline int zlicense_mac_check(const char *salt, const char *license) { return zlicense_check(salt, license); }
+zinline int zlicense_mac_check_from_config_pathname(const char *salt, const char *config_file, const char *key) {
+    return zlicense_check_from_config_pathname(salt, config_file, key);
+}
+#endif
 
 /* event, src/event/ ################################################### */
 /* 基于epoll的高并发io模型, 包括 事件, 异步io, 定时器, io映射. 例子见 sample/event/  */
@@ -1985,9 +2004,6 @@ extern void (*zmaster_server_load_config)(zvector_t *cfs);
 /* master进入服务管理前执行的函数 */
 extern void (*zmaster_server_before_service)();
 
-/* master 每次事件(epoll)循环执行的函数 */
-extern void (*zmaster_server_event_loop)();
-
 /* 一个通用的加载一个目录下所有服务配置的函数 */
 void zmaster_server_load_config_from_dirname(const char *config_dir_pathname, zvector_t *cfs);
 
@@ -2003,11 +2019,11 @@ extern void (*zaio_server_service_register) (const char *service, int fd, int fd
 /* 进入主服务前执行函数 */
 extern void (*zaio_server_before_service) (void);
 
-/* 接到master重启之前后执行的函数 */
+/* 接到master重启之前执行的函数 */
 extern void (*zaio_server_before_softstop) (void);
 
 /* 手动通知主程序循环退出 */
-void zaio_server_stop_notify(void);
+void zaio_server_stop_notify(int stop_after_second);
 
 /* 和master服务分离, master程序会以为此进程已经终止 */
 /* master 发起reload时, 不会在在通知此进程 reload */
@@ -2030,11 +2046,11 @@ extern void (*zcoroutine_server_service_register) (const char *service, int fd, 
 /* 进入主服务前执行函数 */
 extern void (*zcoroutine_server_before_service) (void);
 
-/* 接到master重启之前后执行的函数 */
+/* 接到master重启之前执行的函数 */
 extern void (*zcoroutine_server_before_softstop) (void);
 
 /* 手动通知主程序循环退出 */
-void zcoroutine_server_stop_notify(void);
+void zcoroutine_server_stop_notify(int stop_after_second);
 
 /* 和master服务分离, master程序会以为此进程已经终止 */
 /* master 发起reload时, 不会在在通知此进程 reload */
@@ -2701,8 +2717,10 @@ int zredis_client_fetch_channel_message(zredis_client_t *rc, zvector_t *vector_r
 /* 模拟标准redis服务, 部分支持 键/字符串/哈希表 */
 extern void (*zredis_puny_server_before_service)(void);
 extern void (*zredis_puny_server_before_softstop)(void);
-/* 返回1: 表明调用者成功注册了这个服务 */
+
+/* 如果注册且返回1: 表明调用者成功注册了这个服务, 否则启用 redis 服务*/
 extern zbool_t (*zredis_puny_server_service_register) (const char *service, int fd, int fd_type);
+
 int zredis_puny_server_main(int argc, char **argv);
 void zredis_puny_server_exec_cmd(zvector_t *cmd);
 
@@ -2921,7 +2939,8 @@ zbuf_t *zhttpd_get_prefix_log_msg_buf(zhttpd_t *httpd);
 /* zsqlite3_proxd based on zaio_server */
 extern void (*zsqlite3_proxy_server_before_service)(void);
 extern void (*zsqlite3_proxy_server_before_softstop)(void);
-/* 返回1, 表明调用者成功注册了这个服务 */
+
+/* 如果注册且返回1: 表明调用者成功注册了这个服务, 否则启用 sqlite3 服务*/
 extern zbool_t (*zsqlite3_proxy_server_service_register) (const char *service, int fd, int fd_type);
 int zsqlite3_proxy_server_main(int argc, char **argv);
 

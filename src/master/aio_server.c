@@ -18,7 +18,6 @@
 
 void (*zaio_server_service_register) (const char *service, int fd, int fd_type) = 0;
 void (*zaio_server_before_service) (void) = 0;
-void (*zaio_server_event_loop) (void ) = 0;
 void (*zaio_server_before_softstop) (void) = 0;
 
 static zbool_t flag_run = 0;
@@ -30,8 +29,6 @@ static pid_t parent_pid = 0;
 static zaio_t *ev_status = 0;
 static zvector_t *event_ios; /* zeiot_t* */
 static zaio_t *stop_timer = 0;
-static zaio_t *exit_after_timer = 0;
-static zaio_t *detach_stop_timer = 0;
 static zaio_t *detach_from_master_timer = 0;
 static zbool_t flag_zvar_aio_server_status_fd_closed = 0;
 
@@ -40,26 +37,14 @@ static void stop_now(zaio_t *tm)
     flag_stop = 1;
 }
 
-static void exit_after_check(zaio_t *tm)
+static void stop_now_and_release_self(zaio_t *tm)
 {
     flag_stop = 1;
-    zaio_free(exit_after_timer, 1);
-    exit_after_timer = 0;
+    zaio_free(tm, 1);
 }
 
 static void detach_from_master_check(zaio_t *tm)
 {
-    if (flag_detach_from_master) {
-        if (!flag_zvar_aio_server_status_fd_closed) {
-            flag_zvar_aio_server_status_fd_closed = 1;
-            zclose(zvar_aio_server_status_fd);
-        }
-        detach_stop_timer = zaio_create(-1, zvar_default_aio_base);
-        zaio_sleep(detach_stop_timer, stop_now, 3600);
-        return;
-    }
-
-    zaio_sleep(detach_from_master_timer, detach_from_master_check, 10);
 }
 
 static void on_master_softstop(zaio_t *ev)
@@ -72,16 +57,29 @@ static void on_master_softstop(zaio_t *ev)
         return;
     }
 
+    int need_stop_timer = 0;
+    int exit_after = (int)zconfig_get_second(zvar_default_config, "server-stop-on-softstop-after", 0);
+
     if (zaio_server_before_softstop) {
-        if (ev_status) {
-            stop_timer = zaio_create(-1, zvar_default_aio_base);
-            zaio_sleep(stop_timer, stop_now, 3600);
-            zaio_free(ev, 1);
-            ev_status = 0;
+        need_stop_timer = 1;
+        if (exit_after < 1) {
+            exit_after = 3600;
         }
         zaio_server_before_softstop();
     } else {
-        flag_stop = 1;
+        if (exit_after > 0) {
+            need_stop_timer = 1;
+        } else {
+            flag_stop = 1;
+        }
+    }
+    if (need_stop_timer) {
+        if (ev_status) {
+            stop_timer = zaio_create(-1, zvar_default_aio_base);
+            zaio_sleep(stop_timer, stop_now, exit_after);
+            zaio_free(ev, 1);
+            ev_status = 0;
+        }
     }
 }
 
@@ -239,21 +237,49 @@ zaio_t *zaio_server_general_aio_register(zaio_base_t *eb, int fd, int fd_type, v
     return ev;
 }
 
-static unsigned int deal_argument(int argc, char **argv, int offset)
+static void deal_argument()
 {
-    if (offset == 1) {
-        char *s = argv[1];
-        if (!strcmp(s, "MASTER")) {
-            master_mode = 1;
-        } else if (!strcmp(s, "alone")) {
-            master_mode = 0;
-        } else {
-            printf("FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]\n", argv[0]);
-            zfatal("FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]", argv[0]);
-        }
-        return 1;
+    char *s = zvar_main_redundant_argv[0];
+    if (!strcmp(s, "MASTER")) {
+        master_mode = 1;
+    } else if (!strcmp(s, "alone")) {
+        master_mode = 0;
+    } else {
+        printf("FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]\n", zvar_progname);
+        zfatal("FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]", zvar_progname);
     }
-    return 0;
+}
+
+static void zaio_server_main_loop(zaio_base_t *eb)
+{
+    if (flag_stop || zvar_sigint_flag) {
+        zaio_base_stop_notify(zvar_default_aio_base);
+        return;
+    }
+
+    static int loop_times = 0;
+    if (loop_times++ > 10) {
+        if (getppid() != parent_pid) {
+            zaio_base_stop_notify(zvar_default_aio_base);
+        }
+        loop_times = 0;
+    }
+
+    if (master_mode) {
+        static int detach_dealed = 0;
+        if (flag_detach_from_master && (!detach_dealed)) {
+            detach_dealed = 1;
+            if (!flag_zvar_aio_server_status_fd_closed) {
+                flag_zvar_aio_server_status_fd_closed = 1;
+                zclose(zvar_aio_server_status_fd);
+            }
+            int exit_after = (int)zconfig_get_second(zvar_default_config, "server-stop-on-softstop-after", 0);
+            if (exit_after < 1) {
+                exit_after = 3600;
+            }
+            zaio_sleep(zaio_create(-1, zvar_default_aio_base), stop_now_and_release_self, exit_after);
+        }
+    }
 }
 
 static void zaio_server_init(int argc, char **argv)
@@ -263,15 +289,13 @@ static void zaio_server_init(int argc, char **argv)
     }
     flag_run = 1;
 
-    if (argc < 4) {
-        printf("FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]\n", argv[0]);
-        zfatal("FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]", argv[0]);
-    }
+    zmain_argument_run(argc, argv);
+    deal_argument();
 
     zsignal_ignore(SIGPIPE);
     prctl(PR_SET_PDEATHSIG, SIGHUP);
-    parent_pid = getppid();
 
+    parent_pid = getppid();
     if (parent_pid == 1) {
         exit(1);
     }
@@ -281,9 +305,8 @@ static void zaio_server_init(int argc, char **argv)
     }
     char *attr;
 
-    zmain_argument_run(argc, argv, deal_argument);
-
     zvar_default_aio_base = zaio_base_create();
+    zaio_base_set_loop_fn(zvar_default_aio_base, zaio_server_main_loop);
 
     attr = zconfig_get_str(zvar_default_config, "server-config-path", "");
     if (!zempty(attr)) {
@@ -323,8 +346,7 @@ static void zaio_server_init(int argc, char **argv)
     long ea = zconfig_get_second(zvar_default_config, "exit-after", 0);
     if (ea > 0) {
         alarm(0);
-        exit_after_timer = zaio_create(-1, zvar_default_aio_base);
-        zaio_sleep(exit_after_timer, exit_after_check, (int)ea);
+        zaio_sleep(zaio_create(-1, zvar_default_aio_base), stop_now_and_release_self, (int)ea);
     }
     if (master_mode) {
         detach_from_master_timer = zaio_create(-1, zvar_default_aio_base);
@@ -363,44 +385,31 @@ static void zaio_server_fini()
         zaio_free(stop_timer, 1);
         stop_timer = 0;
     }
-    if (detach_stop_timer) {
-        zaio_free(detach_stop_timer, 1);
-        detach_stop_timer = 0;
-    }
 
     zaio_base_free(zvar_default_aio_base);
-}
 
-static int loop_times = 0;
-static void zaio_server_main_loop(zaio_base_t *eb)
-{
-    if (flag_stop || zvar_sigint_flag) {
-        zaio_base_stop_notify(zvar_default_aio_base);
-        return;
-    }
-    if (loop_times++ > 10) {
-        if (getppid() != parent_pid) {
-            zaio_base_stop_notify(zvar_default_aio_base);
-        }
-        loop_times = 0;
-    }
+    zsleep(1);
 }
 
 int zaio_server_main(int argc, char **argv)
 {
     zaio_server_init(argc, argv);
-    zaio_base_set_loop_fn(zvar_default_aio_base, zaio_server_main_loop);
     zaio_base_run(zvar_default_aio_base);
     zaio_server_fini();
     return 0;
 }
 
-void zaio_server_stop_notify(void)
+void zaio_server_stop_notify(int stop_after_second)
 {
-    zaio_base_stop_notify(zvar_default_aio_base);
+    if (stop_after_second < 1) {
+        flag_stop = 1;
+        return;
+    }
+    zaio_sleep(zaio_create(-1, zvar_default_aio_base), stop_now_and_release_self, stop_after_second);
 }
 
 void zaio_server_detach_from_master()
 {
     flag_detach_from_master = 1;
 }
+

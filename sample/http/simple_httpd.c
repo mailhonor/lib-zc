@@ -18,7 +18,7 @@ ab -n 1000 -c 1000 http://127.0.0.1:8080/
 
 int main(int argc, char **argv)
 {
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
     char *listen = zconfig_get_str(zvar_default_config, "listen", "");
     if (zempty(listen)) {
         usage();

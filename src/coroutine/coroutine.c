@@ -1668,7 +1668,7 @@ struct zcoroutine_cond_t {
     _co_list_t *colist; /* zcoroutine_t* */
 };
 
-static void zcoroutine_base_remove_coroutine(zcoroutine_base_t *cobs);
+static void _remove_deleted_coroutines(zcoroutine_base_t *cobs);
 static zcoroutine_base_t *zcoroutine_base_create();
 /* }}} */
 
@@ -1898,9 +1898,7 @@ static int _co_start_wrap(zcoroutine_t *co, void *unused)
     }
     zcoroutine_release_all_mutex(co);
     zcoroutine_base_t *cobs = co->base;
-    if (cobs->deleted_coroutine_head) {
-        zcoroutine_base_remove_coroutine(cobs);
-    }
+    _remove_deleted_coroutines(cobs);
     co->ended = 1;
     co->inner_yield = 1;
     zcoroutine_yield_my(co);
@@ -1936,6 +1934,15 @@ zcoroutine_base_t *zcoroutine_base_init()
     return cobs;
 }
 
+static void _remove_coroutines(zcoroutine_t *co_head)
+{
+    zcoroutine_t *co, *next_co;
+    for (co = co_head; co; co = next_co) {
+        next_co = co->next;
+        zcoroutine_free(co);
+    }
+}
+
 void zcoroutine_base_fini()
 {
     if (_co_fd_attribute_vec == 0) {
@@ -1944,9 +1951,26 @@ void zcoroutine_base_fini()
     pthread_mutex_lock(&zvar_coroutine_base_mutex);
     zcoroutine_base_t *cobs = zvar_coroutine_base_per_pthread;
     if (cobs) {
-        if (cobs->deleted_coroutine_head) {
-            zcoroutine_base_remove_coroutine(cobs);
+        _remove_coroutines(cobs->deleted_coroutine_head);
+        _remove_coroutines(cobs->extern_coroutines_head);
+        _remove_coroutines(cobs->fileio_coroutines_head);
+        _remove_coroutines(cobs->active_coroutines_head);
+        _remove_coroutines(cobs->prepare_coroutines_head);
+
+        while (_co_rbtree_have_data(&(cobs->sleep_zrbtree))) {
+            _co_rbtree_node_t *rn = _co_rbtree_first(&(cobs->sleep_zrbtree));
+            _co_rbtree_detach(&(cobs->sleep_zrbtree), rn);
+            zcoroutine_t *co = ZCONTAINER_OF(rn, zcoroutine_t, sleep_rbnode);
+            zcoroutine_free(co);
         }
+
+        while (_co_rbtree_have_data(&(cobs->fd_timeout_zrbtree))) {
+            _co_rbtree_node_t *rn = _co_rbtree_first(&(cobs->fd_timeout_zrbtree));
+            _co_rbtree_detach(&(cobs->fd_timeout_zrbtree), rn);
+            _co_fd_attribute_t *cfa = ZCONTAINER_OF(rn, _co_fd_attribute_t, rbnode);
+            zcoroutine_free(cfa->co);
+        }
+
         zcoroutine_free(cobs->self_coroutine);
         zrobust_syscall_close(cobs->epoll_fd);
         zrobust_syscall_close(cobs->event_fd);
@@ -1972,9 +1996,7 @@ void zcoroutine_go(void *(*start_job)(void *ctx), void *ctx, int stack_kilobyte)
     if (!cobs) {
         zcoroutine_fatal("excute zcoroutine_enable() when the pthread begin");
     }
-    if (cobs->deleted_coroutine_head) {
-        zcoroutine_base_remove_coroutine(cobs);
-    }
+    _remove_deleted_coroutines(cobs);
     zcoroutine_t *co = zcoroutine_create(cobs, stack_kilobyte, 0);
     ZMLINK_APPEND(cobs->prepare_coroutines_head, cobs->prepare_coroutines_tail, co, prev, next);
     co->start_job = start_job;
@@ -1986,9 +2008,7 @@ static void zcoroutine_advanced_go_now(zcoroutine_base_t *cobs, zcoroutine_t *ps
     zcoroutine_t *pseudo_co, *pseudo_next;
     for (pseudo_co = pseudo_co_list; pseudo_co; pseudo_co = pseudo_next) {
         pseudo_next = pseudo_co->next;
-        if (cobs->deleted_coroutine_head) {
-            zcoroutine_base_remove_coroutine(cobs);
-        }
+        _remove_deleted_coroutines(cobs);
 
         void *(*start_job)(void *ctx) = pseudo_co->start_job;
         void *ctx = pseudo_co->context;
@@ -2335,8 +2355,11 @@ static zcoroutine_base_t *zcoroutine_base_create()
     return cobs;
 }
 
-static void zcoroutine_base_remove_coroutine(zcoroutine_base_t *cobs)
+static void _remove_deleted_coroutines(zcoroutine_base_t *cobs)
 {
+    if (!cobs->deleted_coroutine_head) {
+        return;
+    }
     zcoroutine_t *co, *next_co;
     for (co = cobs->deleted_coroutine_head; co; co = next_co) {
         next_co = co->next;
@@ -2382,9 +2405,7 @@ void zcoroutine_base_run(void (*loop_fn)())
         if (cobs->loop_fn) {
             cobs->loop_fn(cobs);
         }
-        if (cobs->deleted_coroutine_head) {
-            zcoroutine_base_remove_coroutine(cobs);
-        }
+        _remove_deleted_coroutines(cobs);
 
         delay = 1000;
         tmp_ms = zcoroutine_timeout_set_millisecond(0) - 1;
@@ -2515,9 +2536,7 @@ void zcoroutine_base_run(void (*loop_fn)())
         }
         zcoroutine_yield_my(cobs->self_coroutine);
     }
-    if (cobs->deleted_coroutine_head) {
-        zcoroutine_base_remove_coroutine(cobs);
-    }
+    _remove_deleted_coroutines(cobs);
 }
 
 /* }}} */

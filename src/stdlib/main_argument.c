@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2015-10-12
  * ================================
  */
@@ -10,8 +10,13 @@
 #include <signal.h>
 
 char *zvar_progname = 0;
-char **zvar_main_redundant_argv = 0;
+
+int zvar_main_argc = 0;
+char **zvar_main_argv = 0;
+
 int zvar_main_redundant_argc = 0;
+char **zvar_main_redundant_argv = 0;
+
 int zvar_memleak_check = 0;
 int zvar_sigint_flag = 0;
 
@@ -42,28 +47,24 @@ static void ___timeout_do(int pid)
     alarm(2);
 }
 
-void zmain_argument_run(int argc, char **argv, unsigned int (*self_argument_fn)(int argc, char **argv, int offset))
+static void zmain_argument_run_do(int argc, char **argv)
 {
-    int i, jump;
+    int i;
     char *optname, *optval;
-    zconfig_t *cmd_cf = zconfig_create();
+    zconfig_t *cmd_cf = 0;
 
     zvar_progname = argv[0];
+    zvar_main_argc = argc;
+    zvar_main_argv = argv;
+
+    cmd_cf = zconfig_create();
     zdefault_config_init();
     zvar_main_redundant_argument_vector = zvector_create(3);
     for (i = 1; i < argc; i++) {
-        if (self_argument_fn) {
-            jump = self_argument_fn(argc, argv, i);
-            if (jump > 0) {
-                i += jump - 1;
-                continue;
-            }
-        }
         optname = argv[i];
         /* abc */
         if (optname[0] != '-') {
             zvector_push(zvar_main_redundant_argument_vector, optname);
-            jump = 1;
             continue;
         }
 
@@ -124,6 +125,16 @@ void zmain_argument_run(int argc, char **argv, unsigned int (*self_argument_fn)(
     }
 
     zsignal_ignore(SIGPIPE);
+}
+
+void zmain_argument_run(int argc, char **argv)
+{
+    static int do_flag = 0;
+    if (do_flag) {
+        return;
+    }
+    zmain_argument_run_do(argc, argv);
+    do_flag = 1;
 }
 
 static zvector_t *___funcs_vec = 0;

@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2017-09-07
  * ================================
  */
@@ -29,7 +29,7 @@ static void show_decoded_line_utf8(zbuf_t *line)
 
 int main(int argc, char **argv)
 {
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
     char *fn;
     if (zvar_main_redundant_argc==0) {
         usage();

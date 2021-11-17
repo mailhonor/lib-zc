@@ -166,7 +166,7 @@ zpthread_pool_t *zpthread_pool_get_current_zpthread_pool()
     return _current_ptp;
 }
 
-void zpthread_pool_soft_stop(zpthread_pool_t *ptp)
+void zpthread_pool_softstop(zpthread_pool_t *ptp)
 {
     if (!ptp) {
         return;
@@ -181,7 +181,7 @@ void zpthread_pool_wait_all_stopped(zpthread_pool_t *ptp, int max_second)
         return;
     }
 
-    zpthread_pool_soft_stop(ptp);
+    zpthread_pool_softstop(ptp);
 
     if (max_second > 1024 * 1024) {
         max_second = 1024 * 1024;

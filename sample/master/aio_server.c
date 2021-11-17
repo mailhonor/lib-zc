@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2015-11-24
  * ================================
  */
@@ -110,9 +110,15 @@ static void before_service()
     zaio_sleep(zaio_create(-1, zvar_default_aio_base), timer_cb, 1);
 }
 
+static void before_softstop()
+{
+    fprintf(stderr, "before_softstop, nothing to do\n");
+}
+
 int main(int argc, char **argv)
 {
     zaio_server_before_service = before_service;
+    zaio_server_before_softstop = before_softstop;
     zaio_server_service_register = service_register;
     zaio_server_main(argc, argv);
     return 0;

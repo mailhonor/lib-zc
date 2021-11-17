@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2017-11-25
  * ================================
  */
@@ -63,7 +63,7 @@ static void _test_test(zredis_client_t *rc, const char *cmd, int cmd_ret, size_t
 
 int main(int argc, char **argv)
 {
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
     zredis_client_t *rc;
     char *server = zconfig_get_str(zvar_default_config, "server", "127.0.0.1:6379");
     char *password = zconfig_get_str(zvar_default_config, "password", 0);

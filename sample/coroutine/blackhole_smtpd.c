@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * http://linxumail.cn/
+ * http://linuxmail.cn/
  * 2019-06-26
  * ================================
  */
@@ -137,7 +137,7 @@ void *do_listen(void *context)
 
 int main(int argc, char **argv)
 {
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
     server_address = zconfig_get_str(zvar_default_config, "server", 0);
     if (zempty(server_address)) {
         ___usage();

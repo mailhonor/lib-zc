@@ -47,7 +47,7 @@ static void timer_cb(zaio_t *tm)
 
 int main(int argc, char **argv)
 {
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
 
     zaio_base_t *base = zaio_base_create();
 

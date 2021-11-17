@@ -13,69 +13,143 @@
 #include <sys/socket.h>
 #include <net/if.h>
 
+typedef struct _license_cache_t _license_cache_t;
+struct _license_cache_t {
+    zargv_t *mac_argv;
+};
 
-int zlicense_mac_check(const char *salt, const char *license)
-{
-    if (ZEMPTY(salt) || ZEMPTY(license) || (strlen(license)!=16)) {
-        return 0;
-    }
-
-    int ret = 0;
-
-    zargv_t *mac_list = zargv_create(0);
-    if (zget_mac_address(mac_list) < 0) {
-        zargv_free(mac_list);
-        return -1;
-    }
-
-    ZSTACK_BUF(license_c, 18);
-    ZARGV_WALK_BEGIN(mac_list, mac) {
-        zbuf_reset(license_c);
-        zlicense_mac_build(salt, mac, license_c);
-        if (!strcmp(zbuf_data(license_c), license)) {
-            ret = 1;
-            break;
-        }
-    } ZARGV_WALK_END;
-    zargv_free(mac_list);
-
-    return ret;
-}
-
-void zlicense_mac_build(const char *salt, const char *_mac, zbuf_t *result)
+char *zlicense_build(const char *salt, const char *target, char *new_license)
 {
     zbuf_t *builder = zbuf_create(128);
     zbuf_puts(builder, salt);
     zbuf_puts(builder, ",");
     int len = zbuf_len(builder);
-    zbuf_puts(builder, _mac);
+    zbuf_puts(builder, target);
     zstr_tolower(zbuf_data(builder) + len);
     long crc = zcrc64(zbuf_data(builder), zbuf_len(builder), 0);
-    char tmpbuf[18];
-    sprintf(tmpbuf, "%016lX", crc);
-    zbuf_strcat(result, tmpbuf);
     zbuf_free(builder);
+    sprintf(new_license, "%016lX", crc);
+    return new_license;
 }
 
-int zlicense_mac_check_from_config_pathname(const char *salt, const char *config_file, const char *key)
+static _license_cache_t *_license_cache_create()
 {
-    int ret = -1;
-    zconfig_t *cf = zconfig_create();
-    if (zconfig_load_from_pathname(cf, config_file) < 0) {
-        ret = -1;
-        goto over;
+    _license_cache_t *lc = (_license_cache_t *)zcalloc(1, sizeof(_license_cache_t));
+    return lc;
+}
+
+static void _license_cache_free(_license_cache_t *lc)
+{
+    if (!lc) {
+        return;
     }
-    char *license = zconfig_get_str(cf, key, "");
-    if (ZEMPTY(license)) {
-        ret = 0;
-        goto over;
+    zargv_free(lc->mac_argv);
+    zfree(lc);
+}
+
+/* -1: 系统错, 0: 不匹配, 1: 匹配 */
+static int _license_check_inner(_license_cache_t *lc, const char *salt, const char *license)
+{
+    int ret = 0, tlen;
+    char license_key[zvar_license_size + 1], test_license[zvar_license_size + 1];
+    char target[32 + 1];
+    const char *p = 0;
+
+    license = (license?license:"");
+    for (; *license; license++) {
+        if (*license != '|') {
+            break;
+        }
     }
-    if (zlicense_mac_check(salt, license) == 0) {
-        ret = 0;
-        goto over;
+    p = strchr(license, '|');
+    if (p) {
+        strncpy(license_key, p + 1, zvar_license_size);
+        tlen = (int)(p - license);
+        if (tlen > 32) {
+            tlen = 32;
+        }
+        strncpy(target, license, tlen);
+        target[tlen] = 0;
+    } else {
+        strncpy(license_key, license, zvar_license_size);
+        strcpy(target, "*MAC*");
     }
-    ret = 1;
+    license_key[zvar_license_size] = 0;
+
+    if (!strcmp(target, "*MAC*")) {
+        if (!(lc->mac_argv)) {
+            lc->mac_argv = zargv_create(-1);
+            if (zget_mac_address(lc->mac_argv) < 0) {
+                ret = -1;
+                goto over;
+            }
+        }
+        ZARGV_WALK_BEGIN(lc->mac_argv, mac) {
+            zlicense_build(salt, mac, test_license);
+            if (!strcmp(license_key, test_license)) {
+                ret = 1;
+                goto over;
+            }
+        } ZARGV_WALK_END;
+    } else {
+        zlicense_build(salt, target, test_license);
+        if (!strcmp(license_key, test_license)) {
+            ret = 1;
+            goto over;
+        }
+    }
+
+    ret = 0;
+
 over:
+    return ret;
+}
+
+int zlicense_check(const char *salt, const char *license)
+{
+    _license_cache_t *lc = _license_cache_create();
+    int ret = _license_check_inner(lc, salt, license);
+    _license_cache_free(lc);
+    return ret;
+}
+
+int zlicense_check_from_config_pathname(const char *salt, const char *config_file, const char *key)
+{
+    const char *cfs[2];
+    cfs[0] = config_file;
+    cfs[1] = 0;
+    return zlicense_check_from_config_pathnames(salt, cfs, key);
+}
+
+int zlicense_check_from_config_pathnames(const char *salt, const char **config_files, const char *key)
+{
+    int ret = 0;
+    zconfig_t *cf = zconfig_create();
+    _license_cache_t *lc = _license_cache_create();
+    for (const char **fn = config_files; *fn; fn ++) {
+        zconfig_reset(cf);
+        if (zconfig_load_from_pathname(cf, *fn) < 0) {
+            continue;
+        }
+        char *license = zconfig_get_str(cf, key, "");
+        if (ZEMPTY(license)) {
+            ret = 0;
+            continue;
+        }
+        if ((ret = _license_check_inner(lc, salt, license)) == 0) {
+            continue;
+        }
+        break;
+    }
+    _license_cache_free(lc);
     zconfig_free(cf);
     return ret;
 }
+
+void zlicense_mac_build(const char *salt, const char *_mac, zbuf_t *result)
+{
+    char buf[zvar_license_size + 1];
+    zlicense_build(salt, _mac, buf);
+    zbuf_strcat(result, buf);
+}
+

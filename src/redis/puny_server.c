@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2018-01-22
  * ================================
  */
@@ -1756,9 +1756,12 @@ static void *do_accept(void *arg)
     ct.VOID_PTR = arg;
     int sock = ct.fdinfo.fd;
     int sock_type = ct.fdinfo.fd_type;
-    while(1) {
+    while(zvar_sigint_flag == 0) {
         int fd = zaccept(sock, sock_type);
         if (fd < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
             zfatal("FATAL redis_puny_server, socket fd error");
         }
         ct.fdinfo.fd = fd;
@@ -1769,7 +1772,7 @@ static void *do_accept(void *arg)
 
 static void ___service_register(const char *service_name, int fd, int fd_type)
 {
-    if (zredis_puny_server_service_register(service_name, fd, fd_type) == 1) {
+    if (zredis_puny_server_service_register && (zredis_puny_server_service_register(service_name, fd, fd_type) == 1)) {
         return;
     }
 
@@ -1803,11 +1806,7 @@ static void *do_timeout(void *arg)
 
 void (*zredis_puny_server_before_service)() = 0;
 void (*zredis_puny_server_before_softstop)() = 0;
-static zbool_t _register_default(const char *service, int fd, int fd_type)
-{
-    return 0;
-}
-zbool_t (*zredis_puny_server_service_register)(const char *service, int fd, int fd_type) = _register_default;
+zbool_t (*zredis_puny_server_service_register)(const char *service, int fd, int fd_type) = 0;
 
 static void ___before_service_prepare_load(char *fn)
 {
@@ -1865,6 +1864,15 @@ static void ___before_service_prepare_load(char *fn)
     zstream_close(fp, 1);
 }
 
+static void ___before_softstop()
+{
+    if (zredis_puny_server_before_softstop) {
+        zredis_puny_server_before_softstop();
+    } else {
+        zaio_server_stop_notify(0);
+    }
+}
+
 static void ___before_service()
 {
     zrbtree_init(&(default_db.key_tree), main_node_cmp_key);
@@ -1891,9 +1899,7 @@ int zredis_puny_server_main(int argc, char **argv)
 {
     zcoroutine_server_service_register = ___service_register;
     zcoroutine_server_before_service = ___before_service;
-    if (zredis_puny_server_before_softstop) {
-        zcoroutine_server_before_softstop = zredis_puny_server_before_softstop;
-    }
+    zcoroutine_server_before_softstop = ___before_softstop;
     int ret = zcoroutine_server_main(argc, argv);
     zmap_free(redis_cmd_tree);
     return ret;

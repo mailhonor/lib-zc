@@ -204,7 +204,7 @@ static void before_accept(zaio_t *aio)
 
 int main(int argc, char **argv)
 {
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
     
     read_wait_timeout = zconfig_get_second(zvar_default_config, "read_wait_timeout", 3600*24);
     write_wait_timeout = zconfig_get_second(zvar_default_config, "write_wait_timeout", 3600*24);

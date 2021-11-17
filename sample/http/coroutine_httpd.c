@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2017-04-05
  * ================================
  */
@@ -44,7 +44,7 @@ static void *accept_incoming(void *arg)
 int main(int argc, char **argv)
 {
     signal(SIGPIPE, SIG_IGN);
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
 
     char *listen = zconfig_get_str(zvar_default_config, "listen", "");
     if (zempty(listen)) {

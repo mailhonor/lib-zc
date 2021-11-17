@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2015-11-24
  * ================================
  */
@@ -63,6 +63,15 @@ static void * do_accept(void *arg)
     while(1) {
         int fd = zinet_accept(sock);
         if (fd < 0) {
+            if (errno == EAGAIN) {
+                if (zvar_sigint_flag) {
+                    break;
+                }
+                continue;
+            }
+            if (errno == EINTR) {
+                continue;
+            }
             zfatal("accept(%m)");
         }
         ct.INT = fd;
@@ -84,3 +93,4 @@ int main(int argc, char **argv)
     zcoroutine_server_main(argc, argv);
     return 0;
 }
+

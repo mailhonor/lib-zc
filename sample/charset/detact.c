@@ -33,7 +33,7 @@ static void dorun(const char *fn)
 int main(int argc, char **argv)
 {
     zvar_charset_debug = 1;
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
     if(zconfig_get_bool(zvar_default_config, "uconv", 0)) {
         zcharset_convert_use_uconv();
     }

@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2015-12-11
  * ================================
  */
@@ -56,7 +56,7 @@ static char *hunman_size2(long a)
 
 int main(int argc, char **argv)
 {
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
     char *eml_fn = 0, *eml_data;
     int times = 1000, i, eml_size;
     zbuf_t *eml_data_buf = zbuf_create(102400);

@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2015-12-11
  * ================================
  */
@@ -78,7 +78,7 @@ static void do_parse(char *eml_fn)
 
 int main(int argc, char **argv)
 {
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
     enable_att = zconfig_get_bool(zvar_default_config, "att", 0);
     name_prefix = zconfig_get_str(zvar_default_config, "np", "");
 

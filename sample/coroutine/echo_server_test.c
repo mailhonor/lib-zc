@@ -18,7 +18,9 @@
 #include <strings.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <signal.h>
 
+static int listen_sock = -1;
 static int test_listen(int port)
 {
     int sock;
@@ -79,6 +81,7 @@ static void *echo_service(void *context)
             break;
         }
     }
+    close(fd);
 
     return 0;
 }
@@ -87,6 +90,7 @@ void *do_listen(void *context)
 {
     int fd;
     int sock = test_listen(atoi(context));
+    listen_sock = sock;
 
     struct sockaddr_storage sa;
     socklen_t slen = sizeof(struct sockaddr_storage);
@@ -105,15 +109,36 @@ void *do_listen(void *context)
     return 0;
 }
 
+static void _sigint(int sig)
+{
+    zcoroutine_base_stop_notify(0);
+}
+
 int main(int argc, char **argv)
 {
     if (argc != 2) {
         printf("usage %s port\n", argv[0]);
         return -1;
     }
+    do {
+        struct sigaction action;
+        sigemptyset(&action.sa_mask);
+        action.sa_flags = 0;
+        action.sa_handler = _sigint;
+        if (sigaction(SIGINT, &action, (struct sigaction *) 0) < 0){
+            fprintf(stderr, "FATAL sigaction: %m");
+            exit(1);
+        }
+    } while (0);
     zcoroutine_base_init();
     zcoroutine_go(do_listen, argv[1], 0);
     zcoroutine_base_run();
+    do {
+        /* 测试用, 这段代码, 为了避免内存泄漏 */
+        if (listen_sock > -1) {
+            close(listen_sock);
+        }
+    } while (0);
     zcoroutine_base_fini();
     return 0;
 }

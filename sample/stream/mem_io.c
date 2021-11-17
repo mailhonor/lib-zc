@@ -39,7 +39,7 @@ static void  write_line_read_line(zstream_t *fp, char *tmpline, const char *quer
 
 int main(int argc, char **argv)
 {
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
     server = zconfig_get_str(zvar_default_config, "server", 0);
     ssl_mode = zconfig_get_bool(zvar_default_config, "ssl", 0);
     tls_mode = zconfig_get_bool(zvar_default_config, "tls", 0);

@@ -17,7 +17,7 @@ static void usage(void)
 
 static int encode_decode_lib(const char *type, const char *encode_or_decode, int argc, char **argv)
 {
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
     if (zvar_main_redundant_argc < 1) {
         usage();
     }

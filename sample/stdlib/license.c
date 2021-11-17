@@ -14,7 +14,7 @@ int main(int argc, char **argv)
     char *mac = 0;
     char *license = 0;
 
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
 
     printf("%s -salt salt_string -mac mac_address      #generate license\n", zvar_progname);
     printf("%s -salt salt_string -license license      #check lincese\n", zvar_progname);

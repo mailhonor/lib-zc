@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2016-12-09
  * ================================
  */
@@ -34,10 +34,11 @@ int main(int argc, char **argv)
     }
 
     zbuf_t *content = zbuf_create(0);
-    zbuf_t *result = zbuf_create(0);
     zstdin_get_contents(content);
 
-    if ((zcharset_convert(from_charset, zbuf_data(content), zbuf_len(content),
+    std::string result;
+
+    if ((zcc::charset_convert(from_charset, zbuf_data(content), zbuf_len(content),
                     to_charset , result, &converted_len 
                     ,ignore_bytes, 0)) < 0) {
         printf("ERR can not convert\n");
@@ -50,13 +51,12 @@ int main(int argc, char **argv)
             printf("ERR illegal char too much > %d\n", ignore_bytes);
         }
     } else {
-        if (zbuf_len(result)) {
-            fwrite(zbuf_data(result), 1, zbuf_len(result), stdout);
+        if (result.size()) {
+            fwrite(result.c_str(), 1, result.size(), stdout);
         }
     }
 
     zbuf_free(content);
-    zbuf_free(result);
 
     return 0;
 }

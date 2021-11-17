@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2017-08-23
  * ================================
  */
@@ -38,7 +38,7 @@ static void test_loop(const char *src, int len, int times)
 
 int main(int argc, char **argv)
 {
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
     if (zvar_main_redundant_argc < 1 ) {
         const char *s =  "{\"errcode\": \"-801\", \"errmsg\": \"Domain Not Exist\"}\r\n";
         test(s, strlen(s));

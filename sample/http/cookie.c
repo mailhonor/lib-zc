@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2017-07-23
  * ================================
  */
@@ -10,7 +10,7 @@
 
 int main(int argc, char **argv)
 {
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
     if (zvar_main_redundant_argc == 0) {
         printf("USAGE: %s http_cookie_string\n", argv[0]);
         exit(1);

@@ -48,7 +48,7 @@ static void after_close(void *ctx)
 
 static void parameters_do(int argc, char **argv)
 {
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
 
     proxy_address = zconfig_get_str(zvar_default_config, "proxy", 0);
     if (zempty(proxy_address)) {

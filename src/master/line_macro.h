@@ -6,6 +6,10 @@
  * ================================
  */
 
+static int _line_request_max_use_flag_stop = 0;
+static int _line_request_max_use_count = 0;
+static int _line_request_max_use_limit = 0;
+
 typedef struct _line_request_ctx_t _line_request_ctx_t;
 struct _line_request_ctx_t {
     zaio_t *aio;
@@ -28,6 +32,7 @@ static _line_request_handler_t *_line_request_handler_vector = 0;
 
 static void _do_after_response(zaio_t *aio);
 static void _do_request_once(void *ctx);
+
 static void _release_aio(zaio_t *aio)
 {
     zaio_free(aio, 1);
@@ -45,6 +50,7 @@ static void _line_request_ctx_free(_line_request_ctx_t *rctx)
 
 static void _do_request_once(void *ctx)
 {
+    int flag = 0;
     zaio_t *aio = (zaio_t *)ctx;
     _line_request_ctx_t *rctx = (_line_request_ctx_t *)zaio_get_context(aio);
     do { 
@@ -59,7 +65,6 @@ static void _do_request_once(void *ctx)
             break;
         }
 
-        int flag = 0;
         for (_line_request_handler_t *hd = _line_request_handler_vector; (hd && hd->cmdname); hd++) {
             if (!strcmp(cmdname, hd->cmdname)) {
                 flag = 1;
@@ -71,6 +76,13 @@ static void _do_request_once(void *ctx)
             _release_aio(aio);
         }
     } while (0);
+    if (flag) {
+        _line_request_max_use_count ++;
+        if ((_line_request_max_use_limit > 0) && (_line_request_max_use_count >= _line_request_max_use_limit)) {
+            _line_request_max_use_flag_stop = 1;
+            zaio_server_detach_from_master();
+        }
+    }
 
     _line_request_ctx_free(rctx);
 }
@@ -126,6 +138,7 @@ static void _do_line_request(zaio_t *aio)
     if ((zargv_data(cmdv)[zargv_len(cmdv) - 1])[0] == '{') {
         rctx->extra_data_len = atoi((zargv_data(cmdv)[zargv_len(cmdv) - 1]) + 1);
         if ((rctx->extra_data_len < 1)  || (rctx->extra_data_len > _line_request_extra_data_len_max)) {
+            _line_request_ctx_free(rctx);
             _release_aio(aio);
             return;
         }
@@ -142,6 +155,10 @@ static void _do_after_response(zaio_t *aio)
         _release_aio(aio);
         return;
     }
+    if (_line_request_max_use_flag_stop) {
+        _release_aio(aio);
+        return;
+    }
     zaio_gets(aio, 4096, _do_line_request);
 }
 
@@ -150,5 +167,14 @@ static void _do_service(int fd)
     znonblocking(fd, 1);
     zaio_t *aio = zaio_create(fd, zvar_default_aio_base);
     zaio_gets(aio, 4096, _do_line_request);
+}
+
+static void _line_request_env_init()
+{
+    _line_request_max_use_limit = zconfig_get_int(zvar_default_config, "server-service-max-use", 0);
+}
+
+static void _line_request_env_fini()
+{
 }
 

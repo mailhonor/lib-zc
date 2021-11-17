@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2017-03-15
  * ================================
  */
@@ -306,15 +306,11 @@ static void do_slqite3_service(int fd)
 
 void (*zsqlite3_proxy_server_before_service)() = 0;
 void (*zsqlite3_proxy_server_before_softstop)() = 0;
-static zbool_t _register_default(const char *service, int fd, int fd_type)
-{
-    return 0;
-}
-zbool_t (*zsqlite3_proxy_server_service_register)(const char *service, int fd, int fd_type) = _register_default;
+zbool_t (*zsqlite3_proxy_server_service_register)(const char *service, int fd, int fd_type) = 0;
 
 static void ___service_register(const char *service_name, int fd, int fd_type)
 {
-    if (zsqlite3_proxy_server_service_register(service_name, fd, fd_type) == 1){
+    if (zsqlite3_proxy_server_service_register && (zsqlite3_proxy_server_service_register(service_name, fd, fd_type) == 1)) {
         return;
     }
 
@@ -323,7 +319,7 @@ static void ___service_register(const char *service_name, int fd, int fd_type)
 
 static void signal_stop_handler(int sig)
 {
-    zaio_server_stop_notify();
+    zaio_server_stop_notify(0);
 }
 
 static void ___before_service()
@@ -370,7 +366,7 @@ static void ___before_softstop()
     if (zsqlite3_proxy_server_before_softstop) {
         zsqlite3_proxy_server_before_softstop();
     } else {
-        zaio_server_stop_notify();
+        zaio_server_stop_notify(0);
     }
 }
 
@@ -408,3 +404,4 @@ int zsqlite3_proxy_server_main(int argc, char **argv)
 */
 
 #endif /* _LIB_ZC_SQLITE3_ */
+

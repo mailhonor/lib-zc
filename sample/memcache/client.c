@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2017-11-25
  * ================================
  */
@@ -16,7 +16,7 @@ int main(int argc, char **argv)
     int flag;
     char *server;
 
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
     str = zbuf_create(1024);
     server = zconfig_get_str(zvar_default_config, "sever", "127.0.0.1:11211");
     do {

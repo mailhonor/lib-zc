@@ -32,7 +32,6 @@ zbool_t zvar_master_server_log_debug_enable = 0;
 
 void (*zmaster_server_load_config)(zvector_t *cfs) = 0;
 void (*zmaster_server_before_service)() = 0;
-void (*zmaster_server_event_loop)() = 0;
 
 static void set_signal_handler();
 
@@ -790,7 +789,7 @@ static void init_all(int argc, char **argv)
     }
     ___init_flag = 1;
 
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
     int sl = zconfig_get_int(zvar_default_config, "sleep", 0); 
     if (sl > 0) {
         zsleep_millisecond(sl);

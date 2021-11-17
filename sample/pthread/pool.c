@@ -29,7 +29,7 @@ static void timer1(void *ctx)
 
 int main(int argc, char **argv)
 {
-    zmain_argument_run(argc, argv, 0);
+    zmain_argument_run(argc, argv);
     if (zvar_main_redundant_argc != 3) {
         usage();
     }
@@ -56,7 +56,7 @@ int main(int argc, char **argv)
     zsleep(10 + 1);
     printf("soft stop\n");
     zsleep(1 + 1);
-    zpthread_pool_soft_stop(ptp);
+    zpthread_pool_softstop(ptp);
     zpthread_pool_wait_all_stopped(ptp, 2);
     zpthread_pool_free(ptp);
 

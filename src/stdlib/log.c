@@ -47,6 +47,10 @@ void zlog_fatal(const char *source_fn, size_t line_number, const char *fmt, ...)
             zlog_vprintf(source_fn, line_number, fmt, ap);
             va_end(ap);
         }
+        va_start(ap, fmt);
+        vfprintf(stderr, fmt, ap);
+        fprintf(stderr, "\n");
+        va_end(ap);
     }
 
     if (zvar_log_fatal_catch) {
