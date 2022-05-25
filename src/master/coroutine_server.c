@@ -250,13 +250,6 @@ static void zcoroutine_server_init(int argc, char ** argv)
         master_register(zconfig_get_str(zvar_default_config, "server-service", ""));
     }
 
-    attr = zconfig_get_str(zvar_default_config, "server-user", 0);
-    if (!zempty(attr)) {
-        if(!zchroot_user(0, attr)) {
-            zfatal("FATAL chroot_user %s", attr);
-        }
-    }
-
     long ea = zconfig_get_second(zvar_default_config, "exit-after", 0);
     if (ea > 0) {
         alarm(0);

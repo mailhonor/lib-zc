@@ -14,7 +14,7 @@
 int ztimed_read_write_wait_millisecond(int fd, long read_write_wait_timeout, int *readable, int *writeable)
 {
     struct pollfd pollfd;
-    long left_timeout = read_write_wait_timeout;
+    long stamp_timeout = ztimeout_set_millisecond(read_write_wait_timeout), left_timeout;
     int timeout;
     *readable = *writeable = 0;
 
@@ -26,6 +26,7 @@ int ztimed_read_write_wait_millisecond(int fd, long read_write_wait_timeout, int
         } else if (read_write_wait_timeout == 0) {
             timeout = 0;
         } else {
+            left_timeout = ztimeout_left_millisecond(stamp_timeout);
             if( left_timeout < 1) {
                 return 0;
             } else if (left_timeout > 1000 * 3600) {
@@ -44,7 +45,6 @@ int ztimed_read_write_wait_millisecond(int fd, long read_write_wait_timeout, int
             if (read_write_wait_timeout <= 0) {
                 return 0;
             }
-            left_timeout -= 1000 * 3600;
             continue;
         default:
             if (pollfd.revents & POLLNVAL) {
@@ -76,7 +76,7 @@ int ztimed_read_write_wait(int fd, int read_write_wait_timeout, int *readable, i
 int ztimed_read_wait_millisecond(int fd, long read_wait_timeout)
 {
     struct pollfd pollfd;
-    long left_timeout = read_wait_timeout;
+    long stamp_timeout = ztimeout_set_millisecond(read_wait_timeout), left_timeout;
     int timeout;
 
     for (;;) {
@@ -87,6 +87,7 @@ int ztimed_read_wait_millisecond(int fd, long read_wait_timeout)
         } else if (read_wait_timeout == 0) {
             timeout = 0;
         } else {
+            left_timeout = ztimeout_left_millisecond(stamp_timeout);
             if( left_timeout < 1) {
                 return 0;
             } else if (left_timeout > 1000 * 3600) {
@@ -105,7 +106,6 @@ int ztimed_read_wait_millisecond(int fd, long read_wait_timeout)
             if (read_wait_timeout <= 0) {
                 return 0;
             }
-            left_timeout -= 1000 * 3600;
             continue;
         default:
             if (pollfd.revents & POLLNVAL) {
@@ -173,7 +173,7 @@ int ztimed_read(int fd, void *buf, int size, int read_wait_timeout)
 int ztimed_write_wait_millisecond(int fd, long write_wait_timeout)
 {
     struct pollfd pollfd;
-    long left_timeout = write_wait_timeout;
+    long stamp_timeout = ztimeout_set_millisecond(write_wait_timeout), left_timeout;
     int timeout;
 
     for (;;) {
@@ -184,6 +184,7 @@ int ztimed_write_wait_millisecond(int fd, long write_wait_timeout)
         } else if (write_wait_timeout == 0) {
             timeout = 0;
         } else {
+            left_timeout = ztimeout_left_millisecond(stamp_timeout);
             if( left_timeout < 1) {
                 return 0;
             } else if (left_timeout > 1000 * 3600) {
@@ -202,7 +203,6 @@ int ztimed_write_wait_millisecond(int fd, long write_wait_timeout)
             if (write_wait_timeout <= 0) {
                 return 0;
             }
-            left_timeout -= 1000 * 3600;
             continue;
         default:
             if (pollfd.revents & POLLNVAL) {

@@ -8,24 +8,30 @@
 #include "zc.h"
 #include <signal.h>
 
-void zsignal(int signum, void (*handler)(int))
+zsighandler_t zsignal(int signum, zsighandler_t handler)
 {
-    struct sigaction action;
+    struct sigaction action, old;
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
     action.sa_handler = handler;
-    if (sigaction(signum, &action, (struct sigaction *) 0) < 0){
+    memset(&old, 0, sizeof(struct sigaction));
+    sigemptyset(&old.sa_mask);
+    if (sigaction(signum, &action, &old) < 0){
         zfatal("FATAL sigaction: %m");
     }
+    return old.sa_handler;
 }
 
-void zsignal_ignore(int signum)
+zsighandler_t zsignal_ignore(int signum)
 {
-    struct sigaction action;
+    struct sigaction action, old;
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
     action.sa_handler = SIG_IGN;
-    if (sigaction(signum, &action, (struct sigaction *) 0) < 0){
+    memset(&old, 0, sizeof(struct sigaction));
+    sigemptyset(&old.sa_mask);
+    if (sigaction(signum, &action, &old) < 0){
         zfatal("FATAL sigaction: %m");
     }
+    return old.sa_handler;
 }

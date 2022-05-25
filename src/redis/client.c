@@ -978,6 +978,7 @@ static void ___build_query_vec(zvector_t *query_vec, const char *redis_fmt, va_l
     zlist_node_t *LN;
     zvector_t *V;
     zargv_t *A;
+    zsize_data_t *D;
     char **P, *p;
     (void)p;
 
@@ -1032,6 +1033,10 @@ static void ___build_query_vec(zvector_t *query_vec, const char *redis_fmt, va_l
                     ___build_query_vec_ptr(query_vec, *P, -1);
                 }
             }
+            break;
+        case 'D':
+            D = va_arg(ap, zsize_data_t *);
+            ___build_query_vec_ptr(query_vec, D->data, D->size);
             break;
         }
     }

@@ -9,16 +9,16 @@
 #include "zc.h"
 
 zconfig_t *zvar_default_config = 0;
-zconfig_t *zdefault_config_init(void)
+zconfig_t *zdefault_config_init()
 {
     if (zvar_default_config == 0) {
         zvar_default_config = zconfig_create();
-        zinner_atexit(zdefault_config_fini);
+        zatexit(zdefault_config_fini, 0);
     }
     return zvar_default_config;
 }
 
-void zdefault_config_fini(void)
+void zdefault_config_fini()
 {
     if (zvar_default_config) {
         zconfig_free(zvar_default_config);

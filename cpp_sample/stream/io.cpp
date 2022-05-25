@@ -17,7 +17,7 @@ static void ___usage()
     exit(1);
 }
 
-static void  write_line_read_line(zcc::iostream &fp, std::string &tmpline, const char *query)
+static void  write_line_read_line(zcc::ssl_iostream &fp, std::string &tmpline, const char *query)
 {
     fp.puts(query);
     fp.puts( "\r\n");
@@ -49,7 +49,7 @@ int main(int argc, char **argv)
 
     SSL_CTX *ssl_ctx = 0;
     int fd = -1;
-    zcc::iostream fp;
+    zcc::ssl_iostream fp;
     std::string tmpline;
 
     if (tls_mode || ssl_mode) {

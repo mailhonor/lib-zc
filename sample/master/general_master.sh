@@ -1,7 +1,5 @@
 #!/bin/sh
 
-ulimit -n 102400
-
 ___INFO()
 {
 	echo $@
@@ -9,10 +7,11 @@ ___INFO()
 INFO=___INFO
 
 subcmd=$1
-work_path="./"
-master_cmd="./master_server"
-service_dir="./etc/service/"
-pid_file="./master.pid"
+
+work_path="$WORK_PATH"; [ -z $work_path ] && work_path="./"
+master_cmd="$MASTER_CMD"; [ -z $master_cmd ] && master_cmd="./bin/master"
+service_dir="$SERVICE_DIR"; [ -z $service_dir ] && service_dir="./etc/service"
+pid_file="$PID_FILE"; [ -z $pid_file ] && pid_file="./var/pid/master.pid"
 
 # master程序可提供日志服务:  masger 参数 -log-service
 # log_service="./log.socket,./log_dir/,day"
@@ -22,13 +21,19 @@ pid_file="./master.pid"
 
 # master程序自己的日志输出:  master 参数 -server-log
 # server_log="masterlog,./log.socket"        # 或
-# server_log="syslog,mail,cmd_display_name"
+# server_log="syslog,mail,cmd_display_name"  # 或
+# server_log="syslog,mail"
 
+log_service="$LOG_SERVICE"
+server_log="$SERVER_LOG"; [ -z $server_log ] && server_log="syslog,mail"
 
 cd $work_path || {
 	$INFO no such work_path \"$work_path\" !
 	exit 1
 }
+
+[ -f "$ENV_SOURCE" ] && . $ENV_SOURCE ${work_path}
+
 umask 002
 touch $pid_file
 
@@ -68,7 +73,7 @@ case $subcmd in
 		do
 			$master_cmd -pid-file $pid_file --try-lock && exit 0
 			$INFO waiting "for" the system to terminate
-			sleep 1
+			$master_cmd -sleep 1000
 		done
 		;;
 
@@ -91,3 +96,4 @@ case $subcmd in
 		;;
 
 esac
+

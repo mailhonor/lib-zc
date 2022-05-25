@@ -248,7 +248,7 @@ void ztnef_debug_show(ztnef_t *parser)
 /* }}} */
 
 /* {{{ get int */
-#define ___LEFT(reader)	(reader->end - reader->pos)
+#define ___LEFT(reader)	(((reader)->pos < (reader)->end)?((reader)->end -(reader)->pos):-1)
 
 static inline int tnef_geti8(ztnef_reader_t *reader)
 {
@@ -1082,7 +1082,11 @@ static int tnef_decode_extract_mapi_attrs(ztnef_t *parser, ztnef_reader_t *reade
             } else if (num_names > 0) {
                 for (j=0;j<num_names;j++) {
                     nlen = tnef_geti32(reader);
-                    tnef_skip(reader, tnef_pad_to_4byte(nlen));
+                    int skip = tnef_pad_to_4byte(nlen);
+                    if (skip < 0) {
+                        return -1;
+                    }
+                    tnef_skip(reader, skip);
                 }
             } else {
                 name = tnef_geti32(reader);
@@ -1130,7 +1134,11 @@ static int tnef_decode_extract_mapi_attrs(ztnef_t *parser, ztnef_reader_t *reade
                     return -1;
                 }
                 vdata = reader->pos;
-                tnef_skip(reader, tnef_pad_to_4byte(vlen));
+                int skip = tnef_pad_to_4byte(vlen);
+                if (skip < 0) {
+                    return -1;
+                }
+                tnef_skip(reader, skip);
                 break;
             case szMAPI_NULL:
             case szMAPI_ERROR:
@@ -1212,11 +1220,13 @@ static int tnef_decode_attachment(ztnef_t *parser, ztnef_reader_t *reader, tnef_
     case attATTACHMODIFYDATE:
         break;
     case attATTACHMENT:
-        memset(&reader2, 0, sizeof(ztnef_reader_t));
-        reader2.start = attr->val;
-        reader2.pos = attr->val;
-        reader2.end = attr->val + attr->vlen;
-        if (tnef_decode_extract_mapi_attrs(parser, &reader2, 0) < 0) {
+        if (attr->val + attr->vlen <= reader->end) {
+            memset(&reader2, 0, sizeof(ztnef_reader_t));
+            reader2.start = attr->val;
+            reader2.pos = attr->val;
+            reader2.end = attr->val + attr->vlen;
+            if (tnef_decode_extract_mapi_attrs(parser, &reader2, 0) < 0) {
+            }
         }
         break;
     case attATTACHTITLE:
@@ -1256,12 +1266,14 @@ static int tnef_decode_message(ztnef_t *parser, ztnef_reader_t *reader,  tnef_at
         m->body_data = attr->val;
         m->body_len = attr->vlen;
     } else if (attr->name == attMAPIPROPS) {
-        ztnef_reader_t reader2;
-        memset(&reader2, 0, sizeof(ztnef_reader_t));
-        reader2.start = attr->val;
-        reader2.pos = attr->val;
-        reader2.end = attr->val + attr->vlen;
-        if (tnef_decode_extract_mapi_attrs(parser, &reader2, 1) < 0) {
+        if (attr->val + attr->vlen <= reader->end) {
+            ztnef_reader_t reader2;
+            memset(&reader2, 0, sizeof(ztnef_reader_t));
+            reader2.start = attr->val;
+            reader2.pos = attr->val;
+            reader2.end = attr->val + attr->vlen;
+            if (tnef_decode_extract_mapi_attrs(parser, &reader2, 1) < 0) {
+            }
         }
     } else if (attr->name == attOEMCODEPAGE) {
         if (attr->vlen >= 4) {

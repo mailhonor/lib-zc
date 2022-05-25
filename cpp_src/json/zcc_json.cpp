@@ -229,7 +229,7 @@ json *json::reset()
             }
         }
     }
-    js->type_ = json_type_null;
+    type_ = json_type_null;
     delete vec_for_delete;
 
     return this;

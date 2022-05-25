@@ -8,6 +8,7 @@
 
 #include "zc.h"
 #include <signal.h>
+#include <sys/resource.h>
 
 char *zvar_progname = 0;
 
@@ -17,37 +18,27 @@ char **zvar_main_argv = 0;
 int zvar_main_redundant_argc = 0;
 char **zvar_main_redundant_argv = 0;
 
-int zvar_memleak_check = 0;
+int zvar_main_kv_argc = 0;
+char **zvar_main_kv_argv = 0;
+
 int zvar_sigint_flag = 0;
 
+static zvector_t *zvar_main_kv_argument_vector = 0;
 static zvector_t *zvar_main_redundant_argument_vector = 0;
 
-static void main_redundant_argument_vector_fini(void)
+static void _main_argument_fini(void *unused)
 {
     if (zvar_main_redundant_argument_vector) {
         zvector_free(zvar_main_redundant_argument_vector);
     }
     zvar_main_redundant_argument_vector = 0;
+    if (zvar_main_kv_argument_vector) {
+        zvector_free(zvar_main_kv_argument_vector);
+    }
+    zvar_main_kv_argument_vector = 0;
 }
 
-static void sigint_handler(int sig)
-{
-    zvar_sigint_flag = 1;
-}
-
-static void ___timeout_do2(int pid)
-{
-    exit(1);
-}
-
-static void ___timeout_do(int pid)
-{ 
-    alarm(0);
-    zsignal(SIGALRM, ___timeout_do2);
-    alarm(2);
-}
-
-static void zmain_argument_run_do(int argc, char **argv)
+static void zmain_argument_prepare_config(int argc, char **argv)
 {
     int i;
     char *optname, *optval;
@@ -59,6 +50,7 @@ static void zmain_argument_run_do(int argc, char **argv)
 
     cmd_cf = zconfig_create();
     zdefault_config_init();
+    zvar_main_kv_argument_vector = zvector_create(3);
     zvar_main_redundant_argument_vector = zvector_create(3);
     for (i = 1; i < argc; i++) {
         optname = argv[i];
@@ -70,11 +62,9 @@ static void zmain_argument_run_do(int argc, char **argv)
 
         /* --abc */
         if (optname[1] == '-') {
-            zconfig_update_string(cmd_cf, optname+2, "yes", 1);
-            if (!strncmp(optname, "--debug-", 8)) {
-            } else if (!strcmp(optname, "--fatal-catch")) {
-                zvar_log_fatal_catch = 1;
-            }
+            zconfig_update_string(cmd_cf, optname+2, "yes", 3);
+            zvector_push(zvar_main_kv_argument_vector, optname + 2);
+            zvector_push(zvar_main_kv_argument_vector, "yes");
             continue;
         }
 
@@ -85,6 +75,8 @@ static void zmain_argument_run_do(int argc, char **argv)
         }
         i++;
         optval = argv[i];
+        zvector_push(zvar_main_kv_argument_vector, optname + 1);
+        zvector_push(zvar_main_kv_argument_vector, optval);
         if (!strcmp(optname, "-config")) {
             if (zconfig_load_from_pathname(zvar_default_config, optval) < 0) {
                 zinfo("ERR load config error from %s", optval);
@@ -100,31 +92,25 @@ static void zmain_argument_run_do(int argc, char **argv)
     
     zvar_main_redundant_argv = (char **)zvector_data(zvar_main_redundant_argument_vector);
     zvar_main_redundant_argc = zvector_len(zvar_main_redundant_argument_vector);
-    zinner_atexit(main_redundant_argument_vector_fini);
 
-    if(!zvar_log_debug_enable) {
-        if (zconfig_get_bool(zvar_default_config, "debug", 0)) {
-            zvar_log_debug_enable = 1;
-        }
+    zvar_main_kv_argv = (char **)zvector_data(zvar_main_kv_argument_vector);
+    zvar_main_kv_argc = zvector_len(zvar_main_kv_argument_vector);
+}
+
+static void zmain_argument_do_something(int argc, char **argv)
+{
+    if (zconfig_get_bool(zvar_default_config, "debug-config", 0)) {
+        zconfig_debug_show(zvar_default_config);
     }
 
-    i = zconfig_get_second(zvar_default_config, "exit-after", 0);
-    if (i > 0) {
-        alarm(0);
-        zsignal(SIGALRM, ___timeout_do);
-        alarm(i);
-    }
+    zvar_log_debug_enable = zconfig_get_bool(zvar_default_config, "debug", zvar_log_debug_enable);
+    zvar_log_fatal_catch = zconfig_get_bool(zvar_default_config, "fatal-catch", zvar_log_fatal_catch);
 
-    char *env_ld_preload = getenv("LD_PRELOAD");
-    if (env_ld_preload && strstr(env_ld_preload, "vgpreload_memcheck")) {
-        zvar_memleak_check = 1;
-    }
-    zvar_memleak_check = zconfig_get_bool(zvar_default_config, "memleak-check", zvar_memleak_check);
-    if (zvar_memleak_check) {
-        zsignal(SIGINT, sigint_handler);
-    }
-
+    zatexit(_main_argument_fini, 0);
     zsignal_ignore(SIGPIPE);
+
+    void _zmain_argument_do_set_run_config();
+    _zmain_argument_do_set_run_config();
 }
 
 void zmain_argument_run(int argc, char **argv)
@@ -133,27 +119,8 @@ void zmain_argument_run(int argc, char **argv)
     if (do_flag) {
         return;
     }
-    zmain_argument_run_do(argc, argv);
+    zmain_argument_prepare_config(argc, argv);
+    zmain_argument_do_something(argc, argv);
     do_flag = 1;
 }
 
-static zvector_t *___funcs_vec = 0;
-static void ___before_exit(void)
-{
-    for (int i = ___funcs_vec->len - 1; i > -1; i--) {
-        void (*f)() = (void *)(___funcs_vec->data[i]);
-        if(f) {
-            f();
-        }
-    }
-    zvector_free(___funcs_vec);
-}
-
-void zinner_atexit(void (*func)(void))
-{
-    if (!___funcs_vec) {
-        ___funcs_vec = zvector_create(32);
-        atexit(___before_exit);
-    }
-    zvector_add(___funcs_vec, func);
-}

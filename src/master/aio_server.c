@@ -219,6 +219,7 @@ static void master_register(char *master_url)
 
 zaio_t *zaio_server_general_aio_register(zaio_base_t *eb, int fd, int fd_type, void (*callback) (int))
 {
+    zclose_on_exec(fd, 1);
     znonblocking(fd, 1);
 
     zaio_t *ev = zaio_create(fd, eb);
@@ -240,6 +241,9 @@ zaio_t *zaio_server_general_aio_register(zaio_base_t *eb, int fd, int fd_type, v
 static void deal_argument()
 {
     char *s = zvar_main_redundant_argv[0];
+    if (zempty(s)) {
+        s = zblank_buffer;
+    }
     if (!strcmp(s, "MASTER")) {
         master_mode = 1;
     } else if (!strcmp(s, "alone")) {
@@ -278,6 +282,11 @@ static void zaio_server_main_loop(zaio_base_t *eb)
                 exit_after = 3600;
             }
             zaio_sleep(zaio_create(-1, zvar_default_aio_base), stop_now_and_release_self, exit_after);
+            if (event_ios) {
+                ZVECTOR_WALK_BEGIN(event_ios, zaio_t *, eio) {
+                    zaio_disable(eio);
+                } ZVECTOR_WALK_END;
+            }
         }
     }
 }
@@ -334,13 +343,6 @@ static void zaio_server_init(int argc, char **argv)
         alone_register(zconfig_get_str(zvar_default_config, "server-service", ""));
     } else {
         master_register(zconfig_get_str(zvar_default_config, "server-service", ""));
-    }
-
-    attr = zconfig_get_str(zvar_default_config, "server-user", 0);
-    if (!zempty(attr)) {
-        if(!zchroot_user(0, attr)) {
-            zfatal("FATAL chroot_user %s", attr);
-        }
     }
 
     long ea = zconfig_get_second(zvar_default_config, "exit-after", 0);

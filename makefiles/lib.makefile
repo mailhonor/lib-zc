@@ -29,10 +29,12 @@ $(OBJS_GPP):%.o: %
 	$(GPP) $(GPPFLAGS) -c $< -o $@
 
 libzc.a: $(OBJS_ZC) $(OBJS_ZCC)
+	rm -f libzc.a
 	ar r libzc.a $(OBJS_ZC) $(OBJS_ZCC)
 	ranlib libzc.a
 
 libzc_coroutine.a: $(OBJS_COROUTINE)
+	rm -f libzc_coroutine.a
 	ar r libzc_coroutine.a $(OBJS_COROUTINE)
 	ranlib libzc_coroutine.a
 

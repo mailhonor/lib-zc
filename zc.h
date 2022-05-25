@@ -53,6 +53,8 @@ typedef struct zdict_node_t zdict_node_t;
 typedef struct zdict_t zdict_t;
 typedef struct zmap_node_t zmap_node_t;
 typedef struct zmap_t zmap_t;
+typedef struct zlongmap_node_t zlongmap_node_t;
+typedef struct zlongmap_t zlongmap_t;
 typedef struct zmpool_t zmpool_t;
 typedef struct zmqueue_t zmqueue_t;
 typedef struct zstream_t zstream_t;
@@ -222,6 +224,8 @@ void __attribute__((format(printf,3,4))) zlog_fatal(const char *source_fn, size_
 #define zinfo(fmt, args...) { zlog_info(__FILE__, __LINE__, fmt, ##args); }
 #define zdebug(fmt,args...) { if(zvar_log_debug_enable){zinfo(fmt, ##args);} }
 
+void zlog_use_default();
+
 /* 使用syslog, identity/facility 参考 syslog  */
 void zlog_use_syslog(const char *identity, int facility);
 
@@ -341,6 +345,13 @@ void zbuf_trim_right_rn(zbuf_t *bf);
     name = &name ## _ZSTACT_BUF_; \
     name->size = _size; name->len = 0; \
     name->data = (char *)(_data); name->data[0] = 0; \
+    name->static_mode = 1;
+
+#define ZREADONLY_BUF(name, _data, _size)    \
+    zbuf_t name ## _ZSTACT_BUF_, *name; \
+    name = &name ## _ZSTACT_BUF_; \
+    name->size = _size; name->len = _size; \
+    name->data = (char *)(_data); \
     name->static_mode = 1;
 
 /* size_data ####################################################### */
@@ -1042,6 +1053,81 @@ zinline void *zmap_node_value(const zmap_node_t *node) { return node->value; }
         var_your_key=var_your_node->key; var_your_value=(var_your_value_type)(void *)var_your_node->value; {
 #define ZMAP_WALK_END    }}}
 
+/* longmap, src/stdlib/longmap.c ############################################ */
+/* 映射, 例子见 sample/rbtree/longmap_account.c */
+struct zlongmap_t {
+    zrbtree_t rbtree;
+    int len;
+};
+struct zlongmap_node_t {
+    long key; /* 键 */
+    void *value; /* 值 */
+    zrbtree_node_t rbnode;
+} __attribute__ ((aligned(8)));
+
+/* 创建 */
+zlongmap_t *zlongmap_create(void);
+void zlongmap_free(zlongmap_t *longmap);
+
+/* 重置 */
+void zlongmap_reset(zlongmap_t *longmap);
+
+/* 新增或更新节点并返回, 这个节点的键为key, 新值为value, 如果旧值存在则赋值给 *old_value */
+zlongmap_node_t *zlongmap_update(zlongmap_t *longmap, long key, const void *value, void **old_value);
+
+/* 查找键为key的节点,并返回. 如果存在则节点的值赋值给 *value */
+zlongmap_node_t *zlongmap_find(const zlongmap_t *longmap, long key, void **value);
+
+/* 查找键值小于key且最接近key的节点, 并... */
+zlongmap_node_t *zlongmap_find_near_prev(const zlongmap_t *longmap, long key, void **value);
+
+/* 查找键值大于key且最接近key的节点, 并... */
+zlongmap_node_t *zlongmap_find_near_next(const zlongmap_t *longmap, long key, void **value);
+
+/* 删除并释放键为key的节点, 节点的值赋值给 *old_value */
+zbool_t zlongmap_delete(zlongmap_t * longmap, long key, void **old_value);
+
+/* 删除并释放节点n, 节点的值赋值给 *old_value */
+void zlongmap_delete_node(zlongmap_t *longmap, zlongmap_node_t *n, void **old_value);
+
+/* 更新节点的值, 节点的旧值赋值给 *old_value */
+void zlongmap_node_update(zlongmap_node_t *n, const void *value, void **old_value);
+
+/* 第一个 */
+zlongmap_node_t *zlongmap_first(const zlongmap_t *longmap);
+
+/* 最后一个 */
+zlongmap_node_t *zlongmap_last(const zlongmap_t *longmap);
+
+/* 前一个 */
+zlongmap_node_t *zlongmap_prev(const zlongmap_node_t *node);
+
+/* 后一个 */
+zlongmap_node_t *zlongmap_next(const zlongmap_node_t *node);
+
+/* 节点个数 */
+zinline int zlongmap_len(const zlongmap_t *longmap) { return longmap->len; }
+
+/* 节点的键 */
+zinline long zlongmap_node_key(const zlongmap_node_t *node) { return node->key; }
+
+/* 节点的值 */
+zinline void *zlongmap_node_value(const zlongmap_node_t *node) { return node->value; }
+
+/* 宏, 遍历1 */
+#define ZLONGMAP_NODE_WALK_BEGIN(longmap, var_your_node)  { \
+    zlongmap_node_t *var_your_node; \
+    for(var_your_node = zlongmap_first(longmap); var_your_node; var_your_node = zlongmap_next(var_your_node)) {
+#define ZLONGMAP_NODE_WALK_END    }}
+
+/* 宏, 遍历2 */
+#define ZLONGMAP_WALK_BEGIN(longmap, var_your_key, var_your_value_type, var_your_value)  { \
+    zlongmap_node_t *var_your_node; char *var_your_key; var_your_value_type var_your_value; \
+    (void)var_your_key; (void)var_your_value; \
+    for(var_your_node = zlongmap_first(longmap); var_your_node; var_your_node = zlongmap_next(var_your_node)) { \
+        var_your_key=var_your_node->key; var_your_value=(var_your_value_type)(void *)var_your_node->value; {
+#define ZLONGMAP_WALK_END    }}}
+
 /* mpool, src/malloc/ ################################################ */
 /* 内存池, 不推荐使用 */
 typedef struct zmpool_method_t zmpool_method_t;
@@ -1138,8 +1224,8 @@ unsigned long zcrc64(const void *data, int size, unsigned long init_value);
  */
 
 extern zconfig_t *zvar_default_config;
-zconfig_t *zdefault_config_init(void);
-void zdefault_config_fini(void);
+zconfig_t *zdefault_config_init();
+void zdefault_config_fini();
 
 #define zconfig_create  zdict_create
 #define zconfig_free    zdict_free
@@ -1200,9 +1286,6 @@ void zconfig_get_size_table(zconfig_t *cf, zconfig_size_table_t *table);
         key = zdict_node_key(___nd); value = zdict_node_value(___nd); {
 #define ZCONFIG_WALK_END }}}
 
-/* system ######################################################### */
-long zgettid(void);
-
 /* pthread pool ################################################### */
 zpthread_pool_t *zpthread_pool_create();
 void zpthread_pool_free(zpthread_pool_t *ptp);
@@ -1216,6 +1299,7 @@ void zpthread_pool_set_pthread_fini_handler(zpthread_pool_t *ptp, void (*pthread
 void zpthread_pool_set_context(zpthread_pool_t *ptp, void *ctx);
 void *zpthread_pool_get_context(zpthread_pool_t *ptp);
 zpthread_pool_t *zpthread_pool_get_current_zpthread_pool();
+long zpthread_pool_get_max_running_millisecond(zpthread_pool_t *ptp);
 void zpthread_pool_softstop(zpthread_pool_t *ptp);
 void zpthread_pool_wait_all_stopped(zpthread_pool_t *ptp, int max_second);
 void zpthread_pool_start(zpthread_pool_t *ptp);
@@ -1624,6 +1708,15 @@ zbool_t zis_unique_id(const char *buf);
 /* 返回 -1: 失败, >=0: 成功 */
 int zchroot_user(const char *root_dir, const char *user_name);
 
+long zgettid(void);
+
+/* 打开 core, 不建议使用, 推荐操作系统层面设置 */
+/* megabyte: core文件大小, 单位 M, -1: 无限, 0: 禁用 */
+zbool_t zset_core_file_size(int megabyte);
+
+/* 设置 cgroup 的名字 */
+zbool_t zset_cgroup_name(const char *name);
+
 /* file, src/stdlib/file.c ########################################## */
 /* -1: 错, >=0: 文件大小 */
 int zfile_get_size(const char *pathname);
@@ -1653,12 +1746,16 @@ int zmmap_reader_fini(zmmap_reader_t *reader);
 /* touch */
 int ztouch(const char *pathname);
 
+/* 通过find命令查抄文件, 找到的文件放到 file_argv, 出错exit, file_argv为0则创建 */
+zargv_t *zfind_file_sample(zargv_t *file_argv, const char **pathnames, int pathnames_count, const char *pathname_match);
+
 /* 获取mac地址; 返回个数, -1: 错; src/stdlib/mac_address.c */
 int zget_mac_address(zargv_t *mac_list);
 
 /* signal */
-void zsignal(int signum, void (*handler)(int));
-void zsignal_ignore(int signum);
+typedef void (*zsighandler_t)(int);
+zsighandler_t zsignal(int signum, zsighandler_t handler);
+zsighandler_t zsignal_ignore(int signum);
 
 /* main_parameter, src/stdlib/main_argument.c ########################### */
 extern char *zvar_progname;
@@ -1668,6 +1765,9 @@ extern char **zvar_main_argv;
 
 extern int zvar_memleak_check;
 extern int zvar_sigint_flag;
+
+extern int zvar_main_kv_argc;
+extern char **zvar_main_kv_argv;
 
 extern char **zvar_main_redundant_argv;
 extern int zvar_main_redundant_argc;
@@ -1700,10 +1800,7 @@ extern int zvar_main_redundant_argc;
  */
 void zmain_argument_run(int argc, char **argv);
 
-/* 注册函数, 系统退出前执行, 按照注册相反的顺序执行; 非线程安全 */
-void zinner_atexit(void (*function)(void));
-
-/* 注册函数, 系统退出前执行, 按照注册相反的顺序执行; 线程安全 */
+/* 注册函数, 系统退出前执行, 按照注册相反的顺序执行 */
 void zatexit(void (*func)(void *), void *);
 
 /* license, src/stdlib/license.c ####################################### */
@@ -1754,12 +1851,6 @@ int zaio_get_fd(zaio_t *aio);
 /* 获取 SSL 句柄 */
 SSL *zaio_get_ssl(zaio_t *aio);
 
-/* 设置可读超时 */
-void zaio_set_read_wait_timeout(zaio_t *aio, int read_wait_timeout);
-
-/* 设置可写超时 */
-void zaio_set_write_wait_timeout(zaio_t *aio, int read_write_timeout);
-
 /* 发起tls连接, 成功/失败/超时后回调执行callback */
 void zaio_tls_connect(zaio_t *aio, SSL_CTX * ctx, void (*callback)(zaio_t *aio));
 
@@ -1774,6 +1865,7 @@ void zaio_get_read_cache_to_buf(zaio_t *aio, char *buf, int strict_len);
 /* 获取缓存数据的长度 */
 int zaio_get_write_cache_size(zaio_t *aio);
 void zaio_get_write_cache(zaio_t *aio, zbuf_t *bf, int strict_len);
+void zaio_get_write_cache_to_buf(zaio_t *aio, char *buf, int strict_len);
 
 /* 如果可读(或出错)则回调执行函数 callback */
 void zaio_readable(zaio_t *aio, void (*callback)(zaio_t *aio));
@@ -1825,9 +1917,6 @@ int zaio_get_cache_size(zaio_t *aio);
 /* 请求sleep, sleep秒后回调执行callback */
 void zaio_sleep(zaio_t *aio, void (*callback)(zaio_t *aio), int timeout);
 
-/* sleep秒后回调执行callback, 只执行一次 callback(ctx) */
-void zaio_base_timer(zaio_base_t *eb, void (*callback)(void *ctx), void *ctx, int timeout);
-
 /* 设置/获取上下文 */
 void zaio_set_context(zaio_t *aio, const void *ctx);
 void *zaio_get_context(zaio_t *aio);
@@ -1866,6 +1955,9 @@ void zaio_base_touch(zaio_base_t *eb);
 /* 设置/获取上下文 */
 void zaio_base_set_context(zaio_base_t *eb, const void *ctx);
 void *zaio_base_get_context(zaio_base_t *eb);
+
+/* sleep秒后回调执行callback, 只执行一次 callback(ctx) */
+void zaio_base_timer(zaio_base_t *eb, void (*callback)(void *ctx), void *ctx, int timeout);
 
 /* iopipe 管道 */
 void zaio_iopipe_enter(zaio_t *client, zaio_t *server, zaio_base_t *aiobase, void (*after_close)(void *ctx), void *ctx);
@@ -2019,14 +2111,14 @@ extern void (*zaio_server_service_register) (const char *service, int fd, int fd
 /* 进入主服务前执行函数 */
 extern void (*zaio_server_before_service) (void);
 
-/* 接到master重启之前执行的函数 */
+/* 接到master重启命令后, 退出前执行的函数 */
 extern void (*zaio_server_before_softstop) (void);
 
 /* 手动通知主程序循环退出 */
 void zaio_server_stop_notify(int stop_after_second);
 
 /* 和master服务分离, master程序会以为此进程已经终止 */
-/* master 发起reload时, 不会在在通知此进程 reload */
+/* master 发起reload时, 不会通知此进程 reload */
 /* 1小时候后, 此进程强制退出 */
 void zaio_server_detach_from_master();
 
@@ -2046,14 +2138,14 @@ extern void (*zcoroutine_server_service_register) (const char *service, int fd, 
 /* 进入主服务前执行函数 */
 extern void (*zcoroutine_server_before_service) (void);
 
-/* 接到master重启之前执行的函数 */
+/* 接到master重启命令后, 退出前执行的函数 */
 extern void (*zcoroutine_server_before_softstop) (void);
 
 /* 手动通知主程序循环退出 */
 void zcoroutine_server_stop_notify(int stop_after_second);
 
 /* 和master服务分离, master程序会以为此进程已经终止 */
-/* master 发起reload时, 不会在在通知此进程 reload */
+/* master 发起reload时, 不会通知此进程 reload */
 /* 1小时候后, 此进程强制退出 */
 void zcoroutine_server_detach_from_master();
 
@@ -2662,15 +2754,16 @@ void zredis_client_disconnect(zredis_client_t *rc);
  * 1: 成功/失败, 2: 整数, 3: 字符串, 4:字符换vecgtor */
 
 /* 下面的 (redis_fmt, ...) 介绍:
- *  s: char *;
- *  S: zuf_t *;
- *  d: int;
- *  l: long int;
- *  f: double;
+ *  s: char *
+ *  S: zuf_t *
+ *  d: int
+ *  l: long int
+ *  f: double
  *  L: zlist_t * <zbuf_t *>
  *  V: zvector_t * <zbuf_t *>
  *  A: zargv_t *
  *  P: char **, 0结尾
+ *  D: zsize_data_t
  * 例子1: 检查key是否存在:
  *      zredis_client_get_success(rc, "ss", "EXISTS", "somekey");
  * 例子2: 将 key 所储存的值加上增量 increment:
@@ -3055,6 +3148,7 @@ void zmsearch_walker_reset(zmsearch_walker_t *walker);
 #include <vector>
 #include <set>
 #include <map>
+#include <functional>
 #pragma pack(push, 4)
 namespace zcc
 {
@@ -3179,6 +3273,7 @@ public:
 
     /* 首先重置本json为 null, 然后从jstr反序列化为json */
     bool unserialize(const char *jstr, int jsize = -1);
+    zinline bool unserialize(const std::string &jstr) { return unserialize(jstr.c_str(), (int)(jstr.size())); }
 
     /* 序列化 */
     json *serialize(std::string &result, bool strict_flag = false);
@@ -3231,7 +3326,7 @@ public:
     zinline json *set_double_value(double val) { get_double_value() = val; return this; }
     zinline json *set_bool_value(bool val) { get_bool_value() = val; return this; }
 
-    /* 获取下标为 idx 的 json 节点, 如果不是 array 类型, 则先转为 array 类型 */
+    /* 获取下标为 idx 的 json 节点, 如果当前节点不是 array 类型, 则先转为 array 类型 */
     json *array_get(int idx);
 
     /* 获取 array 节点的个数, 如上 */
@@ -3275,7 +3370,7 @@ public:
     /* 弹出最后一个节点, 存在则返回true, 赋值给 *old, 如果 old为 0, 则销毁 */
     zinline bool array_pop(json **old) { return array_delete(-1, old); }
 
-    /* 获取键为 key 的字json节点, 如果不是 object 类型, 则先转为 object 类型 */
+    /* 获取键为 key 的字json节点, 如果当前节点不是 object 类型, 则先转为 object 类型 */
     json *object_get(const char *key);
 
     /* 获取 object 节点的个数, 如上 */
@@ -3394,7 +3489,7 @@ public:
         unsigned char write_buf[zvar_stream_wbuf_size];
     };
     basic_stream();
-    ~basic_stream();
+    virtual ~basic_stream();
     basic_stream &reset();
 public:
     zinline bool is_error() { return (basic_worker_->error?true:false); }
@@ -3459,39 +3554,47 @@ class iostream: public basic_stream {
 public:
     iostream();
     iostream &open_fd(int fd);
-    iostream &open_ssl(SSL *ssl);
     bool open_file(const char *pathname, const char *mode);
     bool open_destination(const char *destination, int timeout);
     zinline bool connect(const char *destination, int timeout) {
         return open_destination(destination, timeout);
     }
-    ~iostream();
+    virtual ~iostream();
 public:
     zinline int get_fd() { return fd_; }
-    zinline SSL *get_ssl() { return ssl_; }
     zinline int get_read_wait_timeout() { return read_wait_timeout_; }
     zinline int get_write_wait_timeout() { return write_wait_timeout_; }
-    int tls_connect(SSL_CTX *ctx);
-    int tls_accept(SSL_CTX *ctx);
     iostream &set_read_wait_timeout(int read_wait_timeout);
     iostream &set_write_wait_timeout(int write_wait_timeout);
-    int timed_read_wait(int read_wait_timeout);
-    int timed_write_wait(int write_wait_timeout);
-    int close(bool close_fd_or_release_ssl);
-private:
-    int engine_read(void *buf, int len);
-    int engine_write(const void *buf, int len);
-private:
-    SSL *ssl_;
+    virtual int timed_read_wait(int read_wait_timeout);
+    virtual int timed_write_wait(int write_wait_timeout);
+    virtual int close(bool close_fd_or_release_ssl = true);
+protected:
+    virtual int engine_read(void *buf, int len);
+    virtual int engine_write(const void *buf, int len);
+protected:
     int fd_;
     int read_wait_timeout_;
     int write_wait_timeout_;
-    /* 之所以使用注册函数, 仅仅是因为 想和 SSL 库隔离 */
-    int (*engine_read_)(iostream &fp, void *buf, int len);
-    int (*engine_write_)(iostream &fp, const void *buf, int len);
-    int (*engine_timed_read_wait_)(iostream &fp, int read_wait_timeout);
-    int (*engine_timed_write_wait_)(iostream &fp, int write_wait_timeout);
-    int (*engine_close_)(iostream &fp, bool close_fd_or_release_ssl);
+};
+
+class ssl_iostream: public iostream {
+public:
+    ssl_iostream();
+    virtual ~ssl_iostream();
+    ssl_iostream &open_ssl(SSL *ssl);
+public:
+    zinline SSL *get_ssl() { return ssl_; }
+    int tls_connect(SSL_CTX *ctx);
+    int tls_accept(SSL_CTX *ctx);
+    virtual int timed_read_wait(int read_wait_timeout);
+    virtual int timed_write_wait(int write_wait_timeout);
+    virtual int close(bool close_fd_or_release_ssl = true);
+protected:
+    virtual int engine_read(void *buf, int len);
+    virtual int engine_write(const void *buf, int len);
+protected:
+    SSL *ssl_;
 };
 
 /* charset ######################################################### */
@@ -3509,6 +3612,171 @@ void charset_convert_use_uconv();
 int charset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count);
 void charset_convert_to_utf8(const char *from_charset, const char *data, int size, std::string &result);
 
+/* event, src/event/ ################################################### */
+/* 基于epoll的高并发io模型, 包括 事件, 异步io, 定时器, io映射. 例子见 cpp_sample/event/  */
+
+class aio_base;
+class aio {
+public:
+    aio();
+    aio(int fd, aio_base *aiobase = 0);
+    ~aio();
+    void rebind_fd(int fd, aio_base *aiobase = 0);
+    void close(bool close_fd_and_release_ssl = true);
+    /* 重新绑定 aio_base */
+    void rebind_aio_base(aio_base *aiobase = 0);
+    /* 设置可读超时 */
+    zinline void set_read_wait_timeout(int read_wait_timeout) { zaio_set_read_wait_timeout(engine_, read_wait_timeout); }
+    /* 设置可写超时 */
+    zinline void set_write_wait_timeout(int write_wait_timeout) { zaio_set_write_wait_timeout(engine_, write_wait_timeout); }
+    /* 停止 aio, 只能在所属 aio_base 运行的线程执行 */
+    zinline void disable() { zaio_disable(engine_); }
+    /* 获取结果, -2:超时(且没有任何数据), <0: 错, >0: 写成功,或可读的字节数 */
+    zinline int get_result() { return zaio_get_result(engine_); }
+    /* 获取 fd */
+    zinline int get_fd() { return zaio_get_fd(engine_); }
+    /* 获取 SSL 句柄 */
+    zinline int get_read_cache_size() { return zaio_get_read_cache_size(engine_); }
+    zinline void get_read_cache(zbuf_t *bf, int strict_len) { zaio_get_read_cache(engine_, bf, strict_len); }
+    zinline void get_read_cache(char *buf, int strict_len) { zaio_get_read_cache_to_buf(engine_, buf, strict_len); }
+    void get_read_cache(std::string &bf, int strict_len);
+    /* 获取缓存数据的长度 */
+    zinline int get_write_cache_size() { return zaio_get_write_cache_size(engine_); }
+    zinline void get_write_cache(zbuf_t *bf, int strict_len) { zaio_get_write_cache(engine_, bf, strict_len); }
+    zinline void get_write_cache(char *buf, int strict_len) { zaio_get_write_cache_to_buf(engine_, buf, strict_len); }
+    void get_write_cache(std::string &bf, int strict_len);
+    /* 如果可读(或出错)则回调执行函数 callback */
+    void readable(std::function<void()> callback);
+    /* 如果可写(或出错)则回调执行函数 callback */
+    void writeable(std::function<void()> callback);
+    /* 请求读, 最多读取max_len个字节, 成功/失败/超时后回调执行callback */
+    void read(int max_len, std::function<void()> callback);
+    /* 请求读, 严格读取strict_len个字节, 成功/失败/超时后回调执行callback */
+    void readn(int strict_len, std::function<void()> callback);
+    /* */
+    /* 请求读, 读到delimiter为止, 最多读取max_len个字节, 成功/失败/超时后回调执行callback */
+    void read_delimiter(int delimiter, int max_len, std::function<void()> callback);
+    /* 如上, 读行 */
+    zinline void gets(int max_len, std::function<void()> callback) { read_delimiter('\n', max_len, callback); }
+    /* 向缓存写数据, (fmt, ...)不能超过1024个字节 */
+    void cache_printf_1024(const char *fmt, ...);
+    /* 向缓存写数据 */
+    zinline void cache_puts(const char *s) { zaio_cache_puts(engine_, s); }
+    /* 向缓存写数据 */
+    zinline void cache_write(const void *buf, int len) { zaio_cache_write(engine_, buf, len); }
+    zinline void cache_write(const std::string &bf) { zaio_cache_write(engine_, bf.c_str(), (int)(bf.size())); }
+    zinline void cache_append(const std::string &bf) { zaio_cache_write(engine_, bf.c_str(), (int)(bf.size())); }
+    zinline void cache_write(const zbuf_t *bf) { zaio_cache_write(engine_, zbuf_data(bf), zbuf_len(bf)); }
+    zinline void cache_append(const zbuf_t *bf) { zaio_cache_write(engine_, zbuf_data(bf), zbuf_len(bf)); }
+    /* */
+    /* 向缓存写数据, 不复制buf */
+    zinline void cache_write_direct(const void *buf, int len) { zaio_cache_write_direct(engine_, buf, len); }
+    /* 请求写, 成功/失败/超时后回调执行callback */
+    void cache_flush(std::function<void()> callback);
+    /* */
+    zinline int get_cache_size() { return zaio_get_cache_size(engine_); }
+    /* 请求sleep, sleep秒后回调执行callback */
+    void sleep(std::function<void()> callback, int timeout);
+    /* 获取 aio_base */
+    aio_base *get_aio_base();
+protected:
+    zaio_t *engine_;
+};
+
+class ssl_aio :public aio {
+public:
+    ssl_aio(SSL *ssl, aio_base *aiobase = 0);
+    void rebind_SLL(SSL *ssl, aio_base *aiobase = 0);
+    /* 获取 SSL 句柄 */
+    virtual SSL *get_ssl();
+    /* 发起tls连接, 成功/失败/超时后回调执行callback */
+    void tls_connect(SSL_CTX * ctx, std::function<void()> callback);
+    /* 发起tls接受, 成功/失败/超时后回调执行callback */
+    void tls_accept(SSL_CTX * ctx, std::function<void()> callback);
+};
+
+/* event/epoll 运行框架 */
+/* 默认aio_base */
+extern aio_base *var_default_aio_base;
+
+class aio_base {
+public:
+    aio_base();
+    aio_base(zaio_base_t *ab);
+    ~aio_base();
+    /* 设置 aio_base 每次epoll循环需要执行的函数 */
+    void set_loop_fn(std::function<void()> callback);
+    /* 运行 aio_base */
+    void run();
+    /* 通知 aio_base 停止, 既 zaio_base_run 返回 */
+    void stop_notify();
+    /* 通知 aio_base, 手动打断 epoll_wait */
+    void touch();
+    /* sleep秒后回调执行callback, 只执行一次 callback(ctx) */
+    void timer(std::function<void()> callback, int timeout);
+protected:
+    zaio_base_t *engine_;
+};
+/* 获取当前线程运行的 aio_base */
+aio_base *aio_base_get_current_pthread_aio_base();
+
+
+/* master, cpp_src/master/ ############################################# */
+/* master/server 进程服务管理框架, 例子见 cpp_sample/master/ */
+class aio_server {
+public:
+    aio_server();
+    virtual ~aio_server();
+    void general_service_register(aio_base *ab, int fd, int fd_type, void (*callback) (int));
+    zinline void general_service_register(int fd, int fd_type, void (*callback) (int)) {
+        general_service_register(0, fd, fd_type, callback);
+    }
+    virtual void service_register(const char *service, int fd, int fd_type) = 0;
+    virtual void before_service(void);
+    virtual void before_softstop(void);
+    virtual void stop_notify(int stop_after_second = 0);
+    virtual void detach_from_master(void);
+    virtual int run(int argc, char **argv);
+public:
+    void *unused_;
+};
+extern aio_server *var_default_aio_server;
+
+class simple_line_request: public aio {
+public:
+    simple_line_request();
+    ~simple_line_request();
+    void clear();
+    void cache_flush_and_request();
+    void cache_flush_and_stop();
+    void request();
+    void stop();
+    std::string *cmd_name_;
+    json json_;
+    int extra_data_len_;
+    void *extra_data_ptr_;
+};
+
+class simple_line_request_aio_server: public aio_server {
+public:
+    static int var_max_use;
+    static int var_concurrency;
+    static int var_request_timeout;
+    static int var_line_max_len;
+    static int var_extra_data_max_len;
+public:
+    simple_line_request_aio_server();
+    ~simple_line_request_aio_server();
+    virtual void service_register(const char *service, int fd, int fd_type);
+    virtual void before_service(void);
+    virtual void before_softstop(void);
+    virtual int  run(int argc, char **argv);
+    virtual void handler(simple_line_request *slr) = 0;
+    virtual void every_request();
+    virtual void enter_job(void (*fn)(void *ctx), void *ctx);
+    virtual void enter_timer(void (*fn)(void *ctx), void *ctx, int timeout);
+};
+
 } /* namespace zcc */
 #pragma pack(pop)
 #endif /* __cplusplus */
@@ -3517,3 +3785,4 @@ void charset_convert_to_utf8(const char *from_charset, const char *data, int siz
 #include "cpp_src/cpp_dev.h"
 #endif
 #endif /*___ZC_LIB_INCLUDE___ */
+

@@ -206,3 +206,53 @@ int ztouch(const char *pathname)
     close(fd);
     return 1;
 }
+
+zargv_t *zfind_file_sample(zargv_t *file_argv, const char **pathnames, int pathnames_count, const char *pathname_match)
+{
+    char buf[4096 + 1];
+    if (file_argv == 0) {
+        file_argv = zargv_create(-1);
+    }
+    for (int i = 0; i < pathnames_count; i++) { 
+        const char *pathname = pathnames[i];
+        struct stat st;
+        if (stat(pathname, &st) == -1) {
+            if (errno == ENOENT) {
+                continue;
+            }
+            fprintf(stderr, "ERR open %s(%m)\n", pathname);
+            exit(1);
+        }
+        if (S_ISREG(st.st_mode)) {
+            zargv_add(file_argv, pathname);
+            continue;
+        } else if (!S_ISDIR(st.st_mode)) {
+            fprintf(stderr, "WARN file must be regular file or directory %s\n", pathname);
+            continue;
+        }
+        if (zempty(pathname_match)) {
+            sprintf(buf, "find \"%s\" -type f", pathname);
+        } else {
+            sprintf(buf, "find \"%s\" -type f -name \"%s\"", pathname, pathname_match);
+        }
+        FILE *fp = popen(buf, "r");
+        if (!fp) {
+            fprintf(stderr, "ERR popen: find \"%s\" -type f\n", pathname);
+        }
+        while (fgets(buf, 4096, fp)) {
+            char *p = strchr(buf, '\n');
+            if (p) {
+                *p = 0;
+            }
+            p = strchr(buf, '\r');
+            if (p) {
+                *p = 0;
+            }
+            zargv_add(file_argv, buf);
+        }
+        fclose(fp);
+    }
+    return file_argv;
+}
+
+

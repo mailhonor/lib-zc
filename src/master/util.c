@@ -75,6 +75,9 @@ void zmaster_log_use_inner(char *progname, char *log_uri)
             zfatal("FATAL masterlog mode, value: masterlog,log_socket");
         }
         zlog_use_masterlog(identity, lv[1]);
+    } else if (!strcmp(type, "stdout")) {
+        void zlog_use_stdout();
+        zlog_use_stdout();
     }
 over:
     zargv_free(largv);

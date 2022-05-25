@@ -21,8 +21,9 @@ static void zvprintf_default(const char *source_fn, size_t line_number, const ch
 
 static void zvprintf_default(const char *source_fn, size_t line_number, const char *fmt, va_list ap)
 {
-    vfprintf(stderr, fmt, ap);
-    fprintf(stderr, " [%s:%zu]\n", source_fn, line_number);
+    char fmt_buf[1024+1];
+    snprintf(fmt_buf, 1024, "%s [%s:%zu]\n", fmt, source_fn, line_number);
+    vfprintf(stderr, fmt_buf, ap);
 }
 void (*zlog_vprintf) (const char *source_fn, size_t line_number, const char *fmt, va_list ap) = zvprintf_default;
 
@@ -61,6 +62,25 @@ void zlog_fatal(const char *source_fn, size_t line_number, const char *fmt, ...)
 
     _exit(1);
 }
+
+/* STDOUT ############################################## */
+static void zvprintf_stdout(const char *source_fn, size_t line_number, const char *fmt, va_list ap)
+{
+    char fmt_buf[1024+1];
+    snprintf(fmt_buf, 1024, "%s [%s:%zu]\n", fmt, source_fn, line_number);
+    vfprintf(stdout, fmt_buf, ap);
+}
+
+void zlog_use_stdout()
+{
+    zlog_vprintf = zvprintf_stdout;
+}
+
+void zlog_use_default()
+{
+    zlog_vprintf = zvprintf_default;
+}
+
 
 /* SYSLOG ############################################## */
 static void zvprintf_syslog(const char *source_fn, size_t line_number, const char *fmt, va_list ap)
@@ -147,7 +167,7 @@ static void vprintf_masterlog(const char *source_fn, size_t line_number, const c
     free(buf);
 }
 
-static void clear_masterlog(void)
+static void clear_masterlog(void *unused)
 {
     if (zvar_master_log_prefix) {
         zfree(zvar_master_log_prefix);
@@ -190,5 +210,5 @@ void zlog_use_masterlog(const char *identity, const char *dest)
     }
     strcpy(zvar_master_log_client_un->sun_path, dest);
 
-    zinner_atexit(clear_masterlog);
+    zatexit(clear_masterlog, 0);
 }

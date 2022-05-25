@@ -57,11 +57,11 @@ static int _license_check_inner(_license_cache_t *lc, const char *salt, const ch
 
     license = (license?license:"");
     for (; *license; license++) {
-        if (*license != '|') {
+        if (*license != ',') {
             break;
         }
     }
-    p = strchr(license, '|');
+    p = strchr(license, ',');
     if (p) {
         strncpy(license_key, p + 1, zvar_license_size);
         tlen = (int)(p - license);

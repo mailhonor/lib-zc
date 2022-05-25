@@ -100,8 +100,10 @@ void zbuf_strcpy(zbuf_t *bf, const char *src)
     int len = strlen(src?src:"");
     int left = zbuf_need_space(bf, len + 1);
     if (left > len) {
-        memcpy(zbuf_data(bf) + zbuf_len(bf), src, len);
-        bf->len += len;
+        if (len > 0) {
+            memcpy(zbuf_data(bf) + zbuf_len(bf), src, len);
+            bf->len += len;
+        }
     } else {
         while (len--) {
             ZBUF_PUT(bf, *src);
@@ -135,8 +137,10 @@ void zbuf_strcat(zbuf_t *bf, const char *src)
     if (len > 0) {
         int left = zbuf_need_space(bf, len + 1);
         if (left > len) {
-            memcpy(zbuf_data(bf) + zbuf_len(bf), src, len);
-            bf->len += len;
+            if (len > 0) {
+                memcpy(zbuf_data(bf) + zbuf_len(bf), src, len);
+                bf->len += len;
+            }
         } else {
             while (len--) {
                 ZBUF_PUT(bf, *src);
@@ -162,8 +166,10 @@ void zbuf_memcpy(zbuf_t *bf, const void *src_raw, int len)
 #else
         int left = zbuf_need_space(bf, len + 1);
         if (left > len) {
-            memcpy(zbuf_data(bf) + zbuf_len(bf), src, len);
-            bf->len += len;
+            if (len > 0) {
+                memcpy(zbuf_data(bf) + zbuf_len(bf), src, len);
+                bf->len += len;
+            }
         } else {
             while (len--) {
                 ZBUF_PUT(bf, *src);

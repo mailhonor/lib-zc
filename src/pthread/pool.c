@@ -45,11 +45,14 @@ struct zpthread_pool_t {
     int first_worker_flag:2;
     int timeout_flag:2;
     int debug_flag:2;
+    zlink_t pthread_node_link;
 };
 
 typedef struct _pthread_node_t _pthread_node_t;
 struct _pthread_node_t {
     zpthread_pool_t *ptp;
+    zlink_node_t link_node;
+    long job_start_time;
     int first_worker_flag:2;
     int timeout_flag:2;
     int enter_flag_for_idle:2;
@@ -78,6 +81,7 @@ zpthread_pool_t *zpthread_pool_create()
     pthread_mutex_init(&(ptp->mutex), 0);
     pthread_cond_init(&(ptp->cond), 0);
     ptp->data_node_queue = zmqueue_create(sizeof(_data_node_t), 128);
+    zlink_init(&(ptp->pthread_node_link));
     zrbtree_init(&(ptp->timeout_tree), _pool_timeout_tree_cmp);
     ptp->min_count = 0;
     ptp->max_count = 1;
@@ -91,6 +95,7 @@ void zpthread_pool_free(zpthread_pool_t *ptp)
         return;
     }
     zmqueue_free(ptp->data_node_queue);
+    zlink_fini(&(ptp->pthread_node_link));
     if (zvar_memleak_check) {
         zrbtree_node_t *rn;
         while((rn = zrbtree_first(&(ptp->timeout_tree)))) {
@@ -100,6 +105,34 @@ void zpthread_pool_free(zpthread_pool_t *ptp)
         }
     }
     zfree(ptp);
+}
+
+long zpthread_pool_get_max_running_millisecond(zpthread_pool_t *ptp)
+{
+    if (!ptp) {
+        return 0;
+    }
+    long min_time = 0;
+    POOL_INNER_LOCK();
+    for (zlink_node_t *ln = zlink_head(&(ptp->pthread_node_link)); ln; ln = zlink_node_next(ln)) {
+        _pthread_node_t *pn = ZCONTAINER_OF(ln, _pthread_node_t, link_node);
+        if (!pn) {
+            continue;
+        }
+        if ((pn->job_start_time > 0)) {
+            if (min_time == 0) {
+                min_time = pn->job_start_time;
+            }
+            if (pn->job_start_time < min_time) {
+                min_time = pn->job_start_time;
+            }
+        }
+    }
+    POOL_INNER_UNLOCK();
+    if (min_time == 0) {
+        return 0;
+    }
+    return (zmillisecond()- min_time);
 }
 
 void zpthread_pool_set_debug_flag(zpthread_pool_t *ptp, zbool_t flag)
@@ -224,14 +257,13 @@ static _pthread_node_t *_pool_worker_run_init(zpthread_pool_t *ptp)
     _pthread_node_t *ptn = (_pthread_node_t *)zcalloc(1, sizeof(_pthread_node_t));
     ptn->ptp = ptp;
 
+    POOL_INNER_LOCK();
+    zlink_push(&(ptp->pthread_node_link), &(ptn->link_node));
     if (ptp->first_worker_flag == 0) {
-        POOL_INNER_LOCK();
-        if (ptp->first_worker_flag == 0) {
-            ptp->first_worker_flag = 1;
-            ptn->first_worker_flag = 1;
-        }
-        POOL_INNER_UNLOCK();
+        ptp->first_worker_flag = 1;
+        ptn->first_worker_flag = 1;
     }
+    POOL_INNER_UNLOCK();
 
     if (ptp->pthread_init_handler) {
         ptp->pthread_init_handler(ptp);
@@ -366,8 +398,8 @@ static zbool_t _pool_worker_run_get(_pthread_node_t *ptn, _data_node_t *dnode)
     }
     POOL_INNER_UNLOCK();
 
-    POOL_DEBUG_STATUS("woker get return");
-    mydebug("woker get return, job: %d, timer:%d", dn?1:0, tn?1:0);
+    POOL_DEBUG_STATUS("worker get return");
+    mydebug("worker get return, job: %d, timer:%d", dn?1:0, tn?1:0);
     if (tn) {
         mydebug("strike timer");
     }
@@ -385,13 +417,15 @@ static void *_pool_worker_run(void *arg)
 {
     zpthread_pool_t *ptp = (zpthread_pool_t *)arg;
     _pthread_node_t *ptn = _pool_worker_run_init(ptp);
-    _data_node_t dnode = { 0 };
+    _data_node_t dnode = { 0, 0 };
     POOL_DEBUG_STATUS("worker start");
     while ((!zvar_sigint_flag) && (!(ptp->soft_stop_flag) && (!(ptn->timeout_flag)))) {
         if (!_pool_worker_run_get(ptn, &dnode)) {
             continue;
         }
+        ptn->job_start_time = zmillisecond();
         dnode.fn(dnode.ctx);
+        ptn->job_start_time = 0;
     }
     _pool_worker_run_fini(ptn);
     return arg;

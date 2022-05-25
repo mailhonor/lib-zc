@@ -25,10 +25,11 @@
 #include <sys/wait.h>
 #include <time.h>
 
-#define mydebug(fmt,args...) { if(zvar_master_server_log_debug_enable){zinfo(fmt, ##args);} }
+#define mydebug(fmt,args...) { if(_log_debug_enable){zinfo(fmt, ##args);} }
+
+static zbool_t _log_debug_enable = 0;
 
 int zvar_master_server_reload_signal = SIGHUP;
-zbool_t zvar_master_server_log_debug_enable = 0;
 
 void (*zmaster_server_load_config)(zvector_t *cfs) = 0;
 void (*zmaster_server_before_service)() = 0;
@@ -110,9 +111,9 @@ static void log_save_content(char *logcontent)
     if (log_fd == -1) {
         char fpath[4096];
         if (log_timeunit == 1) {
-            snprintf(fpath, 4096, "%s/%d%02d%02d%02d.log", log_path, tm.tm_year+1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour); 
+            snprintf(fpath, 4096, "%s%d%02d%02d%02d.log", log_path, tm.tm_year+1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour); 
         } else {
-            snprintf(fpath, 4096, "%s/%d%02d%02d.log", log_path, tm.tm_year+1900, tm.tm_mon + 1, tm.tm_mday); 
+            snprintf(fpath, 4096, "%s%d%02d%02d.log", log_path, tm.tm_year+1900, tm.tm_mon + 1, tm.tm_mday); 
         }
         while (((log_fd = open(fpath, O_CREAT|O_APPEND|O_RDWR|O_CLOEXEC, 0666))==-1) && (errno == EINTR)) {
         }
@@ -233,10 +234,6 @@ static void log_pthread_init()
         zfatal("FATAL ERR -log-service %s, no path", log_service);
     }
 
-    if (log_path[strlen(log_path)-1] == '/') {
-        log_path[strlen(log_path)-1] = 0;
-    }
-
     p = svp[2];
     if (!strcmp(p, "hour")) {
         log_timeunit = 1;
@@ -302,8 +299,11 @@ typedef struct listen_pair_t listen_pair_t;
 typedef struct child_status_t child_status_t;
 
 struct server_info_t {
-    char *config_fn;
+    char *config_pn;
+    char *config_realpn;
     char *cmd;
+    char *master_chroot;
+    char *master_chdir;
     int proc_limit;
     int proc_count;
     long stamp_next_start;
@@ -330,6 +330,7 @@ struct child_status_t {
 };
 
 static char *config_path = 0;
+static char *config_realpath = 0;
 static int flag_reload = 0;
 static int flag_stop = 0;
 static int master_status_fd[2];
@@ -343,8 +344,11 @@ static void start_one_child(server_info_t *server);
 server_info_t *server_info_create()
 {
     server_info_t *s = (server_info_t *)zcalloc(1, sizeof(server_info_t));
-    s->config_fn = 0;
+    s->config_pn = 0;
+    s->config_realpn = 0;
     s->cmd = 0;
+    s->master_chroot = 0;
+    s->master_chdir = 0;
     s->listens = zmap_create();
     s->args = zargv_create(10);
     return s;
@@ -352,8 +356,11 @@ server_info_t *server_info_create()
 
 void server_info_free(server_info_t *s)
 {
-    zfree(s->config_fn);
+    zfree(s->config_pn);
+    zfree(s->config_realpn);
     zfree(s->cmd);
+    zfree(s->master_chroot);
+    zfree(s->master_chdir);
     zmap_free(s->listens);
     zargv_free(s->args);
     zfree(s);
@@ -443,6 +450,18 @@ static void child_strike(zaio_t *eio)
     child_status_free(cs);
 }
 
+static char *_get_relative_path(const char *path, const char *chroot_path, char *resut)
+{
+    resut[0] = 0;
+    int len = strlen(path);
+    int clen = strlen(chroot_path);
+    if ((clen > len) || (strncmp(path, chroot_path, clen))) {
+        zfatal("FATAL path(%s) not in chroot_path(%s)", path, chroot_path);
+    }
+    strcpy(resut, path + clen);
+    return resut;
+}
+
 static void start_one_child(server_info_t *server)
 {
     mydebug("master: start_one_child, cmd:%s", server->cmd);
@@ -505,13 +524,22 @@ static void start_one_child(server_info_t *server)
         zargv_add(exec_argv, "MASTER");
 
         if (config_path && (*config_path)) {
-            zargv_add(exec_argv, "-server-config-path");
-            zargv_add(exec_argv, config_path);
+            if (zempty(server->master_chroot)) {
+                zargv_add(exec_argv, "-server-config-path");
+                zargv_add(exec_argv, config_path);
 
-            if (!zempty(server->config_fn)) {
-                zargv_add(exec_argv, "-config");
-                snprintf(buf, 4096, "%s/%s", config_path, server->config_fn);
-                zargv_add(exec_argv, buf);
+                if (!zempty(server->config_pn)) {
+                    zargv_add(exec_argv, "-config");
+                    zargv_add(exec_argv, server->config_pn);
+                }
+            } else {
+                zargv_add(exec_argv, "-server-config-path");
+                zargv_add(exec_argv, _get_relative_path(config_realpath, server->master_chroot, buf));
+
+                if (!zempty(server->config_pn)) {
+                    zargv_add(exec_argv, "-config");
+                    zargv_add(exec_argv, _get_relative_path(server->config_realpn, server->master_chroot, buf));
+                }
             }
         }
 
@@ -533,7 +561,18 @@ static void start_one_child(server_info_t *server)
         ZARGV_WALK_BEGIN(server->args, a) {
             zargv_add(exec_argv, a);
         } ZARGV_WALK_END;
-        
+
+        if (!zempty(server->master_chroot)) {
+            if (chroot(server->master_chroot)) {
+                zfatal("FATAL chroot (%s) : %m", server->master_chroot);
+            }
+        }
+        if (!zempty(server->master_chdir)) {
+            if (chdir(server->master_chdir) == -1) {
+                zfatal("FATAL chdir (%s) : %m", server->master_chdir);
+            }
+        }
+
         execvp(server->cmd, (char **)(zmemdup(zargv_data(exec_argv), (zargv_len(exec_argv) + 1) * sizeof(char *))));
         zfatal("FATAL master: start child(%s) error: %m", server->cmd);
     }
@@ -573,23 +612,38 @@ static void set_listen_unused()
     } ZMAP_WALK_END;
 }
 
+static char *_strdup_realpath(const char *path)
+{
+    char realpath_buf[4096+1];
+    if (zempty(path)) {
+        return 0;
+    }
+    if (!realpath(path, realpath_buf)) {
+        zfatal("FATAL master: realpath of %s(%m)", path); 
+    }
+    return zstrdup(realpath_buf);
+}
+
 static void prepare_server_by_config(zconfig_t *cf)
 {
-    char *cmd, *listen, *fn;
+    char *cmd, *listen, *pn;
     server_info_t *server;
     cmd = zconfig_get_str(cf, "server-command", 0);
     listen = zconfig_get_str(cf, "server-service", 0);
     if (zempty(cmd) || zempty(listen)) {
         return;
     }
-    fn = zconfig_get_str(cf, "___Z_20181216_fn", 0);
+    pn = zconfig_get_str(cf, "___Z_20181216_fn", 0);
     server = server_info_create();
     zvector_push(server_info_vec, server);
-    server->config_fn = zstrdup(fn);
+    server->config_pn = zstrdup(pn);
     server->cmd = zstrdup(cmd);
+    server->config_realpn = _strdup_realpath(pn);
+    server->master_chroot = _strdup_realpath(zconfig_get_str(cf, "master-chroot", 0));
+    server->master_chdir = zstrdup(zconfig_get_str(cf, "master-chdir", 0));
     server->proc_limit = zconfig_get_int(cf, "server-proc-count", 1);
     server->proc_count = 0;
-    if (zempty(fn)) {
+    if (zempty(pn)) {
         zbuf_t *kk = zbuf_create(-1);
         ZDICT_WALK_BEGIN(cf, k, v) {
             if (!strcmp(k, "server-proc-count")) {
@@ -599,6 +653,9 @@ static void prepare_server_by_config(zconfig_t *cf)
                 continue;
             }
             if (!strcmp(k, "server-service")) {
+                continue;
+            }
+            if (!strcmp(k, "master-chroot")) {
                 continue;
             }
             zbuf_strcpy(kk, "-");
@@ -796,14 +853,15 @@ static void init_all(int argc, char **argv)
         exit(0);
     }
 
-    zvar_master_server_log_debug_enable = zconfig_get_bool(zvar_default_config, "DEBUG", zvar_master_server_log_debug_enable);
+    _log_debug_enable = zconfig_get_bool(zvar_default_config, "DEBUG", _log_debug_enable);
     try_lock = zconfig_get_bool(zvar_default_config, "try-lock", 0); 
-    lock_file = zconfig_get_str(zvar_default_config, "pid-file", "master.pid");
+    lock_file = zconfig_get_str(zvar_default_config, "pid-file", 0);
     log_service = zconfig_get_str(zvar_default_config, "log-service", 0);
     config_path = zstrdup(zconfig_get_str(zvar_default_config, "C", ""));
+    config_realpath = _strdup_realpath(config_path);
     if (*config_path) {
         if (config_path[strlen(config_path)-1] == '/') {
-            config_path[strlen(config_path)-1] = '/';
+            config_path[strlen(config_path)-1] = 0;
         }
     }
 
@@ -818,19 +876,17 @@ static void init_all(int argc, char **argv)
         zmaster_server_before_service();
     }
 
-    if (zempty(lock_file)) {
-        zfatal("FATAL parameter: need pid-file");
-    }
-    if (try_lock) {
-        if (master_lock_pfile(lock_file)) {
-            exit(0);
-        } else {
+    if (!zempty(lock_file)) {
+        if (try_lock) {
+            if (master_lock_pfile(lock_file)) {
+                exit(0);
+            } else {
+                exit(1);
+            }
+        }
+        if (!master_lock_pfile(lock_file)) {
             exit(1);
         }
-    }
-
-    if (!master_lock_pfile(lock_file)) {
-        exit(1);
     }
 
     /* VARS */
@@ -876,6 +932,7 @@ static void fini_all()
     }
 
     zfree(config_path);
+    zfree(config_realpath);
     zmap_free(listen_pair_map);
     zmap_free(child_status_map);
     zvector_free(server_info_vec);
@@ -933,7 +990,7 @@ void zmaster_server_load_config_from_dirname(const char *config_path, zvector_t 
         zconfig_t *cf = zconfig_create();
         snprintf(pn, 4096, "%s/%s", config_path, fn);
         zconfig_load_from_pathname(cf, pn);
-        zconfig_update_string(cf, "___Z_20181216_fn", fn, -1);
+        zconfig_update_string(cf, "___Z_20181216_fn", pn, -1);
         zvector_push(cfs, cf);
 #if 0
         /* do not free cf */

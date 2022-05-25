@@ -426,8 +426,6 @@ long zstr_to_second(const char *s, long def)
     case 1:
         unit = 's';
     case 2:
-        if (intval < 0)
-            return 0;
         switch (ztolower(unit)) {
         case 'w':
             return (intval * (7 * 24 * 3600));
@@ -455,8 +453,6 @@ long zstr_to_size(const char *s, long def)
     case 1:
         unit = 'b';
     case 2:
-        if (intval < 0)
-            return 0;
         switch (ztolower(unit)) {
         case 'g':
             return (intval * (1024 * 1024 * 1024));

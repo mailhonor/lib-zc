@@ -190,7 +190,7 @@ ssize_t zwrite(int fd, const void *buf, size_t count)
     int ec, is_closed = 0;
     const char *ptr = (const char *)buf;
     long left = count;
-    for (;;) {
+    for (;left > 0;) {
         ret = write(fd, ptr, left);
         if (ret < 0) {
             ec = errno;

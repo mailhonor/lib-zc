@@ -11,65 +11,71 @@
 namespace zcc
 {
 
-static int _close(iostream &fp, bool release)
+ssl_iostream::ssl_iostream()
+{
+    ssl_ = 0;
+}
+
+ssl_iostream::~ssl_iostream()
+{
+    close(true);
+}
+
+int ssl_iostream::close(bool close_fd_or_release_ssl)
 {
     int ret = 0;
-    if (release) {
-        if (fp.get_ssl()) {
-            zopenssl_SSL_free(fp.get_ssl());
+    if (close_fd_or_release_ssl) {
+        if (ssl_) {
+            zopenssl_SSL_free(ssl_);
         }
-        ret = zclose(fp.get_fd());
+        if (fd_ > -1) {
+            ret = zclose(fd_);
+        }
     }
+    ssl_ = 0;
+    fd_ = -1;
+    read_wait_timeout_ = -1;
+    write_wait_timeout_ = -1;
     return ret;
 }
 
-static int _read(iostream &fp, void *buf, int len)
+int ssl_iostream::engine_read(void *buf, int len)
 {
-    if (fp.get_ssl()) {
-        return zopenssl_timed_read(fp.get_ssl(), buf, len, fp.get_read_wait_timeout(), fp.get_read_wait_timeout());
+    if (ssl_) {
+        return zopenssl_timed_read(ssl_, buf, len, read_wait_timeout_, write_wait_timeout_);
     } else {
-        return ztimed_read(fp.get_fd(), buf, len, fp.get_read_wait_timeout());
+        return ztimed_read(fd_, buf, len, read_wait_timeout_);
     }
 }
 
-static int _write(iostream &fp, const void *buf, int len)
+int ssl_iostream::engine_write(const void *buf, int len)
 {
-    if (fp.get_ssl()) {
-        return zopenssl_timed_write(fp.get_ssl(), buf, len, fp.get_write_wait_timeout(), fp.get_write_wait_timeout());
+    if (ssl_) {
+        return zopenssl_timed_write(ssl_, buf, len, read_wait_timeout_, write_wait_timeout_);
     } else {
-        return ztimed_write(fp.get_fd(), buf, len, fp.get_write_wait_timeout());
+        return ztimed_write(fd_, buf, len, write_wait_timeout_);
     }
-
 }
 
-static int _timed_read_wait(iostream &fp, int read_wait_timeout)
+int ssl_iostream::timed_read_wait(int read_wait_timeout)
 {
-    return ztimed_read_wait(fp.get_fd(), fp.get_read_wait_timeout());
+    return ztimed_read_wait(fd_, read_wait_timeout_);
 }
 
-static int _timed_write_wait(iostream &fp, int write_wait_timeout)
+int ssl_iostream::timed_write_wait(int write_wait_timeout)
 {
-    return ztimed_write_wait(fp.get_fd(), fp.get_write_wait_timeout());
+    return ztimed_write_wait(fd_, write_wait_timeout_);
 }
 
-#define _SET_HANDLER_() { \
-    engine_read_ = _read; \
-    engine_write_ = _write; \
-    engine_timed_read_wait_ = _timed_read_wait; \
-    engine_timed_write_wait_ = _timed_write_wait; \
-    engine_close_ = _close; \
-}
-
-iostream &iostream::open_ssl(SSL *ssl)
+ssl_iostream &ssl_iostream::open_ssl(SSL *ssl)
 {
-    close(1);
+    close(true);
     ssl_ = ssl;
     fd_ = zopenssl_SSL_get_fd(ssl);
-    _SET_HANDLER_();
     return *this;
 }
 
-int iostream::tls_connect(SSL_CTX *ctx)
+int ssl_iostream::tls_connect(SSL_CTX *ctx)
 {
     if (ssl_) {
         return -1;
@@ -85,12 +91,11 @@ int iostream::tls_connect(SSL_CTX *ctx)
         return -1;
     }
     ssl_ = _ssl;
-    _SET_HANDLER_();
 
     return 1;
 }
 
-int iostream::tls_accept(SSL_CTX *ctx)
+int ssl_iostream::tls_accept(SSL_CTX *ctx)
 {
     if (ssl_) {
         return -1;
@@ -106,7 +111,6 @@ int iostream::tls_accept(SSL_CTX *ctx)
         return -1;
     }
     ssl_ = _ssl;
-    _SET_HANDLER_();
 
     return 1;
 }

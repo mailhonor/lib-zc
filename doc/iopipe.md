@@ -19,7 +19,7 @@
 1. 准备一个协程环境 (zcoroutine_base_t *)cobs
 2. 和第1个端口建立了连接, 得到 (int)fd1; 如果是 SSL, 则建立 OEPNSSL 通道, 得到 (SSL *)ssl1
 3. 和第2个端口建立了连接, 得到 (int)fd2; 如果是 SSL, 则建立 OEPNSSL 通道, 得到 (SSL *)ssl2
-4. 执行函数 zcoroutine_go_iopipe(fd1, ssl1, fd2, cobs, ssl2, 0, 0);<BR />cobs==0: 表示当前线程的协程环境
+4. 执行函数 zcoroutine_go_iopipe(fd1, ssl1, fd2, ssl2, cobs, 0, 0);<BR />cobs==0: 表示当前线程的协程环境
 
 则在当协程环境 cobs, 管道建立成功
 

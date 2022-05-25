@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2015-12-08
  * ================================
  */
@@ -33,7 +33,6 @@ struct charset_iconv_t {
 
 char *zcharset_correct_charset(const char *charset)
 {
-
     if (ZSTR_CASE_EQ(charset, "gb2312")) {
         charset = "GB18030";
 #if 0
@@ -46,6 +45,7 @@ char *zcharset_correct_charset(const char *charset)
         charset = "GB18030";
     } else if (ZSTR_N_CASE_EQ(charset, "KS_C_5601", 9)) {
         charset = "ISO-2022-KR";
+        charset = "EUC-KR";
     } else if (ZSTR_N_CASE_EQ(charset, "KS_C_5861", 9)) {
         charset = "EUC-KR";
     } else if (ZSTR_CASE_EQ(charset, "unicode-1-1-utf-7")) {
@@ -259,7 +259,7 @@ void charset_convert_to_utf8(const char *from_charset, const char *data, int siz
     }
 
     if(detected) {
-        zbuf_memcpy_cpp(result, data, size);
+        zcharset_convert_cpp("UTF-8", data, size, "UTF-8", result, 0, -1, 0);
         goto over;
     }
 
@@ -273,7 +273,7 @@ void charset_convert_to_utf8(const char *from_charset, const char *data, int siz
         goto over;
     }
 
-    zbuf_memcpy_cpp(result, data, size);
+    zcharset_convert_cpp("UTF-8", data, size, "UTF-8", result, 0, -1, 0);
 
 over:
     return;

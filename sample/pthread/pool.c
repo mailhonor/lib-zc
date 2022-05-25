@@ -18,6 +18,7 @@ static void job1(void *ctx)
 {
     int i = (int)(long)ctx;
     zsleep_millisecond(100);
+    zsleep_millisecond(10000);
     printf("job1, %d\n", i);
 }
 
@@ -51,11 +52,15 @@ int main(int argc, char **argv)
         zpthread_pool_timer(ptp, timer1, (void *)(long)i, i/10 + 1);
     }
 
+    zsleep(5);
+    printf("running max second: %d\n", zpthread_pool_get_max_running_second(ptp));
+
     zsleep(10 + 1);
     printf("wait idle pthread quit\n");
     zsleep(10 + 1);
     printf("soft stop\n");
     zsleep(1 + 1);
+    printf("running max second: %d\n", zpthread_pool_get_max_running_second(ptp));
     zpthread_pool_softstop(ptp);
     zpthread_pool_wait_all_stopped(ptp, 2);
     zpthread_pool_free(ptp);

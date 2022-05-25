@@ -103,10 +103,10 @@ zmsearch_add_over(ms);
 const char *str = "ABcXYZanotherKKKFSFSF";
 const char *result;
 int len;
-int ok = zmsearch_match(ms, "ABcXYZanotherKKKFSFSF", -1, &result, &len);
-/* 应该是匹配成功了 */
+int ok = zmsearch_match(ms, str, -1, &result, &len);
+/* 应该是匹配成功了 "anotherKKK" */
 /*    *result =  str + 6; */
-/*     len = strlen(str); */
+/*     len = strlen("anotherKKK"); */
 ```
 
 ### 第五步, 释放资源

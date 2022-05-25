@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2015-11-05
  * ================================
  */
@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
+#include <sys/inotify.h>
 #include <sys/time.h>
 #include <sys/un.h>
 #include <errno.h>
@@ -161,6 +162,7 @@ struct zaio_base_t {
     zaio_t *eventfd_aio;
     void (*loop_fn)(zaio_base_t *eb);
     void *context;
+    void *context_for_child;
     zrbtree_node_t *incoming_queue_head;
     zrbtree_node_t *incoming_queue_tail;
     zrbtree_node_t *extern_incoming_queue_head;
@@ -168,6 +170,18 @@ struct zaio_base_t {
     zrbtree_node_t *tmp_queue_head;
     zrbtree_node_t *tmp_queue_tail;
     pthread_mutex_t extern_plocker;
+    zaio_t *inotify_aio;
+};
+void _zaio_event_monitor(zaio_t *aio, int monitor_cmd);
+void _zaio_enter_incoming(zaio_t *aio);
+
+typedef struct zaio_inotify_t zaio_inotify_t;
+struct zaio_inotify_t {
+    zaio_base_t *eb;
+    void (*callback) (zaio_inotify_t *aio);
+    void *context;
+    int wb;
+    int event;
 };
 /* }}} */
 
@@ -306,9 +320,6 @@ static int _zaio_io_write_with_ssl(zaio_t *aio, const void *buf, int len)
 /* }}} */
 
 /* {{{ tls */
-void _zaio_event_monitor(zaio_t *aio, int monitor_cmd);
-void _zaio_enter_incoming(zaio_t *aio);
-
 extern void (*_zaio_active_tls_connect)(zaio_t *aio);
 static void _active_tls_connect(zaio_t *aio)
 {
@@ -638,21 +649,21 @@ void _zaio_enter_incoming(zaio_t *aio)
     aio->in_base_context = 1;
     _clear_read_write_flag(aio);
 
-        if (is_self) {
-            if (aio->in_incoming_queue == 0) {
-                aio->in_incoming_queue = 1;
-                ZMLINK_APPEND(eb->incoming_queue_head, eb->incoming_queue_tail, rn, zrbtree_left, zrbtree_right);
-            } else {
-            }
+    if (is_self) {
+        if (aio->in_incoming_queue == 0) {
+            aio->in_incoming_queue = 1;
+            ZMLINK_APPEND(eb->incoming_queue_head, eb->incoming_queue_tail, rn, zrbtree_left, zrbtree_right);
         } else {
-            if (aio->in_extern_incoming_queue == 0) {
-                _base_lock_extern(eb);
-                aio->in_extern_incoming_queue = 1;
-                ZMLINK_APPEND(eb->extern_incoming_queue_head, eb->extern_incoming_queue_tail, rn, zrbtree_left, zrbtree_right);
-                _base_unlock_extern(eb);
-                zaio_base_touch(eb);
-            }
         }
+    } else {
+        if (aio->in_extern_incoming_queue == 0) {
+            _base_lock_extern(eb);
+            aio->in_extern_incoming_queue = 1;
+            ZMLINK_APPEND(eb->extern_incoming_queue_head, eb->extern_incoming_queue_tail, rn, zrbtree_left, zrbtree_right);
+            _base_unlock_extern(eb);
+            zaio_base_touch(eb);
+        }
+    }
 }
 /* }}} */
 
@@ -1362,6 +1373,11 @@ void zaio_get_write_cache(zaio_t *aio, zbuf_t *bf, int strict_len)
     zbuf_terminate(bf);
 }
 
+void zaio_get_write_cache_to_buf(zaio_t *aio, char *buf, int strict_len)
+{
+    ___zaio_cache_shift(aio, &(aio->write_cache), buf, strict_len);
+}
+
 /* }}} */
 
 /* {{{ timeout_tree */
@@ -1461,6 +1477,38 @@ void zaio_list_detach(zaio_t **list_head, zaio_t **list_tail, zaio_t *aio)
 }
 /* }}} */
 
+/* {{{ inotify */
+typedef struct _zaio_inotify_ctx_t _zaio_inotify_ctx_t;
+struct _zaio_inotify_ctx_t {
+    char stage; /* 0: struct, 1: extra */
+    int need_len;
+    int buf_len;
+    struct inotify_event i_ev;
+};
+
+static void _zaio_inotify_readable(zaio_t *aio)
+{
+}
+
+static void _zaio_base_inotify_init(zaio_base_t *eb)
+{
+    return;
+    int fd = inotify_init1(IN_CLOEXEC);
+    zaio_t *ia = zaio_create(fd, eb);
+    eb->inotify_aio = ia;
+    zaio_readable(eb->inotify_aio, _zaio_inotify_readable);
+}
+
+zaio_inotify_t *zaio_inotify_create(const char *pathname, zaio_base_t *eb)
+{
+    return 0;
+}
+
+static void _zaio_base_inotify_fini(zaio_base_t *eb)
+{
+}
+/* }}} */
+
 /* {{{ aio_base */
 
 zaio_base_t *zaio_base_get_current_pthread_aio_base()
@@ -1508,6 +1556,8 @@ zaio_base_t *zaio_base_create()
     eb->eventfd_aio = zaio_create(eventfd_fd, eb);
     zaio_readable(eb->eventfd_aio, _zaio_base_event_notify_reader);
 
+    _zaio_base_inotify_init(eb);
+
     return eb;
 }
 
@@ -1517,6 +1567,7 @@ void zaio_base_free(zaio_base_t *eb)
     zclose(eb->epoll_fd);
     zfree(eb->epoll_event_vec);
     pthread_mutex_destroy(&(eb->extern_plocker));
+    _zaio_base_inotify_fini(eb);
     zfree(eb);
 }
 
@@ -1636,13 +1687,33 @@ void zaio_base_run(zaio_base_t *eb)
     return;
 }
 
+void zaio_base_set_context(zaio_base_t *eb, const void *ctx)
+{
+    eb->context = (void *)ctx;
+}
+
+void *zaio_base_get_context(zaio_base_t *eb)
+{
+    return eb->context;
+}
+
+void zaio_base_set_context_for_child(zaio_base_t *eb, const void *ctx)
+{
+    eb->context_for_child = (void *)ctx;
+}
+
+void *zaio_base_get_context_for_child(zaio_base_t *eb)
+{
+    return eb->context_for_child;
+}
+
 /* }}} */
 
 #endif /* ___ZC_AIO_USE_SSL_INNER___ */
 
 #pragma pack(pop)
 
-/* Local variables:
-* End:
+/*
 * vim600: fdm=marker
 */
+

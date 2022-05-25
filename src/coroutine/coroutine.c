@@ -1807,7 +1807,7 @@ static zcoroutine_t *zcoroutine_create(zcoroutine_base_t *base, int stack_kiloby
         mprotect(co->sys_context.uc_stack.ss_sp - var_page_size, var_page_size, PROT_READ | PROT_WRITE);
         mprotect(co->sys_context.uc_stack.ss_sp + (page_count + 1) * var_page_size , var_page_size, PROT_READ | PROT_WRITE);
     } else {
-        co->sys_context.ss_sp = ((char *)_co_mem_valloc(page_count * var_page_size));
+        co->sys_context.uc_stack.ss_sp = ((char *)_co_mem_valloc(page_count * var_page_size));
     }
     co->sys_context.uc_stack.ss_size = page_count * var_page_size;
     co->sys_context.uc_link = NULL;
