@@ -19,7 +19,7 @@ long zmime_header_line_decode_date(const char *str)
 
     char str_copy[128];
     char *ps, *p, *p2, *p3;
-    int v, sign, offset;
+    int v, sign, offset, last_offset = 0;
     struct tm tm;
     long result = -1;
 
@@ -29,6 +29,7 @@ long zmime_header_line_decode_date(const char *str)
     zstr_tolower(str_copy);
     for (p = str_copy;*p;p++) {
         if (*p == '-') {
+            last_offset = (int)(p - str_copy);
             *p = ' ';
         }
     }
@@ -133,9 +134,15 @@ long zmime_header_line_decode_date(const char *str)
 
     ___IGNORE_BLANK(p);
     ___ERR();
+    if ((int)(p - str_copy) == last_offset + 1) {
+        p[-1] = '-';
+        p --;
+    }
     ps = p;
-    if (strlen(ps) < 5) {
-        goto err;
+    offset = 0;
+    sign = 0;
+    if (strlen((char *)ps) < 5) {
+        goto break_offset;
     }
     sign = (ps[0] == '-') ? -1 : 1;
     ps++;
@@ -143,6 +150,7 @@ long zmime_header_line_decode_date(const char *str)
     ps += 2;
     offset = offset * 60 + (ps[0] - '0') * 10 + (ps[1] - '0');
     offset *= 60;
+break_offset:
 
     result = timegm(&tm);
     if (result == -1) {

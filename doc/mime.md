@@ -371,7 +371,7 @@ X-Received: from xxx (xxx [192.168.1.1]) by linuxmail.cn
 
 * 解码 Date 字段
 
-### zvector_t *zmime_header_line_get_address_vector(const char *in_str, int in_len);
+### zvector_t *zmime_header_line_get_address_vector(const char *src_charset_def, const char *in_str, int in_len);
 
 * 分解邮件头行为多个邮件地址并返回
 * 这个时候不处理 name_utf8

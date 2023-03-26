@@ -1,29 +1,19 @@
+all: lib
 
-all: libzc
+.PHONY: lib test sample
 
-.PHONY: test sample
+lib: 
+	mkdir -p build && cd build && cmake ../ $(ZCC_LIB_CMAKE_DEFINITIONS) && make zc zc_coroutine
 
-libzc lib: depend
-	make -f makefiles/lib.makefile $(libzc_special_target)
+test sample: lib
+	cd build && make
 
-test sample: libzc
-	make -f makefiles/sample_list.makefile
+clean: 
+	rm -rf build
+	mkdir -p build && cd build && cmake ../ $(ZCC_LIB_CMAKE_DEFINITIONS) && make clean >/dev/null
+	rm -rf build
+	rm -f libzc.a libzc_coroutine.a
+	find -type f -name "*~" -exec rm {} \;
+	find -type f -name "gmon.out" -exec rm {} \;
+	find -type f -name "tags" -exec rm {} \;
 
-depend:
-	make -f makefiles/depend.makefile
-
-tag tags:
-	ctags -R src/ zc.h
-
-clean:
-	make -f makefiles/clean.makefile
-	make clean -f makefiles/sample_list.makefile
-	@echo -e "\nclean over \n"
-
-CLEAN: clean
-	rm -r tags
-
-indent:
-	find src -name "*.[ch]" -exec Indent {} \;
-	find sample -name "*.[ch]" -exec Indent {} \;
-	Indent zc.h

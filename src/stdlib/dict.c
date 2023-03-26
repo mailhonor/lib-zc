@@ -234,7 +234,7 @@ zdict_node_t *zdict_next(const zdict_node_t * node)
 void zdict_debug_show(const zdict_t * dict)
 {
     ZDICT_WALK_BEGIN(dict, k, v) {
-        printf("%s = %s\n", k, zbuf_data(v));
+        zdebug_show("%s = %s", k, zbuf_data(v));
     } ZDICT_WALK_END;
 }
 

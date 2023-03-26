@@ -1,4 +1,4 @@
-/* 
+/*
  * ================================
  * eli960@qq.com
  * http://linuxmail.cn/
@@ -11,8 +11,22 @@
 #ifndef ___ZC_LIB_INCLUDE___
 #define ___ZC_LIB_INCLUDE___
 
+#define zcc_namespace_c_begin \
+    extern "C"                \
+    {
+#define zcc_namespace_c_end }
+
+#define zcc_namespace_begin \
+    namespace zcc           \
+    {
+#define zcc_namespace_end }
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
+
+#ifndef ZCC__FILE__
+#define ZCC__FILE__ __FILE__
 #endif
 
 #include <stdarg.h>
@@ -24,8 +38,8 @@
 
 #pragma pack(push, 4)
 
-#ifdef  __cplusplus
-extern "C" {
+#ifdef __cplusplus
+zcc_namespace_c_begin;
 #endif
 
 #ifndef HEADER_OPENSSL_TYPES_H
@@ -84,16 +98,28 @@ typedef struct zpthread_pool_t zpthread_pool_t;
 #define zinline inline __attribute__((always_inline))
 #endif
 
-zinline int zempty(const void *ptr) { return ((!ptr)||(!(*(const char *)(ptr)))); }
-#define ZEMPTY(str)                  (!(str)||!(*((const char *)str)))
-#define ZCONTAINER_OF(ptr,app_type,member) ((app_type *) (((char *) (ptr)) - offsetof(app_type,member)))
-#define ZCONTAINER_OF2(ptr,app_type,offset) ((app_type *) (((char *) (ptr)) - offset))
-#define ZCONVERT_CHAR_PTR(const_void_ptr)   (char *)(void*)(const_void_ptr)
+zinline int zempty(const void *ptr)
+{
+    return ((!ptr) || (!(*(const char *)(ptr))));
+}
+#define ZEMPTY(str) (!(str) || !(*((const char *)str)))
+#define ZCONTAINER_OF(ptr, app_type, member) ((app_type *)(((char *)(ptr)) - offsetof(app_type, member)))
+#define ZCONTAINER_OF2(ptr, app_type, offset) ((app_type *)(((char *)(ptr)) - offset))
+#define ZCONVERT_CHAR_PTR(const_void_ptr) (char *)(void *)(const_void_ptr)
 
-#define zpthread_lock(l)    if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}
-#define zpthread_unlock(l)  if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}
+#define zpthread_lock(l)                            \
+    if (pthread_mutex_lock((pthread_mutex_t *)(l))) \
+    {                                               \
+        zfatal("FATAL mutex:%m");                   \
+    }
+#define zpthread_unlock(l)                            \
+    if (pthread_mutex_unlock((pthread_mutex_t *)(l))) \
+    {                                                 \
+        zfatal("FATAL mutex:%m");                     \
+    }
 
-union ztype_convert_t {
+union ztype_convert_t
+{
     const void *CONST_VOID_PTR;
     void *VOID_PTR;
     const char *CONST_CHAR_PTR;
@@ -114,29 +140,43 @@ union ztype_convert_t {
     off_t OFF_T;
     uid_t UID_T;
     gid_t GID_T;
-    struct {
-        int fd:30;
-        int is_ssl:2;
-        int fd_type:8;
+    struct
+    {
+        int fd : 30;
+        int is_ssl : 2;
+        int fd_type : 8;
     } fdinfo;
 };
 
-#define ZCHAR_PTR_TO_INT(_ptr, _int)    {ztype_convert_t _ct;_ct.ptr_char=(_ptr);_int=_ct.i_int;}
-#define ZINT_TO_CHAR_PTR(_int, _ptr)    {ztype_convert_t _ct;_ct.i_int=(_int);_ptr=_ct.ptr_char;}
+#define ZCHAR_PTR_TO_INT(_ptr, _int) \
+    {                                \
+        ztype_convert_t _ct;         \
+        _ct.ptr_char = (_ptr);       \
+        _int = _ct.i_int;            \
+    }
+#define ZINT_TO_CHAR_PTR(_int, _ptr) \
+    {                                \
+        ztype_convert_t _ct;         \
+        _ct.i_int = (_int);          \
+        _ptr = _ct.ptr_char;         \
+    }
 
-#define ZSTR_N_CASE_EQ(a, b, n)       ((ztoupper((int)a[0]) == ztoupper((int)b[0])) && (!strncasecmp(a,b,n)))
-#define ZSTR_CASE_EQ(a, b)            ((ztoupper(a[0]) == ztoupper(b[0])) && (!strcasecmp(a,b)))
-#define ZSTR_N_EQ(a, b, n)            ((a[0] == b[0]) && (!strncmp(a,b,n)))
-#define ZSTR_EQ(a, b)                 ((a[0] == b[0]) && (!strcmp(a,b)))
+#define ZSTR_N_CASE_EQ(a, b, n) ((ztoupper((int)a[0]) == ztoupper((int)b[0])) && (!strncasecmp(a, b, n)))
+#define ZSTR_CASE_EQ(a, b) ((ztoupper(a[0]) == ztoupper(b[0])) && (!strcasecmp(a, b)))
+#define ZSTR_N_EQ(a, b, n) ((a[0] == b[0]) && (!strncmp(a, b, n)))
+#define ZSTR_EQ(a, b) ((a[0] == b[0]) && (!strcmp(a, b)))
 
 /* zinline ######################################################### */
 zinline unsigned int zint_unpack(const void *buf)
 {
     unsigned char *p = (unsigned char *)buf;
     unsigned int n = p[0];
-    n <<= 8; n |= p[1];
-    n <<= 8; n |= p[2];
-    n <<= 8; n |= p[3];
+    n <<= 8;
+    n |= p[1];
+    n <<= 8;
+    n |= p[2];
+    n <<= 8;
+    n |= p[3];
     return n;
 }
 
@@ -144,17 +184,22 @@ zinline void zint_pack(unsigned int num, void *buf)
 {
     unsigned char *p = (unsigned char *)buf;
     p[3] = num & 255;
-    num >>= 8; p[2] = num & 255;
-    num >>= 8; p[1] = num & 255;
-    num >>= 8; p[0] = num & 255;
+    num >>= 8;
+    p[2] = num & 255;
+    num >>= 8;
+    p[1] = num & 255;
+    num >>= 8;
+    p[0] = num & 255;
 }
 
 zinline unsigned int zint_unpack3(const void *buf)
 {
     unsigned char *p = (unsigned char *)buf;
     unsigned int n = p[0];
-    n <<= 8; n |= p[1];
-    n <<= 8; n |= p[2];
+    n <<= 8;
+    n |= p[1];
+    n <<= 8;
+    n |= p[2];
     return n;
 }
 
@@ -162,15 +207,18 @@ zinline void zint_pack3(unsigned int num, void *buf)
 {
     unsigned char *p = (unsigned char *)buf;
     p[2] = num & 255;
-    num >>= 8; p[1] = num & 255;
-    num >>= 8; p[0] = num & 255;
+    num >>= 8;
+    p[1] = num & 255;
+    num >>= 8;
+    p[0] = num & 255;
 }
 
 zinline unsigned int zint_unpack2(const void *buf)
 {
     unsigned char *p = (unsigned char *)buf;
     unsigned int n = p[0];
-    n <<= 8; n |= p[1];
+    n <<= 8;
+    n |= p[1];
     return n;
 }
 
@@ -178,7 +226,8 @@ zinline void zint_pack2(unsigned int num, void *buf)
 {
     unsigned char *p = (unsigned char *)buf;
     p[1] = num & 255;
-    num >>= 8; p[0] = num & 255;
+    num >>= 8;
+    p[0] = num & 255;
 }
 
 /* 最经典的hash函数, 需要更高级的可以考虑 crc16, crc32, crc64, 甚至md5 等*/
@@ -186,8 +235,9 @@ zinline unsigned zhash_djb(const void *buf, int len)
 {
     register const unsigned char *p = (const unsigned char *)buf;
     register const unsigned char *end = p + len;
-    register unsigned hash = 5381;	/* start value */
-    while (p < end) {
+    register unsigned hash = 5381; /* start value */
+    while (p < end)
+    {
         hash = (hash + (hash << 5)) ^ *p++;
     }
     return hash;
@@ -197,32 +247,85 @@ zinline unsigned zhash_djb_with_initial(const void *buf, int len, unsigned int i
 {
     register const unsigned char *p = (const unsigned char *)buf;
     register const unsigned char *end = p + len;
-    register unsigned hash = initial;  /* start value */
-    while (p < end) {
+    register unsigned hash = initial; /* start value */
+    while (p < end)
+    {
         hash = (hash + (hash << 5)) ^ *p++;
     }
     return hash;
 }
+
 /* 日志, src/stdlib/log.c ########################################## */
 
-/* 见 zlog_fatal */
+/* @brief 见 zlog_fatal */
 extern zbool_t zvar_log_fatal_catch;
 
-/* 见 zdebug */
+/* @brief 见 zdebug */
 extern zbool_t zvar_log_debug_enable;
 
-/* 可自定义 zlog_vprintf, 定制日志输出 */
-extern void (*zlog_vprintf) (const char *source_fn, size_t line_number, const char *fmt, va_list ap);
+/*
+@brief 函数变量, 可自定义 zlog_vprintf, 日志输出引擎, 定制日志输出
+@param source_fn 文件名, 可能为空("",NULL)
+@param line_number 代码所在行, 可能为 0
+@param fmt/ap 见 vprintf
+@return void 无
+*/
+extern void (*zlog_vprintf)(const char *source_fn, size_t line_number, const char *fmt, va_list ap);
 
-/* 日志输出 */
-void __attribute__((format(printf,3,4))) zlog_info(const char *source_fn, size_t line_number, const char *fmt, ...);
+/**
+ * @brief 日志输出
+ * @param source_fn 文件名
+ * @param line_number 代码所在行
+ * @param fmt 见 printf
+ * @return void 无
+ */
+void __attribute__((format(printf, 3, 4))) zlog_info(const char *source_fn, size_t line_number, const char *fmt, ...);
+void zvlog_info(const char *source_fn, size_t line_number, const char *fmt, va_list ap);
 
-/* 日志输出后, 进程退出, 如果 zvar_log_fatal_catch==1, 则 激活段错误 */
-void __attribute__((format(printf,3,4))) zlog_fatal(const char *source_fn, size_t line_number, const char *fmt, ...);
+/**
+ * @brief 日志输出, 进程退出; 如果 zvar_log_fatal_catch==1, 则 激活段错误
+ * @param source_fn 文件名
+ * @param line_number 代码所在行
+ * @param fmt 见 printf
+ * @return void 无
+ */
+void __attribute__((format(printf, 3, 4))) zlog_fatal(const char *source_fn, size_t line_number, const char *fmt, ...);
+void zvlog_fatal(const char *source_fn, size_t line_number, const char *fmt, va_list ap);
 
-#define zfatal(fmt, args...) { zlog_fatal(__FILE__, __LINE__, fmt, ##args); }
-#define zinfo(fmt, args...) { zlog_info(__FILE__, __LINE__, fmt, ##args); }
-#define zdebug(fmt,args...) { if(zvar_log_debug_enable){zinfo(fmt, ##args);} }
+/**
+ * @brief 宏, zlog_fatal 的封装, lib-zc 使用了这个宏
+ */
+#define zfatal(fmt, args...)                            \
+    {                                                   \
+        zlog_fatal(ZCC__FILE__, __LINE__, fmt, ##args); \
+    }
+
+/**
+ * @brief 宏, zlog_info 的封装, lib-zc 使用了这个宏
+ */
+#define zinfo(fmt, args...)                            \
+    {                                                  \
+        zlog_info(ZCC__FILE__, __LINE__, fmt, ##args); \
+    }
+
+/**
+ * @brief 宏, zlog_info 的封装, lib-zc 没有使用这个宏
+ */
+#define zdebug(fmt, args...)       \
+    {                              \
+        if (zvar_log_debug_enable) \
+        {                          \
+            zinfo(fmt, ##args);    \
+        }                          \
+    }
+
+/**
+ * @brief 宏, ...debug_show 的封装
+ */
+#define zdebug_show(fmt, args...)     \
+    {                                 \
+        zlog_info(0, 0, fmt, ##args); \
+    }
 
 void zlog_use_default();
 
@@ -238,17 +341,17 @@ void zlog_use_masterlog(const char *identity, const char *dest);
 
 /* 内存分配, src/malloc/malloc.c ###################################### */
 extern char *zblank_buffer;
-#define ZFREE(a)                     (zfree(a),a=0)
+#define ZFREE(a) (zfree(a), a = 0)
 
 /* LIB-ZC, 内部开发都使用如下内存操作函数, 理论上 zmalloc等价于malloc, 其他类似 */
-#define zmalloc                      zmalloc_20160308
-#define zcalloc                      zcalloc_20160308
-#define zrealloc                     zrealloc_20160308
-#define zfree                        zfree_20160308
-#define zstrdup                      zstrdup_20160308
-#define zstrndup                     zstrndup_20160308
-#define zmemdup                      zmemdup_20160308
-#define zmemdupnull                  zmemdupnull_20160308
+#define zmalloc zmalloc_20160308
+#define zcalloc zcalloc_20160308
+#define zrealloc zrealloc_20160308
+#define zfree zfree_20160308
+#define zstrdup zstrdup_20160308
+#define zstrndup zstrndup_20160308
+#define zmemdup zmemdup_20160308
+#define zmemdupnull zmemdupnull_20160308
 void *zmalloc(int len);
 void *zcalloc(int nmemb, int size);
 void *zrealloc(const void *ptr, int len);
@@ -263,13 +366,14 @@ char *zmemdup(const void *ptr, int n);
 char *zmemdupnull(const void *ptr, int n);
 
 /* buf, src/stdlib/buf.c ################################## */
-struct zbuf_t {
+struct zbuf_t
+{
     char *data;
-    int len:31;
-    unsigned int static_mode:1;
-    int size:31;
-    unsigned int unused_flag1:1;
-}; 
+    int len : 31;
+    unsigned int static_mode : 1;
+    int size : 31;
+    unsigned int unused_flag1 : 1;
+};
 
 /* 创建buf, 初始容量为size */
 zbuf_t *zbuf_create(int size);
@@ -297,21 +401,30 @@ int zbuf_need_space(zbuf_t *bf, int need);
 int zbuf_put_do(zbuf_t *bf, int ch);
 
 /* 追加字节c到b, 建议使用 zbuf_put(b, c) */
-#define ZBUF_PUT(b, c)  \
-    (((b)->len<(b)->size)?((int)(((unsigned char *)((b)->data))[(b)->len++]=(unsigned char)(c))):(((b)->static_mode?0:zbuf_put_do((b), (c)))))
+#define ZBUF_PUT(b, c) \
+    (((b)->len < (b)->size) ? ((int)(((unsigned char *)((b)->data))[(b)->len++] = (unsigned char)(c))) : (((b)->static_mode ? 0 : zbuf_put_do((b), (c)))))
 
 /* 追加写字节ch到bf. 返回ch */
-zinline void zbuf_put(zbuf_t *bf, int ch) { ZBUF_PUT(bf, ch); bf->data[bf->len] = 0; }
+zinline void zbuf_put(zbuf_t *bf, int ch)
+{
+    ZBUF_PUT(bf, ch);
+    bf->data[bf->len] = 0;
+}
 
 /* 重置 */
-zinline void zbuf_reset(zbuf_t *bf) { bf->len=0, bf->data[0]=0; }
+zinline void zbuf_reset(zbuf_t *bf) { bf->len = 0, bf->data[0] = 0; }
 
 /* 结尾置 0 */
-zinline void zbuf_terminate(zbuf_t *bf) { bf->data[bf->len]=0; }
+zinline void zbuf_terminate(zbuf_t *bf) { bf->data[bf->len] = 0; }
 
 /* 截短 */
-zinline void zbuf_truncate(zbuf_t *bf, int new_len) {
-    if ((bf->len>new_len) && (new_len>-1)) { bf->len=new_len; bf->data[bf->len] = 0; }
+zinline void zbuf_truncate(zbuf_t *bf, int new_len)
+{
+    if ((bf->len > new_len) && (new_len > -1))
+    {
+        bf->len = new_len;
+        bf->data[bf->len] = 0;
+    }
 }
 
 /* 这几个函数, 顾名思义即可 */
@@ -325,38 +438,44 @@ void zbuf_memcat(zbuf_t *bf, const void *src, int len);
 zinline void zbuf_append(zbuf_t *bf, zbuf_t *bf2) { return zbuf_memcat(bf, zbuf_data(bf2), zbuf_len(bf2)); }
 
 /* zbuf_printf_1024 意思 { char buf[1024+1], snprintf(buf, 1024, format, ...); zbuf_cat(bf, buf); } */
-void zbuf_printf_1024(zbuf_t *bf, const char *format, ...);
+void __attribute__((format(printf, 2, 3))) zbuf_printf_1024(zbuf_t *bf, const char *format, ...);
 void zbuf_vprintf_1024(zbuf_t *bf, const char *format, va_list ap);
 
 /* 删除右侧的\r\n */
 void zbuf_trim_right_rn(zbuf_t *bf);
 
 /* STACK_BUF */
-#define ZSTACK_BUF(name, _size)    \
-    zbuf_t name ## _ZSTACT_BUF_ , *name; \
-    name = &name ## _ZSTACT_BUF_; \
-    char name ## _databuf_STACK [_size+1]; \
-    name->size = _size; name->len = 0; \
-    name->data = name ## _databuf_STACK; name->data[0] = 0; \
+#define ZSTACK_BUF(name, _size)           \
+    zbuf_t name##_ZSTACT_BUF_, *name;     \
+    name = &name##_ZSTACT_BUF_;           \
+    char name##_databuf_STACK[_size + 1]; \
+    name->size = _size;                   \
+    name->len = 0;                        \
+    name->data = name##_databuf_STACK;    \
+    name->data[0] = 0;                    \
     name->static_mode = 1;
 
-#define ZSTACK_BUF_FROM(name, _data, _size)    \
-    zbuf_t name ## _ZSTACT_BUF_, *name; \
-    name = &name ## _ZSTACT_BUF_; \
-    name->size = _size; name->len = 0; \
-    name->data = (char *)(_data); name->data[0] = 0; \
+#define ZSTACK_BUF_FROM(name, _data, _size) \
+    zbuf_t name##_ZSTACT_BUF_, *name;       \
+    name = &name##_ZSTACT_BUF_;             \
+    name->size = _size;                     \
+    name->len = 0;                          \
+    name->data = (char *)(_data);           \
+    name->data[0] = 0;                      \
     name->static_mode = 1;
 
-#define ZREADONLY_BUF(name, _data, _size)    \
-    zbuf_t name ## _ZSTACT_BUF_, *name; \
-    name = &name ## _ZSTACT_BUF_; \
-    name->size = _size; name->len = _size; \
-    name->data = (char *)(_data); \
+#define ZREADONLY_BUF(name, _data, _size) \
+    zbuf_t name##_ZSTACT_BUF_, *name;     \
+    name = &name##_ZSTACT_BUF_;           \
+    name->size = _size;                   \
+    name->len = _size;                    \
+    name->data = (char *)(_data);         \
     name->static_mode = 1;
 
 /* size_data ####################################################### */
 /* size data 可以用于描述内存buffer */
-struct zsize_data_t {
+struct zsize_data_t
+{
     int size;
     char *data;
 };
@@ -364,11 +483,11 @@ struct zsize_data_t {
 /* 下面这些函数,在存储或传输格式化数据时可以减少空间占用. src/stdlib/size_data.c */
 int zcint_data_unescape(const void *src_data, int src_size, void **result_data, int *result_len);
 int zcint_data_unescape_all(const void *src_data, int src_size, zsize_data_t *vec, int vec_size);
-void zcint_data_escape(zbuf_t * zb, const void *data, int len);
-void zcint_data_escape_int(zbuf_t * zb, int i);
-void zcint_data_escape_long(zbuf_t * zb, long i);
-void zcint_data_escape_dict(zbuf_t * zb, zdict_t * zd);
-void zcint_data_escape_pp(zbuf_t * zb, const char **pp, int size);
+void zcint_data_escape(zbuf_t *zb, const void *data, int len);
+void zcint_data_escape_int(zbuf_t *zb, int i);
+void zcint_data_escape_long(zbuf_t *zb, long i);
+void zcint_data_escape_dict(zbuf_t *zb, zdict_t *zd);
+void zcint_data_escape_pp(zbuf_t *zb, const char **pp, int size);
 int zcint_put(int size, char *buf);
 
 /* char, src/stdlib/string.c ######################################## */
@@ -384,17 +503,16 @@ extern unsigned const char zchar_xdigitval_vector[];
 extern unsigned const char zchar_istrim_vector[];
 
 /* 在locale 为 "C" 的情况下, ztolower 和 tolower 等价, 其他类似 */
-#define ztolower(c)    ((int)zchar_lowercase_vector[(unsigned char)(c)])
-#define ztoupper(c)    ((int)zchar_uppercase_vector[(unsigned char)(c)])
-#define zisalnum(c)    (zchar_isalnum_vector[(unsigned char)(c)])
-#define zisalpha(c)    (zchar_isalpha_vector[(unsigned char)(c)])
-#define zislower(c)    (zchar_islower_vector[(unsigned char)(c)])
-#define zisupper(c)    (zchar_isupper_vector[(unsigned char)(c)])
-#define zisdigit(c)    (zchar_isdigit_vector[(unsigned char)(c)])
-#define zisxdigit(c)   (zchar_isxdigit_vector[(unsigned char)(c)])
-#define zhexval(c)     (zchar_xdigitval_vector[(unsigned char)(c)])
-#define zistrim(c)     (zchar_istrim_vector[(unsigned char)(c)])
-
+#define ztolower(c) ((int)zchar_lowercase_vector[(unsigned char)(c)])
+#define ztoupper(c) ((int)zchar_uppercase_vector[(unsigned char)(c)])
+#define zisalnum(c) (zchar_isalnum_vector[(unsigned char)(c)])
+#define zisalpha(c) (zchar_isalpha_vector[(unsigned char)(c)])
+#define zislower(c) (zchar_islower_vector[(unsigned char)(c)])
+#define zisupper(c) (zchar_isupper_vector[(unsigned char)(c)])
+#define zisdigit(c) (zchar_isdigit_vector[(unsigned char)(c)])
+#define zisxdigit(c) (zchar_isxdigit_vector[(unsigned char)(c)])
+#define zhexval(c) (zchar_xdigitval_vector[(unsigned char)(c)])
+#define zistrim(c) (zchar_istrim_vector[(unsigned char)(c)])
 
 /* 把字符串str转换为小写并返回, 直接在str指向内存替换 */
 char *zstr_tolower(char *str);
@@ -424,7 +542,8 @@ int zskip_right(const char *str, int len, const char *ignores);
 int zskip(const char *str, int len, const char *ignores_left, const char *ignores_right, char **start);
 
 /* strtok */
-struct zstrtok_t {
+struct zstrtok_t
+{
     char *sstr;
     char *str;
     int len;
@@ -449,12 +568,13 @@ long zstr_to_size(const char *s, long def);
 
 /* argv, src/stdlib/argv.c ########################################## */
 /* argv 是 一组字符串, 例子见 sample/stdlib/argv.c */
-struct zargv_t {
+struct zargv_t
+{
     char **argv;
-    int argc:31;
-    int unused:1;
-    int size:31;
-    int mpool_used:1;
+    int argc : 31;
+    int unused : 1;
+    int size : 31;
+    int mpool_used : 1;
 };
 
 /* 创建argv, 初始容量为size */
@@ -481,7 +601,7 @@ void zargv_addn(zargv_t *argvp, const char *ns, int nlen);
 void zargv_truncate(zargv_t *argvp, int len);
 
 /* 重置, 既把argvp的长度截短为 0 */
-zinline void zargv_reset(zargv_t *argvp) { zargv_truncate(argvp,0); }
+zinline void zargv_reset(zargv_t *argvp) { zargv_truncate(argvp, 0); }
 
 /* 用delim分割string, 并追加到argvp */
 zargv_t *zargv_split_append(zargv_t *argvp, const char *string, const char *delim);
@@ -489,11 +609,17 @@ zargv_t *zargv_split_append(zargv_t *argvp, const char *string, const char *deli
 /* debug 输出 */
 void zargv_debug_show(zargv_t *argvp);
 
-#define ZARGV_WALK_BEGIN(ar, var_your_ptr)   {\
-    int zargv_tmpvar_i; const zargv_t *___ar_tmp_ptr = (ar); char *var_your_ptr; \
-        for(zargv_tmpvar_i=0;zargv_tmpvar_i<(___ar_tmp_ptr)->argc;zargv_tmpvar_i++){ \
+#define ZARGV_WALK_BEGIN(ar, var_your_ptr)                                                 \
+    {                                                                                      \
+        int zargv_tmpvar_i;                                                                \
+        const zargv_t *___ar_tmp_ptr = (ar);                                               \
+        char *var_your_ptr;                                                                \
+        for (zargv_tmpvar_i = 0; zargv_tmpvar_i < (___ar_tmp_ptr)->argc; zargv_tmpvar_i++) \
+        {                                                                                  \
             var_your_ptr = (___ar_tmp_ptr)->argv[zargv_tmpvar_i];
-#define ZARGV_WALK_END                       }}
+#define ZARGV_WALK_END \
+    }                  \
+    }
 
 /* mlink ############################################################ */
 /* 一组宏, 可实现, 栈, 链表等, 例子见 src/stdlib/list.c */
@@ -501,62 +627,145 @@ void zargv_debug_show(zargv_t *argvp);
 /* head: 头; tail: 尾; node:节点变量; prev:head/tail 指向的struct成员的属性"前一个" */
 
 /* 追加node到尾部 */
-#define ZMLINK_APPEND(head, tail, node, prev, next) {\
-    typeof(head) _head_1106=head, _tail_1106=tail, _node_1106 = node;\
-    if(_head_1106 == 0){_node_1106->prev=_node_1106->next=0;_head_1106=_tail_1106=_node_1106;}\
-    else {_tail_1106->next=_node_1106;_node_1106->prev=_tail_1106;_node_1106->next=0;_tail_1106=_node_1106;}\
-    head = _head_1106; tail = _tail_1106; \
-}
+#define ZMLINK_APPEND(head, tail, node, prev, next)                           \
+    {                                                                         \
+        typeof(head) _head_1106 = head, _tail_1106 = tail, _node_1106 = node; \
+        if (_head_1106 == 0)                                                  \
+        {                                                                     \
+            _node_1106->prev = _node_1106->next = 0;                          \
+            _head_1106 = _tail_1106 = _node_1106;                             \
+        }                                                                     \
+        else                                                                  \
+        {                                                                     \
+            _tail_1106->next = _node_1106;                                    \
+            _node_1106->prev = _tail_1106;                                    \
+            _node_1106->next = 0;                                             \
+            _tail_1106 = _node_1106;                                          \
+        }                                                                     \
+        head = _head_1106;                                                    \
+        tail = _tail_1106;                                                    \
+    }
 
 /* 追加node到首部 */
-#define ZMLINK_PREPEND(head, tail, node, prev, next) {\
-    typeof(head) _head_1106=head, _tail_1106=tail, _node_1106 = node;\
-    if(_head_1106 == 0){_node_1106->prev=_node_1106->next=0;_head_1106=_tail_1106=_node_1106;}\
-    else {_head_1106->prev=_node_1106;_node_1106->next=_head_1106;_node_1106->prev=0;_head_1106=_node_1106;}\
-    head = _head_1106; tail = _tail_1106; \
-}
+#define ZMLINK_PREPEND(head, tail, node, prev, next)                          \
+    {                                                                         \
+        typeof(head) _head_1106 = head, _tail_1106 = tail, _node_1106 = node; \
+        if (_head_1106 == 0)                                                  \
+        {                                                                     \
+            _node_1106->prev = _node_1106->next = 0;                          \
+            _head_1106 = _tail_1106 = _node_1106;                             \
+        }                                                                     \
+        else                                                                  \
+        {                                                                     \
+            _head_1106->prev = _node_1106;                                    \
+            _node_1106->next = _head_1106;                                    \
+            _node_1106->prev = 0;                                             \
+            _head_1106 = _node_1106;                                          \
+        }                                                                     \
+        head = _head_1106;                                                    \
+        tail = _tail_1106;                                                    \
+    }
 
 /* 插入node到before前 */
-#define ZMLINK_ATTACH_BEFORE(head, tail, node, prev, next, before) {\
-    typeof(head) _head_1106=head, _tail_1106=tail, _node_1106 = node, _before_1106 = before;\
-    if(_head_1106 == 0){_node_1106->prev=_node_1106->next=0;_head_1106=_tail_1106=_node_1106;}\
-    else if(_before_1106==0){_tail_1106->next=_node_1106;_node_1106->prev=_tail_1106;_node_1106->next=0;_tail_1106=_node_1106;}\
-    else if(_before_1106==_head_1106){_head_1106->prev=_node_1106;_node_1106->next=_head_1106;_node_1106->prev=0;_head_1106=_node_1106;}\
-    else {_node_1106->prev=_before_1106->prev; _node_1106->next=_before_1106; _before_1106->prev->next=_node_1106; _before_1106->prev=_node_1106;}\
-    head = _head_1106; tail = _tail_1106; \
-}
+#define ZMLINK_ATTACH_BEFORE(head, tail, node, prev, next, before)                                   \
+    {                                                                                                \
+        typeof(head) _head_1106 = head, _tail_1106 = tail, _node_1106 = node, _before_1106 = before; \
+        if (_head_1106 == 0)                                                                         \
+        {                                                                                            \
+            _node_1106->prev = _node_1106->next = 0;                                                 \
+            _head_1106 = _tail_1106 = _node_1106;                                                    \
+        }                                                                                            \
+        else if (_before_1106 == 0)                                                                  \
+        {                                                                                            \
+            _tail_1106->next = _node_1106;                                                           \
+            _node_1106->prev = _tail_1106;                                                           \
+            _node_1106->next = 0;                                                                    \
+            _tail_1106 = _node_1106;                                                                 \
+        }                                                                                            \
+        else if (_before_1106 == _head_1106)                                                         \
+        {                                                                                            \
+            _head_1106->prev = _node_1106;                                                           \
+            _node_1106->next = _head_1106;                                                           \
+            _node_1106->prev = 0;                                                                    \
+            _head_1106 = _node_1106;                                                                 \
+        }                                                                                            \
+        else                                                                                         \
+        {                                                                                            \
+            _node_1106->prev = _before_1106->prev;                                                   \
+            _node_1106->next = _before_1106;                                                         \
+            _before_1106->prev->next = _node_1106;                                                   \
+            _before_1106->prev = _node_1106;                                                         \
+        }                                                                                            \
+        head = _head_1106;                                                                           \
+        tail = _tail_1106;                                                                           \
+    }
 
 /* 去掉节点node */
-#define ZMLINK_DETACH(head, tail, node, prev, next) {\
-    typeof(head) _head_1106=head, _tail_1106=tail, _node_1106 = node;\
-    if(_node_1106->prev){ _node_1106->prev->next=_node_1106->next; }else{ _head_1106=_node_1106->next; }\
-    if(_node_1106->next){ _node_1106->next->prev=_node_1106->prev; }else{ _tail_1106=_node_1106->prev; }\
-    head = _head_1106; tail = _tail_1106; \
-}
+#define ZMLINK_DETACH(head, tail, node, prev, next)                           \
+    {                                                                         \
+        typeof(head) _head_1106 = head, _tail_1106 = tail, _node_1106 = node; \
+        if (_node_1106->prev)                                                 \
+        {                                                                     \
+            _node_1106->prev->next = _node_1106->next;                        \
+        }                                                                     \
+        else                                                                  \
+        {                                                                     \
+            _head_1106 = _node_1106->next;                                    \
+        }                                                                     \
+        if (_node_1106->next)                                                 \
+        {                                                                     \
+            _node_1106->next->prev = _node_1106->prev;                        \
+        }                                                                     \
+        else                                                                  \
+        {                                                                     \
+            _tail_1106 = _node_1106->prev;                                    \
+        }                                                                     \
+        head = _head_1106;                                                    \
+        tail = _tail_1106;                                                    \
+    }
 
-#define ZMLINK_CONCAT(head_1, tail_1, head_2, tail_2, prev, next) {\
-    typeof(head_1) _head_1106=head_1,_tail_1106=tail_1,_head_2206=head_2,_tail_2206=tail_2; if(_head_2206){ \
-        if(_head_1106){_tail_1106->next=_head_2206;_head_2206->prev=_tail_1106; }else{_head_1106=_head_2206;} \
-        _tail_1106=_tail_2206; \
-    } head_1 = _head_1106; tail_1 = _tail_1106; \
-}
+#define ZMLINK_CONCAT(head_1, tail_1, head_2, tail_2, prev, next)                                          \
+    {                                                                                                      \
+        typeof(head_1) _head_1106 = head_1, _tail_1106 = tail_1, _head_2206 = head_2, _tail_2206 = tail_2; \
+        if (_head_2206)                                                                                    \
+        {                                                                                                  \
+            if (_head_1106)                                                                                \
+            {                                                                                              \
+                _tail_1106->next = _head_2206;                                                             \
+                _head_2206->prev = _tail_1106;                                                             \
+            }                                                                                              \
+            else                                                                                           \
+            {                                                                                              \
+                _head_1106 = _head_2206;                                                                   \
+            }                                                                                              \
+            _tail_1106 = _tail_2206;                                                                       \
+        }                                                                                                  \
+        head_1 = _head_1106;                                                                               \
+        tail_1 = _tail_1106;                                                                               \
+    }
 /* link, src/stdlib/link.c ########################################## */
 /* 数据结构, 可实现链表等 */
 
-struct zlink_t {
+struct zlink_t
+{
     zlink_node_t *head;
     zlink_node_t *tail;
 };
-struct zlink_node_t {
+struct zlink_node_t
+{
     zlink_node_t *prev;
     zlink_node_t *next;
 };
 
 /* 初始化link指向的指针 */
-zinline void zlink_init(zlink_t *link) { link->head = 0; link->tail = 0; }
+zinline void zlink_init(zlink_t *link)
+{
+    link->head = 0;
+    link->tail = 0;
+}
 
 /* 反初始化link指向的指针 */
-zinline void zlink_fini(zlink_t *link) { }
+zinline void zlink_fini(zlink_t *link) {}
 
 /* 把node插到before前 */
 zlink_node_t *zlink_attach_before(zlink_t *link, zlink_node_t *node, zlink_node_t *before);
@@ -592,12 +801,13 @@ zinline zlink_node_t *zlink_node_next(const zlink_node_t *node) { return node->n
 /* 一列指针 */
 /* 推荐使用 zvector_push, zvector_pop */
 /* 不推荐使用 zvector_unshift, zvector_shift, zvector_insert, zvector_delete */
-struct zvector_t {
+struct zvector_t
+{
     char **data;
     int len;
     int size;
-    int offset:31;
-    unsigned int mpool_used:1;
+    int offset : 31;
+    unsigned int mpool_used : 1;
 };
 
 /* 创建vector, 初始容量为size */
@@ -638,23 +848,31 @@ void zvector_reset(zvector_t *v);
 void zvector_truncate(zvector_t *v, int new_len);
 
 /* 宏,遍历 */
-#define ZVECTOR_WALK_BEGIN(arr, you_chp_type, var_your_ptr)    {\
-     int zvector_tmpvar_i; const zvector_t * _arr_tmp_ptr = (arr); you_chp_type var_your_ptr;\
-    for(zvector_tmpvar_i=0;zvector_tmpvar_i<_arr_tmp_ptr->len;zvector_tmpvar_i++){\
-        var_your_ptr = (you_chp_type)(_arr_tmp_ptr->data[zvector_tmpvar_i]);
-#define ZVECTOR_WALK_END                }}
+#define ZVECTOR_WALK_BEGIN(arr, you_chp_type, var_your_ptr)                                  \
+    {                                                                                        \
+        int zvector_tmpvar_i;                                                                \
+        const zvector_t *_arr_tmp_ptr = (arr);                                               \
+        you_chp_type var_your_ptr;                                                           \
+        for (zvector_tmpvar_i = 0; zvector_tmpvar_i < _arr_tmp_ptr->len; zvector_tmpvar_i++) \
+        {                                                                                    \
+            var_your_ptr = (you_chp_type)(_arr_tmp_ptr->data[zvector_tmpvar_i]);
+#define ZVECTOR_WALK_END \
+    }                    \
+    }
 
 void zbuf_vector_reset(zvector_t *v);
 void zbuf_vector_free(zvector_t *v);
 
 /* list ############################################################# */
 /* 双向链表 */
-struct zlist_t {
+struct zlist_t
+{
     zlist_node_t *head;
     zlist_node_t *tail;
     int len;
 };
-struct zlist_node_t {
+struct zlist_node_t
+{
     zlist_node_t *prev;
     zlist_node_t *next;
     void *value;
@@ -669,7 +887,7 @@ void zlist_free(zlist_t *list);
 /* 重置, 忽略成员数据 */
 void zlist_reset(zlist_t *list);
 
-/* 个数 */ 
+/* 个数 */
 zinline int zlist_len(const zlist_t *list) { return list->len; }
 
 /* 头部(第一个)节点 */
@@ -700,45 +918,59 @@ zlist_node_t *zlist_add_before(zlist_t *list, const void *value, zlist_node_t *b
 zbool_t zlist_delete(zlist_t *list, zlist_node_t *n, void **value);
 
 /* 创建值为v的节点, 追加到链表尾部, 并返回 */
-zinline zlist_node_t *zlist_push(zlist_t *l,const void *v){return zlist_add_before(l,v,0);}
+zinline zlist_node_t *zlist_push(zlist_t *l, const void *v) { return zlist_add_before(l, v, 0); }
 
 /* 创建值为v的节点, 追加到链表首部部, 并返回 */
-zinline zlist_node_t *zlist_unshift(zlist_t *l,const void *v){return zlist_add_before(l,v,l->head);}
+zinline zlist_node_t *zlist_unshift(zlist_t *l, const void *v) { return zlist_add_before(l, v, l->head); }
 
 /* 弹出尾部节点, 把值赋值给*v, 释放这个节点, 如果存在则返回1, 否则返回 0 */
-zinline zbool_t zlist_pop(zlist_t *l, void **v){return zlist_delete(l,l->tail,v);}
+zinline zbool_t zlist_pop(zlist_t *l, void **v) { return zlist_delete(l, l->tail, v); }
 
 /* 弹出首部节点, 把值赋值给*v, 释放这个节点, 如果存在则返回1, 否则返回 0 */
-zinline zbool_t zlist_shift(zlist_t *l, void **v){return zlist_delete(l,l->head,v);}
+zinline zbool_t zlist_shift(zlist_t *l, void **v) { return zlist_delete(l, l->head, v); }
 
 /* 宏, 遍历 */
-#define ZLIST_WALK_BEGIN(list, var_your_type, var_your_ptr)  { \
-    zlist_node_t *list_current_node=(list)->head; var_your_type var_your_ptr; \
-    for(;list_current_node;list_current_node=list_current_node->next){ \
-        var_your_ptr = (var_your_type)(void *)(list_current_node->value);
-#define ZLIST_WALK_END                          }}
+#define ZLIST_WALK_BEGIN(list, var_your_type, var_your_ptr)                    \
+    {                                                                          \
+        zlist_node_t *list_current_node = (list)->head;                        \
+        var_your_type var_your_ptr;                                            \
+        for (; list_current_node; list_current_node = list_current_node->next) \
+        {                                                                      \
+            var_your_ptr = (var_your_type)(void *)(list_current_node->value);
+#define ZLIST_WALK_END \
+    }                  \
+    }
 
 /* 宏, 遍历 */
-#define ZLIST_NODE_WALK_BEGIN(list, var_your_node)  { \
-    zlist_node_t *var_your_node=(list)->head;\
-    for(;var_your_node;var_your_node=var_your_node->next){
-#define ZLIST_NODE_WALK_END                          }}
+#define ZLIST_NODE_WALK_BEGIN(list, var_your_node)                 \
+    {                                                              \
+        zlist_node_t *var_your_node = (list)->head;                \
+        for (; var_your_node; var_your_node = var_your_node->next) \
+        {
+#define ZLIST_NODE_WALK_END \
+    }                       \
+    }
 
 /* rbtree ########################################################### */
-typedef int (*zrbtree_cmp_t) (zrbtree_node_t *node1, zrbtree_node_t *node2);
-struct zrbtree_t {
+typedef int (*zrbtree_cmp_t)(zrbtree_node_t *node1, zrbtree_node_t *node2);
+struct zrbtree_t
+{
     zrbtree_node_t *zrbtree_node;
     zrbtree_cmp_t cmp_fn;
 };
-struct zrbtree_node_t {
+struct zrbtree_node_t
+{
     unsigned long __zrbtree_parent_color;
     zrbtree_node_t *zrbtree_right;
     zrbtree_node_t *zrbtree_left;
-/* The alignment might seem pointless, but allegedly CRIS needs it */
-} __attribute__ ((aligned(sizeof(long))));
+    /* The alignment might seem pointless, but allegedly CRIS needs it */
+} __attribute__((aligned(sizeof(long))));
 
-#define ZRBTREE_HAVE_DATA(tree)     ((tree)->zrbtree_node?1:0)
-zinline int zrbtree_have_data(zrbtree_t *tree) { return ZRBTREE_HAVE_DATA(tree); }
+#define ZRBTREE_HAVE_DATA(tree) ((tree)->zrbtree_node ? 1 : 0)
+zinline int zrbtree_have_data(zrbtree_t *tree)
+{
+    return ZRBTREE_HAVE_DATA(tree);
+}
 void zrbtree_init(zrbtree_t *tree, zrbtree_cmp_t cmp_fn);
 void zrbtree_insert_color(zrbtree_t *, zrbtree_node_t *);
 void zrbtree_erase(zrbtree_t *tree, zrbtree_node_t *node);
@@ -755,103 +987,138 @@ zrbtree_node_t *zrbtree_find(const zrbtree_t *tree, zrbtree_node_t *vnode);
 zrbtree_node_t *zrbtree_detach(zrbtree_t *tree, zrbtree_node_t *node);
 void zrbtree_link_node(zrbtree_node_t *node, zrbtree_node_t *parent, zrbtree_node_t **zrbtree_link);
 
-#define ZRBTREE_INIT(tree, _cmp_fn)     ((tree)->zrbtree_node=0, (tree)->cmp_fn = _cmp_fn)
-#define ZRBTREE_PARENT(node)    ((zrbtree_node_t *)((node)->__zrbtree_parent_color & ~3))
-#define ZRBTREE_ATTACH_PART1(root, node, cmp_node) {                            \
-    zrbtree_node_t **___Z_new_pp = &((root)->zrbtree_node), *___Z_parent = 0;            \
-    while (*___Z_new_pp) {                                        \
-        ___Z_parent = *___Z_new_pp;                                \
-        cmp_node = *___Z_new_pp;                                \
+#define ZRBTREE_INIT(tree, _cmp_fn) ((tree)->zrbtree_node = 0, (tree)->cmp_fn = _cmp_fn)
+#define ZRBTREE_PARENT(node) ((zrbtree_node_t *)((node)->__zrbtree_parent_color & ~3))
+#define ZRBTREE_ATTACH_PART1(root, node, cmp_node)                                \
+    {                                                                             \
+        zrbtree_node_t **___Z_new_pp = &((root)->zrbtree_node), *___Z_parent = 0; \
+        while (*___Z_new_pp)                                                      \
+        {                                                                         \
+            ___Z_parent = *___Z_new_pp;                                           \
+            cmp_node = *___Z_new_pp;                                              \
+            {
+#define ZRBTREE_ATTACH_PART2(root, node, cmp_result, return_node) \
+    }                                                             \
+    return_node = 0;                                              \
+    if (cmp_result < 0)                                           \
+    {                                                             \
+        ___Z_new_pp = &((*___Z_new_pp)->zrbtree_left);            \
+    }                                                             \
+    else if (cmp_result > 0)                                      \
+    {                                                             \
+        ___Z_new_pp = &((*___Z_new_pp)->zrbtree_right);           \
+    }                                                             \
+    else                                                          \
+    {                                                             \
+        return_node = *___Z_new_pp;                               \
+        break;                                                    \
+    }                                                             \
+    }                                                             \
+    if (!return_node)                                             \
+    {                                                             \
+        zrbtree_link_node(node, ___Z_parent, ___Z_new_pp);        \
+        zrbtree_insert_color(root, node);                         \
+        return_node = node;                                       \
+    }                                                             \
+    }
+
+#define ZRBTREE_LOOKUP_PART1(root, cmp_node)                  \
+    {                                                         \
+        zrbtree_node_t *___Z_node_tmp = (root)->zrbtree_node; \
+        while (___Z_node_tmp)                                 \
+        {                                                     \
+            cmp_node = ___Z_node_tmp;                         \
+            {
+#define ZRBTREE_LOOKUP_PART2(root, cmp_result, return_node) \
+    }                                                       \
+    return_node = 0;                                        \
+    if (cmp_result < 0)                                     \
+    {                                                       \
+        ___Z_node_tmp = ___Z_node_tmp->zrbtree_left;        \
+    }                                                       \
+    else if (cmp_result > 0)                                \
+    {                                                       \
+        ___Z_node_tmp = ___Z_node_tmp->zrbtree_right;       \
+    }                                                       \
+    else                                                    \
+    {                                                       \
+        return_node = ___Z_node_tmp;                        \
+        break;                                              \
+    }                                                       \
+    }                                                       \
+    }
+
+#define ZRBTREE_DETACH(root, node) \
+    {                              \
+        zrbtree_erase(root, node); \
+    }
+
+#define ZRBTREE_WALK_BEGIN(root, var_your_node)                                   \
+    {                                                                             \
+        struct                                                                    \
+        {                                                                         \
+            zrbtree_node_t *node;                                                 \
+            unsigned char lrs;                                                    \
+        } ___Z_list[64];                                                          \
+        zrbtree_node_t *___Z_node = (root)->zrbtree_node;                         \
+        int ___Z_idx = 0, ___Z_lrs;                                               \
+        ___Z_list[0].node = ___Z_node;                                            \
+        ___Z_list[0].lrs = 0;                                                     \
+        while (1)                                                                 \
+        {                                                                         \
+            zrbtree_node_t *var_your_node = ___Z_node = ___Z_list[___Z_idx].node; \
+            ___Z_lrs = ___Z_list[___Z_idx].lrs;                                   \
+            if (!___Z_node || ___Z_lrs == 2)                                      \
+            {                                                                     \
+                if (___Z_node)                                                    \
+                {
+#define ZRBTREE_WALK_END                                                                               \
+    }                                                                                                  \
+    ___Z_idx--;                                                                                        \
+    if (___Z_idx == -1)                                                                                \
+    {                                                                                                  \
+        break;                                                                                         \
+    }                                                                                                  \
+    ___Z_list[___Z_idx].lrs++;                                                                         \
+    continue;                                                                                          \
+    }                                                                                                  \
+    ___Z_idx++;                                                                                        \
+    ___Z_list[___Z_idx].lrs = 0;                                                                       \
+    ___Z_list[___Z_idx].node = ((___Z_lrs == 0) ? ___Z_node->zrbtree_left : ___Z_node->zrbtree_right); \
+    }                                                                                                  \
+    }
+
+#define ZRBTREE_WALK_FORWARD_BEGIN(root, var_your_node)                                                       \
+    {                                                                                                         \
+        zrbtree_node_t *var_your_node;                                                                        \
+        for (var_your_node = zrbtree_first(root); var_your_node; var_your_node = zrbtree_next(var_your_node)) \
         {
-#define ZRBTREE_ATTACH_PART2(root, node, cmp_result, return_node)                     \
-        }                                            \
-        return_node = 0;                                    \
-        if (cmp_result < 0) {                                    \
-            ___Z_new_pp = &((*___Z_new_pp)->zrbtree_left);                    \
-        } else if (cmp_result > 0) {                                \
-            ___Z_new_pp = &((*___Z_new_pp)->zrbtree_right);                    \
-        } else {                                        \
-            return_node = *___Z_new_pp;                            \
-            break;                                        \
-        }                                            \
-    }                                                \
-    if(!return_node){                                        \
-        zrbtree_link_node(node, ___Z_parent, ___Z_new_pp);                    \
-        zrbtree_insert_color(root, node);                            \
-        return_node = node;                                    \
-    }                                                \
-}
+#define ZRBTREE_WALK_FORWARD_END \
+    }                            \
+    }
 
-#define ZRBTREE_LOOKUP_PART1(root, cmp_node) {                                \
-    zrbtree_node_t *___Z_node_tmp = (root)->zrbtree_node;                        \
-    while (___Z_node_tmp) {                                        \
-        cmp_node = ___Z_node_tmp;                                \
+#define ZRBTREE_WALK_BACK_BEGIN(root, var_your_node)                                                         \
+    {                                                                                                        \
+        zrbtree_node_t *var_your_node;                                                                       \
+        for (var_your_node = zrbtree_last(root); var_your_node; var_your_node = zrbtree_prev(var_your_node)) \
         {
-#define ZRBTREE_LOOKUP_PART2(root, cmp_result, return_node)                        \
-        }                                            \
-        return_node = 0;                                    \
-        if (cmp_result < 0) {                                    \
-            ___Z_node_tmp = ___Z_node_tmp->zrbtree_left;                    \
-        } else if (cmp_result > 0) {                                \
-            ___Z_node_tmp = ___Z_node_tmp->zrbtree_right;                    \
-        } else {                                        \
-            return_node = ___Z_node_tmp;                            \
-            break;                                        \
-        }                                            \
-    }                                                \
-}
-
-#define ZRBTREE_DETACH(root, node) {                                    \
-    zrbtree_erase(root, node);                                    \
-}
-
-#define ZRBTREE_WALK_BEGIN(root, var_your_node) {                            \
-    struct { zrbtree_node_t *node; unsigned char lrs; } ___Z_list[64];                \
-    zrbtree_node_t *___Z_node = (root)->zrbtree_node;                            \
-    int ___Z_idx = 0, ___Z_lrs;                                    \
-    ___Z_list[0].node = ___Z_node;                                    \
-    ___Z_list[0].lrs = 0;                                        \
-    while (1) {                                            \
-        zrbtree_node_t *var_your_node = ___Z_node = ___Z_list[___Z_idx].node;                    \
-        ___Z_lrs = ___Z_list[___Z_idx].lrs;                            \
-        if (!___Z_node || ___Z_lrs == 2) {                            \
-            if (___Z_node) {
-#define ZRBTREE_WALK_END                                        \
-            }                                        \
-            ___Z_idx--;                                    \
-            if (___Z_idx == -1){                                \
-                break;                                    \
-                   }                                        \
-            ___Z_list[___Z_idx].lrs++;                            \
-            continue;                                    \
-        }                                            \
-        ___Z_idx++;                                        \
-        ___Z_list[___Z_idx].lrs = 0;                                \
-        ___Z_list[___Z_idx].node = ((___Z_lrs == 0) ? ___Z_node->zrbtree_left : ___Z_node->zrbtree_right);\
-    }                                                \
-}
-
-#define ZRBTREE_WALK_FORWARD_BEGIN(root, var_your_node)     {                    \
-    zrbtree_node_t *var_your_node; \
-    for (var_your_node = zrbtree_first(root); var_your_node; var_your_node = zrbtree_next(var_your_node)) {
-#define ZRBTREE_WALK_FORWARD_END                }}
-
-#define ZRBTREE_WALK_BACK_BEGIN(root, var_your_node)     {                    \
-    zrbtree_node_t *var_your_node; \
-    for (var_your_node = zrbtree_last(root); var_your_node; var_your_node = zrbtree_prev(var_your_node)) {
-#define ZRBTREE_WALK_BACK_END                }}
+#define ZRBTREE_WALK_BACK_END \
+    }                         \
+    }
 
 /* dict, src/stdlib/dict.c ########################################## */
 /* 词典, 例子见 sample/rbtree/dict_account.c */
-struct zdict_t {
+struct zdict_t
+{
     zrbtree_t rbtree;
     int len; /* 节点个数 */
 };
-struct zdict_node_t {
+struct zdict_node_t
+{
     zrbtree_node_t rbnode;
     zbuf_t value; /* 值 */
-    char *key; /* 键 */
-} __attribute__ ((aligned(8)));
+    char *key;    /* 键 */
+} __attribute__((aligned(8)));
 
 /* 创建词典 */
 zdict_t *zdict_create(void);
@@ -926,29 +1193,44 @@ long zdict_get_size(const zdict_t *dict, const char *name, long def);
 void zdict_debug_show(const zdict_t *dict);
 
 /* 宏, 遍历1 */
-#define ZDICT_WALK_BEGIN(dict, var_your_key, var_your_value)  { \
-    zdict_node_t *var_your_node; char *var_your_key; zbuf_t *var_your_value; \
-    for(var_your_node = zdict_first(dict); var_your_node; var_your_node = zdict_next(var_your_node)) { \
-        var_your_key=var_your_node->key; var_your_value=&(var_your_node->value); {
-#define ZDICT_WALK_END    }}}
+#define ZDICT_WALK_BEGIN(dict, var_your_key, var_your_value)                                              \
+    {                                                                                                     \
+        zdict_node_t *var_your_node;                                                                      \
+        char *var_your_key;                                                                               \
+        zbuf_t *var_your_value;                                                                           \
+        for (var_your_node = zdict_first(dict); var_your_node; var_your_node = zdict_next(var_your_node)) \
+        {                                                                                                 \
+            var_your_key = var_your_node->key;                                                            \
+            var_your_value = &(var_your_node->value);                                                     \
+            {
+#define ZDICT_WALK_END \
+    }                  \
+    }                  \
+    }
 
 /* 宏, 遍历2 */
-#define ZDICT_NODE_WALK_BEGIN(dict, var_your_node)  { \
-    zdict_node_t *var_your_node; \
-    for(var_your_node = zdict_first(dict); var_your_node; var_your_node = zdict_next(var_your_node)) {
-#define ZDICT_NODE_WALK_END    }}
+#define ZDICT_NODE_WALK_BEGIN(dict, var_your_node)                                                        \
+    {                                                                                                     \
+        zdict_node_t *var_your_node;                                                                      \
+        for (var_your_node = zdict_first(dict); var_your_node; var_your_node = zdict_next(var_your_node)) \
+        {
+#define ZDICT_NODE_WALK_END \
+    }                       \
+    }
 
 /* dictlong, src/stdlib/dictlong.c ##################################### */
 /* 参考 dict, 和dict的区别是值的类型是long */
-struct zdictlong_t {
+struct zdictlong_t
+{
     zrbtree_t rbtree;
     int len;
 };
-struct zdictlong_node_t {
+struct zdictlong_node_t
+{
     zrbtree_node_t rbnode;
     long value;
     char *key;
-} __attribute__ ((aligned(8)));
+} __attribute__((aligned(8)));
 zdictlong_t *zdictlong_create(void);
 void zdictlong_free(zdictlong_t *dictlong);
 void zdictlong_reset(zdictlong_t *dictlong);
@@ -967,28 +1249,43 @@ zdictlong_node_t *zdictlong_prev(const zdictlong_node_t *node);
 zdictlong_node_t *zdictlong_next(const zdictlong_node_t *node);
 void zdictlong_debug_show(const zdictlong_t *dictlong);
 
-#define ZDICTLONG_WALK_BEGIN(dictlong, var_your_key, var_your_value)  { \
-    zdictlong_node_t *var_your_node; char *var_your_key; long var_your_value; \
-    for(var_your_node = zdictlong_first(dictlong); var_your_node; var_your_node = zdictlong_next(var_your_node)) { \
-        var_your_key=var_your_node->key; var_your_value=var_your_node->value; {
-#define ZDICTLONG_WALK_END    }}}
+#define ZDICTLONG_WALK_BEGIN(dictlong, var_your_key, var_your_value)                                                  \
+    {                                                                                                                 \
+        zdictlong_node_t *var_your_node;                                                                              \
+        char *var_your_key;                                                                                           \
+        long var_your_value;                                                                                          \
+        for (var_your_node = zdictlong_first(dictlong); var_your_node; var_your_node = zdictlong_next(var_your_node)) \
+        {                                                                                                             \
+            var_your_key = var_your_node->key;                                                                        \
+            var_your_value = var_your_node->value;                                                                    \
+            {
+#define ZDICTLONG_WALK_END \
+    }                      \
+    }                      \
+    }
 
-#define ZDICTLONG_NODE_WALK_BEGIN(dictlong, var_your_node)  { \
-    zdictlong_node_t *var_your_node; \
-    for(var_your_node = zdictlong_first(dictlong); var_your_node; var_your_node = zdictlong_next(var_your_node)) {
-#define ZDICTLONG_NODE_WALK_END    }}
+#define ZDICTLONG_NODE_WALK_BEGIN(dictlong, var_your_node)                                                            \
+    {                                                                                                                 \
+        zdictlong_node_t *var_your_node;                                                                              \
+        for (var_your_node = zdictlong_first(dictlong); var_your_node; var_your_node = zdictlong_next(var_your_node)) \
+        {
+#define ZDICTLONG_NODE_WALK_END \
+    }                           \
+    }
 
 /* map, src/stdlib/map.c ############################################ */
 /* 映射, 例子见 sample/rbtree/map_account.c */
-struct zmap_t {
+struct zmap_t
+{
     zrbtree_t rbtree;
     int len;
 };
-struct zmap_node_t {
-    char *key; /* 键 */
+struct zmap_node_t
+{
+    char *key;   /* 键 */
     void *value; /* 值 */
     zrbtree_node_t rbnode;
-} __attribute__ ((aligned(8)));
+} __attribute__((aligned(8)));
 
 /* 创建 */
 zmap_t *zmap_create(void);
@@ -1010,7 +1307,7 @@ zmap_node_t *zmap_find_near_prev(const zmap_t *map, const char *key, void **valu
 zmap_node_t *zmap_find_near_next(const zmap_t *map, const char *key, void **value);
 
 /* 删除并释放键为key的节点, 节点的值赋值给 *old_value */
-zbool_t zmap_delete(zmap_t * map, const char *key, void **old_value);
+zbool_t zmap_delete(zmap_t *map, const char *key, void **old_value);
 
 /* 删除并释放节点n, 节点的值赋值给 *old_value */
 void zmap_delete_node(zmap_t *map, zmap_node_t *n, void **old_value);
@@ -1040,30 +1337,46 @@ zinline char *zmap_node_key(const zmap_node_t *node) { return node->key; }
 zinline void *zmap_node_value(const zmap_node_t *node) { return node->value; }
 
 /* 宏, 遍历1 */
-#define ZMAP_NODE_WALK_BEGIN(map, var_your_node)  { \
-    zmap_node_t *var_your_node; \
-    for(var_your_node = zmap_first(map); var_your_node; var_your_node = zmap_next(var_your_node)) {
-#define ZMAP_NODE_WALK_END    }}
+#define ZMAP_NODE_WALK_BEGIN(map, var_your_node)                                                       \
+    {                                                                                                  \
+        zmap_node_t *var_your_node;                                                                    \
+        for (var_your_node = zmap_first(map); var_your_node; var_your_node = zmap_next(var_your_node)) \
+        {
+#define ZMAP_NODE_WALK_END \
+    }                      \
+    }
 
 /* 宏, 遍历2 */
-#define ZMAP_WALK_BEGIN(map, var_your_key, var_your_value_type, var_your_value)  { \
-    zmap_node_t *var_your_node; char *var_your_key; var_your_value_type var_your_value; \
-    (void)var_your_key; (void)var_your_value; \
-    for(var_your_node = zmap_first(map); var_your_node; var_your_node = zmap_next(var_your_node)) { \
-        var_your_key=var_your_node->key; var_your_value=(var_your_value_type)(void *)var_your_node->value; {
-#define ZMAP_WALK_END    }}}
+#define ZMAP_WALK_BEGIN(map, var_your_key, var_your_value_type, var_your_value)                        \
+    {                                                                                                  \
+        zmap_node_t *var_your_node;                                                                    \
+        char *var_your_key;                                                                            \
+        var_your_value_type var_your_value;                                                            \
+        (void)var_your_key;                                                                            \
+        (void)var_your_value;                                                                          \
+        for (var_your_node = zmap_first(map); var_your_node; var_your_node = zmap_next(var_your_node)) \
+        {                                                                                              \
+            var_your_key = var_your_node->key;                                                         \
+            var_your_value = (var_your_value_type)(void *)var_your_node->value;                        \
+            {
+#define ZMAP_WALK_END \
+    }                 \
+    }                 \
+    }
 
 /* longmap, src/stdlib/longmap.c ############################################ */
 /* 映射, 例子见 sample/rbtree/longmap_account.c */
-struct zlongmap_t {
+struct zlongmap_t
+{
     zrbtree_t rbtree;
     int len;
 };
-struct zlongmap_node_t {
-    long key; /* 键 */
+struct zlongmap_node_t
+{
+    long key;    /* 键 */
     void *value; /* 值 */
     zrbtree_node_t rbnode;
-} __attribute__ ((aligned(8)));
+} __attribute__((aligned(8)));
 
 /* 创建 */
 zlongmap_t *zlongmap_create(void);
@@ -1085,7 +1398,7 @@ zlongmap_node_t *zlongmap_find_near_prev(const zlongmap_t *longmap, long key, vo
 zlongmap_node_t *zlongmap_find_near_next(const zlongmap_t *longmap, long key, void **value);
 
 /* 删除并释放键为key的节点, 节点的值赋值给 *old_value */
-zbool_t zlongmap_delete(zlongmap_t * longmap, long key, void **old_value);
+zbool_t zlongmap_delete(zlongmap_t *longmap, long key, void **old_value);
 
 /* 删除并释放节点n, 节点的值赋值给 *old_value */
 void zlongmap_delete_node(zlongmap_t *longmap, zlongmap_node_t *n, void **old_value);
@@ -1115,31 +1428,47 @@ zinline long zlongmap_node_key(const zlongmap_node_t *node) { return node->key; 
 zinline void *zlongmap_node_value(const zlongmap_node_t *node) { return node->value; }
 
 /* 宏, 遍历1 */
-#define ZLONGMAP_NODE_WALK_BEGIN(longmap, var_your_node)  { \
-    zlongmap_node_t *var_your_node; \
-    for(var_your_node = zlongmap_first(longmap); var_your_node; var_your_node = zlongmap_next(var_your_node)) {
-#define ZLONGMAP_NODE_WALK_END    }}
+#define ZLONGMAP_NODE_WALK_BEGIN(longmap, var_your_node)                                                           \
+    {                                                                                                              \
+        zlongmap_node_t *var_your_node;                                                                            \
+        for (var_your_node = zlongmap_first(longmap); var_your_node; var_your_node = zlongmap_next(var_your_node)) \
+        {
+#define ZLONGMAP_NODE_WALK_END \
+    }                          \
+    }
 
 /* 宏, 遍历2 */
-#define ZLONGMAP_WALK_BEGIN(longmap, var_your_key, var_your_value_type, var_your_value)  { \
-    zlongmap_node_t *var_your_node; char *var_your_key; var_your_value_type var_your_value; \
-    (void)var_your_key; (void)var_your_value; \
-    for(var_your_node = zlongmap_first(longmap); var_your_node; var_your_node = zlongmap_next(var_your_node)) { \
-        var_your_key=var_your_node->key; var_your_value=(var_your_value_type)(void *)var_your_node->value; {
-#define ZLONGMAP_WALK_END    }}}
+#define ZLONGMAP_WALK_BEGIN(longmap, var_your_key, var_your_value_type, var_your_value)                            \
+    {                                                                                                              \
+        zlongmap_node_t *var_your_node;                                                                            \
+        char *var_your_key;                                                                                        \
+        var_your_value_type var_your_value;                                                                        \
+        (void)var_your_key;                                                                                        \
+        (void)var_your_value;                                                                                      \
+        for (var_your_node = zlongmap_first(longmap); var_your_node; var_your_node = zlongmap_next(var_your_node)) \
+        {                                                                                                          \
+            var_your_key = var_your_node->key;                                                                     \
+            var_your_value = (var_your_value_type)(void *)var_your_node->value;                                    \
+            {
+#define ZLONGMAP_WALK_END \
+    }                     \
+    }                     \
+    }
 
 /* mpool, src/malloc/ ################################################ */
 /* 内存池, 不推荐使用 */
 typedef struct zmpool_method_t zmpool_method_t;
-struct zmpool_method_t {
-    void *(*malloc) (zmpool_t *, int);
-    void *(*calloc) (zmpool_t *, int, int);
-    void *(*realloc) (zmpool_t *, const void *, int);
-    void (*free) (zmpool_t *, const void *);
-    void (*reset) (zmpool_t *);
-    void (*free_pool) (zmpool_t *);
+struct zmpool_method_t
+{
+    void *(*malloc)(zmpool_t *, int);
+    void *(*calloc)(zmpool_t *, int, int);
+    void *(*realloc)(zmpool_t *, const void *, int);
+    void (*free)(zmpool_t *, const void *);
+    void (*reset)(zmpool_t *);
+    void (*free_pool)(zmpool_t *);
 };
-struct zmpool_t {
+struct zmpool_t
+{
     zmpool_method_t *method;
 };
 extern zmpool_t *zvar_system_mpool;
@@ -1151,25 +1480,29 @@ zmpool_t *zmpool_create_common_pool(int *register_size_list);
 zmpool_t *zmpool_create_greedy_pool(int single_buf_size, int once_malloc_max_size);
 
 /* 释放 */
-void zmpool_free_pool(zmpool_t * mp);
+void zmpool_free_pool(zmpool_t *mp);
 
-zinline void *zmpool_malloc(zmpool_t * mp, int len) { return mp->method->malloc(mp, len); }
-zinline void *zmpool_calloc(zmpool_t * mp, int nmemb, int size)
+zinline void *zmpool_malloc(zmpool_t *mp, int len) { return mp->method->malloc(mp, len); }
+zinline void *zmpool_calloc(zmpool_t *mp, int nmemb, int size)
 {
     return mp->method->calloc(mp, nmemb, size);
 }
-zinline void *zmpool_realloc(zmpool_t * mp, const void *ptr, int len)
+zinline void *zmpool_realloc(zmpool_t *mp, const void *ptr, int len)
 {
     return mp->method->realloc(mp, ptr, len);
 }
-zinline void zmpool_free(zmpool_t * mp, const void *ptr) { 
-    if(ptr&&(ptr!=(const void *)zblank_buffer)) { mp->method->free(mp, ptr);}
+zinline void zmpool_free(zmpool_t *mp, const void *ptr)
+{
+    if (ptr && (ptr != (const void *)zblank_buffer))
+    {
+        mp->method->free(mp, ptr);
+    }
 }
-void *zmpool_strdup(zmpool_t * mp, const char *ptr);
-void *zmpool_strndup(zmpool_t * mp, const char *ptr, int n);
-void *zmpool_memdup(zmpool_t * mp, const void *ptr, int n);
-void *zmpool_memdupnull(zmpool_t * mp, const void *ptr, int n);
-void zmpool_reset(zmpool_t * mp);
+void *zmpool_strdup(zmpool_t *mp, const char *ptr);
+void *zmpool_strndup(zmpool_t *mp, const char *ptr, int n);
+void *zmpool_memdup(zmpool_t *mp, const void *ptr, int n);
+void *zmpool_memdupnull(zmpool_t *mp, const void *ptr, int n);
+void zmpool_reset(zmpool_t *mp);
 
 /* 内存 queue */
 zmqueue_t *zmqueue_create(int element_size, int element_count_per_queue);
@@ -1215,7 +1548,7 @@ unsigned long zcrc64(const void *data, int size, unsigned long init_value);
 
 /* config, src/stdlib/config.c ##################################### */
 /* 一个简单的通用配置文件风格
- * 推荐使用, 不强制使用. 一些内嵌服务和master/server使用此配置风格 
+ * 推荐使用, 不强制使用. 一些内嵌服务和master/server使用此配置风格
  * 行首第一个非空字符是#, 则忽略本行
  * 每配置行以 "=" 为分隔符
  * 配置项和配置值都需要过滤掉两侧的空白
@@ -1227,51 +1560,55 @@ extern zconfig_t *zvar_default_config;
 zconfig_t *zdefault_config_init();
 void zdefault_config_fini();
 
-#define zconfig_create  zdict_create
-#define zconfig_free    zdict_free
-#define zconfig_update  zdict_update
-#define zconfig_update_string  zdict_update_string
-#define zconfig_delete  zdict_delete
-#define zconfig_reset   zdict_reset
-#define zconfig_len     zdict_len
-#define zconfig_data    zdict_data
-#define zconfig_debug_show    zdict_debug_show
+#define zconfig_create zdict_create
+#define zconfig_free zdict_free
+#define zconfig_update zdict_update
+#define zconfig_update_string zdict_update_string
+#define zconfig_delete zdict_delete
+#define zconfig_reset zdict_reset
+#define zconfig_len zdict_len
+#define zconfig_data zdict_data
+#define zconfig_debug_show zdict_debug_show
 
 /* 从文件pathname加载配置到cf, 同名则覆盖 */
 int zconfig_load_from_pathname(zconfig_t *cf, const char *pathname);
 
 /* 从配置another中加载配置到cf, 同名则覆盖 */
-void zconfig_load_annother(zconfig_t *cf, zconfig_t *another);
+void zconfig_load_another(zconfig_t *cf, zconfig_t *another);
 
 /* 快速处理大批配置 */
-typedef struct {
+typedef struct
+{
     const char *name;
     const char *defval;
     const char **target;
 } zconfig_str_table_t;
-typedef struct {
+typedef struct
+{
     const char *name;
     int defval;
     int *target;
 } zconfig_int_table_t;
-typedef struct {
+typedef struct
+{
     const char *name;
     long defval;
     long *target;
 } zconfig_long_table_t;
-typedef struct {
+typedef struct
+{
     const char *name;
     int defval;
     int *target;
 } zconfig_bool_table_t;
-#define zconfig_second_table_t  zconfig_long_table_t
-#define zconfig_size_table_t    zconfig_long_table_t
-#define zconfig_get_str         zdict_get_str
-#define zconfig_get_bool        zdict_get_bool
-#define zconfig_get_int         zdict_get_int
-#define zconfig_get_long        zdict_get_long
-#define zconfig_get_second      zdict_get_second
-#define zconfig_get_size        zdict_get_size
+#define zconfig_second_table_t zconfig_long_table_t
+#define zconfig_size_table_t zconfig_long_table_t
+#define zconfig_get_str zdict_get_str
+#define zconfig_get_bool zdict_get_bool
+#define zconfig_get_int zdict_get_int
+#define zconfig_get_long zdict_get_long
+#define zconfig_get_second zdict_get_second
+#define zconfig_get_size zdict_get_size
 void zconfig_get_str_table(zconfig_t *cf, zconfig_str_table_t *table);
 void zconfig_get_int_table(zconfig_t *cf, zconfig_int_table_t *table);
 void zconfig_get_long_table(zconfig_t *cf, zconfig_long_table_t *table);
@@ -1280,11 +1617,20 @@ void zconfig_get_second_table(zconfig_t *cf, zconfig_second_table_t *table);
 void zconfig_get_size_table(zconfig_t *cf, zconfig_size_table_t *table);
 
 /* 宏, 遍历. zconfig_t *cf; char *key; zbuf_t *value;  */
-#define ZCONFIG_WALK_BEGIN(cf, key, value) { \
-    zdict_node_t *___nd; char *key; zbuf_t *value; \
-    for (___nd = zdict_first(cf);___nd;___nd=zdict_next(___nd)) { \
-        key = zdict_node_key(___nd); value = zdict_node_value(___nd); {
-#define ZCONFIG_WALK_END }}}
+#define ZCONFIG_WALK_BEGIN(cf, key, value)                              \
+    {                                                                   \
+        zdict_node_t *___nd;                                            \
+        char *key;                                                      \
+        zbuf_t *value;                                                  \
+        for (___nd = zdict_first(cf); ___nd; ___nd = zdict_next(___nd)) \
+        {                                                               \
+            key = zdict_node_key(___nd);                                \
+            value = zdict_node_value(___nd);                            \
+            {
+#define ZCONFIG_WALK_END \
+    }                    \
+    }                    \
+    }
 
 /* pthread pool ################################################### */
 zpthread_pool_t *zpthread_pool_create();
@@ -1296,6 +1642,7 @@ int zpthread_pool_get_current_count(zpthread_pool_t *ptp);
 int zpthread_pool_get_queue_length(zpthread_pool_t *ptp);
 void zpthread_pool_set_pthread_init_handler(zpthread_pool_t *ptp, void (*pthread_init_handler)(zpthread_pool_t *ptp));
 void zpthread_pool_set_pthread_fini_handler(zpthread_pool_t *ptp, void (*pthread_fini_handler)(zpthread_pool_t *ptp));
+void zpthread_pool_set_pthread_loop_handler(zpthread_pool_t *ptp, void (*pthread_loop_handler)(zpthread_pool_t *ptp));
 void zpthread_pool_set_context(zpthread_pool_t *ptp, void *ctx);
 void *zpthread_pool_get_context(zpthread_pool_t *ptp);
 zpthread_pool_t *zpthread_pool_get_current_zpthread_pool();
@@ -1364,9 +1711,9 @@ int ztimed_write_wait(int fd, int write_wait_timeout);
 int ztimed_write(int fd, const void *buf, int size, int write_wait_timeout);
 
 /* tcp socket ##################################################### */
-#define zvar_tcp_listen_type_inet  'i'
-#define zvar_tcp_listen_type_unix  'u'
-#define zvar_tcp_listen_type_fifo  'f'
+#define zvar_tcp_listen_type_inet 'i'
+#define zvar_tcp_listen_type_unix 'u'
+#define zvar_tcp_listen_type_fifo 'f'
 /* accept domain socket, 忽略EINTR */
 int zunix_accept(int fd);
 
@@ -1438,11 +1785,12 @@ int zopenssl_timed_write(SSL *ssl, const void *buf, int len, int read_wait_timeo
 /* stream, src/stream/ ############################################## */
 /* fd/ssl流实现, 例子见 sample/stream/ */
 
-#define zvar_stream_rbuf_size           4096
-#define zvar_stream_wbuf_size           4096
+#define zvar_stream_rbuf_size 4096
+#define zvar_stream_wbuf_size 4096
 
 typedef struct zstream_engine_t zstream_engine_t;
-struct zstream_engine_t {
+struct zstream_engine_t
+{
     const char *(*get_type)();
     int (*close_fn)(zstream_t *fp, int release_ioctx);
     int (*read_fn)(zstream_t *fp, void *buf, int len);
@@ -1452,7 +1800,8 @@ struct zstream_engine_t {
     int (*get_fd_fn)(zstream_t *fp);
 };
 
-struct zstream_t {
+struct zstream_t
+{
     int read_wait_timeout;
     int write_wait_timeout;
     void *ioctx;
@@ -1460,18 +1809,18 @@ struct zstream_t {
     short int read_buf_p1;
     short int read_buf_p2;
     short int write_buf_len;
-    unsigned short int error:1;
-    unsigned short int eof:1;
-    unsigned short int auto_release_ioctx:1;
+    unsigned short int error : 1;
+    unsigned short int eof : 1;
+    unsigned short int auto_release_ioctx : 1;
     unsigned char read_buf[zvar_stream_rbuf_size];
     unsigned char write_buf[zvar_stream_wbuf_size];
 };
 
 /* 宏, 返回读取的下一个字符, -1:错 */
-#define ZSTREAM_GETC(fp)            (((fp)->read_buf_p1<(fp)->read_buf_p2)?((int)((fp)->read_buf[(fp)->read_buf_p1++])):(zstream_getc_do(fp)))
+#define ZSTREAM_GETC(fp) (((fp)->read_buf_p1 < (fp)->read_buf_p2) ? ((int)((fp)->read_buf[(fp)->read_buf_p1++])) : (zstream_getc_do(fp)))
 
 /* 宏, 写一个字符ch到fp, -1:错 */
-#define ZSTREAM_PUTC(fp, ch)        (((fp)->write_buf_len<zvar_stream_wbuf_size)?((fp)->write_buf[(fp)->write_buf_len++]=(unsigned char)(ch),(int)(ch)):(zstream_putc_do(fp, ch)))
+#define ZSTREAM_PUTC(fp, ch) (((fp)->write_buf_len < zvar_stream_wbuf_size) ? ((fp)->write_buf[(fp)->write_buf_len++] = (unsigned char)(ch), (int)(ch)) : (zstream_putc_do(fp, ch)))
 
 /* 是否出错 */
 zinline zbool_t zstream_is_error(zstream_t *fp) { return fp->error; }
@@ -1480,26 +1829,28 @@ zinline zbool_t zstream_is_error(zstream_t *fp) { return fp->error; }
 zinline zbool_t zstream_is_eof(zstream_t *fp) { return fp->eof; }
 
 /* 是否异常(错或读到结尾) */
-zinline zbool_t zstream_is_exception(zstream_t *fp) { return (fp->eof)||(fp->error); }
+zinline zbool_t zstream_is_exception(zstream_t *fp) { return (fp->eof) || (fp->error); }
 
 /* 可读缓存的长度 */
-zinline int zstream_get_read_cache_len(zstream_t *fp) { return ((fp)->read_buf_p2-(fp)->read_buf_p1); }
+zinline int zstream_get_read_cache_len(zstream_t *fp) { return ((fp)->read_buf_p2 - (fp)->read_buf_p1); }
 
 /* 读缓存的指针 */
-zinline char * zstream_get_read_cache(zstream_t *fp) { return (char *)((fp)->read_buf); }
+zinline char *zstream_get_read_cache(zstream_t *fp) { return (char *)((fp)->read_buf); }
 
 /* 已经写入的缓存的长度 */
 zinline int zstream_get_write_cache_len(zstream_t *fp) { return ((fp)->write_buf_len); }
 
 /* 写缓存的指针 */
-zinline char * zstream_get_write_cache(zstream_t *fp) {
-    fp->write_buf[fp->write_buf_len] = 0; return (char *)((fp)->write_buf);
+zinline char *zstream_get_write_cache(zstream_t *fp)
+{
+    fp->write_buf[fp->write_buf_len] = 0;
+    return (char *)((fp)->write_buf);
 }
 
 /* 基于文件描述符fd创建stream */
 zstream_t *zstream_open_fd(int fd);
 
-/* 基于ssl创建stream */ 
+/* 基于ssl创建stream */
 zstream_t *zstream_open_ssl(SSL *ssl);
 
 /* 打开本地文件, mode: "r", "r+", "w", "w+", "a", "a+" */
@@ -1561,10 +1912,12 @@ int zstream_read_delimiter(zstream_t *fp, zbuf_t *bf, int delimiter, int max_len
 int zstream_read_delimiter_to_mem(zstream_t *fp, void *mem, int delimiter, int max_len);
 
 /* 读取一行 */
-zinline int zstream_gets(zstream_t *fp, zbuf_t *bf, int max_len) {
+zinline int zstream_gets(zstream_t *fp, zbuf_t *bf, int max_len)
+{
     return zstream_read_delimiter(fp, bf, '\n', max_len);
 }
-zinline int zstream_gets_to_mem(zstream_t *fp, void *mem, int max_len) {
+zinline int zstream_gets_to_mem(zstream_t *fp, void *mem, int max_len)
+{
     return zstream_read_delimiter_to_mem(fp, mem, '\n', max_len);
 }
 
@@ -1583,22 +1936,23 @@ int zstream_write(zstream_t *fp, const void *buf, int len);
 /* 写一行s 到fp, 返回-1:失败, 其他:成功 */
 int zstream_puts(zstream_t *fp, const char *s);
 
-#define zstream_puts_const(fp, s) zstream_write(fp, s, sizeof(s)-1)
+#define zstream_puts_const(fp, s) zstream_write(fp, s, sizeof(s) - 1)
 
 /* 写bf到fp, 返回-1:失败, 其他:成功 */
-zinline int zstream_append(zstream_t *fp, zbuf_t *bf) {
+zinline int zstream_append(zstream_t *fp, zbuf_t *bf)
+{
     return zstream_write(fp, zbuf_data(bf), zbuf_len(bf));
 }
 
 /* zstream_printf_1024, 意思是:
  * char buf[1024+1]; sprintf(buf, format, ...); zstream_puts(fp, buf); */
-int zstream_printf_1024(zstream_t *fp, const char *format, ...);
+int __attribute__((format(printf, 2, 3))) zstream_printf_1024(zstream_t *fp, const char *format, ...);
 
 int zstream_write_cint(zstream_t *fp, int len);
 int zstream_write_cint_and_int(zstream_t *fp, int i);
 int zstream_write_cint_and_long(zstream_t *fp, long l);
 int zstream_write_cint_and_data(zstream_t *fp, const void *buf, int len);
-int zstream_write_cint_and_dict(zstream_t *fp, zdict_t * zd);
+int zstream_write_cint_and_dict(zstream_t *fp, zdict_t *zd);
 int zstream_write_cint_and_pp(zstream_t *fp, const char **pp, int size);
 
 /* flush, 返回-1:错 */
@@ -1718,14 +2072,18 @@ zbool_t zset_core_file_size(int megabyte);
 zbool_t zset_cgroup_name(const char *name);
 
 /* file, src/stdlib/file.c ########################################## */
+
+/* -1: 错, 0: 不存在, 1: 存在 */
+int zfile_exists(const char *pathname);
+
 /* -1: 错, >=0: 文件大小 */
-int zfile_get_size(const char *pathname);
+long zfile_get_size(const char *pathname);
 
 /* 保存data 到文件pathname, 覆盖pathname -1: 错, 1: 成功 */
 int zfile_put_contents(const char *pathname, const void *data, int len);
 
 /* 从文件pathname获取文件内容, 存储到(覆盖)result, -1:错, >= 文件长度 */
-int zfile_get_contents(const char *pathname, zbuf_t *result);
+long zfile_get_contents(const char *pathname, zbuf_t *result);
 /* 同上, 出错exit */
 int zfile_get_contents_sample(const char *pathname, zbuf_t *result);
 
@@ -1733,9 +2091,10 @@ int zfile_get_contents_sample(const char *pathname, zbuf_t *result);
 int zstdin_get_contents(zbuf_t *bf);
 
 /* mmap reader */
-struct zmmap_reader_t {
+struct zmmap_reader_t
+{
     int fd;
-    int len; /* 映射后, 长度 */
+    int len;    /* 映射后, 长度 */
     char *data; /* 映射后, 指针 */
 };
 
@@ -1748,6 +2107,21 @@ int ztouch(const char *pathname);
 
 /* 通过find命令查抄文件, 找到的文件放到 file_argv, 出错exit, file_argv为0则创建 */
 zargv_t *zfind_file_sample(zargv_t *file_argv, const char **pathnames, int pathnames_count, const char *pathname_match);
+
+/*
+@brief 创建目录, zmkdirs(0022, "./some1/some2", "some3/", 0), 实际创建的是 ./some1/some2/some3/
+@param perms 见 mkdir
+@param path1, 目录名
+@return -1 失败; 1 成功
+*/
+int zmkdirs(int perms, const char *path1, ...);
+
+/*
+@brief 创建目录
+@param path/perm 见 mkdir
+@return -1 失败; 1 成功
+*/
+int zmkdir(const char *path, int perms);
 
 /* 获取mac地址; 返回个数, -1: 错; src/stdlib/mac_address.c */
 int zget_mac_address(zargv_t *mac_list);
@@ -1776,7 +2150,7 @@ extern int zvar_main_redundant_argc;
  * ./cmd -name1 val1 arg1 -name2 val2 --bool1 --bool2 ... arg2 arg3
    执行 zmain_argument_run(argc, argv) 后, 会自动创建一个全局配置词典
    zconfigt_t *zvar_default_config;
-  
+
  * 而且, 逻辑上
    zvar_default_config[name1] = val1
    zvar_default_config[name2] = val2
@@ -1805,7 +2179,7 @@ void zatexit(void (*func)(void *), void *);
 
 /* license, src/stdlib/license.c ####################################### */
 char *zlicense_build(const char *salt, const char *target, char *new_license);
-#define  zvar_license_size  16
+#define zvar_license_size 16
 /* -1: 系统错, 0: 不匹配, 1: 匹配 */
 int zlicense_check(const char *salt, const char *license /* target|new_license */);
 int zlicense_check_from_config_pathname(const char *salt, const char *config_file, const char *key);
@@ -1815,7 +2189,8 @@ int zlicense_check_from_config_pathnames(const char *salt, const char **config_f
 void zlicense_mac_build(const char *salt, const char *_mac, zbuf_t *result);
 /* -1: 系统错, 0: 不匹配, 1: 匹配 */
 zinline int zlicense_mac_check(const char *salt, const char *license) { return zlicense_check(salt, license); }
-zinline int zlicense_mac_check_from_config_pathname(const char *salt, const char *config_file, const char *key) {
+zinline int zlicense_mac_check_from_config_pathname(const char *salt, const char *config_file, const char *key)
+{
     return zlicense_check_from_config_pathname(salt, config_file, key);
 }
 #endif
@@ -1852,10 +2227,10 @@ int zaio_get_fd(zaio_t *aio);
 SSL *zaio_get_ssl(zaio_t *aio);
 
 /* 发起tls连接, 成功/失败/超时后回调执行callback */
-void zaio_tls_connect(zaio_t *aio, SSL_CTX * ctx, void (*callback)(zaio_t *aio));
+void zaio_tls_connect(zaio_t *aio, SSL_CTX *ctx, void (*callback)(zaio_t *aio));
 
 /* 发起tls接受, 成功/失败/超时后回调执行callback */
-void zaio_tls_accept(zaio_t *aio, SSL_CTX * ctx, void (*callback)(zaio_t *aio));
+void zaio_tls_accept(zaio_t *aio, SSL_CTX *ctx, void (*callback)(zaio_t *aio));
 
 /* 从缓存中获取数据 */
 int zaio_get_read_cache_size(zaio_t *aio);
@@ -1893,7 +2268,7 @@ zinline void zaio_gets(zaio_t *aio, int max_len, void (*callback)(zaio_t *aio))
 }
 
 /* 向缓存写数据, (fmt, ...)不能超过1024个字节 */
-void zaio_cache_printf_1024(zaio_t *aio, const char *fmt, ...);
+void __attribute__((format(printf, 2, 3))) zaio_cache_printf_1024(zaio_t *aio, const char *fmt, ...);
 
 /* 向缓存写数据 */
 void zaio_cache_puts(zaio_t *aio, const char *s);
@@ -2000,7 +2375,7 @@ void zcoroutine_go(void *(*start_job)(void *ctx), void *ctx, int stack_kilobyte)
 void zcoroutine_advanced_go(zcoroutine_base_t *cobs, void *(*start_job)(void *ctx), void *ctx, int stack_kilobyte);
 
 /* 返回当前协程 */
-zcoroutine_t * zcoroutine_self();
+zcoroutine_t *zcoroutine_self();
 
 /* 放弃当前协程使用权 */
 void zcoroutine_yield();
@@ -2028,7 +2403,7 @@ void zcoroutine_enable_fd(int fd);
 void zcoroutine_disable_fd(int fd);
 
 /* 创建携程锁 */
-zcoroutine_mutex_t * zcoroutine_mutex_create();
+zcoroutine_mutex_t *zcoroutine_mutex_create();
 void zcoroutine_mutex_free(zcoroutine_mutex_t *);
 
 /* 锁 */
@@ -2038,7 +2413,7 @@ void zcoroutine_mutex_lock(zcoroutine_mutex_t *);
 void zcoroutine_mutex_unlock(zcoroutine_mutex_t *);
 
 /* 创建条件 */
-zcoroutine_cond_t * zcoroutine_cond_create();
+zcoroutine_cond_t *zcoroutine_cond_create();
 void zcoroutine_cond_free(zcoroutine_cond_t *);
 
 /* 条件等待, 参考 pthread_cond_wait */
@@ -2051,10 +2426,10 @@ void zcoroutine_cond_signal(zcoroutine_cond_t *);
 void zcoroutine_cond_broadcast(zcoroutine_cond_t *);
 
 /* 禁用 UDP 协程切换 */
-extern zbool_t zvar_coroutine_disable_udp/* = 0 */;
+extern zbool_t zvar_coroutine_disable_udp /* = 0 */;
 
 /* 禁用 53 端口的 UDP 协程切换 */
-extern zbool_t zvar_coroutine_disable_udp_53/* = 0 */;
+extern zbool_t zvar_coroutine_disable_udp_53 /* = 0 */;
 
 /* 启用limit个线程池, 用于文件io,和 block_do */
 extern int zvar_coroutine_block_pthread_count_limit;
@@ -2106,13 +2481,13 @@ int zmaster_server_main(int argc, char **argv);
 /* 主线程运行在 zaio_base_t 框架下, event_hase 为 zvar_default_aio_base */
 
 /* 注册服务, service 是服务名, fd继承自master, fd_type: inet/unix/fifo 见(zvar_tcp_listen_type_inter ...) */
-extern void (*zaio_server_service_register) (const char *service, int fd, int fd_type);
+extern void (*zaio_server_service_register)(const char *service, int fd, int fd_type);
 
 /* 进入主服务前执行函数 */
-extern void (*zaio_server_before_service) (void);
+extern void (*zaio_server_before_service)(void);
 
 /* 接到master重启命令后, 退出前执行的函数 */
-extern void (*zaio_server_before_softstop) (void);
+extern void (*zaio_server_before_softstop)(void);
 
 /* 手动通知主程序循环退出 */
 void zaio_server_stop_notify(int stop_after_second);
@@ -2124,7 +2499,7 @@ void zaio_server_detach_from_master();
 
 /* 通用的服务注册函数 */
 /* fd2 = accept(fd); callback(fd2) */
-zaio_t *zaio_server_general_aio_register(zaio_base_t *eb, int fd, int fd_type, void (*callback) (int));
+zaio_t *zaio_server_general_aio_register(zaio_base_t *eb, int fd, int fd_type, void (*callback)(int));
 
 /* 主函数 */
 int zaio_server_main(int argc, char **argv);
@@ -2133,13 +2508,13 @@ int zaio_server_main(int argc, char **argv);
 /* 主线程运行在协程框架下 */
 
 /* 注册服务, service 是服务名, fd继承自master, fd_type: inet/unix/fifo 见(zvar_tcp_listen_type_inet ...) */
-extern void (*zcoroutine_server_service_register) (const char *service, int fd, int fd_type);
+extern void (*zcoroutine_server_service_register)(const char *service, int fd, int fd_type);
 
 /* 进入主服务前执行函数 */
-extern void (*zcoroutine_server_before_service) (void);
+extern void (*zcoroutine_server_before_service)(void);
 
 /* 接到master重启命令后, 退出前执行的函数 */
-extern void (*zcoroutine_server_before_softstop) (void);
+extern void (*zcoroutine_server_before_softstop)(void);
 
 /* 手动通知主程序循环退出 */
 void zcoroutine_server_stop_notify(int stop_after_second);
@@ -2155,7 +2530,7 @@ int zcoroutine_server_main(int argc, char **argv);
 /* charset, src/charset/ ############################################## */
 /* 字符集函数, 例子见 sample/charset/ */
 
-#define zvar_charset_name_max_size          32
+#define zvar_charset_name_max_size 32
 
 extern zbool_t zvar_charset_debug;
 
@@ -2199,12 +2574,11 @@ int zcharset_uconv(const char *from_charset, const char *src, int src_len, const
 
 void zcharset_convert_to_utf8(const char *from_charset, const char *data, int size, zbuf_t *result);
 
-
 /* mime utils, src/mime/ ############################################# */
 /* 邮件解码工具 例子见 sample/mime/ */
 
 /* 假设邮件头逻辑行最长长度不超过 zvar_mime_header_line_max_length */
-#define zvar_mime_header_line_max_length   1024000
+#define zvar_mime_header_line_max_length 1024000
 
 /* 邮件用, 字符集转码 */
 /* 目标字符集为 UTF-8 */
@@ -2219,7 +2593,8 @@ void zmime_header_line_get_first_token(const char *in_line, int in_len, zbuf_t *
 
 /* 邮件头行单词节点 */
 typedef struct zmime_header_line_element_t zmime_header_line_element_t;
-struct zmime_header_line_element_t {
+struct zmime_header_line_element_t
+{
     const char *charset; /* 可能为空 */
     const char *data;
     int dlen;
@@ -2244,14 +2619,15 @@ long zmime_header_line_decode_date(const char *str);
 
 /* 邮件地址 */
 typedef struct zmime_address_t zmime_address_t;
-struct zmime_address_t {
-    char *name; /* 原始名称 */
-    char *address; /* email 地址 */
+struct zmime_address_t
+{
+    char *name;      /* 原始名称 */
+    char *address;   /* email 地址 */
     char *name_utf8; /* 原始名称转码为UTF-8 字符集 */
 };
 
 /* 分解邮件头行为多个邮件地址并返回, 这个时候不处理 name_utf8 */
-zvector_t *zmime_header_line_get_address_vector(const char *in_str, int in_len);
+zvector_t *zmime_header_line_get_address_vector(const char *src_charset_def, const char *in_str, int in_len);
 
 /* 分解邮件头行为多个邮件地址并返回 */
 zvector_t *zmime_header_line_get_address_vector_utf8(const char *src_charset_def, const char *in_str, int in_len);
@@ -2477,7 +2853,7 @@ int ztnef_mime_get_body_len(ztnef_mime_t *mime);
 const char *ztnef_mime_get_charset(ztnef_mime_t *mime);
 
 /* 创建tnef解析器 */
-ztnef_t * ztnef_create_parser_from_data(const char *tnef_data, int tnef_data_len, const char *default_charset);
+ztnef_t *ztnef_create_parser_from_data(const char *tnef_data, int tnef_data_len, const char *default_charset);
 ztnef_t *ztnef_create_parser_from_pathname(const char *pathname, const char *default_charset);
 void ztnef_free(ztnef_t *parser);
 
@@ -2501,24 +2877,26 @@ void ztnef_debug_show(ztnef_t *parser);
 
 /* zjson_t, src/json/ #################################################### */
 /* json 库, 序列号/反序列化, 例子见 sample/json/  */
-#define zvar_json_type_null        0
-#define zvar_json_type_bool        1
-#define zvar_json_type_string      2
-#define zvar_json_type_long        3
-#define zvar_json_type_double      4
-#define zvar_json_type_object      5
-#define zvar_json_type_array       6
-#define zvar_json_type_unknown     7
+#define zvar_json_type_null 0
+#define zvar_json_type_bool 1
+#define zvar_json_type_string 2
+#define zvar_json_type_long 3
+#define zvar_json_type_double 4
+#define zvar_json_type_object 5
+#define zvar_json_type_array 6
+#define zvar_json_type_unknown 7
 
 #pragma pack(push, 1)
-struct zjson_t {
-    union {
+struct zjson_t
+{
+    union
+    {
         zbool_t b;
         long l;
         double d;
         zbuf_t *s;
         zvector_t *v; /* <zjson_t *> */
-        zmap_t *m; /* <char *, zjson_t *> */
+        zmap_t *m;    /* <char *, zjson_t *> */
     } val;
     zjson_t *parent;
     unsigned char type;
@@ -2566,13 +2944,13 @@ void zjson_serialize(zjson_t *j, zbuf_t *result, int strict);
 
 /* json的类型 */
 zinline int zjson_get_type(zjson_t *j) { return j->type; }
-zinline zbool_t zjson_is_null(zjson_t *j)   { return j->type==zvar_json_type_null; }
-zinline zbool_t zjson_is_bool(zjson_t *j)   { return j->type==zvar_json_type_bool; }
-zinline zbool_t zjson_is_long(zjson_t *j)   { return j->type==zvar_json_type_long; }
-zinline zbool_t zjson_is_double(zjson_t *j) { return j->type==zvar_json_type_double; }
-zinline zbool_t zjson_is_string(zjson_t *j) { return j->type==zvar_json_type_string; }
-zinline zbool_t zjson_is_object(zjson_t *j) { return j->type==zvar_json_type_object; }
-zinline zbool_t zjson_is_array(zjson_t *j)  { return j->type==zvar_json_type_array; }
+zinline zbool_t zjson_is_null(zjson_t *j) { return j->type == zvar_json_type_null; }
+zinline zbool_t zjson_is_bool(zjson_t *j) { return j->type == zvar_json_type_bool; }
+zinline zbool_t zjson_is_long(zjson_t *j) { return j->type == zvar_json_type_long; }
+zinline zbool_t zjson_is_double(zjson_t *j) { return j->type == zvar_json_type_double; }
+zinline zbool_t zjson_is_string(zjson_t *j) { return j->type == zvar_json_type_string; }
+zinline zbool_t zjson_is_object(zjson_t *j) { return j->type == zvar_json_type_object; }
+zinline zbool_t zjson_is_array(zjson_t *j) { return j->type == zvar_json_type_array; }
 
 /* 获取bool值的指针; 如果不是bool类型,则首先转换为bool类型, 默认为 0 */
 zbool_t *zjson_get_bool_value(zjson_t *j);
@@ -2611,7 +2989,6 @@ zjson_t *zjson_array_push(zjson_t *j, zjson_t *element);
 /* 如果不是数组,先转为数组, 存在则返回1, 否则返回 0;
  * element不为0,则pop出来的json赋值给*element, 否则销毁 */
 zbool_t zjson_array_pop(zjson_t *j, zjson_t **element);
-
 
 /* 如果不是数组,先转为数组, 在数组前追加element(json). 返回element */
 zjson_t *zjson_array_unshift(zjson_t *j, zjson_t *element);
@@ -2653,11 +3030,9 @@ void zjson_object_delete(zjson_t *j, const char *key, zjson_t **old_element);
  * zjson_get_element_by_path(json, "group/linux/2/me") 返回的 应该是 {age:18, sex:"male"} */
 zjson_t *zjson_get_element_by_path(zjson_t *j, const char *path);
 
-
 /* 已知json {group:{linux:[{}, {}, {me: {age:18, sex:"male"}}}}, 则
  * zjson_get_element_by_path_vec(json, "group", "linux", "2", "me", 0); 返回的 应该是 {age:18, sex:"male"} */
 zjson_t *zjson_get_element_by_path_vec(zjson_t *j, const char *path0, ...);
-
 
 /* 返回父节点 */
 zinline zjson_t *zjson_get_parent(zjson_t *j) { return j->parent; }
@@ -2698,11 +3073,11 @@ int zmemcache_client_get(zmemcache_client_t *mc, const char *key, int *flag, zbu
 
 /* ADD/SET/REPLACE/APPEND/PREPEND命令, 返回 -1:错; 0:存储失败; 1:存储成功 */
 /* key: 键; flag: 标记; data/len: 值/长度; */
-int zmemcache_client_add(zmemcache_client_t *mc, const char *key, int flag, long timeout, const void *data, int len); 
-int zmemcache_client_set(zmemcache_client_t *mc, const char *key, int flag, long timeout, const void *data, int len); 
-int zmemcache_client_replace(zmemcache_client_t *mc, const char *key, int flag, long timeout, const void *data, int len); 
-int zmemcache_client_append(zmemcache_client_t *mc, const char *key, int flag, long timeout, const void *data, int len); 
-int zmemcache_client_prepend(zmemcache_client_t *mc, const char *key, int flag, long timeout, const void *data, int len); 
+int zmemcache_client_add(zmemcache_client_t *mc, const char *key, int flag, long timeout, const void *data, int len);
+int zmemcache_client_set(zmemcache_client_t *mc, const char *key, int flag, long timeout, const void *data, int len);
+int zmemcache_client_replace(zmemcache_client_t *mc, const char *key, int flag, long timeout, const void *data, int len);
+int zmemcache_client_append(zmemcache_client_t *mc, const char *key, int flag, long timeout, const void *data, int len);
+int zmemcache_client_prepend(zmemcache_client_t *mc, const char *key, int flag, long timeout, const void *data, int len);
 
 /* INCR命令, 返回 -1: 错; >= 0: incr的结果 */
 long zmemcache_client_incr(zmemcache_client_t *mc, const char *key, unsigned long n);
@@ -2712,7 +3087,6 @@ long zmemcache_client_decr(zmemcache_client_t *mc, const char *key, unsigned lon
 
 /* DEL命令, 返回 -1: 错; 0: 不存在; 1: 删除成功 */
 int zmemcache_client_del(zmemcache_client_t *mc, const char *key);
-
 
 /* FLUASH_ALL命令, 返回 -1:错; 0: 未知; 1: 成功 */
 int zmemcache_client_flush_all(zmemcache_client_t *mc, long after_second);
@@ -2745,7 +3119,7 @@ void zredis_client_set_write_wait_timeout(zredis_client_t *rc, int write_wait_ti
 void zredis_client_set_auto_reconnect(zredis_client_t *rc, zbool_t auto_reconnect);
 
 /* 获取错误信息 */
-const char * zredis_client_get_error_msg(zredis_client_t *rc);
+const char *zredis_client_get_error_msg(zredis_client_t *rc);
 
 /* 释放 */
 void zredis_client_disconnect(zredis_client_t *rc);
@@ -2791,7 +3165,7 @@ int zredis_client_vget(zredis_client_t *rc, long *number_ret, zbuf_t *string_ret
 
 /* 返回: 如上; 命令选择 SCAN/HSCAN/SSCAN/ZSCAN/... */
 /* vector_ret: 保存当前结果; *cursor_ret: 保存cursor */
-int zredis_client_scan(zredis_client_t *rc,zvector_t *vector_ret,long *cursor_ret,const char *redis_fmt, ...);
+int zredis_client_scan(zredis_client_t *rc, zvector_t *vector_ret, long *cursor_ret, const char *redis_fmt, ...);
 
 /* 返回: 如上; 命令info, 对返回的字符换结果分析成词典, 保存在info */
 int zredis_client_get_info_dict(zredis_client_t *rc, zdict_t *info);
@@ -2805,21 +3179,21 @@ int zredis_client_psubscribe(zredis_client_t *rc, const char *redis_fmt, ...);
 /* 返回: 如上; 获取消息, 结果保存在 vector_ret; 如果没有消息则阻塞 */
 int zredis_client_fetch_channel_message(zredis_client_t *rc, zvector_t *vector_ret);
 
-
 /* redis puny server ######################################### */
 /* 模拟标准redis服务, 部分支持 键/字符串/哈希表 */
 extern void (*zredis_puny_server_before_service)(void);
 extern void (*zredis_puny_server_before_softstop)(void);
 
 /* 如果注册且返回1: 表明调用者成功注册了这个服务, 否则启用 redis 服务*/
-extern zbool_t (*zredis_puny_server_service_register) (const char *service, int fd, int fd_type);
+extern zbool_t (*zredis_puny_server_service_register)(const char *service, int fd, int fd_type);
 
 int zredis_puny_server_main(int argc, char **argv);
 void zredis_puny_server_exec_cmd(zvector_t *cmd);
 
 /* url, src/http/ ################################################# */
 /* url 解析, 例子见 sample/http/ */
-struct zurl_t {
+struct zurl_t
+{
     char *scheme;
     char *destination;
     char *host;
@@ -2871,12 +3245,12 @@ void zhttpd_close(zhttpd_t *httpd, zbool_t close_fd_and_release_ssl);
 void zhttpd_run(zhttpd_t *httpd);
 
 /* 设置handler */
-void zhttpd_set_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-void zhttpd_set_HEAD_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-void zhttpd_set_OPTIONS_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-void zhttpd_set_DELETE_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-void zhttpd_set_TRACE_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-void zhttpd_set_PATCH_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
+void zhttpd_set_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
+void zhttpd_set_HEAD_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
+void zhttpd_set_OPTIONS_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
+void zhttpd_set_DELETE_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
+void zhttpd_set_TRACE_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
+void zhttpd_set_PATCH_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
 
 /* 设置/获取上下文 */
 void zhttpd_set_context(zhttpd_t *httpd, const void *context);
@@ -2953,13 +3327,13 @@ void zhttpd_response_500(zhttpd_t *httpd);
 void zhttpd_response_501(zhttpd_t *httpd);
 
 /* 设置 默认handler */
-void zhttpd_set_200_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *data, int size));
-void zhttpd_set_301_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *url));
-void zhttpd_set_302_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *url));
-void zhttpd_set_304_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *etag));
-void zhttpd_set_404_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-void zhttpd_set_500_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-void zhttpd_set_501_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
+void zhttpd_set_200_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd, const char *data, int size));
+void zhttpd_set_301_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd, const char *url));
+void zhttpd_set_302_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd, const char *url));
+void zhttpd_set_304_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd, const char *etag));
+void zhttpd_set_404_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
+void zhttpd_set_500_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
+void zhttpd_set_501_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
 
 /* 输出 initialization; version: "http/1.0", "http/1.1", 0(采用请求值); status: 如 "200 XXX"  */
 void zhttpd_response_header_initialization(zhttpd_t *httpd, const char *version, const char *status);
@@ -2989,7 +3363,7 @@ void zhttpd_response_header_over(zhttpd_t *httpd);
 void zhttpd_response_write(zhttpd_t *httpd, const void *data, int len);
 void zhttpd_response_puts(zhttpd_t *httpd, const char *data);
 void zhttpd_response_append(zhttpd_t *httpd, const zbuf_t *bf);
-void zhttpd_response_printf_1024(zhttpd_t *httpd, const char *format, ...);
+void __attribute__((format(printf, 2, 3))) zhttpd_response_printf_1024(zhttpd_t *httpd, const char *format, ...);
 void zhttpd_response_flush(zhttpd_t *httpd);
 
 /* 获取http的stream */
@@ -3023,7 +3397,10 @@ void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *pathname, const 
 void zhttpd_response_file_data(zhttpd_t *httpd, const void *data, long size, const char *content_type, int max_age, long mtime, const char *etag, zbool_t is_gzip);
 
 /* 日志 */
-#define zhttpd_show_log(httpd, fmt, args...) { zinfo("%s " fmt, zhttpd_get_prefix_log_msg(httpd), ##args) }
+#define zhttpd_show_log(httpd, fmt, args...)                       \
+    {                                                              \
+        zinfo("%s " fmt, zhttpd_get_prefix_log_msg(httpd), ##args) \
+    }
 extern const char *(*zhttpd_get_prefix_log_msg)(zhttpd_t *httpd);
 const char *zhttpd_get_prefix_log_msg_default(zhttpd_t *httpd);
 zbuf_t *zhttpd_get_prefix_log_msg_buf(zhttpd_t *httpd);
@@ -3034,7 +3411,7 @@ extern void (*zsqlite3_proxy_server_before_service)(void);
 extern void (*zsqlite3_proxy_server_before_softstop)(void);
 
 /* 如果注册且返回1: 表明调用者成功注册了这个服务, 否则启用 sqlite3 服务*/
-extern zbool_t (*zsqlite3_proxy_server_service_register) (const char *service, int fd, int fd_type);
+extern zbool_t (*zsqlite3_proxy_server_service_register)(const char *service, int fd, int fd_type);
 int zsqlite3_proxy_server_main(int argc, char **argv);
 
 /* client */
@@ -3134,8 +3511,8 @@ void zmsearch_walker_reset(zmsearch_walker_t *walker);
 #undef zmemdupnull
 #endif
 
-#ifdef  __cplusplus
-}
+#ifdef __cplusplus
+zcc_namespace_c_end;
 #endif
 
 #pragma pack(pop)
@@ -3143,66 +3520,96 @@ void zmsearch_walker_reset(zmsearch_walker_t *walker);
 /* ################################################################## */
 /* CPP */
 /* ################################################################## */
-#ifdef  __cplusplus
+#ifdef __cplusplus
+#include <functional>
+#include <map>
+#include <set>
 #include <string>
 #include <vector>
-#include <set>
-#include <map>
-#include <functional>
 #pragma pack(push, 4)
-namespace zcc
-{
+zcc_namespace_begin;
 
 /* auto_delete ###################################################### */
 template <class T>
-class auto_delete {
+class auto_delete
+{
 public:
     zinline auto_delete(T *obj) { obj_ = obj; }
-    zinline ~auto_delete() { if (obj_) { delete obj_; } }
+    zinline ~auto_delete()
+    {
+        if (obj_)
+        {
+            delete obj_;
+        }
+    }
     T *obj_;
 };
 
 /* gloabal init ##################################################### */
-class global_init {
+class global_init
+{
 public:
     zinline global_init(void (*_init_fn)()) { _init_fn(); }
     zinline global_init(void (*_init_fn)(void *ctx), void *ctx) { _init_fn(ctx); }
     zinline global_init(void (*_init_fn)(int i), int i) { _init_fn(i); }
-    zinline ~global_init() { }
+    zinline ~global_init() {}
+
 public:
     int unused;
 };
 
 /* std utils ######################################################## */
 std::string &vsprintf_1024(std::string &str, const char *format, va_list ap);
-std::string &sprintf_1024(std::string &str, const char *format, ...);
+std::string __attribute__((format(printf, 2, 3))) &sprintf_1024(std::string &str, const char *format, ...);
 std::string &tolower(std::string &str);
 std::string &toupper(std::string &str);
-std::string &trim_right(std::string &str, const char *delims=0);
+std::string &trim_right(std::string &str, const char *delims = 0);
 std::vector<std::string> split(const char *s, const char *delims = 0);
-inline std::vector<std::string> split(const std::string &s, const char *delims=0) {
+inline std::vector<std::string> split(const std::string &s, const char *delims = 0)
+{
     return split(s.c_str(), delims);
 }
 
-class string: public std::string
+class string : public std::string
 {
 public:
     typedef std::string stdstring;
-    using stdstring::stdstring;
     using stdstring::append;
-    string &printf_1024(const char *format, ...);
-    zinline string &append(int i) {return printf_1024("%d", i);}
-    zinline string &append(unsigned int i) {return printf_1024("%u", i);}
-    zinline string &append(long int i) {return printf_1024("%ld", i);}
-    zinline string &append(unsigned long i) {return printf_1024("%lu", i);}
-    zinline string &append(double i) {return printf_1024("%f", i);}
-    zinline string &append(float i) {return printf_1024("%f", i);}
-    zinline string &clear() {std::string::clear(); return *this;}
-    zinline string &push_back(char c) {std::string::push_back(c); return *this;}
-    zinline string &tolower() {zcc::tolower(*this); return *this;}
-    zinline string &toupper() {zcc::toupper(*this);;return *this;}
-    zinline string &trim_right(const char *delims=0) {zcc::trim_right(*this, delims); return *this;}
-    std::vector<std::string> split(const char *delims=0) {return zcc::split(*this, delims);}
+    using stdstring::stdstring;
+    string __attribute__((format(printf, 2, 3))) &printf_1024(const char *format, ...);
+    zinline string &append(int i) { return printf_1024("%d", i); }
+    zinline string &append(unsigned int i) { return printf_1024("%u", i); }
+    zinline string &append(long int i) { return printf_1024("%ld", i); }
+    zinline string &append(unsigned long i) { return printf_1024("%lu", i); }
+    zinline string &append(double i) { return printf_1024("%f", i); }
+    zinline string &append(float i) { return printf_1024("%f", i); }
+    zinline string &clear()
+    {
+        std::string::clear();
+        return *this;
+    }
+    zinline string &push_back(char c)
+    {
+        std::string::push_back(c);
+        return *this;
+    }
+    zinline string &tolower()
+    {
+        zcc::tolower(*this);
+        return *this;
+    }
+    zinline string &toupper()
+    {
+        zcc::toupper(*this);
+        ;
+        return *this;
+    }
+    zinline string &trim_right(const char *delims = 0)
+    {
+        zcc::trim_right(*this, delims);
+        return *this;
+    }
+    std::vector<std::string> split(const char *delims = 0) { return zcc::split(*this, delims); }
 };
 
 /* encode/decode, ################################################## */
@@ -3219,21 +3626,52 @@ void url_hex_encode(const void *src, int src_size, std::string &str, bool strict
 void xml_unescape_string(std::string &content, const char *data, int len);
 void uudecode(const void *src, int src_size, std::string &str);
 
+/* msgbox, 基础 msg 模块############################################# */
+class msgbox
+{
+public:
+    msgbox();
+    virtual ~msgbox();
+    void set_errmsg(const char *source_fn, size_t line_number, const char *fmt, ...);
+    void vset_errmsg(const char *source_fn, size_t line_number, const char *fmt, va_list ap);
+    virtual bool errmsg_is_ok();
+    void clear_allmsg();
+    zinline const std::string &get_errmsg() { return errmsg_; }
+    zinline const char *get_errmsg_c_str() { return errmsg_.c_str(); }
+    zinline void set_optional_msgbox(msgbox &x) { msgbox__ = &x; }
+    zinline msgbox &get_optional_msgbox() { return *(msgbox__ ? msgbox__ : this); }
+
+private:
+    std::string errmsg_;
+    std::string infomsg_;
+    msgbox *msgbox__;
+};
+#define zcc_msgbox_set_errmsg(m, fmt, args...) (m).set_errmsg(ZCC__FILE__, __LINE__, fmt, ##args)
+
 /* config ########################################################## */
-class config {
+class config
+{
 public:
     config();
     config(zconfig_t *cf);
     ~config();
-    config &update(const char *key, const char *val);
+    config &reset();
+    config &update(const char *key, const char *val, int vlen = -1);
     config &update(const char *key, std::string &val);
     config &remove(const char *key);
     bool load_from_pathname(const char *pathname);
-    config &load_annother(zconfig_t *another);
-    config &load_annother(config &another);
+    config &load_another(zconfig_t *another);
+    config &load_another(config &another);
     config &debug_show();
     zinline zconfig_t *c_config() { return cf_; }
     bool get_bool(const char *key, bool default_val = false);
+    const char *get_str(const char *key, const char *default_val = "");
+    int get_int(const char *key, int default_val = 0);
+    long get_long(const char *key, long default_val = 0);
+    long get_second(const char *key, long default_val = 0);
+    long get_size(const char *key, long default_val = 0);
+    zinline zconfig_t *get_c_config() { return cf_; }
+
 private:
     zconfig_t *cf_;
     bool new_flag_;
@@ -3253,6 +3691,8 @@ const unsigned char json_type_object  = 4;
 const unsigned char json_type_array   = 5;
 const unsigned char json_type_bool    = 6;
 const unsigned char json_type_unknown = 7;
+const int json_serialize_strict = 0X01;
+const int json_serialize_pretty = 0X02;
 class json
 {
 public:
@@ -3260,6 +3700,7 @@ public:
     json(const std::string &val);
     json(const char *val, int len = -1);
     json(long val);
+    json(int val);
     json(double val);
     json(bool val);
     json(const unsigned char type);
@@ -3276,7 +3717,7 @@ public:
     zinline bool unserialize(const std::string &jstr) { return unserialize(jstr.c_str(), (int)(jstr.size())); }
 
     /* 序列化 */
-    json *serialize(std::string &result, bool strict_flag = false);
+    json *serialize(std::string &result, int flags = 0/* json_serialize_XXX */);
 
     /* 类型 */
     zinline int get_type()   { return type_; }
@@ -3299,17 +3740,55 @@ public:
     json *used_for_array();
     json *used_for_object();
 
-    /* 获取 string 值; 如果不是 string 类型, 则首先转换为 string 类型, 值默认为 "" */
-    std::string &get_string_value();
+    /* 获取 string 值; 如果不是 string 类型, 则首先转换为 string 类型, 其值:
+     * 原来是 null, 则为 def
+     * 原来是 bool, 则为 "0" 或  "1"
+     * 原来是 long, 则为 打印结果
+     * 原来是 double, 则为 打印结果
+     * 原来是 array, 则为 def
+     * 原来是 object, 则为 def
+     * */
+    std::string &get_string_value(const char *def = "");
 
-    /* 获取 long 值; 如果不是 long 类型, 则首先转换为 long 类型, 值默认为 0 */
-    long &get_long_value();
+    /* 获取 long 值; 如果不是 long 类型, 则首先转换为 long 类型, 其值:
+     * 原来是 null, 则为 def
+     * 原来是 string, 则为 atol(val)
+     * 原来是 bool, 则为 0 或  1
+     * 原来是 double, 则为 long(val)
+     * 原来是 array, 则为 def
+     * 原来是 object, 则为 def
+     * */
+    long &get_long_value(long def = 0);
 
-    /* 获取 double 值; 如果不是 double 类型, 则首先转换为 double 类型, 值默认为 0 */
-    double &get_double_value();
+    /* 获取 double 值; 如果不是 double 类型, 则首先转换为 double 类型, 其值:
+     * 原来是 null, 则为 def
+     * 原来是 string, 则为 atof(val)
+     * 原来是 bool, 则为 0.0 或  1.0
+     * 原来是 long, 则为 打印结果
+     * 原来是 array, 则为 def
+     * 原来是 object, 则为 def
+     * */
+    double &get_double_value(double def = 0.0);
 
-    /* 获取 bool 值; 如果不是 bool 类型, 则首先转换为 bool 类型, 值默认为 false */
-    bool &get_bool_value();
+    /* 获取 bool 值; 如果不是 bool 类型, 则首先转换为 bool 类型, 其值:
+     * 原来是 null, 则为 def
+     * 原来是 string, 则:
+     *         "t*" => true
+     *         "T*" => true
+     *         "y*" => true
+     *         "Y*" => true
+     *         "f*" => false
+     *         "F*" => false
+     *         "n*" => false
+     *         "N*" => false
+     *         "1" => true
+     *         "0" => false
+     *         其他 => def
+     * 原来是 long/double, 则, 0 为 false, 否则 true
+     * 原来是 array, 则为 def
+     * 原来是 object, 则为 def
+     * */
+    bool &get_bool_value(bool def = false);
 
     /* 如果想操作下面的vector/map, 记得给新 json 设置 set_parent */
 
@@ -3323,11 +3802,20 @@ public:
     json *set_string_value(const char *val, int len = -1);
     zinline json *set_string_value(const std::string &val) { get_string_value() = val; return this; }
     zinline json *set_long_value(long val) { get_long_value() = val; return this; }
+    zinline json *set_long_value(int val) { get_long_value() = val*1L; return this; }
     zinline json *set_double_value(double val) { get_double_value() = val; return this; }
     zinline json *set_bool_value(bool val) { get_bool_value() = val; return this; }
 
-    /* 获取下标为 idx 的 json 节点, 如果当前节点不是 array 类型, 则先转为 array 类型 */
+    zinline json *set_value(const char *val, int len = -1) { return set_string_value(val, len); }
+    zinline json *set_value(const std::string &val) { get_string_value() = val; return this; }
+    zinline json *set_value(long val) { get_long_value() = val; return this; }
+    zinline json *set_value(int val) { get_long_value() = val*1L; return this; }
+    zinline json *set_value(double val) { get_double_value() = val; return this; }
+    zinline json *set_value(bool val) { get_bool_value() = val; return this; }
+
+    /* 获取下标为 idx 的 json 节点, 如果不是 array 类型, 则先转为 array 类型 */
     json *array_get(int idx);
+    json &array_get_or_create(int idx);
 
     /* 获取 array 节点的个数, 如上 */
     int array_size();
@@ -3360,44 +3848,46 @@ public:
         return array_update(idx, new json(val, len), old, return_child);
     }
 
-
     /* 删除下标为 idx的节点, 存在则返回true, 赋值给 *old, 如果 old为 0, 则销毁 */
-    bool array_delete(int idx, json **old);
+    bool array_delete(int idx, json **old = 0);
 
     /* 弹出第一个节点, 存在则返回true, 赋值给 *old, 如果 old为 0, 则销毁 */
-    zinline bool array_shift(json **old) { return array_delete(0, old); }
+    zinline bool array_shift(json **old = 0) { return array_delete(0, old); }
 
     /* 弹出最后一个节点, 存在则返回true, 赋值给 *old, 如果 old为 0, 则销毁 */
-    zinline bool array_pop(json **old) { return array_delete(-1, old); }
+    zinline bool array_pop(json **old = 0) { return array_delete(-1, old); }
 
-    /* 获取键为 key 的字json节点, 如果当前节点不是 object 类型, 则先转为 object 类型 */
+    /* 获取键为 key 的json节点, 如果不是 object 类型, 则先转为 object 类型 */
     json *object_get(const char *key);
+    json *object_get(const std::string &key);
+    json &object_get_or_create(const char *key);
+    json &object_get_or_create(const std::string &key);
 
     /* 获取 object 节点的个数, 如上 */
     int object_size();
 
     /* 更新键为key的节点, 旧值赋值给 *old, 如果 old为 0, 则销毁 */
-    json *object_update(const char *key, json *j, json **old, bool return_child = false);
-    json *object_add(const char *key, json *j, json **old, bool return_child = false) {
+    json *object_update(const std::string &key, json *j, json **old, bool return_child = false);
+    json *object_add(const std::string &key, json *j, json **old, bool return_child = false) {
         return object_update(key, j, old, return_child);
     }
 
-    zinline json *object_update(const char *key, json *j, bool return_child = false) {
+    zinline json *object_update(const std::string &key, json *j, bool return_child = false) {
         return object_update(key, j, 0, return_child);
     }
-    zinline json *object_add(const char *key, json *j, bool return_child = false) {
+    zinline json *object_add(const std::string &key, json *j, bool return_child = false) {
         return object_update(key, j, 0, return_child);
     }
-    zinline json *object_update(const char *key, const char *val, int len, json **old, bool return_child = false) {
+    zinline json *object_update(const std::string &key, const char *val, int len, json **old, bool return_child = false) {
         return object_update(key, new json(val, len), old, return_child);
     }
-    zinline json *object_add(const char *key, const char *val, int len, json **old, bool return_child = false) {
+    zinline json *object_add(const std::string &key, const char *val, int len, json **old, bool return_child = false) {
         return object_update(key, new json(val, len), old, return_child);
     }
-    zinline json *object_update(const char *key, const char *val, int len, bool return_child = false) {
+    zinline json *object_update(const std::string &key, const char *val, int len, bool return_child = false) {
         return object_update(key, new json(val, len), return_child);
     }
-    zinline json *object_add(const char *key, const char *val, int len, bool return_child = false) {
+    zinline json *object_add(const std::string &key, const char *val, int len, bool return_child = false) {
         return object_update(key, new json(val, len), return_child);
     }
 
@@ -3423,26 +3913,38 @@ public:
     zinline json *array_update(int idx, TTT val, json **old, bool return_child = false) { \
         return array_update(idx, new json(val), old, return_child); \
     } \
-    zinline json *object_update(const char *key, TTT val, bool return_child = false) { \
+    zinline json *object_update(const std::string &key, TTT val, bool return_child = false) { \
         return object_update(key, new json(val), return_child); \
     } \
-    zinline json *object_update(const char *key, TTT val, json **old, bool return_child = false) { \
+    zinline json *object_update(const std::string &key, TTT val, json **old, bool return_child = false) { \
         return object_update(key, new json(val), old, return_child); \
     } \
-    zinline json *object_add(const char *key, TTT val, bool return_child = false) { \
-        return object_update(key, new json(val), return_child); \
+    zinline json *object_add(const std::string &key, TTT val, bool return_child = false) { \
+        return object_update(key, new json(val), 0, return_child); \
     } \
-    zinline json *object_add(const char *key, TTT val, json **old, bool return_child = false) { \
+    zinline json *object_add(const std::string &key, TTT val, json **old, bool return_child = false) { \
         return object_update(key, new json(val), old, return_child); \
-    }
+    } \
+    zinline void operator=(TTT val) { set_value(val); }
 
     /* 这几组方法类似 array_update, object_update, 只不过参数不同 */
     ___zcc_json_update(const std::string &);
     ___zcc_json_update(const char *);
     ___zcc_json_update(long);
+    ___zcc_json_update(int);
     ___zcc_json_update(double);
     ___zcc_json_update(bool);
 #undef ___zcc_json_update
+
+    /* */
+    json *mv_value(json *val);
+    json *mv_value(json &val);
+    zinline void operator=(json *val) { mv_value(val); }
+    zinline void operator=(json val) { mv_value(val); }
+
+    /* */
+    zinline json &operator[](const std::string &key) { return object_get_or_create(key); }
+    zinline json &operator[](int idx) { return array_get_or_create(idx); }
 
     /* @get_by_path 得到路径path对应的j son, 并返回, 如:
      * 已知 json {group:{linux:[{}, {}, {me: {age:18, sex:"male"}}}}, 则
@@ -3461,6 +3963,13 @@ public:
     json *get_top();
     json *set_parent(json *js);
     json *debug_show();
+
+    /* 扩展 */
+    /* 如果不是 object 类型, 则先转为 object 类型 */
+    std::string object_get_string_value(const std::string &key, const char *def = "");
+    long object_get_long_value(const std::string &key, long def = 0);
+    bool object_get_bool_value(const std::string &key, bool def = false);
+
 private:
     unsigned char type_;
     union {
@@ -3477,89 +3986,129 @@ private:
 #endif /*___ZC_LIB_INCLUDE_JSON___ */
 
 /* stream ########################################################## */
-class basic_stream {
+class basic_stream
+{
 public:
-    struct basic_stream_worker {
+    struct basic_stream_worker
+    {
         short int read_buf_p1;
         short int read_buf_p2;
         short int write_buf_len;
-        unsigned short int error:1;
-        unsigned short int eof:1;
+        unsigned short int error : 1;
+        unsigned short int eof : 1;
         unsigned char read_buf[zvar_stream_rbuf_size];
         unsigned char write_buf[zvar_stream_wbuf_size];
     };
     basic_stream();
     virtual ~basic_stream();
     basic_stream &reset();
+
 public:
-    zinline bool is_error() { return (basic_worker_->error?true:false); }
-    zinline bool is_eof() { return (basic_worker_->eof?true:false); }
-    zinline basic_stream &set_error(bool tf = true) { basic_worker_->error = 1; return *this; }
-    zinline basic_stream &set_eof(bool tf = true) { basic_worker_->eof = 1; return *this; }
-    zinline bool is_exception() {
-        return (((basic_worker_->eof)||(basic_worker_->error))?true:false);
+    zinline bool is_error() { return (basic_worker_->error ? true : false); }
+    zinline bool is_eof() { return (basic_worker_->eof ? true : false); }
+    zinline basic_stream &set_error(bool tf = true)
+    {
+        basic_worker_->error = 1;
+        return *this;
     }
-    zinline int get_read_cache_len() {
+    zinline basic_stream &set_eof(bool tf = true)
+    {
+        basic_worker_->eof = 1;
+        return *this;
+    }
+    zinline bool is_exception()
+    {
+        return (((basic_worker_->eof) || (basic_worker_->error)) ? true : false);
+    }
+    zinline int get_read_cache_len()
+    {
         return (basic_worker_->read_buf_p2 - basic_worker_->read_buf_p1);
     }
-    zinline char * get_read_cache() { return (char *)(basic_worker_->read_buf); }
+    zinline char *get_read_cache() { return (char *)(basic_worker_->read_buf); }
     zinline int get_write_cache_len() { return (basic_worker_->write_buf_len); }
-    zinline char * get_write_cache() {
+    zinline char *get_write_cache()
+    {
         basic_worker_->write_buf[basic_worker_->write_buf_len] = 0;
         return (char *)(basic_worker_->write_buf);
     }
-    zinline int getc() {
-        return ((basic_worker_->read_buf_p1<basic_worker_->read_buf_p2)?((int)(basic_worker_->read_buf[basic_worker_->read_buf_p1++])):(getc_do()));
+    zinline int getc()
+    {
+        return ((basic_worker_->read_buf_p1 < basic_worker_->read_buf_p2) ? ((int)(basic_worker_->read_buf[basic_worker_->read_buf_p1++])) : (getc_do()));
     }
     basic_stream &ungetc();
     int read(zbuf_t *bf, int max_len);
     int read(void *mem, int max_len);
     int read(std::string &str, int max_len);
+    zinline int readn(int strict_len) { return readn((void *)0, strict_len); }
     int readn(zbuf_t *bf, int strict_len);
     int readn(void *mem, int strict_len);
     int readn(std::string &str, int strict_len);
     int read_delimiter(zbuf_t *bf, int delimiter, int max_len);
     int read_delimiter(void *mem, int delimiter, int max_len);
     int read_delimiter(std::string &str, int delimiter, int max_len);
-    zinline int gets(zbuf_t *bf, int max_len) { return read_delimiter(bf, '\n', max_len ); }
-    zinline int gets(void *mem, int max_len) { return read_delimiter(mem, '\n', max_len ); }
-    zinline int gets(std::string &str, int max_len) { return read_delimiter(str, '\n', max_len ); }
-    zinline int putc(int c) {
-        return ((basic_worker_->write_buf_len<zvar_stream_wbuf_size)?(basic_worker_->write_buf[basic_worker_->write_buf_len++]=(int)(c),(int)(c)):(putc_do(c)));
+    zinline int gets(zbuf_t *bf, int max_len) { return read_delimiter(bf, '\n', max_len); }
+    zinline int gets(void *mem, int max_len) { return read_delimiter(mem, '\n', max_len); }
+    zinline int gets(std::string &str, int max_len) { return read_delimiter(str, '\n', max_len); }
+    zinline int putc(int c)
+    {
+        return ((basic_worker_->write_buf_len < zvar_stream_wbuf_size) ? (basic_worker_->write_buf[basic_worker_->write_buf_len++] = (int)(c), (int)(c)) : (putc_do(c)));
     }
     int flush();
     int write(const void *buf, int len);
-    int puts(const char *s) { return write(s, -1); }
-    zinline int append(zbuf_t *bf) { return write(zbuf_data(bf), zbuf_len(bf)); }
-    zinline int append(std::string &str) { return write(str.c_str(), (int)str.size()); }
-    int printf_1024(const char *format, ...);
+    zinline basic_stream &puts(const char *s)
+    {
+        write(s, -1);
+        return *this;
+    }
+    zinline basic_stream &append(const char *s, int slen = -1)
+    {
+        write(s, slen);
+        return *this;
+    }
+    zinline basic_stream &append(zbuf_t *bf)
+    {
+        write(zbuf_data(bf), zbuf_len(bf));
+        return *this;
+    }
+    zinline basic_stream &append(const std::string &str)
+    {
+        write(str.c_str(), (int)str.size());
+        return *this;
+    }
+    int __attribute__((format(printf, 2, 3))) printf_1024(const char *format, ...);
     int get_cint();
     int write_cint(int len);
     int write_cint_and_int(int i);
     int write_cint_and_long(long l);
     int write_cint_and_data(const void *buf, int len);
-    zinline int write_cint_and_dict(zdict_t * zd);
+    zinline int write_cint_and_dict(zdict_t *zd);
     zinline int write_cint_and_pp(const char **pp, int size);
+
 protected:
     virtual int engine_read(void *buf, int len) = 0;
     virtual int engine_write(const void *buf, int len) = 0;
+
 private:
     int getc_do();
     int putc_do(int ch);
+
 protected:
     basic_stream_worker *basic_worker_;
 };
 
-class iostream: public basic_stream {
+class iostream : public basic_stream
+{
 public:
     iostream();
     iostream &open_fd(int fd);
     bool open_file(const char *pathname, const char *mode);
     bool open_destination(const char *destination, int timeout);
-    zinline bool connect(const char *destination, int timeout) {
+    zinline bool connect(const char *destination, int timeout)
+    {
         return open_destination(destination, timeout);
     }
     virtual ~iostream();
+
 public:
     zinline int get_fd() { return fd_; }
     zinline int get_read_wait_timeout() { return read_wait_timeout_; }
@@ -3569,20 +4118,24 @@ public:
     virtual int timed_read_wait(int read_wait_timeout);
     virtual int timed_write_wait(int write_wait_timeout);
     virtual int close(bool close_fd_or_release_ssl = true);
+
 protected:
     virtual int engine_read(void *buf, int len);
     virtual int engine_write(const void *buf, int len);
+
 protected:
     int fd_;
     int read_wait_timeout_;
     int write_wait_timeout_;
 };
 
-class ssl_iostream: public iostream {
+class ssl_iostream : public iostream
+{
 public:
     ssl_iostream();
     virtual ~ssl_iostream();
     ssl_iostream &open_ssl(SSL *ssl);
+
 public:
     zinline SSL *get_ssl() { return ssl_; }
     int tls_connect(SSL_CTX *ctx);
@@ -3590,19 +4143,23 @@ public:
     virtual int timed_read_wait(int read_wait_timeout);
     virtual int timed_write_wait(int write_wait_timeout);
     virtual int close(bool close_fd_or_release_ssl = true);
+
 protected:
     virtual int engine_read(void *buf, int len);
     virtual int engine_write(const void *buf, int len);
+
 protected:
     SSL *ssl_;
 };
 
 /* charset ######################################################### */
-inline char *charset_detect(const char **charset_list, const char *data, int size, char *charset_result) {
+inline char *charset_detect(const char **charset_list, const char *data, int size, char *charset_result)
+{
     return zcharset_detect(charset_list, data, size, charset_result);
 }
 const char *charset_detect(const char **charset_list, const char *data, int size, std::string &charset_result);
-inline char *charset_detect_cjk(const char *data, int size, char *charset_result) {
+inline char *charset_detect_cjk(const char *data, int size, char *charset_result)
+{
     return zcharset_detect_cjk(data, size, charset_result);
 }
 const char *charset_detect_cjk(const char *data, int size, std::string charset_result);
@@ -3616,7 +4173,8 @@ void charset_convert_to_utf8(const char *from_charset, const char *data, int siz
 /* 基于epoll的高并发io模型, 包括 事件, 异步io, 定时器, io映射. 例子见 cpp_sample/event/  */
 
 class aio_base;
-class aio {
+class aio
+{
 public:
     aio();
     aio(int fd, aio_base *aiobase = 0);
@@ -3659,7 +4217,7 @@ public:
     /* 如上, 读行 */
     zinline void gets(int max_len, std::function<void()> callback) { read_delimiter('\n', max_len, callback); }
     /* 向缓存写数据, (fmt, ...)不能超过1024个字节 */
-    void cache_printf_1024(const char *fmt, ...);
+    void __attribute__((format(printf, 2, 3))) cache_printf_1024(const char *fmt, ...);
     /* 向缓存写数据 */
     zinline void cache_puts(const char *s) { zaio_cache_puts(engine_, s); }
     /* 向缓存写数据 */
@@ -3679,27 +4237,30 @@ public:
     void sleep(std::function<void()> callback, int timeout);
     /* 获取 aio_base */
     aio_base *get_aio_base();
+
 protected:
     zaio_t *engine_;
 };
 
-class ssl_aio :public aio {
+class ssl_aio : public aio
+{
 public:
     ssl_aio(SSL *ssl, aio_base *aiobase = 0);
     void rebind_SLL(SSL *ssl, aio_base *aiobase = 0);
     /* 获取 SSL 句柄 */
     virtual SSL *get_ssl();
     /* 发起tls连接, 成功/失败/超时后回调执行callback */
-    void tls_connect(SSL_CTX * ctx, std::function<void()> callback);
+    void tls_connect(SSL_CTX *ctx, std::function<void()> callback);
     /* 发起tls接受, 成功/失败/超时后回调执行callback */
-    void tls_accept(SSL_CTX * ctx, std::function<void()> callback);
+    void tls_accept(SSL_CTX *ctx, std::function<void()> callback);
 };
 
 /* event/epoll 运行框架 */
 /* 默认aio_base */
 extern aio_base *var_default_aio_base;
 
-class aio_base {
+class aio_base
+{
 public:
     aio_base();
     aio_base(zaio_base_t *ab);
@@ -3714,21 +4275,23 @@ public:
     void touch();
     /* sleep秒后回调执行callback, 只执行一次 callback(ctx) */
     void timer(std::function<void()> callback, int timeout);
+
 protected:
     zaio_base_t *engine_;
 };
 /* 获取当前线程运行的 aio_base */
 aio_base *aio_base_get_current_pthread_aio_base();
 
-
 /* master, cpp_src/master/ ############################################# */
 /* master/server 进程服务管理框架, 例子见 cpp_sample/master/ */
-class aio_server {
+class aio_server
+{
 public:
     aio_server();
     virtual ~aio_server();
-    void general_service_register(aio_base *ab, int fd, int fd_type, void (*callback) (int));
-    zinline void general_service_register(int fd, int fd_type, void (*callback) (int)) {
+    void general_service_register(aio_base *ab, int fd, int fd_type, void (*callback)(int));
+    zinline void general_service_register(int fd, int fd_type, void (*callback)(int))
+    {
         general_service_register(0, fd, fd_type, callback);
     }
     virtual void service_register(const char *service, int fd, int fd_type) = 0;
@@ -3737,12 +4300,14 @@ public:
     virtual void stop_notify(int stop_after_second = 0);
     virtual void detach_from_master(void);
     virtual int run(int argc, char **argv);
+
 public:
     void *unused_;
 };
 extern aio_server *var_default_aio_server;
 
-class simple_line_request: public aio {
+class simple_line_request : public aio
+{
 public:
     simple_line_request();
     ~simple_line_request();
@@ -3757,27 +4322,29 @@ public:
     void *extra_data_ptr_;
 };
 
-class simple_line_request_aio_server: public aio_server {
+class simple_line_request_aio_server : public aio_server
+{
 public:
     static int var_max_use;
     static int var_concurrency;
     static int var_request_timeout;
     static int var_line_max_len;
     static int var_extra_data_max_len;
+
 public:
     simple_line_request_aio_server();
     ~simple_line_request_aio_server();
     virtual void service_register(const char *service, int fd, int fd_type);
     virtual void before_service(void);
     virtual void before_softstop(void);
-    virtual int  run(int argc, char **argv);
+    virtual int run(int argc, char **argv);
     virtual void handler(simple_line_request *slr) = 0;
     virtual void every_request();
     virtual void enter_job(void (*fn)(void *ctx), void *ctx);
     virtual void enter_timer(void (*fn)(void *ctx), void *ctx, int timeout);
 };
 
-} /* namespace zcc */
+zcc_namespace_end;
 #pragma pack(pop)
 #endif /* __cplusplus */
 
@@ -3785,4 +4352,3 @@ public:
 #include "cpp_src/cpp_dev.h"
 #endif
 #endif /*___ZC_LIB_INCLUDE___ */
-

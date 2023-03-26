@@ -55,7 +55,7 @@ static void zmain_argument_prepare_config(int argc, char **argv)
     for (i = 1; i < argc; i++) {
         optname = argv[i];
         /* abc */
-        if (optname[0] != '-') {
+        if ((optname[0] != '-') || (optname[1] == 0)) {
             zvector_push(zvar_main_redundant_argument_vector, optname);
             continue;
         }
@@ -70,7 +70,7 @@ static void zmain_argument_prepare_config(int argc, char **argv)
 
         /* -abc */
         if (i+1 >= argc) {
-            printf("ERR parameter %s need value\n", optname);
+            zdebug_show("ERR parameter %s need value", optname);
             exit(1);
         }
         i++;
@@ -87,7 +87,7 @@ static void zmain_argument_prepare_config(int argc, char **argv)
         }
     }
 
-    zconfig_load_annother(zvar_default_config, cmd_cf);
+    zconfig_load_another(zvar_default_config, cmd_cf);
     zconfig_free(cmd_cf);
     
     zvar_main_redundant_argv = (char **)zvector_data(zvar_main_redundant_argument_vector);

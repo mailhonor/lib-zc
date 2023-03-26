@@ -155,13 +155,13 @@ void zurl_free(zurl_t *url)
 
 void zurl_debug_show(zurl_t *url)
 {
-    printf("%s = %s\n", "scheme", url->scheme);
-    printf("%s = %s\n", "host", url->host);
-    printf("%s = %d\n", "port", url->port);
-    printf("%s = %s\n", "destination", url->destination);
-    printf("%s = %s\n", "path", url->path);
-    printf("%s = %s\n", "query", url->query);
-    printf("%s = %s\n", "fragment", url->fragment);
+    zdebug_show("%s = %s", "scheme", url->scheme);
+    zdebug_show("%s = %s", "host", url->host);
+    zdebug_show("%s = %d", "port", url->port);
+    zdebug_show("%s = %s", "destination", url->destination);
+    zdebug_show("%s = %s", "path", url->path);
+    zdebug_show("%s = %s", "query", url->query);
+    zdebug_show("%s = %s", "fragment", url->fragment);
 }
 
 zdict_t *zurl_query_parse(const char *query, zdict_t *query_vars)

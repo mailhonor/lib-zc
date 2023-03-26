@@ -1,18 +1,19 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn/
  * 2015-10-12
  * ================================
  */
 
 #include "zc.h"
 
-#include <syslog.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include <assert.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <sys/un.h>
+#include <syslog.h>
+#include <unistd.h>
 
 zbool_t zvar_log_fatal_catch = 0;
 zbool_t zvar_log_debug_enable = 0;
@@ -21,43 +22,67 @@ static void zvprintf_default(const char *source_fn, size_t line_number, const ch
 
 static void zvprintf_default(const char *source_fn, size_t line_number, const char *fmt, va_list ap)
 {
-    char fmt_buf[1024+1];
-    snprintf(fmt_buf, 1024, "%s [%s:%zu]\n", fmt, source_fn, line_number);
+    char fmt_buf[1024 + 1];
+    if (line_number)
+    {
+        snprintf(fmt_buf, 1024, "%s [%s:%zu]\n", fmt, source_fn, line_number);
+    }
+    else
+    {
+        snprintf(fmt_buf, 1024, "%s\n", fmt);
+    }
     vfprintf(stderr, fmt_buf, ap);
 }
-void (*zlog_vprintf) (const char *source_fn, size_t line_number, const char *fmt, va_list ap) = zvprintf_default;
+void (*zlog_vprintf)(const char *source_fn, size_t line_number, const char *fmt, va_list ap) = zvprintf_default;
 
 void zlog_info(const char *source_fn, size_t line_number, const char *fmt, ...)
 {
     va_list ap;
-    if (zlog_vprintf) {
+    if (zlog_vprintf)
+    {
         va_start(ap, fmt);
         zlog_vprintf(source_fn, line_number, fmt, ap);
         va_end(ap);
     }
 }
 
+void zvlog_info(const char *source_fn, size_t line_number, const char *fmt, va_list ap)
+{
+    if (zlog_vprintf)
+    {
+        zlog_vprintf(source_fn, line_number, fmt, ap);
+    }
+}
+
 static volatile int fatal_times = 0;
 void zlog_fatal(const char *source_fn, size_t line_number, const char *fmt, ...)
 {
-    va_list ap;
 
-    if (fatal_times++ == 0) {
-        if (zlog_vprintf) {
-            va_start(ap, fmt);
-            zlog_vprintf(source_fn, line_number, fmt, ap);
-            va_end(ap);
+    va_list ap;
+    va_start(ap, fmt);
+    zvlog_fatal(source_fn, line_number, fmt, ap);
+    va_end(ap);
+}
+
+void zvlog_fatal(const char *source_fn, size_t line_number, const char *fmt, va_list ap)
+{
+    if (fatal_times++ == 0)
+    {
+        if (zlog_vprintf)
+        {
+            va_list ap2;
+            va_copy(ap2, ap);
+            zlog_vprintf(source_fn, line_number, fmt, ap2);
+            va_end(ap2);
         }
-        va_start(ap, fmt);
+
         vfprintf(stderr, fmt, ap);
         fprintf(stderr, "\n");
-        va_end(ap);
     }
 
-    if (zvar_log_fatal_catch) {
-        /* 段错误,方便 gdb 调试 */
-        char *p = 0;
-        *p = 0;
+    if (zvar_log_fatal_catch)
+    {
+        assert(0);
     }
 
     _exit(1);
@@ -66,8 +91,15 @@ void zlog_fatal(const char *source_fn, size_t line_number, const char *fmt, ...)
 /* STDOUT ############################################## */
 static void zvprintf_stdout(const char *source_fn, size_t line_number, const char *fmt, va_list ap)
 {
-    char fmt_buf[1024+1];
-    snprintf(fmt_buf, 1024, "%s [%s:%zu]\n", fmt, source_fn, line_number);
+    char fmt_buf[1024 + 1];
+    if (line_number)
+    {
+        snprintf(fmt_buf, 1024, "%s [%s:%zu]\n", fmt, source_fn, line_number);
+    }
+    else
+    {
+        snprintf(fmt_buf, 1024, "%s\n", fmt);
+    }
     vfprintf(stdout, fmt_buf, ap);
 }
 
@@ -81,19 +113,26 @@ void zlog_use_default()
     zlog_vprintf = zvprintf_default;
 }
 
-
 /* SYSLOG ############################################## */
 static void zvprintf_syslog(const char *source_fn, size_t line_number, const char *fmt, va_list ap)
 {
     char buf[10240 + 10];
     vsnprintf(buf, 10240, fmt, ap);
-    syslog(LOG_INFO, "%s [%s:%ld]", buf, source_fn, (long)line_number);
+    if (line_number)
+    {
+        syslog(LOG_INFO, "%s [%s:%ld]", buf, source_fn, (long)line_number);
+    }
+    else
+    {
+        syslog(LOG_INFO, "%s", buf);
+    }
 }
 
 static const char *zvar_syslog_identity = 0;
 void zlog_use_syslog(const char *identity, int facility)
 {
-    if(identity) {
+    if (identity)
+    {
         zfree(zvar_syslog_identity);
     }
     zvar_syslog_identity = zstrdup(identity);
@@ -101,14 +140,18 @@ void zlog_use_syslog(const char *identity, int facility)
     zlog_vprintf = zvprintf_syslog;
 }
 
-
 int zlog_get_facility_from_str(const char *facility)
 {
     int fa = LOG_SYSLOG;
-    if (!strncasecmp(facility, "LOG_", 4)) {
+    if (!strncasecmp(facility, "LOG_", 4))
+    {
         facility += 4;
     }
-#define ___LOG_S_I(S)   if (!strcasecmp(#S, facility)) { fa = LOG_ ## S; }
+#define ___LOG_S_I(S)              \
+    if (!strcasecmp(#S, facility)) \
+    {                              \
+        fa = LOG_##S;              \
+    }
     ___LOG_S_I(KERN);
     ___LOG_S_I(USER);
     ___LOG_S_I(MAIL);
@@ -150,14 +193,22 @@ static void vprintf_masterlog(const char *source_fn, size_t line_number, const c
     len = zvar_master_log_prefix_len;
     left = left - len;
 
-    if (left > 1) {
+    if (left > 1)
+    {
         vsnprintf(buf + len, left, fmt, ap);
         tmplen = strlen(buf + len);
         len += tmplen;
         left -= tmplen;
     }
-    if (left > 1) {
-        snprintf(buf + len, left, " [%s:%ld]",  source_fn, (long)line_number);
+    if (left > 1)
+    {
+        if (line_number)
+        {
+            snprintf(buf + len, left, " [%s:%ld]", source_fn, (long)line_number);
+        }
+        else
+        {
+        }
         tmplen = strlen(buf + len);
         len += tmplen;
         left -= tmplen;
@@ -169,15 +220,18 @@ static void vprintf_masterlog(const char *source_fn, size_t line_number, const c
 
 static void clear_masterlog(void *unused)
 {
-    if (zvar_master_log_prefix) {
+    if (zvar_master_log_prefix)
+    {
         zfree(zvar_master_log_prefix);
         zvar_master_log_prefix = 0;
     }
-    if (zvar_master_log_sock != -1) {
+    if (zvar_master_log_sock != -1)
+    {
         zclose(zvar_master_log_sock);
         zvar_master_log_sock = -1;
     }
-    if (zvar_master_log_client_un) {
+    if (zvar_master_log_client_un)
+    {
         zfree(zvar_master_log_client_un);
         zvar_master_log_client_un = 0;
     }
@@ -197,15 +251,17 @@ void zlog_use_masterlog(const char *identity, const char *dest)
     zvar_master_log_prefix = zstrdup(buf);
     zvar_master_log_prefix_len = strlen(buf);
 
-    if ((zvar_master_log_sock = ___syscall_socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
-        fprintf(stderr, "ERR socket (%m)");
+    if ((zvar_master_log_sock = ___syscall_socket(AF_UNIX, SOCK_DGRAM, 0)) < 0)
+    {
+        zdebug_show("ERR socket (%m)");
         exit(1);
     }
 
     zvar_master_log_client_un = (struct sockaddr_un *)zcalloc(1, sizeof(struct sockaddr_un));
     zvar_master_log_client_un->sun_family = AF_UNIX;
-    if (strlen(dest) >= sizeof(zvar_master_log_client_un->sun_path)) {
-        fprintf(stderr, "socket unix path too long: %s", dest);
+    if (strlen(dest) >= sizeof(zvar_master_log_client_un->sun_path))
+    {
+        zdebug_show("socket unix path too long: %s", dest);
         exit(1);
     }
     strcpy(zvar_master_log_client_un->sun_path, dest);

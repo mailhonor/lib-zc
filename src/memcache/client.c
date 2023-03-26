@@ -180,7 +180,7 @@ static int zmemcache_client_asrpa(zmemcache_client_t *mc, const char *op, const 
     zstream_t *fp = zstream_open_fd(mc->fd);
     zstream_set_read_wait_timeout(fp, mc->read_wait_timeout);
     zstream_set_write_wait_timeout(fp, mc->write_wait_timeout);
-    zstream_printf_1024(fp, "%s %s %d %ld %zd\r\n", op, key, flag, timeout, len);
+    zstream_printf_1024(fp, "%s %s %d %ld %d\r\n", op, key, flag, timeout, len);
     zstream_write(fp, data, len);
     zstream_write(fp, "\r\n", 2);
     if (zstream_gets(fp, str, 1024) < 1) {

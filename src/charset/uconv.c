@@ -174,7 +174,7 @@ void charset_convert_use_uconv()
 #include "zc.h"
 static void ___fatal_uconv()
 {
-    zfatal("need defined _LIB_ZC_UCONV_\ncat makefiles/defined.include\n\nEXTRA_CFLAGS = -D_LIB_ZC_UCONV_");
+    zfatal("unsupported; cmake ../ -DENABLE_ICU_UCONV=yes");
 }
 #ifndef ___ZC_ZCC_MODE___
 int zcharset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)

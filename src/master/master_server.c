@@ -868,8 +868,8 @@ static void init_all(int argc, char **argv)
     if (*config_path) {
         zconfig_t *cf = zconfig_create();
         zmaster_load_global_config_from_dir_inner(cf, config_path);
-        zconfig_load_annother(cf, zvar_default_config);
-        zconfig_load_annother(zvar_default_config, cf);
+        zconfig_load_another(cf, zvar_default_config);
+        zconfig_load_another(zvar_default_config, cf);
         zconfig_free(cf);
     }
     if (zmaster_server_before_service) {

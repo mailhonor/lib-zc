@@ -1,5 +1,0 @@
-
-# -Wsign-compare -Wconversion
-
-EXTRA_CFLAGS := -D_LIB_ZC_SQLITE3_ -D_LIB_ZC_UCONV_
-

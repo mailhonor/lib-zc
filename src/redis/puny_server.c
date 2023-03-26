@@ -534,7 +534,7 @@ static void do_cmd_ttl(connection_context_t *context, zvector_t *cmd_vector)
     if (zvector_len(cmd_vector) != 2) {
         RETURN_WRONG_NUMBER_ARGUMENTS("ttl");
     }
-    long r = 0;
+    int r = 0;
     main_node_t *node = main_node_find(context->current_db, (zbuf_t *)(zvector_data(cmd_vector)[1]));
     if (!node) {
         r = -2;
@@ -703,7 +703,7 @@ static void do_cmd_integer_count(connection_context_t *context, zbuf_t *key, int
         node->val.num -= atoll(incr);
     }
 
-    zstream_printf_1024(context->fp, ":%d\r\n", node->val.num);
+    zstream_printf_1024(context->fp, ":%ld\r\n", node->val.num);
 }
 
 static void do_cmd_decr(connection_context_t *context, zvector_t *cmd_vector)
@@ -1174,7 +1174,7 @@ static void do_cmd_hget(connection_context_t *context, zvector_t *cmd_vector)
     if (hnode) {
         zbuf_t *tmpv = zbuf_create(-1);
         hash_node_get_value(hnode, tmpv);
-        zstream_printf_1024(context->fp, "$%zd\r\n", zbuf_len(tmpv));
+        zstream_printf_1024(context->fp, "$%d\r\n", zbuf_len(tmpv));
         zstream_write(context->fp, zbuf_data(tmpv), zbuf_len(tmpv));
         zstream_write(context->fp, "\r\n", 2);
         zbuf_free(tmpv);
@@ -1264,7 +1264,7 @@ static void do_cmd_hincrby(connection_context_t *context, zvector_t *cmd_vector)
         hnode->type = node_type_integer;
     }
     hnode->val.num += num;
-    zstream_printf_1024(context->fp, ":%d\r\n", hnode->val.num);
+    zstream_printf_1024(context->fp, ":%ld\r\n", hnode->val.num);
 }
 
 static void do_cmd_hkeys(connection_context_t *context, zvector_t *cmd_vector)
@@ -1381,7 +1381,7 @@ static void do_cmd_hgetall(connection_context_t *context, zvector_t *cmd_vector)
         zbuf_memcat(result, "\r\n", 2);
         zbuf_reset(tmpv);
         hash_node_get_value(hnode, tmpv);
-        zbuf_printf_1024(result, "$%zd\r\n", zbuf_len(tmpv));
+        zbuf_printf_1024(result, "$%d\r\n", zbuf_len(tmpv));
         zbuf_append(result, tmpv);
         zbuf_memcat(result, "\r\n", 2);
         rnum +=2;

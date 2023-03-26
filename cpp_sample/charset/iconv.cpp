@@ -26,7 +26,7 @@ int main(int argc, char **argv)
     from_charset = zconfig_get_str(zvar_default_config, "f", 0);
     to_charset = zconfig_get_str(zvar_default_config, "t", 0);
     if(zconfig_get_bool(zvar_default_config, "uconv", 0)) {
-        zcharset_convert_use_uconv();
+        zcc::charset_convert_use_uconv();
     }
 
     if (zempty(from_charset) || zempty(to_charset)) {

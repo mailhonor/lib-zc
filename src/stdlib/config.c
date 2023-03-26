@@ -62,7 +62,7 @@ int zconfig_load_from_pathname(zconfig_t * cf, const char *pathname)
     return 0;
 }
 
-void zconfig_load_annother(zconfig_t *cf, zconfig_t *another)
+void zconfig_load_another(zconfig_t *cf, zconfig_t *another)
 {
     ZCONFIG_WALK_BEGIN(another, k, v) {
         zconfig_update(cf, k, v);

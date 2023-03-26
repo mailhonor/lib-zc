@@ -53,14 +53,14 @@ int main(int argc, char **argv)
     }
 
     zsleep(5);
-    printf("running max second: %d\n", zpthread_pool_get_max_running_second(ptp));
+    printf("running max second: %ld\n", zpthread_pool_get_max_running_millisecond(ptp) / 1000);
 
     zsleep(10 + 1);
     printf("wait idle pthread quit\n");
     zsleep(10 + 1);
     printf("soft stop\n");
     zsleep(1 + 1);
-    printf("running max second: %d\n", zpthread_pool_get_max_running_second(ptp));
+    printf("running max second: %ld\n", zpthread_pool_get_max_running_millisecond(ptp) / 1000);
     zpthread_pool_softstop(ptp);
     zpthread_pool_wait_all_stopped(ptp, 2);
     zpthread_pool_free(ptp);

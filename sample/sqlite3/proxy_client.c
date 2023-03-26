@@ -84,10 +84,7 @@ int main(int argc, char **argv)
 #include <stdio.h>
 int main(int argc, char **argv)
 {
-    printf("need defined _LIB_ZC_SQLITE3_\n");
-    printf("cat makefiles/defined.include\n");
-    printf("\n");
-    printf("EXTRA_CFLAGS = -D_LIB_ZC_SQLITE3_\n");
+    printf("unsupported; cmake ../ -DENABLE_SQLITE=yes\n");
     return 0;
 }
 #endif

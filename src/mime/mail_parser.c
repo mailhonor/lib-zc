@@ -118,9 +118,9 @@ const char *zmime_get_show_name(zmime_t *mime)
 {
     if (!mime->show_name_flag) {
         mime->show_name_flag = 1;
-        const char *n = zmime_get_name_utf8(mime);
+        const char *n = zmime_get_filename_utf8(mime);
         if (ZEMPTY(n)) {
-            n = zmime_get_filename_utf8(mime);
+            n = zmime_get_name_utf8(mime);
         }
         if (ZEMPTY(n)) {
             n = zmime_get_filename(mime);
@@ -618,6 +618,7 @@ const zmime_address_t *zmail_get_from(zmail_t *parser)
             if (vec && zvector_len(vec)) { \
                 parser->c->name =((zmime_address_t *)(vec->data[0]))->name; \
                 parser->c->address = ((zmime_address_t *)(vec->data[0]))->address; \
+                parser->c->name_utf8 = ((zmime_address_t *)(vec->data[0]))->name_utf8; \
             } \
         } \
         zmail_zbuf_cache_release(parser, tmpbf); \
@@ -634,14 +635,19 @@ const zmime_address_t *zmail_get_from_utf8(zmail_t *parser)
     if (parser->from_flag != 2){
         parser->from_flag = 2;
         int len = 0;
-        if (parser->from) {
-            len = strlen(parser->from->name);
-        }
-        if (len > 0) {
-            zbuf_t *tmpbf = zmail_zbuf_cache_require(parser, 256);
-            zmime_header_line_get_utf8_inner(parser, parser->from->name, len, tmpbf);
-            parser->from->name_utf8 = trim_zmpool_memdupnull(parser->mpool, zbuf_data(tmpbf), zbuf_len(tmpbf), 0);
-            zmail_zbuf_cache_release(parser, tmpbf);
+        if (parser->from)
+        {
+            if (zempty(parser->from->name_utf8))
+            {
+                len = strlen(parser->from->name);
+            }
+            if (len > 0)
+            {
+                zbuf_t *tmpbf = zmail_zbuf_cache_require(parser, 256);
+                zmime_header_line_get_utf8_inner(parser, parser->from->name, len, tmpbf);
+                parser->from->name_utf8 = trim_zmpool_memdupnull(parser->mpool, zbuf_data(tmpbf), zbuf_len(tmpbf), 0);
+                zmail_zbuf_cache_release(parser, tmpbf);
+            }
         }
     }
     return parser->from;

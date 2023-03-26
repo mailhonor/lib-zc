@@ -535,6 +535,6 @@ void zjson_debug_show(zjson_t *j)
 {
     zbuf_t *bf = zbuf_create(10240);
     zjson_serialize(j, bf, 0);
-    printf("JSON: %s\n", zbuf_data(bf));
+    zdebug_show("%s", zbuf_data(bf));
     zbuf_free(bf);
 }

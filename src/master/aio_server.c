@@ -249,7 +249,7 @@ static void deal_argument()
     } else if (!strcmp(s, "alone")) {
         master_mode = 0;
     } else {
-        printf("FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]\n", zvar_progname);
+        fprintf(stderr, "FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]\n", zvar_progname);
         zfatal("FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]", zvar_progname);
     }
 }
@@ -321,8 +321,8 @@ static void zaio_server_init(int argc, char **argv)
     if (!zempty(attr)) {
         zconfig_t *cf = zconfig_create();
         zmaster_load_global_config_from_dir_inner(cf, attr);
-        zconfig_load_annother(cf, zvar_default_config);
-        zconfig_load_annother(zvar_default_config, cf);
+        zconfig_load_another(cf, zvar_default_config);
+        zconfig_load_another(zvar_default_config, cf);
         zconfig_free(cf);
     }
 

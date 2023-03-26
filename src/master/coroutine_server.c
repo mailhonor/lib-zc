@@ -177,12 +177,15 @@ static void master_register(char *master_url)
 static void deal_argument()
 {
     char *s = zvar_main_redundant_argv[0];
+    if (zempty(s)) {
+        s = zblank_buffer;
+    }
     if (!strcmp(s, "MASTER")) {
         master_mode = 1;
     } else if (!strcmp(s, "alone")) {
         master_mode = 0;
     } else {
-        printf("FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]\n", zvar_progname);
+        fprintf(stderr, "FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]\n", zvar_progname);
         zfatal("FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]", zvar_progname);
     }
 }
@@ -220,8 +223,8 @@ static void zcoroutine_server_init(int argc, char ** argv)
     if (!zempty(attr)) {
         zconfig_t *cf = zconfig_create();
         zmaster_load_global_config_from_dir_inner(cf, attr);
-        zconfig_load_annother(cf, zvar_default_config);
-        zconfig_load_annother(zvar_default_config, cf);
+        zconfig_load_another(cf, zvar_default_config);
+        zconfig_load_another(zvar_default_config, cf);
         zconfig_free(cf);
     }
 

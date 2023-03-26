@@ -203,6 +203,6 @@ zdictlong_node_t *zdictlong_next(const zdictlong_node_t * node)
 void zdictlong_debug_show(const zdictlong_t * dictlong)
 {
     ZDICTLONG_WALK_BEGIN(dictlong, k, v) {
-        printf("%s = %ld\n", k, v);
+        zdebug_show("%s = %ld", k, v);
     } ZDICTLONG_WALK_END;
 }

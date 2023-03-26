@@ -8,7 +8,7 @@ zhttpd_t 作为 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 的一个
 
 * 只负责自己该做的事: 根据一个 fd(文件描述符) 或 SSL创建 zhttpd_t, http 协议处理完毕后, 释放 zhttpd_t
 * 端口的打开, SSL的创建, 进程还是线程还是协程模式, 服务的管理, 配置, 等等由其他模块负责
-* 这个库适合开发简单的 http 业务, 或架构复杂的 httpd 服务器系统
+* 这个库适合开发简单的 http 业务
 * 可以和第三方库无缝结合, 如其他的线程库, socket库, SSL 库等等
 
 建议开发者浏览 **httpd 服务开发通用模版**:

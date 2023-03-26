@@ -160,7 +160,7 @@ zargv_t *zargv_split_append(zargv_t * argvp, const char *string, const char *del
 void zargv_debug_show(zargv_t * argvp)
 {
     ZARGV_WALK_BEGIN(argvp, p) {
-        printf("%s\n", p);
+        zdebug_show("%s", p);
     }
     ZARGV_WALK_END;
 }

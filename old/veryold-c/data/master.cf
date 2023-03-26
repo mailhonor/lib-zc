@@ -1,7 +1,0 @@
-
-[zserver one]
-zcmd =test/master_server
-zcmd_magic = uuuuuid456
-zproc_limit = 1
-zlisten = s1://inet:127.0.0.1:81, s2://inet:127.0.0.1:82, s3://inet:127.0.0.1:83,
-other_args = a fff abc  

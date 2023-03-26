@@ -34,8 +34,8 @@ int main()
     zcc::json json;
 
     json.object_update("description", "this is json demo, describe json'apis.");
-    
     json.object_update("author", new zcc::json("eli960"));
+    json["author"] = "eli960";
 
     json.object_update("thanks", new zcc::json(), true)
         ->array_add("you")
@@ -64,9 +64,12 @@ int main()
         ->object_update("published2", false, true)
         ->set_string_value("sssss");
 
+    json["tmp"] = new zcc::json("tmp...");
+    json["tmp2"] = zcc::json("tmp...");
+
 
     result.clear();
-    json.serialize(result);
+    json.serialize(result, zcc::json_serialize_pretty);
     printf("Json: %s\n", result.c_str());
 
     zcc::json *cp = json.deep_copy();
@@ -75,7 +78,7 @@ int main()
 
     json.object_delete("APIS", 0);
     result.clear();
-    json.serialize(result);
+    json.serialize(result, zcc::json_serialize_pretty);
     printf("Json: %s\n", result.c_str());
 
     return 0;

@@ -47,6 +47,9 @@ std::string &toupper(std::string &str)
 
 std::string &trim_right(std::string &str, const char *delims)
 {
+    if (zempty(delims)) {
+        delims = "\r\n \t";
+    }
     int olen = (int)(str.size()), len = olen;
     char *p = (char *)(void *)str.c_str() + len;
     for (;len>0;len--) {

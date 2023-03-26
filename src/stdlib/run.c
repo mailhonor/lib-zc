@@ -227,7 +227,7 @@ static void _config_path_user()
         user = 0;
     }
     if ((!zempty(root)) || (!zempty(user))) {
-        if(!zchroot_user(root, user)) {
+        if(zchroot_user(root, user) < 0) {
             zfatal("FATAL chroot_user(%s, %s): %m", root?root:"", user?user:"");
         }
     }

@@ -229,20 +229,20 @@ const zvector_t *ztnef_get_attachment_mimes(ztnef_t *parser)
 
 void ztnef_debug_show(ztnef_t *parser)
 {
-    const char *fmt = "%15s: %s\n";
+    const char *fmt = "%15s: %s";
     int i = 0;
     ZVECTOR_WALK_BEGIN(parser->all_mimes, ztnef_mime_t *, m) {
         i++;
-        printf("\n");
+        zdebug_show("");
         char buf[128];
         sprintf(buf, "Mime (%d)", i);
-        printf(fmt, buf, ztnef_mime_get_type(m));
-        printf(fmt, "Content-Type", ztnef_mime_get_type(m));
-        printf(fmt, "filename_utf8", ztnef_mime_get_filename_utf8(m));
-        printf(fmt, "Content-ID", ztnef_mime_get_content_id(m));
-        printf(fmt, "charset", ztnef_mime_get_charset(m));
+        zdebug_show(fmt, buf, ztnef_mime_get_type(m));
+        zdebug_show(fmt, "Content-Type", ztnef_mime_get_type(m));
+        zdebug_show(fmt, "filename_utf8", ztnef_mime_get_filename_utf8(m));
+        zdebug_show(fmt, "Content-ID", ztnef_mime_get_content_id(m));
+        zdebug_show(fmt, "charset", ztnef_mime_get_charset(m));
         sprintf(buf, "%d", ztnef_mime_get_body_len(m));
-        printf(fmt, "body_len", buf);
+        zdebug_show(fmt, "body_len", buf);
     } ZVECTOR_WALK_END;
 }
 /* }}} */

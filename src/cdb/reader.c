@@ -49,22 +49,22 @@ struct zcdb_t {
 
 static zbool_t _zcdb_open(zcdb_t *reader, const void *data)
 {
-    if (strncmp(data, "ZCDB", 4)) {
+    if (strncmp((const char *)data, "ZCDB", 4)) {
         goto err;
     }
-    if (strncmp(data+4, zvar_cdb_code_version, 4)) {
+    if (strncmp(((const char *)data)+4, zvar_cdb_code_version, 4)) {
         if (1) {
             char buf[5];
-            memcpy(buf, data+4, 4);
+            memcpy(buf, ((const char *)data)+4, 4);
             buf[4] = 0;
             zinfo("WARN zcdb version mismatch, code version:%s, data version:%s", zvar_cdb_code_version, buf);
         }
         goto err;
     }
     reader->data = (char *)(void *)data;
-    reader->count = zint_unpack(data + 12);
-    reader->max_key_length = zint_unpack(data + 16);
-    reader->val_length = zint_unpack(data + 20);
+    reader->count = zint_unpack(((const char *)data) + 12);
+    reader->max_key_length = zint_unpack(((const char *)data) + 16);
+    reader->val_length = zint_unpack(((const char *)data) + 20);
     return 1;
 err:
     return 0;

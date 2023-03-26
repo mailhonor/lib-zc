@@ -135,6 +135,13 @@ json::json(long val)
     val_.l = val;
 }
 
+json::json(int val)
+{
+    parent_ = 0;
+    type_ = json_type_long;
+    val_.l = val;
+}
+
 json::json(double val)
 {
     parent_ = 0;
@@ -235,49 +242,127 @@ json *json::reset()
     return this;
 }
 
-std::string &json::get_string_value()
+std::string &json::get_string_value(const char *def)
 {
+    const char *v = def;
+    if (v == 0) {
+        v = "";
+    }
+    char buf[128 + 1];
     if (type_ != json_type_string) {
+        if (type_ == json_type_bool)
+        {
+            buf[0] = (val_.b?'1':'0');
+            buf[1] = 0;
+            v = buf;
+        }
+        else if (type_ == json_type_long)
+        {
+            sprintf(buf, "%ld", val_.l);
+            v = buf;
+        }
+        else if (type_ == json_type_double)
+        {
+            sprintf(buf, "%lf", val_.d);
+            v = buf;
+        }
         reset();
     }
     if (type_ == json_type_null) {
         new (val_.s) std::string();
         type_ = json_type_string;
+        *((std::string *)(val_.s)) = v;
     }
     return *((std::string *)(val_.s));
 }
 
-long &json::get_long_value()
+long &json::get_long_value(long def)
 {
+    long v = def;
+
     if (type_ != json_type_long) {
+        if (type_ == json_type_string)
+        {
+            v = atoll(((std::string *)(val_.s))->c_str());
+        }
+        else if (type_ == json_type_bool)
+        {
+            v = (val_.b?1:0);
+        }
+        else if (type_ == json_type_double)
+        {
+            v = (long)val_.d;
+        }
         reset();
     }
     if (type_ == json_type_null) {
-        val_.l = 0;
+        val_.l = v;
         type_ = json_type_long;
     }
     return val_.l;
 }
 
-double &json::get_double_value()
+double &json::get_double_value(double def)
 {
+    double v = def;
     if (type_ != json_type_double) {
+        if (type_ == json_type_string)
+        {
+            v = atof(((std::string *)(val_.s))->c_str());
+        }
+        else if (type_ == json_type_bool)
+        {
+            v = (val_.b?1.0:0.0);
+        }
+        else if (type_ == json_type_long)
+        {
+            v = 1.0 * val_.d;
+        }
         reset();
     }
     if (type_ == json_type_null) {
-        val_.d = 0;
+        val_.d = v;
         type_ = json_type_double;
     }
     return val_.d;
 }
 
-bool &json::get_bool_value()
+bool &json::get_bool_value(bool def)
 {
+    bool v = def;
     if (type_ != json_type_bool) {
+        if (type_ == json_type_string)
+        {
+            const char *p = ((std::string *)(val_.s))->c_str();
+            switch(p[0]) {
+                case 't':
+                case 'T':
+                case 'y':
+                case 'Y':
+                case '1':
+                    v = true;
+                    break;
+                case 'f':
+                case 'F':
+                case 'n':
+                case 'N':
+                case '0':
+                    v = false;
+                    break;
+            }
+        }
+        else if (type_ == json_type_long)
+        {
+            v = (val_.l);
+        }
+        else if (type_ == json_type_double)
+        {
+            v = (val_.d);
+        }
         reset();
     }
     if (type_ == json_type_null) {
-        val_.b = 0;
+        val_.b = v;
         type_ = json_type_bool;
     }
     return val_.b;
@@ -376,6 +461,15 @@ json *json::array_get(int idx)
     return (*val_.v)[idx];
 }
 
+json &json::array_get_or_create(int idx)
+{
+    json *r = array_get(idx);
+    if (!r) {
+        r = array_update(idx, new json(), 0, true);
+    }
+    return *r;
+}
+
 json *json::object_get(const char *key)
 {
     if (type_ != json_type_object) {
@@ -386,6 +480,37 @@ json *json::object_get(const char *key)
         return 0;
     }
     return it->second;
+}
+
+json *json::object_get(const std::string &key)
+{
+    if (type_ != json_type_object) {
+        used_for_object();
+    }
+    auto it = val_.m->find(key);
+    if (it == val_.m->end()) {
+        return 0;
+    }
+    return it->second;
+}
+
+
+json &json::object_get_or_create(const char *key)
+{
+    json *r = object_get(key);
+    if (!r) {
+        r = object_update(key, new json(), 0, true);
+    }
+    return *r;
+}
+
+json &json::object_get_or_create(const std::string &key)
+{
+    json *r = object_get(key);
+    if (!r) {
+        r = object_update(key, new json(), 0, true);
+    }
+    return *r;
 }
 
 int json::array_size()
@@ -497,7 +622,7 @@ bool json::array_delete(int idx, json **old)
     return true;
 }
 
-json *json::object_update(const char *key, json *j, json **old, bool return_child)
+json *json::object_update(const std::string &key, json *j, json **old, bool return_child)
 {
     j->parent_ = this;
     json *tmpj = 0;
@@ -1104,10 +1229,21 @@ static zinline void ___serialize_string2(std::string &result, const std::string 
     ___serialize_string(result, str.c_str(), (int)str.size());
 }
 
-json *json::serialize(std::string &result, bool strict_flag)
+static void _pretty_blank(std::string &result, int depth)
+{
+    result.push_back('\n');
+    for (int i = 0; i < depth; i++) {
+        result.push_back(' ');
+        result.push_back(' ');
+    }
+}
+
+json *json::serialize(std::string &result, int flags)
 {
     _json_walker walker;
     _json_walker_node wnode;
+    bool pretty_mode = (flags & json_serialize_pretty);
+    int depth = 0;
 
     wnode.current_json = this;
     wnode.status = 0;
@@ -1143,14 +1279,26 @@ json *json::serialize(std::string &result, bool strict_flag)
                 wnode.idx = 0;
                 wnode.status = 1;
                 walker.push(wnode);
+                if (pretty_mode) {
+                    depth ++;
+                    _pretty_blank(result, depth);
+                }
                 continue;
             }
             if (wnode.status == 2) {
+                if (pretty_mode)
+                {
+                    depth--;
+                    _pretty_blank(result, depth);
+                }
                 result.push_back(']');
                 continue;
             }
             if ((wnode.idx > 0) && (wnode.idx < length)) {
                 result.push_back(',');
+                if (pretty_mode) {
+                    _pretty_blank(result, depth);
+                }
             }
             wnode.idx++;
             if (wnode.idx == length) {
@@ -1173,17 +1321,32 @@ json *json::serialize(std::string &result, bool strict_flag)
                 wnode.status = 1;
                 wnode.map_it = m.begin();
                 walker.push(wnode);
+                if (pretty_mode)
+                {
+                    depth++;
+                    _pretty_blank(result, depth);
+                }
                 continue;
             }
             if (wnode.status == 2) {
+                if (pretty_mode) {
+                    depth --;
+                    _pretty_blank(result, depth);
+                }
                 result.push_back('}');
                 continue;
             }
             if (wnode.map_it != m.begin()) {
                 result.push_back(',');
+                if (pretty_mode) {
+                    _pretty_blank(result, depth);
+                }
             }
             ___serialize_string2(result, wnode.map_it->first);
             result.push_back(':');
+            if (pretty_mode) {
+                result.push_back(' ');
+            }
 
             wnode.map_it ++;
             if (wnode.map_it == m.end()) {
@@ -1329,13 +1492,70 @@ json *json::deep_copy()
     return _deep_copy_complex(r, this);
 }
 
-json *json::debug_show()
+json *json::mv_value(json &val)
 {
-    std::string s;
-    serialize(s);
-    printf("JSON: %s\n", s.c_str());
+    reset();
+    if (val.type_ == json_type_string) {
+        std::swap(get_string_value(), val.get_string_value());
+    }
+    else
+    {
+        type_ = val.type_;
+        memcpy(&val_, &(val.val_), sizeof(val_));
+        val.type_ = json_type_null;
+    }
     return this;
 }
 
+json *json::mv_value(json *val)
+{
+    reset();
+    if (!val) {
+        return this;
+    }
+    mv_value(*val);
+    delete val;
+    return this;
 }
+
+json *json::debug_show()
+{
+    std::string s;
+    serialize(s, json_serialize_pretty);
+#ifdef zdebug_show
+    zdebug_show("JSON: %s\n", s.c_str());
+#else
+    fprintf(stderr, "JSON: %s\n", s.c_str());
+#endif
+    return this;
+}
+
+std::string json::object_get_string_value(const std::string &key, const char *def)
+{
+    json *js = object_get(key);
+    if (!js) {
+        return def;
+    }
+    return js->get_string_value(def);
+}
+
+long json::object_get_long_value(const std::string &key, long def)
+{
+    json *js = object_get(key);
+    if (!js) {
+        return def;
+    }
+    return js->get_long_value(def);
+}
+
+bool json::object_get_bool_value(const std::string &key, bool def)
+{
+    json *js = object_get(key);
+    if (!js) {
+        return def;
+    }
+    return js->get_bool_value(def);
+}
+
+} /* namespace zcc */
 
