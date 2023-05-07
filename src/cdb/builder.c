@@ -102,7 +102,7 @@ static void builder_table_update_token(builder_table_t *table, const void *key, 
         }
     }
     table->count ++;
-    node_new = (builder_node_t *)malloc(sizeof(builder_node_t) + klen);
+    node_new = (builder_node_t *)zmalloc(sizeof(builder_node_t) + klen);
     node_new->next = 0;
     zbuf_init(&(node_new->key), klen);
     zbuf_memcpy(&(node_new->key), key, klen);
@@ -167,7 +167,7 @@ static int _zcdb_builder_fwrite(const void *ptr, int size, int nmemb, zcdb_build
             break;
         }
         builder->_capability *= 2;
-        builder->_data = (char *)zrealloc( builder->_data, builder->_capability + 10);
+        builder->_data = (char *)zrealloc(builder->_data, builder->_capability + 10);
     }
     memcpy(builder->_data + builder->_cursor, ptr, need);
     builder->_cursor += need;
@@ -194,7 +194,7 @@ zcdb_builder_t *zcdb_builder_create()
     builder->val_length_max = 0;
     /* myfile */
     builder->_capability = 1024;
-    builder->_data = (char *)malloc(1024+10);
+    builder->_data = (char *)zmalloc(1024+10);
     builder->_size = 0;
     builder->_cursor = 0;
     builder->_error = 0;
@@ -287,6 +287,9 @@ zbool_t zcdb_builder_compile(zcdb_builder_t *builder)
 
     for (int tbi = 0; tbi <= builder->max_klen; tbi++) {
         _zcdb_builder_fseek(builder, 0, SEEK_END);
+        if (_zcdb_builder_ftell(builder) > 2147483648 - 1024 * 1024 * 100) {
+            zfatal("cdb only support size of 2G");
+        }
         unsigned int offset1 = _zcdb_builder_ftell(builder);
         _zcdb_builder_fseek(builder, 24 + 4*tbi, SEEK_SET);
         builder_table_t *ht = builder->table_vector[tbi];

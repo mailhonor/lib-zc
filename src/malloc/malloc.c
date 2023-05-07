@@ -19,6 +19,9 @@ void *zmalloc(int len)
         len = 0;
     }
     if ((r = malloc(len)) == 0) {
+        if (len == 0) {
+            return 0;
+        }
         zfatal("FATAL zmalloc: insufficient memory for %d bytes: %m", len);
     }
 
@@ -36,6 +39,9 @@ void *zcalloc(int nmemb, int size)
         size = 0;
     }
     if ((r = calloc(nmemb, size)) == 0) {
+        if (nmemb * size == 0) {
+            return 0;
+        }
         zfatal("FATAL zcalloc: insufficient memory for %dx%d bytes: %m", nmemb, size);
     }
 
@@ -49,6 +55,9 @@ void *zrealloc(const void *ptr, int len)
         len = 0;
     }
     if ((r = realloc((void *)ptr, len)) == 0) {
+        if (len == 0) {
+            return 0;
+        }
         zfatal("FATAL zrealloc: insufficient memory for %d bytes: %m", len);
     }
 

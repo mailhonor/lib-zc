@@ -1,5 +1,4 @@
 
-cmake_minimum_required(VERSION 2.8)
 project(lib-zc)
 
 include(./dev/cmake_general_utils.cmake)

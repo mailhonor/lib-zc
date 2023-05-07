@@ -1,5 +1,4 @@
 option(ENABLE_ICU_UCONV "icu charset convert" OFF)
-cmake_minimum_required(VERSION 2.8)
 project(sample_${parent_dir})
 string(REGEX REPLACE ".*/([^//]*)" "\\1" parent_dir ${PROJECT_SOURCE_DIR})
 string(REGEX REPLACE ".*/([^//]*)/[^//]*" "\\1" pparent_dir ${PROJECT_SOURCE_DIR})
