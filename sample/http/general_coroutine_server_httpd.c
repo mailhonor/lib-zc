@@ -10,10 +10,11 @@
 #include <openssl/err.h>
 #include "zc.h"
 
-typedef void (*cmd_fn_t)(zhttpd_t * httpd);
+typedef void (*cmd_fn_t)(zhttpd_t *httpd);
 
 typedef struct _service_info_t _service_info_t;
-struct _service_info_t {
+struct _service_info_t
+{
     const char *service_name;
     int fd;
     int fd_type;
@@ -53,8 +54,6 @@ static void httpd_handler(zhttpd_t *httpd)
     /* 等等 */
 #endif
 
-
-
     /* 第二部分, 输出 */
 #if 0
     /* 输出, 设置cookie */
@@ -63,7 +62,7 @@ static void httpd_handler(zhttpd_t *httpd)
     /* 输出, 自定义头 */
     zhttpd_response_header;
 #endif
-    
+
     zhttpd_response_200(httpd, "welcome", 7);
 
 #if 0
@@ -111,21 +110,27 @@ static void *_do_httpd(void *arg)
 
     /* 通过 service_name判定是不是SSL, 或者 */
     /* 在register_service阶段判断, 通过info把结果传过来 */
-    if (is_ssl) {
+    if (is_ssl)
+    {
         /* 先用默认的SSL_CTX(如:var_openssl_server_ctx)创建SSL */
 #if 0
         /* 如果需要根据域名切换证书(SNI), 则需要提前执行 */
         void zopenssl_SSL_CTX_support_sni(SSL_CTX *ctx, SSL_CTX *(*get_ssl_ctx_by_server_name)(const char *servername));
 #endif
         SSL *ssl = zopenssl_SSL_create(var_openssl_server_ctx, fd);
-        if (zopenssl_timed_accept(ssl, 10, 10) < 1) {
+        if (zopenssl_timed_accept(ssl, 10, 10) < 1)
+        {
             /* 如果SSL握手失败 */
-            if (1) {
+            if (1)
+            {
                 int ip = 0, port = 0;
                 char ipstr[18];
-                if (zget_peername(fd, &ip, &port) > 0)  {
+                if (zget_peername(fd, &ip, &port) > 0)
+                {
                     zget_ipstring(ip, ipstr);
-                } else {
+                }
+                else
+                {
                     ipstr[0] = '0';
                     ipstr[1] = 0;
                 }
@@ -134,45 +139,34 @@ static void *_do_httpd(void *arg)
                 zinfo("SSL handshake error with %s:%d, %s", ipstr, port, error_buf);
             }
             zopenssl_SSL_free(ssl);
-            return 0; 
+            return 0;
         }
         /* 创建 httpd 对象 */
         httpd = zhttpd_open_ssl(ssl);
-    } else {
+    }
+    else
+    {
         /* 创建 httpd 对象 */
         httpd = zhttpd_open_fd(fd);
     }
 
-    /* 下面设置httpd处理函数 */
-
-    /* 设置命令GET/POST/PUT的处理函数 */
-    zhttpd_set_handler(httpd, httpd_handler);
-
-#if 0
-    /* 设置其他命令的处理函数 */
-    void zhttpd_set_HEAD_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-    void zhttpd_set_OPTIONS_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-    void zhttpd_set_DELETE_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-    void zhttpd_set_TRACE_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-    void zhttpd_set_PATCH_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-#endif
-
-#if 0
-    /* 设置默认的200,304,404,500,501等的处理函数 */
-    void zhttpd_set_200_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *data, int size));
-    void zhttpd_set_304_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *etag));
-    void zhttpd_set_404_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-    void zhttpd_set_500_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-    void zhttpd_set_501_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-#endif
-
-#if 0
-    /* 是否支持 multipart/form-data */
-    zhttpd_enable_form_data(httpd);
-#endif
-
     /* httpd 协议处理 */
-    zhttpd_run(httpd);
+    while (1)
+    {
+        // 读取数据
+        if (zhttpd_request_read_all(httpd) < 1)
+        {
+            break;
+        }
+        // 处理数据
+        httpd_handler(httpd);
+        //flush
+        zhttpd_response_flush(httpd);
+        //是否继续,keep-alive, 异常等
+        if (!zhttpd_maybe_continue(httpd)) {
+            break;
+        }
+    }
 
     /* httpd协议终止, close */
     zhttpd_close(httpd, 1);
@@ -187,14 +181,17 @@ static void *_do_accept(void *arg)
     _service_info_t *info = (_service_info_t *)arg;
     int sock = info->fd;
 
-    while (1) {
+    while (1)
+    {
         /* 等待 socket(sock) 可读 */
         ztimed_read_wait(sock, 10);
 
         /* accept */
         int fd = zaccept(sock, info->fd_type);
-        if (fd < 0) {
-            if (errno == EAGAIN) {
+        if (fd < 0)
+        {
+            if (errno == EAGAIN)
+            {
                 continue;
             }
             zfatal("accept: %m");
@@ -207,7 +204,7 @@ static void *_do_accept(void *arg)
 #if 1
         /* 在本线程启用协程做处理 */
         zcoroutine_go(_do_httpd, new_info, -1);
-#else 
+#else
         /* 也可以考虑在其他线程的协程环境处理 */
         zcoroutine_advanced_go(other_coroutine_base, _do_httpd, new_info, -1);
 #endif
@@ -217,7 +214,6 @@ static void *_do_accept(void *arg)
     zfree(info);
     return arg;
 }
-
 
 static void ___before_service()
 {
@@ -247,7 +243,7 @@ static void ___service_register(const char *service_name, int fd, int fd_type)
     info->fd_type = fd_type;
     /* 在本线程启用一个新的协程 */
     zcoroutine_go(_do_accept, info, -1);
-#else 
+#else
     /* 如果 service_name是其他服务类型(不是httpd), 则启用相关的代码 */
 #endif
 }

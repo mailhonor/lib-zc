@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http://linuxmail.cn
  * 2019-11-11
  * ================================
  */
@@ -27,7 +27,7 @@ static int is_ssl = 0;
 SSL_CTX *var_openssl_server_ctx;
 #endif
 
-typedef void (*cmd_fn_t)(zhttpd_t * httpd);
+typedef void (*cmd_fn_t)(zhttpd_t *httpd);
 
 static void usage()
 {
@@ -50,10 +50,13 @@ static void explore_data_init()
     zbuf_t *tmpbf = zbuf_create(-1);
     zfile_get_contents_sample("resource_httpd/explore.html", tmpbf);
     char *ps = zbuf_data(tmpbf), *p = strstr(ps, "___DISPLAY_DATA___");
-    if (p) {
+    if (p)
+    {
         *p = 0;
         p += 19;
-    } else {
+    }
+    else
+    {
         p = zblank_buffer;
     }
     explore_data_1 = zbuf_create(strlen(ps));
@@ -71,58 +74,83 @@ static void explore_data_fini()
 
 static void explore_page(zhttpd_t *httpd)
 {
-    char uri[4096+1];
+    char uri[4096 + 1];
     struct stat st;
     strncpy(uri, zhttpd_request_get_uri(httpd) + 8, 4096);
     char *p = strchr(uri, '?');
-    if (p) {
+    if (p)
+    {
         *p = 0;
     }
 
-    if (stat(uri, &st) < 0) {
-        if (errno == ENOENT) {
+    if (stat(uri, &st) < 0)
+    {
+        if (errno == ENOENT)
+        {
             zhttpd_response_404(httpd);
-        } else {
+        }
+        else
+        {
             zhttpd_response_500(httpd);
         }
         return;
     }
-    if (S_ISREG(st.st_mode)) {
-        if (strstr(uri, "..")) {
+    if (S_ISREG(st.st_mode))
+    {
+        if (strstr(uri, ".."))
+        {
             zhttpd_response_404(httpd);
             return;
         }
         zhttpd_response_file(httpd, uri, 0, 0);
-    } else if (S_ISDIR(st.st_mode)) {
+    }
+    else if (S_ISDIR(st.st_mode))
+    {
         DIR *dir = opendir(uri);
-        if (!dir) {
+        if (!dir)
+        {
             zhttpd_response_404(httpd);
             return;
         }
         zjson_t *js = zjson_create();
         struct dirent *ent;
-        while((ent = readdir(dir))) {
+        while ((ent = readdir(dir)))
+        {
             char *name = ent->d_name;
-            if ((!strcmp(name, ".")) || (!strcmp(name, ".."))) {
+            if ((!strcmp(name, ".")) || (!strcmp(name, "..")))
+            {
                 continue;
             }
             zjson_t *o = zjson_create();
             zjson_object_add(o, "name", zjson_create_string(name, -1), 0);
             const char *type = "unknown";
             unsigned char d_type = ent->d_type;
-            if (d_type == DT_BLK) {
+            if (d_type == DT_BLK)
+            {
                 type = "block device";
-            } else if (d_type == DT_CHR) {
+            }
+            else if (d_type == DT_CHR)
+            {
                 type = "character device";
-            } else if (d_type == DT_DIR) {
+            }
+            else if (d_type == DT_DIR)
+            {
                 type = "directory";
-            } else if (d_type == DT_FIFO) {
+            }
+            else if (d_type == DT_FIFO)
+            {
                 type = "fifo";
-            } else if (d_type == DT_LNK) {
+            }
+            else if (d_type == DT_LNK)
+            {
                 type = "symbolic link";
-            } else if (d_type == DT_REG) {
+            }
+            else if (d_type == DT_REG)
+            {
                 type = "regular file";
-            } else if (d_type == DT_SOCK) {
+            }
+            else if (d_type == DT_SOCK)
+            {
                 type = "domain socket";
             }
             zjson_object_add(o, "type", zjson_create_string(type, -1), 0);
@@ -136,7 +164,9 @@ static void explore_page(zhttpd_t *httpd)
         zjson_free(js);
         zhttpd_response_200(httpd, zbuf_data(bf), zbuf_len(bf));
         zbuf_free(bf);
-    } else {
+    }
+    else
+    {
         zhttpd_response_404(httpd);
     }
 }
@@ -149,9 +179,11 @@ static void upload_page(zhttpd_t *httpd)
 static zjson_t *___dict_to_json(const zdict_t *dict)
 {
     zjson_t *js = zjson_create();
-    ZDICT_WALK_BEGIN(dict, k, v) {
+    ZDICT_WALK_BEGIN(dict, k, v)
+    {
         zjson_object_update(js, k, zjson_create_string(zbuf_data(v), zbuf_len(v)), 0);
-    } ZDICT_WALK_END;
+    }
+    ZDICT_WALK_END;
     return js;
 }
 
@@ -166,7 +198,8 @@ static void upload_do(zhttpd_t *httpd)
     zjson_t *files_js = zjson_object_update(js, "files", zjson_create(), 0);
     const zvector_t *files = zhttpd_request_get_uploaded_files(httpd);
     int file_id = 0;
-    ZVECTOR_WALK_BEGIN(files, zhttpd_uploaded_file_t *, fo) {
+    ZVECTOR_WALK_BEGIN(files, zhttpd_uploaded_file_t *, fo)
+    {
         zjson_t *tmpjs = zjson_create();
         zjson_object_update(tmpjs, "name", zjson_create_string(zhttpd_uploaded_file_get_name(fo), -1), 0);
         zjson_object_update(tmpjs, "pathname", zjson_create_string(zhttpd_uploaded_file_get_pathname(fo), -1), 0);
@@ -176,7 +209,8 @@ static void upload_do(zhttpd_t *httpd)
         zjson_object_update(tmpjs, "saved_pathname", zjson_create_string(saved_pathname, -1), 0);
         zjson_array_push(files_js, tmpjs);
         zhttpd_uploaded_file_save_to(fo, saved_pathname);
-    } ZVECTOR_WALK_END;
+    }
+    ZVECTOR_WALK_END;
 
     zbuf_t *bf = zbuf_create(-1);
 
@@ -191,40 +225,37 @@ static void upload_do(zhttpd_t *httpd)
 static cmd_fn_t get_cmd_fn(zhttpd_t *httpd)
 {
     const char *uri = zhttpd_request_get_uri(httpd);
-    if (*uri++ != '/') {
+    if (*uri++ != '/')
+    {
         return 0;
     }
-    if (*uri == 0) {
+    if (*uri == 0)
+    {
         return main_page;
     }
-    if (!strncmp(uri, "explore/", 8)) {
+    if (!strncmp(uri, "explore/", 8))
+    {
         return explore_page;
     }
-    if (!strcmp(uri, "upload_page")) {
+    if (!strcmp(uri, "upload_page"))
+    {
         return upload_page;
     }
-    if (!strcmp(uri, "upload_do")) {
+    if (!strcmp(uri, "upload_do"))
+    {
         return upload_do;
     }
     return 0;
 }
 
-static void httpd_handler(zhttpd_t *httpd)
+typedef union
 {
-    cmd_fn_t cmd = get_cmd_fn(httpd);
-    if (cmd) {
-        cmd(httpd);
-    } else {
-        zhttpd_response_404(httpd);
-    }
-}
-
-typedef union {
     void *ptr;
-    struct {
+    struct
+    {
         int fd;
-        unsigned int sock_type:8;
-        unsigned int is_ssl:1;
+        unsigned int sock_type : 8;
+        unsigned int is_ssl : 1;
     } sockinfo;
 } long_info_t;
 
@@ -237,15 +268,20 @@ static void *do_httpd(void *arg)
 
     zhttpd_t *httpd;
 #ifdef ___INNER_USE_SSL___
-    if (is_ssl) {
+    if (is_ssl)
+    {
         SSL *ssl = zopenssl_SSL_create(var_openssl_server_ctx, fd);
 
-        if (zopenssl_timed_accept(ssl, 10, 10) < 1) {
+        if (zopenssl_timed_accept(ssl, 10, 10) < 1)
+        {
             int ip = 0, port = 0;
             char ipstr[18];
-            if (zget_peername(fd, &ip, &port) > 0)  {
+            if (zget_peername(fd, &ip, &port) > 0)
+            {
                 zget_ipstring(ip, ipstr);
-            } else {
+            }
+            else
+            {
                 ipstr[0] = '0';
                 ipstr[1] = 0;
             }
@@ -253,18 +289,37 @@ static void *do_httpd(void *arg)
             zopenssl_get_error(0, error_buf, 1024);
             zinfo("SSL handshake error with %s:%d, %s", ipstr, port, error_buf);
             zopenssl_SSL_free(ssl);
-            return 0; 
+            return 0;
         }
         httpd = zhttpd_open_ssl(ssl);
-    } else
+    }
+    else
 #endif
     {
         httpd = zhttpd_open_fd(fd);
     }
 
-    zhttpd_set_handler(httpd, httpd_handler);
     zhttpd_enable_form_data(httpd);
-    zhttpd_run(httpd);
+    while (1)
+    {
+        if (zhttpd_request_read_all(httpd) < 1)
+        {
+            break;
+        }
+        cmd_fn_t cmd = get_cmd_fn(httpd);
+        if (cmd)
+        {
+            cmd(httpd);
+        }
+        else
+        {
+            zhttpd_response_404(httpd);
+        }
+        zhttpd_response_flush(httpd);
+        if (!zhttpd_maybe_continue(httpd)) {
+            break;
+        }
+    }
     zhttpd_close(httpd, 1);
 
     return 0;
@@ -274,7 +329,8 @@ static void load_ssl()
 {
 #ifdef ___INNER_USE_SSL___
     is_ssl = zconfig_get_bool(zvar_default_config, "ssl", 0);
-    if (!is_ssl) {
+    if (!is_ssl)
+    {
         return;
     }
 
@@ -282,12 +338,12 @@ static void load_ssl()
     char *cert = zconfig_get_str(zvar_default_config, "cert", "ssl.cert");
     char *key = zconfig_get_str(zvar_default_config, "key", "ssl.key");
     var_openssl_server_ctx = zopenssl_SSL_CTX_create_server(cert, key);
-    if (!var_openssl_server_ctx) {
+    if (!var_openssl_server_ctx)
+    {
         char error_buf[1024];
         zopenssl_get_error(0, error_buf, 1024);
         printf("ERR can load cert/key:%s", error_buf);
         usage();
-    } 
+    }
 #endif
 }
-

@@ -1,7 +1,7 @@
 /*
  * ================================
  * eli960@qq.com
- * https://blog.csdn.net/eli960
+ * http:/linuxmail.cn/
  * 2017-04-05
  * ================================
  */
@@ -240,17 +240,15 @@ static zbool_t _zhttpd_response_file(zhttpd_t *httpd, const char *pathname, cons
     return _zhttpd_response_mix(httpd, &ctx, 'f');
 }
 
-void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *pathname, const char *gzip_pathname, const char *content_type, int max_age)
+int zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *pathname, const char *gzip_pathname, const char *content_type, int max_age)
 {
     zbool_t ok = 0;
 
     if (zempty(pathname) && zempty(gzip_pathname)) {
-        zhttpd_response_500(httpd);
-        return;
+        return zhttpd_response_500(httpd);
     }
     if (zempty(content_type) && zempty(pathname)) {
-        zhttpd_response_500(httpd);
-        return;
+        return zhttpd_response_500(httpd);
     }
 
     if (zempty(content_type)) {
@@ -276,23 +274,23 @@ void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *pathname, const 
     }
 
     if (ok == 0) {
-        zhttpd_response_404(httpd);
+        return zhttpd_response_404(httpd);
     }
 
-    return;
+    return 1;
 }
 
-void zhttpd_response_file(zhttpd_t *httpd, const char *pathname, const char *content_type, int max_age)
+int zhttpd_response_file(zhttpd_t *httpd, const char *pathname, const char *content_type, int max_age)
 {
-    zhttpd_response_file_try_gzip(httpd, pathname, 0, content_type, max_age);
+    return zhttpd_response_file_try_gzip(httpd, pathname, 0, content_type, max_age);
 }
 
-void zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *gzip_pathname, const char *content_type, int max_age)
+int zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *gzip_pathname, const char *content_type, int max_age)
 {
-    zhttpd_response_file_try_gzip(httpd, 0, gzip_pathname, content_type, max_age);
+    return zhttpd_response_file_try_gzip(httpd, 0, gzip_pathname, content_type, max_age);
 }
 
-void zhttpd_response_file_data(zhttpd_t *httpd, const void *data, long size, const char *content_type, int max_age, long mtime, const char *etag, zbool_t is_gzip)
+int zhttpd_response_file_data(zhttpd_t *httpd, const void *data, long size, const char *content_type, int max_age, long mtime, const char *etag, zbool_t is_gzip)
 {
     _response_mix_t ctx;
     memset(&ctx, 0, sizeof(_response_mix_t));
@@ -303,5 +301,8 @@ void zhttpd_response_file_data(zhttpd_t *httpd, const void *data, long size, con
     ctx.mtime = mtime;
     ctx.new_etag = (etag?etag:zblank_buffer);
     ctx.is_gzip = is_gzip;
-    _zhttpd_response_mix(httpd, &ctx, 'm');
+     if (!_zhttpd_response_mix(httpd, &ctx, 'm')) {
+        return 0;
+     }
+     return 1;
 }

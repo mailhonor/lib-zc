@@ -3241,16 +3241,11 @@ zhttpd_t *zhttpd_open_fd(int sock);
 zhttpd_t *zhttpd_open_ssl(SSL *ssl);
 void zhttpd_close(zhttpd_t *httpd, zbool_t close_fd_and_release_ssl);
 
-/* 执行 */
-void zhttpd_run(zhttpd_t *httpd);
+/* 读取请求数据 */
+int zhttpd_request_read_all(zhttpd_t *httpd);
 
-/* 设置handler */
-void zhttpd_set_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
-void zhttpd_set_HEAD_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
-void zhttpd_set_OPTIONS_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
-void zhttpd_set_DELETE_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
-void zhttpd_set_TRACE_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
-void zhttpd_set_PATCH_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
+/* 是否可以继续循环读取下一个请求 */
+zbool_t zhttpd_maybe_continue(zhttpd_t *httpd);
 
 /* 设置/获取上下文 */
 void zhttpd_set_context(zhttpd_t *httpd, const void *context);
@@ -3258,6 +3253,9 @@ void *zhttpd_get_context(zhttpd_t *httpd);
 
 /* 停止httpd */
 void zhttpd_set_stop(zhttpd_t *httpd);
+
+/* 是否异常 */
+zbool_t zhttp_is_exception(zhttpd_t *httpd);
 
 /* 设置keep-alive超时时间, timeout: 秒 */
 void zhttpd_set_keep_alive_timeout(zhttpd_t *httpd, int timeout);
@@ -3318,22 +3316,13 @@ const zdict_t *zhttpd_request_get_cookies(zhttpd_t *httpd);
 const zvector_t *zhttpd_request_get_uploaded_files(zhttpd_t *httpd); /* zhttpd_uploaded_file * */
 
 /* 快速回复 */
-void zhttpd_response_200(zhttpd_t *httpd, const char *data, int size);
-void zhttpd_response_301(zhttpd_t *httpd, const char *url);
-void zhttpd_response_302(zhttpd_t *httpd, const char *url);
-void zhttpd_response_304(zhttpd_t *httpd, const char *etag);
-void zhttpd_response_404(zhttpd_t *httpd);
-void zhttpd_response_500(zhttpd_t *httpd);
-void zhttpd_response_501(zhttpd_t *httpd);
-
-/* 设置 默认handler */
-void zhttpd_set_200_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd, const char *data, int size));
-void zhttpd_set_301_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd, const char *url));
-void zhttpd_set_302_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd, const char *url));
-void zhttpd_set_304_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd, const char *etag));
-void zhttpd_set_404_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
-void zhttpd_set_500_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
-void zhttpd_set_501_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t *httpd));
+int zhttpd_response_200(zhttpd_t *httpd, const char *data, int size);
+int zhttpd_response_301(zhttpd_t *httpd, const char *url);
+int zhttpd_response_302(zhttpd_t *httpd, const char *url);
+int zhttpd_response_304(zhttpd_t *httpd, const char *etag);
+int zhttpd_response_404(zhttpd_t *httpd);
+int zhttpd_response_500(zhttpd_t *httpd);
+int zhttpd_response_501(zhttpd_t *httpd);
 
 /* 输出 initialization; version: "http/1.0", "http/1.1", 0(采用请求值); status: 如 "200 XXX"  */
 void zhttpd_response_header_initialization(zhttpd_t *httpd, const char *version, const char *status);
@@ -3360,11 +3349,11 @@ void zhttpd_response_header_unset_cookie(zhttpd_t *httpd, const char *name);
 void zhttpd_response_header_over(zhttpd_t *httpd);
 
 /* 写http体 */
-void zhttpd_response_write(zhttpd_t *httpd, const void *data, int len);
-void zhttpd_response_puts(zhttpd_t *httpd, const char *data);
-void zhttpd_response_append(zhttpd_t *httpd, const zbuf_t *bf);
-void __attribute__((format(printf, 2, 3))) zhttpd_response_printf_1024(zhttpd_t *httpd, const char *format, ...);
-void zhttpd_response_flush(zhttpd_t *httpd);
+int zhttpd_response_write(zhttpd_t *httpd, const void *data, int len);
+int zhttpd_response_puts(zhttpd_t *httpd, const char *data);
+int zhttpd_response_append(zhttpd_t *httpd, const zbuf_t *bf);
+int __attribute__((format(printf, 2, 3))) zhttpd_response_printf_1024(zhttpd_t *httpd, const char *format, ...);
+int zhttpd_response_flush(zhttpd_t *httpd);
 
 /* 获取http的stream */
 zstream_t *zhttpd_get_stream(zhttpd_t *httpd);
@@ -3385,16 +3374,16 @@ int zhttpd_uploaded_file_save_to(zhttpd_uploaded_file_t *fo, const char *pathnam
 int zhttpd_uploaded_file_get_data(zhttpd_uploaded_file_t *fo, zbuf_t *data);
 
 /* 输出一个文件 */
-void zhttpd_response_file(zhttpd_t *httpd, const char *pathname, const char *content_type, int max_age);
+int zhttpd_response_file(zhttpd_t *httpd, const char *pathname, const char *content_type, int max_age);
 
 /* 输出一个文件, 带gzip */
-void zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *gzip_pathname, const char *content_type, int max_age);
+int zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *gzip_pathname, const char *content_type, int max_age);
 
 /* 输出一个文件 */
-void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *pathname, const char *gzip_pathname, const char *content_type, int max_age);
+int zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *pathname, const char *gzip_pathname, const char *content_type, int max_age);
 
 /* 输出一个(文件)data */
-void zhttpd_response_file_data(zhttpd_t *httpd, const void *data, long size, const char *content_type, int max_age, long mtime, const char *etag, zbool_t is_gzip);
+int  zhttpd_response_file_data(zhttpd_t *httpd, const void *data, long size, const char *content_type, int max_age, long mtime, const char *etag, zbool_t is_gzip);
 
 /* 日志 */
 #define zhttpd_show_log(httpd, fmt, args...)                       \

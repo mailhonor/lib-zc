@@ -30,7 +30,8 @@ struct zhttpd_t { /* httpd 服务; 隐藏细节, 不必深究 */};
 void foo(int fd)
 {
     zhttpd_t *hd = zhttpd_open_fd(fd);
-    zhttpd_run(hd);
+    zhttpd_request_read_all(hd);
+    zhttpd_response_200(hd, "hello", 5);
     zhttpd_close(hd, 1);
 }
 ```
@@ -52,9 +53,9 @@ void foo(int fd)
 * 释放 zhttpd_t
 * 如果 close_fd_and_release_ssl == 0, 则 忽略 fd/ssl, 否则 关闭fd/释放ssl及关闭其fd
 
-### void zhttpd_run(zhttpd_t *httpd);
+### int zhttpd_request_read_all(zhttpd_t *httpd);
 
-* 处理 http 协议
+* 读取 http 请求 
 
 ## 函数: 属性和控制
 
@@ -94,18 +95,6 @@ void foo(int fd)
 ### extern zbool_t zvar_httpd_no_cache = 0;
 
 * 如果 zvar_httpd_no_cache == 1, 则强制(此库提供的功能)不缓存
-
-## 函数: 设置业务函数
-
-### void zhttpd_set_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-
-* 设置函数 handler 处理 GET/POST 协议
-* handler 默认值: zhttpd_response_404
-
-### void zhttpd_set_HEAD_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));<BR />void zhttpd_set_OPTIONS_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));<BR />void zhttpd_set_DELETE_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));<BR />void zhttpd_set_TRACE_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));<BR />void zhttpd_set_PATCH_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-
-* 设置函数 handler 处理 HEAD/OPTIONS/DELETE/TRACE/PATH 协议
-* handler 默认值: zhttpd_response_501
 
 ## 函数: 获取/处理请求数据
 
@@ -171,26 +160,21 @@ void foo(int fd)
 
 ## 函数: 快速输出完整 http 协议
 
-### void zhttpd_response_200(zhttpd_t *httpd, const char *data, int size);
+### int zhttpd_response_200(zhttpd_t *httpd, const char *data, int size);
 
 * 输出 http 码为 200 的 数据
 * 这个数据是正文, 不包括 协议头;
 * Content-Type 为 text/html
 
-### void zhttpd_response_304(zhttpd_t *httpd, const char *etag);
+### int zhttpd_response_304(zhttpd_t *httpd, const char *etag);
 
 * 输出 http 码为 304 的协议头
 * etag 既 http 头 Etag 的值
 * Etag 或 If-None-Match 等知识请另找参考文档
 
-### void zhttpd_response_404(zhttpd_t *httpd);<BR />void zhttpd_response_500(zhttpd_t *httpd);<BR />void zhttpd_response_501(zhttpd_t *httpd);
+### int zhttpd_response_404(zhttpd_t *httpd);<BR />void zhttpd_response_500(zhttpd_t *httpd);<BR />void zhttpd_response_501(zhttpd_t *httpd);
 
 * 输出 http 码为 404/500/501 的 协议
-
-### void zhttpd_set_200_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *data, int size));<BR />void zhttpd_set_304_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd, const char *etag));<BR />void zhttpd_set_404_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));<BR />void zhttpd_set_500_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));<BR />void zhttpd_set_501_handler(zhttpd_t *httpd, void (*handler)(zhttpd_t * httpd));
-
-* 设置 zhttpd_response_200/304/404/500/501 的处理函数
-* 一般情况默认就可以
 
 ## 函数: 输出(http 头)
 
@@ -241,24 +225,24 @@ void foo(int fd)
 
 ## 函数: 输出(通用)
 
-### void zhttpd_response_write(zhttpd_t *httpd, const void *data, int len);
+### int zhttpd_response_write(zhttpd_t *httpd, const void *data, int len);
 
 * 输出数据长度为 len 的 data
 
-### void zhttpd_response_puts(zhttpd_t *httpd, const char *data);
+### int zhttpd_response_puts(zhttpd_t *httpd, const char *data);
 
 * 输出行
 
-### void zhttpd_response_append(zhttpd_t *httpd, const zbuf_t *bf);
+### int zhttpd_response_append(zhttpd_t *httpd, const zbuf_t *bf);
 
 * 输出 bf
 
-### void zhttpd_response_printf_1024(zhttpd_t *httpd, const char *format, ...);
+### int zhttpd_response_printf_1024(zhttpd_t *httpd, const char *format, ...);
 
 * 格式化输出, 长度不能超过 1024
 * 风格参考 snprintf(somebuf, 1024, format, ....)
 
-### void zhttpd_response_flush(zhttpd_t *httpd);
+### int zhttpd_response_flush(zhttpd_t *httpd);
 
 * 刷新输出数据
 
@@ -297,7 +281,7 @@ void foo(int fd)
 
 ## 函数: 快速输出一个文件
 
-### void zhttpd_response_file(zhttpd_t *httpd, const char *pathname, const char *content_type, int max_age);
+### int zhttpd_response_file(zhttpd_t *httpd, const char *pathname, const char *content_type, int max_age);
 
 * 输出一个文件
 * pathname: 文件路径
@@ -308,13 +292,13 @@ void foo(int fd)
     * &gt;0: 生存期(秒)
     * &lt;-1: 忽略
 
-### void zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *gzip_pathname, const char *content_type, int max_age);
+### int zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *gzip_pathname, const char *content_type, int max_age);
 
 * 如上
 * 输出一个文件
 * Content-Encoding 设置为 gzip
 
-### void zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *pathname, const char *gzip_pathname, const char *content_type, int max_age);
+### int zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *pathname, const char *gzip_pathname, const char *content_type, int max_age);
 
 * 如上
 * 如果 gzip_pathname 存在, 功能如 zhttpd_response_file_with_gzip, 否则功能如 zhttpd_response_file
