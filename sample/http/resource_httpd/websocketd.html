@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>LIBZC HTTPD WEBSOCKET</title>
+    <script type="text/javascript">
+        var ws = 0;
+        function show_msg(msg) {
+            var ta = document.getElementById("board");
+            if (ta.value.length > 1024 * 1024) {
+                ta.value.length = "";
+            }
+            ta.value += "\n" + msg;
+            ta.scrollTop = ta.scrollHeight;
+        }
+
+        function do_connect() {
+            if (ws) {
+                return;
+            }
+            var e;
+            var url = ((window.location.protocol == "https" ? "wss" : "ws")) + "://" + window.location.href.split("://")[1];
+            try {
+                ws = new WebSocket(url)
+            } catch (e) {
+                show_msg("连接失败: " + url);
+                ws = 0;
+                return;
+            }
+            ws.onopen = function () { show_msg("连接成功: " + url); }
+            ws.onmessage = function (msg) { show_msg("收取消息: " + msg.data); }
+            ws.onclose = function (msg) { show_msg("连接断开"); ws = 0; }
+        }
+        function send_wrap(msg) {
+            if (!ws) {
+                return;
+            }
+            if (ws.readyState == 1) {
+                ws.send(msg);
+                return;
+            }
+            setTimeout(function () {
+                send_wrap(msg);
+            }, 1);
+        }
+
+        function do_send() {
+            if (!ws) {
+                do_connect();
+            }
+            if (!ws) {
+                show_msg("连接失败");
+                return;
+            }
+            send_wrap(document.getElementById("input").value);
+        }
+
+    </script>
+</head>
+
+<body style="padding:20px;">
+    <textarea id="board" rows="10" style="width:500px;padding: 20px 0;"></textarea>
+    <BR />
+    <BR />
+    <input id="input" name="input" style="width:500px" />
+    <BR />
+    <input type="button" value="发送" onclick="do_send()" />
+</body>
+
+</html>

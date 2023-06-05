@@ -162,7 +162,10 @@ zhttpd_t *zhttpd_open_fd(int sock)
 void zhttpd_close(zhttpd_t *httpd, zbool_t close_fd_and_release_ssl)
 {
     zhttpd_response_flush(httpd);
-    zstream_close(httpd->fp, close_fd_and_release_ssl);
+    if (httpd->fp)
+    {
+        zstream_close(httpd->fp, close_fd_and_release_ssl);
+    }
     zbuf_free(httpd->prefix_log_msg);
 #define ___FR(m) \
     zfree(m);    \
@@ -621,6 +624,14 @@ int zhttpd_response_flush(zhttpd_t *httpd)
 zstream_t *zhttpd_get_stream(zhttpd_t *httpd)
 {
     return httpd->fp;
+}
+
+zstream_t *zhttpd_detach_stream(zhttpd_t *httpd)
+{
+    httpd->stop = 1;
+    zstream_t *fp = httpd->fp;
+    httpd->fp = 0;
+    return fp;
 }
 
 static void zhttpd_loop_clear(zhttpd_t *httpd)

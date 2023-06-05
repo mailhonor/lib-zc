@@ -45,7 +45,7 @@ zcc_namespace_c_begin;
 #ifndef HEADER_OPENSSL_TYPES_H
 typedef struct ssl_st SSL;
 typedef struct ssl_ctx_st SSL_CTX;
-#endif
+#endif // HEADER_OPENSSL_TYPES_H
 
 /* ################################################################## */
 typedef int zbool_t;
@@ -86,6 +86,7 @@ typedef struct zredis_client_t zredis_client_t;
 typedef struct zurl_t zurl_t;
 typedef struct zhttpd_uploaded_file_t zhttpd_uploaded_file_t;
 typedef struct zhttpd_t zhttpd_t;
+typedef struct zwebsocketd_t zwebsocketd_t;
 typedef struct zsqlite3_proxy_client_t zsqlite3_proxy_client_t;
 typedef struct zcdb_t zcdb_t;
 typedef struct zcdb_walker_t zcdb_walker_t;
@@ -3043,6 +3044,19 @@ zjson_t *zjson_get_top(zjson_t *j);
 /* debug */
 void zjson_debug_show(zjson_t *j);
 
+/* 宏 */
+#define ZCC_JSON_ARRAY_WALK_BEGIN(js, child_js_p)                                                                            \
+    {                                                                                                                        \
+        auto const TMP_JS_0531_VECTOR = (js).get_array_value();                                                              \
+        for (auto TMP_JS_0531_it = TMP_JS_0531_VECTOR.begin(); TMP_JS_0531_it != TMP_JS_0531_VECTOR.end(); TMP_JS_0531_it++) \
+        {                                                                                                                    \
+            auto &child_js_p = *TMP_JS_0531_it;                                                                              \
+            {
+#define ZCC_JSON_ARRAY_WALK_END \
+    }                           \
+    }                           \
+    }
+
 /* xml */
 void zxml_unescape_string(zbuf_t *content, const char *data, int len);
 
@@ -3358,6 +3372,9 @@ int zhttpd_response_flush(zhttpd_t *httpd);
 /* 获取http的stream */
 zstream_t *zhttpd_get_stream(zhttpd_t *httpd);
 
+// 从 httpd 中解耦 fp
+zstream_t *zhttpd_detach_stream(zhttpd_t *httpd);
+
 /* 上传文件路径名 */
 const char *zhttpd_uploaded_file_get_pathname(zhttpd_uploaded_file_t *fo);
 
@@ -3383,7 +3400,7 @@ int zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *gzip_pathname, c
 int zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *pathname, const char *gzip_pathname, const char *content_type, int max_age);
 
 /* 输出一个(文件)data */
-int  zhttpd_response_file_data(zhttpd_t *httpd, const void *data, long size, const char *content_type, int max_age, long mtime, const char *etag, zbool_t is_gzip);
+int zhttpd_response_file_data(zhttpd_t *httpd, const void *data, long size, const char *content_type, int max_age, long mtime, const char *etag, zbool_t is_gzip);
 
 /* 日志 */
 #define zhttpd_show_log(httpd, fmt, args...)                       \
@@ -3393,6 +3410,37 @@ int  zhttpd_response_file_data(zhttpd_t *httpd, const void *data, long size, con
 extern const char *(*zhttpd_get_prefix_log_msg)(zhttpd_t *httpd);
 const char *zhttpd_get_prefix_log_msg_default(zhttpd_t *httpd);
 zbuf_t *zhttpd_get_prefix_log_msg_buf(zhttpd_t *httpd);
+
+// websocket 服务
+zbool_t zhttpd_is_websocket(zhttpd_t *httpd);
+int zhttp_get_websocket_version(zhttpd_t *httpd);
+const char *zhttp_get_websocket_key(zhttpd_t *httpd);
+int zhttpd_websocket_shakehand(zhttpd_t *httpd);
+
+#define zvar_websocketd_type_continue 0X00
+#define zvar_websocketd_type_text 0X01
+#define zvar_websocketd_type_binary 0X02
+#define zvar_websocketd_type_close 0X08
+#define zvar_websocketd_type_ping 0X09
+#define zvar_websocketd_type_pong 0X0A
+
+zwebsocketd_t *zwebsocketd_open(zstream_t *fp);
+void zwebsocketd_close(zwebsocketd_t *ws, zbool_t close_fd_and_release_ssl);
+zbool_t zwebsocketd_get_header_pin(zwebsocketd_t *ws);
+int zwebsocketd_get_header_opcode(zwebsocketd_t *ws);
+int zwebsocketd_read_frame_header(zwebsocketd_t *ws);
+int zwebsocketd_read_frame_data(zwebsocketd_t *ws, void *data, int len);
+int zwebsocketd_write_frame_head_with_flags(zwebsocketd_t *ws, int len, zbool_t pin_flag, int opcode);
+int zwebsocketd_write_frame_head_text(zwebsocketd_t *ws, int len);
+int zwebsocketd_write_frame_head_binary(zwebsocketd_t *ws, int len);
+int zwebsocketd_write_frame_data(zwebsocketd_t *ws, const void *data, int len);
+int zwebsocketd_write_frame_flush(zwebsocketd_t *ws);
+int zwebsocketd_send_ping(zwebsocketd_t *ws, const void *data, int len);
+int zwebsocketd_send_pong(zwebsocketd_t *ws, const void *data, int len);
+int zwebsocketd_send_binary(zwebsocketd_t *ws, const void *data, int len);
+int zwebsocketd_send_text(zwebsocketd_t *ws, const void *data, int len);
+int zwebsocketd_send_binary_printf_1024(zwebsocketd_t *ws, const char *format, ...);
+int zwebsocketd_send_text_printf_1024(zwebsocketd_t *ws, const char *format, ...);
 
 /* sqlite3 ################################################## */
 /* zsqlite3_proxd based on zaio_server */
@@ -3549,7 +3597,7 @@ public:
 
 /* std utils ######################################################## */
 std::string &vsprintf_1024(std::string &str, const char *format, va_list ap);
-std::string __attribute__((format(printf, 2, 3))) &sprintf_1024(std::string &str, const char *format, ...);
+std::string __attribute__((format(printf, 2, 3))) & sprintf_1024(std::string &str, const char *format, ...);
 std::string &tolower(std::string &str);
 std::string &toupper(std::string &str);
 std::string &trim_right(std::string &str, const char *delims = 0);
@@ -3565,7 +3613,7 @@ public:
     typedef std::string stdstring;
     using stdstring::append;
     using stdstring::stdstring;
-    string __attribute__((format(printf, 2, 3))) &printf_1024(const char *format, ...);
+    string __attribute__((format(printf, 2, 3))) & printf_1024(const char *format, ...);
     zinline string &append(int i) { return printf_1024("%d", i); }
     zinline string &append(unsigned int i) { return printf_1024("%u", i); }
     zinline string &append(long int i) { return printf_1024("%ld", i); }
@@ -3672,13 +3720,13 @@ extern config var_default_config;
 #define ___ZC_LIB_INCLUDE_JSON___
 #pragma pack(push, 1)
 class json;
-const unsigned char json_type_null    = 0;
-const unsigned char json_type_string  = 1;
-const unsigned char json_type_long    = 2;
-const unsigned char json_type_double  = 3;
-const unsigned char json_type_object  = 4;
-const unsigned char json_type_array   = 5;
-const unsigned char json_type_bool    = 6;
+const unsigned char json_type_null = 0;
+const unsigned char json_type_string = 1;
+const unsigned char json_type_long = 2;
+const unsigned char json_type_double = 3;
+const unsigned char json_type_object = 4;
+const unsigned char json_type_array = 5;
+const unsigned char json_type_bool = 6;
 const unsigned char json_type_unknown = 7;
 const int json_serialize_strict = 0X01;
 const int json_serialize_pretty = 0X02;
@@ -3706,17 +3754,17 @@ public:
     zinline bool unserialize(const std::string &jstr) { return unserialize(jstr.c_str(), (int)(jstr.size())); }
 
     /* 序列化 */
-    json *serialize(std::string &result, int flags = 0/* json_serialize_XXX */);
+    json *serialize(std::string &result, int flags = 0 /* json_serialize_XXX */);
 
     /* 类型 */
-    zinline int get_type()   { return type_; }
-    zinline bool is_string() { return type_==json_type_string; }
-    zinline bool is_long()   { return type_==json_type_long; }
-    zinline bool is_double() { return type_==json_type_double; }
-    zinline bool is_object() { return type_==json_type_object; }
-    zinline bool is_array()  { return type_==json_type_array; }
-    zinline bool is_bool()   { return type_==json_type_bool; }
-    zinline bool is_null()   { return type_==json_type_null; }
+    zinline int get_type() { return type_; }
+    zinline bool is_string() { return type_ == json_type_string; }
+    zinline bool is_long() { return type_ == json_type_long; }
+    zinline bool is_double() { return type_ == json_type_double; }
+    zinline bool is_object() { return type_ == json_type_object; }
+    zinline bool is_array() { return type_ == json_type_array; }
+    zinline bool is_bool() { return type_ == json_type_bool; }
+    zinline bool is_null() { return type_ == json_type_null; }
 
     /* 重置为 null */
     json *reset();
@@ -3789,18 +3837,58 @@ public:
 
     /* 设置值 */
     json *set_string_value(const char *val, int len = -1);
-    zinline json *set_string_value(const std::string &val) { get_string_value() = val; return this; }
-    zinline json *set_long_value(long val) { get_long_value() = val; return this; }
-    zinline json *set_long_value(int val) { get_long_value() = val*1L; return this; }
-    zinline json *set_double_value(double val) { get_double_value() = val; return this; }
-    zinline json *set_bool_value(bool val) { get_bool_value() = val; return this; }
+    zinline json *set_string_value(const std::string &val)
+    {
+        get_string_value() = val;
+        return this;
+    }
+    zinline json *set_long_value(long val)
+    {
+        get_long_value() = val;
+        return this;
+    }
+    zinline json *set_long_value(int val)
+    {
+        get_long_value() = val * 1L;
+        return this;
+    }
+    zinline json *set_double_value(double val)
+    {
+        get_double_value() = val;
+        return this;
+    }
+    zinline json *set_bool_value(bool val)
+    {
+        get_bool_value() = val;
+        return this;
+    }
 
     zinline json *set_value(const char *val, int len = -1) { return set_string_value(val, len); }
-    zinline json *set_value(const std::string &val) { get_string_value() = val; return this; }
-    zinline json *set_value(long val) { get_long_value() = val; return this; }
-    zinline json *set_value(int val) { get_long_value() = val*1L; return this; }
-    zinline json *set_value(double val) { get_double_value() = val; return this; }
-    zinline json *set_value(bool val) { get_bool_value() = val; return this; }
+    zinline json *set_value(const std::string &val)
+    {
+        get_string_value() = val;
+        return this;
+    }
+    zinline json *set_value(long val)
+    {
+        get_long_value() = val;
+        return this;
+    }
+    zinline json *set_value(int val)
+    {
+        get_long_value() = val * 1L;
+        return this;
+    }
+    zinline json *set_value(double val)
+    {
+        get_double_value() = val;
+        return this;
+    }
+    zinline json *set_value(bool val)
+    {
+        get_bool_value() = val;
+        return this;
+    }
 
     /* 获取下标为 idx 的 json 节点, 如果不是 array 类型, 则先转为 array 类型 */
     json *array_get(int idx);
@@ -3813,12 +3901,14 @@ public:
     json *array_insert(int idx, json *j, bool return_child = false);
 
     /* 在最前面插入 j */
-    zinline json *array_unshift(json *j, bool return_child = false) {
+    zinline json *array_unshift(json *j, bool return_child = false)
+    {
         return array_insert(0, j, return_child);
     }
 
     /* 在尾部追加节点 j */
-    zinline json *array_add(json *j, bool return_child = false) {
+    zinline json *array_add(json *j, bool return_child = false)
+    {
         return array_insert(-1, j, return_child);
     }
     zinline json *array_push(json *j, bool return_child = false) { return array_add(j, return_child); }
@@ -3827,13 +3917,16 @@ public:
 
     /* 设置下表为 idx 的成员 j, 如果键idx存在则, 则把idx对应的json赋给 *old, 如果old为0, 则销毁 */
     json *array_update(int idx, json *j, json **old, bool return_child = false);
-    zinline json *array_update(int idx, json *j, bool return_child = false) {
+    zinline json *array_update(int idx, json *j, bool return_child = false)
+    {
         return array_update(idx, j, 0, return_child);
     }
-    zinline json *array_update(size_t idx, const char *val, int len, bool return_child = false) {
+    zinline json *array_update(size_t idx, const char *val, int len, bool return_child = false)
+    {
         return array_update(idx, new json(val, len), return_child);
     }
-    zinline json *array_update(size_t idx, const char *val, int len, json **old, bool return_child = false) {
+    zinline json *array_update(size_t idx, const char *val, int len, json **old, bool return_child = false)
+    {
         return array_update(idx, new json(val, len), old, return_child);
     }
 
@@ -3857,63 +3950,80 @@ public:
 
     /* 更新键为key的节点, 旧值赋值给 *old, 如果 old为 0, 则销毁 */
     json *object_update(const std::string &key, json *j, json **old, bool return_child = false);
-    json *object_add(const std::string &key, json *j, json **old, bool return_child = false) {
+    json *object_add(const std::string &key, json *j, json **old, bool return_child = false)
+    {
         return object_update(key, j, old, return_child);
     }
 
-    zinline json *object_update(const std::string &key, json *j, bool return_child = false) {
+    zinline json *object_update(const std::string &key, json *j, bool return_child = false)
+    {
         return object_update(key, j, 0, return_child);
     }
-    zinline json *object_add(const std::string &key, json *j, bool return_child = false) {
+    zinline json *object_add(const std::string &key, json *j, bool return_child = false)
+    {
         return object_update(key, j, 0, return_child);
     }
-    zinline json *object_update(const std::string &key, const char *val, int len, json **old, bool return_child = false) {
+    zinline json *object_update(const std::string &key, const char *val, int len, json **old, bool return_child = false)
+    {
         return object_update(key, new json(val, len), old, return_child);
     }
-    zinline json *object_add(const std::string &key, const char *val, int len, json **old, bool return_child = false) {
+    zinline json *object_add(const std::string &key, const char *val, int len, json **old, bool return_child = false)
+    {
         return object_update(key, new json(val, len), old, return_child);
     }
-    zinline json *object_update(const std::string &key, const char *val, int len, bool return_child = false) {
+    zinline json *object_update(const std::string &key, const char *val, int len, bool return_child = false)
+    {
         return object_update(key, new json(val, len), return_child);
     }
-    zinline json *object_add(const std::string &key, const char *val, int len, bool return_child = false) {
+    zinline json *object_add(const std::string &key, const char *val, int len, bool return_child = false)
+    {
         return object_update(key, new json(val, len), return_child);
     }
 
     /* 删除键为key的节点, 存在则返回true, 赋值给 *old, 如果 old为 0, 则销毁 */
     bool object_delete(const char *key, json **old);
 
-#define ___zcc_json_update(TTT) \
-    json *array_insert(int idx, TTT val, bool return_child = false) { \
-        return array_insert(idx, new json(val), return_child); \
-    } \
-    zinline json *array_unshift(TTT val, bool return_child = false) { \
-        return array_insert(0, new json(val), return_child); \
-    } \
-    zinline json *array_add(TTT val, bool return_child = false) { \
-        return array_insert(-1, new json(val), return_child); \
-    } \
-    zinline json *array_push(TTT val, bool return_child = false) { \
-        return array_insert(-1, new json(val), return_child); \
-    } \
-    zinline json *array_update(int idx, TTT val, bool return_child = false) { \
-        return array_update(idx, new json(val), return_child); \
-    } \
-    zinline json *array_update(int idx, TTT val, json **old, bool return_child = false) { \
-        return array_update(idx, new json(val), old, return_child); \
-    } \
-    zinline json *object_update(const std::string &key, TTT val, bool return_child = false) { \
-        return object_update(key, new json(val), return_child); \
-    } \
-    zinline json *object_update(const std::string &key, TTT val, json **old, bool return_child = false) { \
-        return object_update(key, new json(val), old, return_child); \
-    } \
-    zinline json *object_add(const std::string &key, TTT val, bool return_child = false) { \
-        return object_update(key, new json(val), 0, return_child); \
-    } \
-    zinline json *object_add(const std::string &key, TTT val, json **old, bool return_child = false) { \
-        return object_update(key, new json(val), old, return_child); \
-    } \
+#define ___zcc_json_update(TTT)                                                                         \
+    json *array_insert(int idx, TTT val, bool return_child = false)                                     \
+    {                                                                                                   \
+        return array_insert(idx, new json(val), return_child);                                          \
+    }                                                                                                   \
+    zinline json *array_unshift(TTT val, bool return_child = false)                                     \
+    {                                                                                                   \
+        return array_insert(0, new json(val), return_child);                                            \
+    }                                                                                                   \
+    zinline json *array_add(TTT val, bool return_child = false)                                         \
+    {                                                                                                   \
+        return array_insert(-1, new json(val), return_child);                                           \
+    }                                                                                                   \
+    zinline json *array_push(TTT val, bool return_child = false)                                        \
+    {                                                                                                   \
+        return array_insert(-1, new json(val), return_child);                                           \
+    }                                                                                                   \
+    zinline json *array_update(int idx, TTT val, bool return_child = false)                             \
+    {                                                                                                   \
+        return array_update(idx, new json(val), return_child);                                          \
+    }                                                                                                   \
+    zinline json *array_update(int idx, TTT val, json **old, bool return_child = false)                 \
+    {                                                                                                   \
+        return array_update(idx, new json(val), old, return_child);                                     \
+    }                                                                                                   \
+    zinline json *object_update(const std::string &key, TTT val, bool return_child = false)             \
+    {                                                                                                   \
+        return object_update(key, new json(val), return_child);                                         \
+    }                                                                                                   \
+    zinline json *object_update(const std::string &key, TTT val, json **old, bool return_child = false) \
+    {                                                                                                   \
+        return object_update(key, new json(val), old, return_child);                                    \
+    }                                                                                                   \
+    zinline json *object_add(const std::string &key, TTT val, bool return_child = false)                \
+    {                                                                                                   \
+        return object_update(key, new json(val), 0, return_child);                                      \
+    }                                                                                                   \
+    zinline json *object_add(const std::string &key, TTT val, json **old, bool return_child = false)    \
+    {                                                                                                   \
+        return object_update(key, new json(val), old, return_child);                                    \
+    }                                                                                                   \
     zinline void operator=(TTT val) { set_value(val); }
 
     /* 这几组方法类似 array_update, object_update, 只不过参数不同 */
@@ -3961,7 +4071,8 @@ public:
 
 private:
     unsigned char type_;
-    union {
+    union
+    {
         bool b;
         long l;
         double d;
@@ -4331,6 +4442,276 @@ public:
     virtual void every_request();
     virtual void enter_job(void (*fn)(void *ctx), void *ctx);
     virtual void enter_timer(void (*fn)(void *ctx), void *ctx, int timeout);
+};
+
+/* imap client ######################################################### */
+class imap_client
+{
+public:
+    enum result_onb
+    {
+        ok = 0,
+        no,
+        bad
+    };
+
+    enum error_type
+    {
+        error_type_ok = 0,
+        error_type_connection,
+        error_type_auth,
+        error_type_unknown,
+    };
+
+    class response_tokens
+    {
+    public:
+        response_tokens();
+        ~response_tokens();
+        void reset();
+        std::vector<std::string> token_vector_;
+        std::string first_line_;
+    };
+    
+    class uidplus_result {
+    public:
+        uidplus_result();
+        ~uidplus_result();
+        void reset();
+        int uidvalidity_;
+        int uid_;
+    };
+
+    class status_result
+    {
+    public:
+        status_result();
+        ~status_result();
+        void reset();
+        int messages_;
+        int recent_;
+        int uidnext_;
+        int uidvalidity_;
+        int unseen_;
+    };
+
+    class folder_result
+    {
+    public:
+        folder_result();
+        ~folder_result();
+        void reset();
+        const char *get_special_use();
+        void debug_show();
+
+    public:
+        std::string name_;
+        bool noinferiors_;
+        bool noselect_;
+        bool drafts_;
+        bool junk_;
+        bool trash_;
+        bool sent_;
+        // LSUB 得到的结果
+        bool subscribed_;
+        // STATUS 得到的结果
+        status_result *status_;
+    };
+
+    typedef std::map<std::string /* imap pahtname */, folder_result> folder_list_result;
+
+    class select_result
+    {
+    public:
+        select_result();
+        ~select_result();
+        void reset();
+
+    public:
+        std::string flags_;
+        int exists_;
+        int recent_;
+        int uidvalidity_;
+        int uidnext_;
+        bool readonly_;
+    };
+
+    class mail_flags
+    {
+    public:
+        mail_flags();
+        ~mail_flags();
+        void reset();
+        std::string to_string();
+        bool answered_;
+        bool seen_;
+        bool draft_;
+        bool flagged_;
+        bool deleted_;
+        bool recent_;
+        bool forwarded_;
+    };
+
+    typedef std::map<int, mail_flags> mail_list_result;
+
+    class append_session {
+    public:
+        append_session();
+        ~append_session();
+        void reset();
+        std::string to_folder_;
+        mail_flags flags_;
+        long time_;
+        size_t mail_size_;
+    };
+
+public:
+    inline void *operator new(size_t size) { return zcalloc(1, size); }
+    inline void operator delete(void *p) { zfree(p); }
+
+    static std::string escape_string(const char *s, int len = -1);
+    static zinline std::string escape_string(const std::string &s)
+    {
+        return escape_string(s.c_str(), (int)(s.size()));
+    }
+    static std::string &trim_rn(std::string &s);
+    static void parse_mail_flags(mail_flags &flags, const response_tokens &tokens, int offset);
+    bool parse_move_or_copy_result(uidplus_result &result, const response_tokens &response_tokens);
+    bool parse_append_result(uidplus_result &result, const response_tokens &response_tokens);
+
+public:
+    imap_client();
+    ~imap_client();
+    bool check_is_need_close();
+    inline bool result_is_ok() { return (ok_no_bad_ == result_onb::ok); }
+    inline bool result_is_no() { return (ok_no_bad_ == result_onb::no); }
+    inline bool result_is_bad() { return (ok_no_bad_ == result_onb::bad); }
+    inline bool error_is_connection() { return connection_error_; }
+    inline bool error_is_password() { return password_error_; }
+    void set_debug_mode(bool tf = true) { debug_mode_ = tf; }
+    void set_verbose_mode(bool tf = true) { verbose_mode_ = tf; }
+    void set_simple_line_length_limit(int limit);
+    void set_user_password(const char *user, const char *password);
+    void set_destination(const char *destination);
+    void set_timeout(int timeout);
+    void set_ssl_tls(bool ssl_mode, bool tls_mode, SSL_CTX *ssl_ctx);
+    ssl_iostream &get_iostream() { return fp_; }
+    bool open();
+    virtual void close();
+    bool do_quick_cmd(const std::string &cmd, bool check_result_is_ok = false);
+    bool cmd_capability(bool force = false);
+    // bool cmd_id();
+    bool cmd_list(folder_list_result &folder_list);
+    bool cmd_lsub(folder_list_result &folder_list);
+    bool cmd_select(select_result &ser, const char *folder_name_imap);
+    inline bool cmd_select(select_result &ser, const std::string folder_name_imap)
+    {
+        return cmd_select(ser, folder_name_imap.c_str());
+    }
+    bool cmd_select(const char *folder_name_imap);
+    bool cmd_select_forced(const char *folder_name_imap);
+    inline bool cmd_select(const std::string &folder_name_imap) { return cmd_select(folder_name_imap.c_str()); }
+    inline bool cmd_select_forced(const std::string &folder_name_imap) { return cmd_select_forced(folder_name_imap.c_str()); }
+    bool cmd_status(status_result &ser, const char *folder_name_imap);
+    bool cmd_search_all(std::vector<int> &uid_vector);
+    bool cmd_search_unseen(std::vector<int> &uid_vector);
+    bool cmd_search_answered(std::vector<int> &uid_vector);
+    bool cmd_search_deleted(std::vector<int> &uid_vector);
+    bool cmd_search_draft(std::vector<int> &uid_vector);
+    bool cmd_search_flagged(std::vector<int> &uid_vector);
+    bool get_mail_list(mail_list_result &mail_list);
+    bool get_message(FILE *dest_fp, mail_flags &flags, int uid);
+    bool get_all_folder_info(folder_list_result &folder_list);
+    bool cmd_create(const std::string &pathname_utf7);
+    bool cmd_rename(const std::string &from_pathname_utf7, const std::string &to_pathname_utf7);
+    bool cmd_subscribe(const std::string &pathname_utf7, bool tf = true);
+    bool cmd_delete(const std::string &pathname_utf7);
+    inline bool cmd_unsubscribe(const std::string &pathname_utf7) { return cmd_subscribe(pathname_utf7, false); }
+    bool delete_mail(int uid);
+    bool cmd_move(uidplus_result &result, int from_uid, const char *to_folder_name_imap);
+    inline bool cmd_move(uidplus_result &result, int from_uid, const std::string &to_folder_name_imap)
+    {
+        return cmd_move(result, from_uid, to_folder_name_imap.c_str());
+    }
+    bool cmd_copy(uidplus_result &result, int from_uid, const char *to_folder_name_imap);
+    inline bool cmd_copy(uidplus_result &result, int from_uid, const std::string &to_folder_name_imap)
+    {
+        return cmd_copy(result, from_uid, to_folder_name_imap.c_str());
+    }
+    bool cmd_store(const char *uids, bool plus_or_minus, mail_flags &flags);
+    bool cmd_store(int uid, bool plus_or_minus, mail_flags &flags);
+    bool cmd_store_deleted_flag(const char *uids, bool plus_or_minus);
+    bool cmd_store_deleted_flag(int uid, bool plus_or_minus);
+    bool cmd_expunge();
+    bool cmd_append_prepare_protocol(append_session &append);
+    bool cmd_append_over(uidplus_result &result);
+    bool append_file(uidplus_result &result, append_session &append, const char *filename);
+    bool append_data(uidplus_result &result, append_session &append, const void *data, size_t dlen);
+    bool get_capability(const char *key);
+    bool get_capability_cached(const char *key, char *cache);
+    inline bool get_capability_move() { return get_capability_cached("move", &capability_move_); }
+    inline bool get_capability_uidplus() { return get_capability_cached("uidplus", &capability_move_); }
+    std::string &get_capability() { return capability_; }
+
+public:
+    imap_client &fp_append(const char *s, int slen);
+    imap_client &fp_append(const std::string &s);
+    int fp_readn(std::string &str, int strict_len);
+    int fp_readn(void *mem, int strict_len);
+    int fp_read_delimiter(void *mem, int delimiter, int max_len);
+    int fp_read_delimiter(std::string &str, int delimiter, int max_len);
+    inline int fp_gets(std::string &str, int max_len) { return fp_read_delimiter(str, '\n', max_len); }
+    inline int fp_gets(void *mem, int max_len) { return fp_read_delimiter(mem, '\n', max_len); }
+    bool parse_imap_result(const char *key_line);
+    bool parse_imap_result(char tag, const char *line);
+    zinline bool parse_imap_result(char tag, const std::string &line) { return parse_imap_result(tag, line.c_str()); }
+    bool parse_imap_result(char tag, const response_tokens &tokens);
+    bool read_big_data(FILE *dest_fp, std::string &raw_content, int extra_length);
+    bool read_response_tokens_oneline(response_tokens &tokens, int &extra_length);
+    bool read_response_tokens(response_tokens &tokens);
+    bool ignore_left_token(int extra_length);
+
+protected:
+    bool connect(int times);
+    void disconnect();
+    bool auth();
+
+private:
+    bool welcome();
+    bool _cmd_list(folder_list_result &folder_list, bool list_or_lsub);
+    bool _cmd_search_flag(std::vector<int> &uid_vector, const char *flag_token);
+
+protected:
+    std::string mail_;
+    std::string pass_;
+    ssl_iostream fp_;
+    int timeout_{10};
+    SSL_CTX *ssl_ctx_{NULL};
+    bool ssl_mode_{false};
+    bool tls_mode_{false};
+    std::string destination_;
+    std::string capability_;
+    std::string last_selected_;
+    int simple_line_length_limit_{102400};
+
+private:
+    result_onb ok_no_bad_{ok};
+    bool debug_mode_{false};
+    bool verbose_mode_{false};
+    bool opened_{false};
+    bool connected_{false};
+    bool ssl_flag_{false};
+    bool error_{false};
+    bool connection_error_{false};
+    bool need_close_connection_{false};
+    bool password_error_{false};
+    bool logic_error_{false};
+    bool tmp_verbose_mode_{false};
+    int tmp_verbose_line_{0};
+    bool auth_capability_{false};
+    bool capability_clear_flag_{false};
+    char capability_move_{0};
+    char capability_uidplus_{0};
 };
 
 zcc_namespace_end;

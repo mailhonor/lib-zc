@@ -39,3 +39,5 @@ dd2
 db
 .svn
 *.depend
+ftr.php
+todo

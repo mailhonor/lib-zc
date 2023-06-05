@@ -124,5 +124,13 @@ void zmail_set_imap_section(zmail_t *parser)
         rnode->section_bf = nsection;
     }
 
+    // 只有一个 part 且不是 multipart
+    mime = parser->top_mime;
+    if (mime->child_head == 0) {
+        if (strncasecmp(mime->type, "multipart/", 11)) {
+            mime->imap_section[0] = '1';
+        }
+    }
+
     zmail_zbuf_cache_release(parser, top_section_bf);
 }
