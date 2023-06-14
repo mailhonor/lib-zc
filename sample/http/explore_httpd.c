@@ -6,6 +6,7 @@
  * ================================
  */
 
+#ifdef __linux__
 #include "zc.h"
 #include <time.h>
 #include <sys/types.h>
@@ -286,7 +287,7 @@ int main(int argc, char **argv)
     fd = zlisten(listen, &type, 5);
     if (fd < 0)
     {
-        printf("ERR can not open %s(%m)\n", listen);
+        printf("ERROR can not open %s(%m)\n", listen);
         exit(1);
     }
     linfo.sockinfo.fd = fd;
@@ -304,3 +305,9 @@ int main(int argc, char **argv)
 
     return 0;
 }
+#else // __linux__
+int main()
+{
+    return 0;
+}
+#endif // __linux__

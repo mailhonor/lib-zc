@@ -53,7 +53,7 @@ bool imap_client::_cmd_search_flag(std::vector<int> &uid_vector, const char *fla
             {
                 need_close_connection_ = true;
                 logic_error_ = true;
-                zcc_imap_client_error("imap  返回结果太多 > %zd", uid_vector.size());
+                zcc_imap_client_error("imap  返回结果太多 > %ld", (size_t)uid_vector.size());
                 goto over;
             }
             if (linebuf[len - 1] != '\n')
@@ -209,7 +209,7 @@ debug:
         int count = 0;
         for (auto it = mail_list.begin(); it != mail_list.end(); it++)
         {
-            if ((!debug_mode_) && (count++ > 1))
+            if ((!verbose_mode_) && (count++ > 1))
             {
                 zcc_imap_client_debug("邮件列表结果: UID: % 6d, a: %d, s: %d, d: %d, f: %d, D: %d, R: %d (后面忽略; 显示全部结果, 用参数 --verbose)", it->first, it->second.answered_, it->second.seen_, it->second.draft_, it->second.flagged_, it->second.deleted_, it->second.recent_);
                 break;

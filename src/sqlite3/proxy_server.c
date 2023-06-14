@@ -51,7 +51,7 @@ static void proxy_exec(zaio_t *aio)
     if (err) {
         char *err_sql2 = 0;
         if (sqlite3_exec(sqlite3_handler, "ROLLBACK;", NULL, NULL, &err_sql2) != SQLITE_OK) {
-            zfatal("FATAL sqlite3 rollback");
+            zfatal("sqlite3 rollback");
         }
     }
 
@@ -193,7 +193,7 @@ static void proxy_log()
     }
     if (!sok) {
         if (sqlite3_exec(sqlite3_handler, "ROLLBACK;", NULL, NULL, &err_sql) != SQLITE_OK) {
-            zfatal("FATAL sqlite3 rollback");
+            zfatal("sqlite3 rollback");
         }
     }
 
@@ -338,15 +338,15 @@ static void ___before_service()
     do {
         sqlite3_proxy_pathname = zconfig_get_str(zvar_default_config, "sqlite3-proxy-pathname", "");
         if(zempty(sqlite3_proxy_pathname)) {
-            zfatal("FATAL must set sqlite3-proxy-pathname'value");
+            zfatal("must set sqlite3-proxy-pathname'value");
         }
         sqlite3_fd = open(sqlite3_proxy_pathname, O_CREAT|O_RDWR, 0666);
         if (sqlite3_fd == -1) {
-            zfatal("FATAL open %s(%m)", sqlite3_proxy_pathname);
+            zfatal("open %s(%m)", sqlite3_proxy_pathname);
         }
         zflock_exclusive(sqlite3_fd);
         if (SQLITE_OK != sqlite3_open(sqlite3_proxy_pathname, &sqlite3_handler)) {
-            zfatal("FATAL dbopen %s(%m)", sqlite3_proxy_pathname);
+            zfatal("dbopen %s(%m)", sqlite3_proxy_pathname);
         }
     } while(0);
 
@@ -376,7 +376,7 @@ static void all_fini()
     zpthread_lock(&global_mutex);
     if (sqlite3_handler) {
         if (sqlite3_close(sqlite3_handler) != SQLITE_OK) {
-            zfatal("FATAL close sqlite %s(%s)", sqlite3_proxy_pathname, sqlite3_errmsg(sqlite3_handler));
+            zfatal("close sqlite %s(%s)", sqlite3_proxy_pathname, sqlite3_errmsg(sqlite3_handler));
         }
     }
     sqlite3_handler = 0;

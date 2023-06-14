@@ -9,7 +9,7 @@
 #include "zc.h"
 #include <time.h>
 
-long zmime_header_line_decode_date(const char *str)
+long long zmime_header_line_decode_date(const char *str)
 {
 #define ___IGNORE_BLANK(p)	{while((*p) && (*p== ' ' )) p++;}
 #define ___FIND_BLANK(p)	{while((*p) && (*p!= ' ' )) p++;}
@@ -21,7 +21,7 @@ long zmime_header_line_decode_date(const char *str)
     char *ps, *p, *p2, *p3;
     int v, sign, offset, last_offset = 0;
     struct tm tm;
-    long result = -1;
+    long long result = -1;
 
     memset(&tm, 0, sizeof(struct tm));
     strncpy(str_copy, str, 127);
@@ -152,7 +152,7 @@ long zmime_header_line_decode_date(const char *str)
     offset *= 60;
 break_offset:
 
-    result = timegm(&tm);
+    result = ztimegm(&tm);
     if (result == -1) {
         goto err;
     }

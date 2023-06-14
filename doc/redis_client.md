@@ -171,7 +171,7 @@ redis 命令 info 返回的是一堆字符串, 下面提供函数, 同时解析 
 
 ```
 if (zredis_client_subscribe(rc, "ss", "chan1", "chan2")< 1) {
-    printf("ERR network or protocal; can not subscribe\n"); exit(1);
+    printf("ERROR network or protocal; can not subscribe\n"); exit(1);
 }
 
 zvector_t *msg_vec = zvector_create(-1);
@@ -179,7 +179,7 @@ for (int i = 0; i < 100; i++) {
     zbuf_vector_reset(msg_vec);
     int ret = zredis_client_fetch_channel_message(rc, msg_vec);
     if (ret < 0) {
-        printf("ERR network or protocal\n");
+        printf("ERROR network or protocal\n");
         break;
     } else if (ret == 0) {
         printf("no message\n");

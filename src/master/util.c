@@ -6,6 +6,8 @@
  * ================================
  */
 
+#ifdef __linux__
+
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 #include "zc.h"
@@ -63,7 +65,7 @@ void zmaster_log_use_inner(char *progname, char *log_uri)
     }
     if (!strcmp(type, "syslog")) {
         if ((llen <2) || (llen > 3)) {
-            zfatal("FATAL syslog mode, value: syslog,facility,identity or syslog,facility");
+            zfatal("syslog mode, value: syslog,facility,identity or syslog,facility");
         }
         facility = lv[1];
         if (llen == 3) {
@@ -72,7 +74,7 @@ void zmaster_log_use_inner(char *progname, char *log_uri)
         zlog_use_syslog(identity, zlog_get_facility_from_str(facility));
     } else if (!strcmp(type, "masterlog")) {
         if (llen != 2) {
-            zfatal("FATAL masterlog mode, value: masterlog,log_socket");
+            zfatal("masterlog mode, value: masterlog,log_socket");
         }
         zlog_use_masterlog(identity, lv[1]);
     } else if (!strcmp(type, "stdout")) {
@@ -82,4 +84,7 @@ void zmaster_log_use_inner(char *progname, char *log_uri)
 over:
     zargv_free(largv);
 }
+
+#endif // __linux__
+
 

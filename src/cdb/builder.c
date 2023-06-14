@@ -38,7 +38,7 @@ static void builder_table_reset_hash_node_size(builder_table_t *table, int _hash
             for (node = hv[thash]; node; node_last = node, node = node->next) {
                 int r = memcmp(key, zbuf_data(&(node->key)), klen);
                 if (!r) {
-                    zfatal("FATAL it is impossible\n");
+                    zfatal("it is impossible\n");
                 }
                 if (r < 0) {
                     break;
@@ -220,7 +220,7 @@ void zcdb_builder_update(zcdb_builder_t *builder, const void *key, int klen, con
         klen = strlen((const char *)key);
     }
     if (klen > zvar_zcdb_max_key_len) {
-        zfatal("FATAL zcdb_builder_update, key'len(%d) > zvar_zcdb_max_key_len(%d)", klen, zvar_zcdb_max_key_len);
+        zfatal("zcdb_builder_update, key'len(%d) > zvar_zcdb_max_key_len(%d)", klen, zvar_zcdb_max_key_len);
     }
     if (klen > builder->max_klen) {
         builder->max_klen = klen;

@@ -17,8 +17,6 @@
 #include "zc.h"
 #include <sys/types.h>
 
-#define zinline inline __attribute__((always_inline))
-
 void __zrbtree_insert_augmented(zrbtree_t * root, zrbtree_node_t * node, void (*augment_rotate) (zrbtree_node_t * old, zrbtree_node_t * new_node));
 void __zrbtree_erase_color(zrbtree_t * root, zrbtree_node_t * parent, void (*augment_rotate) (zrbtree_node_t * old, zrbtree_node_t * new_node));
 
@@ -34,9 +32,9 @@ void __zrbtree_erase_color(zrbtree_t * root, zrbtree_node_t * parent, void (*aug
 
 /* 'empty' nodes are nodes that are known not to be inserted in an rbree */
 #define RB_EMPTY_NODE(node)  \
-    ((node)->__zrbtree_parent_color == (unsigned long)(node))
+    ((node)->__zrbtree_parent_color == (size_t)(node))
 #define RB_CLEAR_NODE(node)  \
-    ((node)->__zrbtree_parent_color = (unsigned long)(node))
+    ((node)->__zrbtree_parent_color = (size_t)(node))
 
 struct zrbtree_augment_callbacks {
     void (*propagate) (zrbtree_node_t * node, zrbtree_node_t * stop);
@@ -96,12 +94,12 @@ rbstatic const struct zrbtree_augment_callbacks rbname = {            \
 
 zinline static void zrbtree_set_parent(zrbtree_node_t * rb, zrbtree_node_t * p)
 {
-    rb->__zrbtree_parent_color = zrbtree_color(rb) | (unsigned long)p;
+    rb->__zrbtree_parent_color = zrbtree_color(rb) | (size_t)p;
 }
 
 zinline static void zrbtree_set_parent_color(zrbtree_node_t * rb, zrbtree_node_t * p, int color)
 {
-    rb->__zrbtree_parent_color = (unsigned long)p | color;
+    rb->__zrbtree_parent_color = (size_t)p | color;
 }
 
 zinline static void __zrbtree_change_child(zrbtree_node_t * old, zrbtree_node_t * new_node, zrbtree_node_t * parent, zrbtree_t * root)
@@ -117,11 +115,11 @@ zinline static void __zrbtree_change_child(zrbtree_node_t * old, zrbtree_node_t 
 
 void __zrbtree_erase_color(zrbtree_t * root, zrbtree_node_t * parent, void (*augment_rotate) (zrbtree_node_t * old, zrbtree_node_t * new_node));
 
-static __always_inline zrbtree_node_t *__zrbtree_erase_augmented(zrbtree_node_t * node, zrbtree_t * root, const struct zrbtree_augment_callbacks *augment)
+static zinline zrbtree_node_t *__zrbtree_erase_augmented(zrbtree_node_t * node, zrbtree_t * root, const struct zrbtree_augment_callbacks *augment)
 {
     zrbtree_node_t *child = node->zrbtree_right, *tmp = node->zrbtree_left;
     zrbtree_node_t *parent, *rebalance;
-    unsigned long pc;
+    size_t pc;
 
     if (!tmp) {
         /*
@@ -202,7 +200,7 @@ static __always_inline zrbtree_node_t *__zrbtree_erase_augmented(zrbtree_node_t 
             zrbtree_set_parent_color(child2, parent, RB_BLACK);
             rebalance = NULL;
         } else {
-            unsigned long pc2 = successor->__zrbtree_parent_color;
+            size_t pc2 = successor->__zrbtree_parent_color;
             successor->__zrbtree_parent_color = pc;
             rebalance = __zrbtree_is_black(pc2) ? parent : NULL;
         }
@@ -213,7 +211,7 @@ static __always_inline zrbtree_node_t *__zrbtree_erase_augmented(zrbtree_node_t 
     return rebalance;
 }
 
-static __always_inline void zrbtree_erase_augmented(zrbtree_node_t * node, zrbtree_t * root, const struct zrbtree_augment_callbacks *augment)
+static zinline void zrbtree_erase_augmented(zrbtree_node_t * node, zrbtree_t * root, const struct zrbtree_augment_callbacks *augment)
 {
     zrbtree_node_t *rebalance = __zrbtree_erase_augmented(node, root, augment);
     if (rebalance)
@@ -565,7 +563,7 @@ void zrbtree_erase(zrbtree_t * root, zrbtree_node_t * node)
 /*
  * Augmented rbtree manipulation functions.
  *
- * This instantiates the same __always_inline functions as in the non-augmented
+ * This instantiates the same always_inline functions as in the non-augmented
  * case, but this time with user-defined callbacks.
  */
 
@@ -750,7 +748,7 @@ zrbtree_node_t *zrbtree_remove(zrbtree_t * tree, zrbtree_node_t * vnode)
 
 void zrbtree_link_node(zrbtree_node_t * node, zrbtree_node_t * parent, zrbtree_node_t ** zrbtree_link)
 {
-    node->__zrbtree_parent_color = (unsigned long)parent;
+    node->__zrbtree_parent_color = (size_t)parent;
     node->zrbtree_left = node->zrbtree_right = 0;
 
     *zrbtree_link = node;

@@ -33,7 +33,7 @@ int zconfig_load_from_pathname(zconfig_t * cf, const char *pathname)
     char *name, *value;
     char *line_buf;
 
-    fp = fopen(pathname, "r");
+    fp = fopen(pathname, "rb");
     if (!fp) {
         return -1;
     }

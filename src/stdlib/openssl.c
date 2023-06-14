@@ -153,7 +153,7 @@ SSL_CTX *zopenssl_SSL_CTX_create_client(void)
 #endif
     SSL_CTX *ctx = SSL_CTX_new(method);
     if (!ctx) {
-        zfatal("FATAL SSL_CTX_new");
+        zfatal("SSL_CTX_new");
     }
 
     SSL_CTX_set_options(ctx, SSL_OP_ALL);
@@ -183,7 +183,7 @@ SSL_CTX *zopenssl_SSL_CTX_create_server(const char *cert_file, const char *key_f
 #endif
     SSL_CTX *ctx = SSL_CTX_new(method);
     if (!ctx) {
-        zfatal("FATAL SSL_CTX_new");
+        zfatal("SSL_CTX_new");
     }
     SSL_CTX_set_options(ctx, SSL_OP_ALL);
 
@@ -198,27 +198,27 @@ SSL_CTX *zopenssl_SSL_CTX_create_server(const char *cert_file, const char *key_f
 
     ERR_clear_error();
     if ((!cert_file) || (!key_file)) {
-        zinfo("ERR cert_file or key_file is null");
+        zinfo("ERROR cert_file or key_file is null");
         goto err;
     }
 
     if (SSL_CTX_load_verify_locations(ctx, cert_file, NULL) != 1) {
-        zinfo("ERR SSL_CTX_load_verify_locations");
+        zinfo("ERROR SSL_CTX_load_verify_locations");
         goto err;
     }
 
     if ((SSL_CTX_use_certificate_chain_file(ctx, cert_file) != 1) && (SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM) != 1)) {
-        zinfo("ERR SSL_CTX_use_certificate_chain_file AND SSL_CTX_use_certificate_file");
+        zinfo("ERROR SSL_CTX_use_certificate_chain_file AND SSL_CTX_use_certificate_file");
         goto err;
     }
 
     if (SSL_CTX_use_PrivateKey_file(ctx, key_file, SSL_FILETYPE_PEM) != 1) {
-        zinfo("ERR SSL_CTX_use_PrivateKey_file");
+        zinfo("ERROR SSL_CTX_use_PrivateKey_file");
         goto err;
     }
 
     if (SSL_CTX_check_private_key(ctx) != 1) {
-        zinfo("ERR SSL_CTX_check_private_key");
+        zinfo("ERROR SSL_CTX_check_private_key");
         goto err;
     }
 

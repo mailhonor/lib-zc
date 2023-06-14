@@ -103,7 +103,7 @@ static int ___query_by_io_vector(zredis_client_t *rc, zbuf_t *rstr, int lnum, zv
 
 static int ___query_by_io_vector_json(zredis_client_t *rc, zbuf_t *rstr, int lnum, zjson_t *jval, zstream_t *fp)
 {
-    long idx, num, tmp;
+    long long idx, num, tmp;
     int ret, rlen, num2;
     char *rp, firstch;
     zjson_t *jn, *jn_tmp;
@@ -218,7 +218,7 @@ static int ___query_by_io_string_json(zredis_client_t *rc, zbuf_t *rstr, int len
     return 1;
 }
 
-static int ___query_by_io_prepare_and_write(zredis_client_t *rc, zbuf_t *rstr, long *number_ret, zbuf_t *string_ret, zvector_t *vector_ret, zjson_t *json_ret, zvector_t *query_vec, zstream_t *fp)
+static int ___query_by_io_prepare_and_write(zredis_client_t *rc, zbuf_t *rstr, long long *number_ret, zbuf_t *string_ret, zvector_t *vector_ret, zjson_t *json_ret, zvector_t *query_vec, zstream_t *fp)
 {
     int ret;
     rc->error_msg[0] = 0;
@@ -257,7 +257,7 @@ static int ___query_by_io_prepare_and_write(zredis_client_t *rc, zbuf_t *rstr, l
     } ZVECTOR_WALK_END;
     zstream_flush(fp);
 
-    if (number_ret == (long *)-1) {
+    if (number_ret == (long long *)-1) {
         return 3;
     }
 
@@ -268,11 +268,11 @@ static int ___query_by_io_prepare_and_write(zredis_client_t *rc, zbuf_t *rstr, l
     return 1;
 }
 
-static int ___query_by_io(zredis_client_t *rc, long *number_ret, zbuf_t *string_ret, zvector_t *vector_ret, zjson_t *json_ret, zvector_t *query_vec, zstream_t *fp)
+static int ___query_by_io(zredis_client_t *rc, long long *number_ret, zbuf_t *string_ret, zvector_t *vector_ret, zjson_t *json_ret, zvector_t *query_vec, zstream_t *fp)
 {
     char *rp;
     int rlen, num, firstch, ret;
-    long lret;
+    long long lret;
     zbuf_t *rstr = zbuf_create(-1);
 
     if ((ret = ___query_by_io_prepare_and_write(rc, rstr, number_ret, string_ret, vector_ret, json_ret, query_vec, fp)) < 1) {
@@ -523,7 +523,7 @@ zredis_client_t *zredis_client_connect(const char *destination, const char *pass
     return rc;
 }
 
-static int zredis_client_standalone_vget_inner(zredis_client_t *rc, long *number_ret, zbuf_t *string_ret, zvector_t *vector_ret, zjson_t *json_ret, zvector_t *query_vec)
+static int zredis_client_standalone_vget_inner(zredis_client_t *rc, long long *number_ret, zbuf_t *string_ret, zvector_t *vector_ret, zjson_t *json_ret, zvector_t *query_vec)
 {
     int ret;
     zredis_client_standalone_t *sc = (zredis_client_standalone_t *)rc;
@@ -682,7 +682,7 @@ static int _cluster_get_slod_id(zredis_client_t *rc, zvector_t *query_vec)
         bf = (zbuf_t *)(zvector_data(query_vec)[0]);
         hash_key_idx = ___query_get_hash_key_idx(zbuf_data(bf), zbuf_len(bf));
         if (hash_key_idx >= zvector_len(query_vec)) {
-            strcpy(rc->error_msg, "-ERR wrong number of arguments");
+            strcpy(rc->error_msg, "-ERROR wrong number of arguments");
             return -1;
         }
         if (hash_key_idx > -1) {
@@ -850,7 +850,7 @@ static int _cluster_after_query(zredis_client_t *rc, short int slot_id)
     return -1;
 }
 
-static int zredis_client_cluster_vget_inner(zredis_client_t *rc, long *number_ret, zbuf_t *string_ret, zvector_t *vector_ret, zjson_t *json_ret, zvector_t *query_vec)
+static int zredis_client_cluster_vget_inner(zredis_client_t *rc, long long *number_ret, zbuf_t *string_ret, zvector_t *vector_ret, zjson_t *json_ret, zvector_t *query_vec)
 {
     zredis_client_cluster_t *cc = (zredis_client_cluster_t *)rc;
     short int slot_id = _cluster_get_slod_id(rc, query_vec);
@@ -1042,7 +1042,7 @@ static void ___build_query_vec(zvector_t *query_vec, const char *redis_fmt, va_l
     }
 }
 
-int zredis_client_vget(zredis_client_t *rc, long *number_ret, zbuf_t *string_ret, zvector_t *vector_ret, zjson_t *json_ret, const char *redis_fmt, va_list ap)
+int zredis_client_vget(zredis_client_t *rc, long long *number_ret, zbuf_t *string_ret, zvector_t *vector_ret, zjson_t *json_ret, const char *redis_fmt, va_list ap)
 {
     if (!rc) {
         return -1;
@@ -1073,7 +1073,7 @@ int zredis_client_get_success(zredis_client_t *rc, const char *redis_fmt, ...)
     zredis_client_get_macro(0, 0, 0, 0);
 }
 
-int zredis_client_get_long(zredis_client_t *rc, long *number_ret, const char *redis_fmt, ...)
+int zredis_client_get_long(zredis_client_t *rc, long long *number_ret, const char *redis_fmt, ...)
 {
     zredis_client_get_macro(number_ret, 0, 0, 0);
 }
@@ -1109,9 +1109,9 @@ int zredis_client_subscribe(zredis_client_t *rc, const char *redis_fmt, ...)
     va_end(ap);
 
     if (rc->cluster_mode) {
-        ret = zredis_client_cluster_vget_inner(rc, (long *)-1, 0, 0, 0, query_vec);
+        ret = zredis_client_cluster_vget_inner(rc, (long long *)-1, 0, 0, 0, query_vec);
     } else {
-        ret = zredis_client_standalone_vget_inner(rc, (long *)-1, 0, 0, 0, query_vec);
+        ret = zredis_client_standalone_vget_inner(rc, (long long *)-1, 0, 0, 0, query_vec);
     }
     zbuf_vector_free(query_vec);
     return ret;
@@ -1132,9 +1132,9 @@ int zredis_client_psubscribe(zredis_client_t *rc, const char *redis_fmt, ...)
     va_end(ap);
 
     if (rc->cluster_mode) {
-        ret = zredis_client_cluster_vget_inner(rc, (long *)-1, 0, 0, 0, query_vec);
+        ret = zredis_client_cluster_vget_inner(rc, (long long *)-1, 0, 0, 0, query_vec);
     } else {
-        ret = zredis_client_standalone_vget_inner(rc, (long *)-1, 0, 0, 0, query_vec);
+        ret = zredis_client_standalone_vget_inner(rc, (long long *)-1, 0, 0, 0, query_vec);
     }
     zbuf_vector_free(query_vec);
     return ret;
@@ -1145,7 +1145,7 @@ int zredis_client_fetch_channel_message(zredis_client_t *rc, zvector_t *vector_r
     return zredis_client_get_vector(rc, vector_ret, 0);
 }
 
-int zredis_client_scan(zredis_client_t *rc, zvector_t *vector_ret, long *cursor_ret, const char *redis_fmt, ...)
+int zredis_client_scan(zredis_client_t *rc, zvector_t *vector_ret, long long *cursor_ret, const char *redis_fmt, ...)
 {
     int ret;
     va_list ap;

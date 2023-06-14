@@ -30,7 +30,7 @@ static int encode_decode_lib(const char *type, const char *encode_or_decode, int
     }
 
     if (zmmap_reader_init(&reader, input_filename) < 0) {
-        printf("ERR read %s:%m", input_filename);
+        printf("ERROR read %s:%m", input_filename);
         exit(1);
     }
     char *data = reader.data;
@@ -55,14 +55,15 @@ static int encode_decode_lib(const char *type, const char *encode_or_decode, int
             zuudecode(data, len, bf);
         }
     }
+
     zmmap_reader_fini(&reader);
 
     if (output_filename == 0) {
         printf("%s", zbuf_data(bf));
     } else {
-        FILE *fp = fopen(output_filename, "w+");
+        FILE *fp = fopen(output_filename, "wb+");
         if (!fp) {
-            printf("ERR open %s(%m)\n", output_filename);
+            printf("ERROR open %s(%m)\n", output_filename);
         }
         fwrite(zbuf_data(bf), 1, zbuf_len(bf), fp);
         fclose(fp);

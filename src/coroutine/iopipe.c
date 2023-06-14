@@ -50,7 +50,7 @@ void fd_attrs_prepare_get_data(fd_attrs_t *fa, struct pollfd *pf)
     } else if (fa->want_write) {
         pf->events = POLLOUT;
     } else {
-        zfatal("FATAL unknown event");
+        zfatal("unknown event");
     }
     pf->revents = 0;
 }

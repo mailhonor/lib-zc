@@ -6,6 +6,8 @@
  * ================================
  */
 
+#ifdef __linux__
+
 #include "zc.h"
 
 namespace zcc
@@ -94,7 +96,7 @@ static int _do_line_request_parse_argv(simple_line_request *a, const std::string
             goto over;
         }
         zargv_truncate(cmdv, zargv_len(cmdv) - 1);
-        a->json_.object_update("length", (long)a->extra_data_len_);
+        a->json_.object_update("length", (long long)a->extra_data_len_);
     }
     /* FIXME limit */
 
@@ -360,4 +362,6 @@ void simple_line_request_aio_server::enter_timer(void (*fn)(void *ctx), void *ct
 }
 
 } /* namespace zcc */
+
+#endif // __linux__
 

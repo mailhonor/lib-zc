@@ -35,7 +35,7 @@ struct zhttpd_t {
     char *version;
     char *path;
     int port;
-    int request_content_length;
+    ssize_t request_content_length;
     zdict_t *request_query_vars;
     zdict_t *request_post_vars;
     zdict_t *request_headers;

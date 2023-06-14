@@ -12,6 +12,27 @@ static void zhttpd_loop_clear(zhttpd_t *httpd);
 static void zhttpd_request_header_do(zhttpd_t *httpd, zbuf_t *linebuf);
 static void zhttpd_request_data_do(zhttpd_t *httpd, zbuf_t *linebuf);
 
+#ifdef __linux__
+#define my_strcasestr strcasestr
+#else // __linux__
+static int my_strcasestr(const char *haystack, const char *needle)
+{
+    while(1) {
+        int r = ztolower(*haystack) - ztolower(*needle);
+        if (r) {
+            return r;
+        }
+        if (!*haystack)
+        {
+            return 0;
+        }
+        haystack++;
+        needle++;
+    }
+    return 0;
+}
+#endif // __linux__
+
 zbool_t zvar_httpd_no_cache = 0;
 
 const char *zhttpd_uploaded_file_get_name(zhttpd_uploaded_file_t *fo)
@@ -248,7 +269,7 @@ void zhttpd_set_gzip_file_suffix(zhttpd_t *httpd, const char *suffix)
         int len = strlen(suffix);
         if (len > 7)
         {
-            zfatal("FATAL zhttpd_set_gzip_file_suffix: %s'length > 7", suffix);
+            zfatal("zhttpd_set_gzip_file_suffix: %s'length > 7", suffix);
         }
         strcpy(httpd->gzip_file_suffix, suffix);
     }
@@ -341,7 +362,7 @@ zbool_t zhttpd_request_is_gzip(zhttpd_t *httpd)
 {
     if (httpd->request_gzip == 0)
     {
-        httpd->request_gzip = (strcasestr(zdict_get_str(httpd->request_headers, "accept-encoding", ""), "gzip") ? 1 : 2);
+        httpd->request_gzip = (my_strcasestr(zdict_get_str(httpd->request_headers, "accept-encoding", ""), "gzip") ? 1 : 2);
     }
     return ((httpd->request_gzip == 1) ? 1 : 0);
 }
@@ -350,12 +371,12 @@ zbool_t zhttpd_request_is_deflate(zhttpd_t *httpd)
 {
     if (httpd->request_deflate == 0)
     {
-        httpd->request_deflate = (strcasestr(zdict_get_str(httpd->request_headers, "accept-encoding", ""), "deflate") ? 1 : 2);
+        httpd->request_deflate = (my_strcasestr(zdict_get_str(httpd->request_headers, "accept-encoding", ""), "deflate") ? 1 : 2);
     }
     return ((httpd->request_deflate == 1) ? 1 : 0);
 }
 
-long zhttpd_request_get_content_length(zhttpd_t *httpd)
+long long zhttpd_request_get_content_length(zhttpd_t *httpd)
 {
     return httpd->request_content_length;
 }
@@ -521,7 +542,7 @@ void zhttpd_response_header(zhttpd_t *httpd, const char *name, const char *value
     }
 }
 
-void zhttpd_response_header_date(zhttpd_t *httpd, const char *name, long value)
+void zhttpd_response_header_date(zhttpd_t *httpd, const char *name, long long value)
 {
     char buf[zvar_rfc1123_date_string_size];
     zbuild_rfc1123_date_string(value, buf);
@@ -542,17 +563,14 @@ void zhttpd_response_header_content_type(zhttpd_t *httpd, const char *value, con
     zbuf_free(val);
 }
 
-void zhttpd_response_header_content_length(zhttpd_t *httpd, long length)
+void zhttpd_response_header_content_length(zhttpd_t *httpd, size_t length)
 {
     char val[32];
-    if (length > -1)
-    {
-        sprintf(val, "%ld", length);
-        zhttpd_response_header(httpd, "Content-Length", val);
-    }
+    sprintf(val, "%ld", length);
+    zhttpd_response_header(httpd, "Content-Length", val);
 }
 
-void zhttpd_response_header_set_cookie(zhttpd_t *httpd, const char *name, const char *value, long expires, const char *path, const char *domain, zbool_t secure, zbool_t httponly)
+void zhttpd_response_header_set_cookie(zhttpd_t *httpd, const char *name, const char *value, size_t expires, const char *path, const char *domain, zbool_t secure, zbool_t httponly)
 {
     zbuf_t *result = zbuf_create(1024);
     zhttp_cookie_build_item(name, value, expires, path, domain, secure, httponly, result);
@@ -882,7 +900,7 @@ static void zhttpd_request_header_do(zhttpd_t *httpd, zbuf_t *linebuf)
             }
             else if (!strcmp(p, "connection"))
             {
-                if (strcasestr(ps, "keep-alive"))
+                if (my_strcasestr(ps, "keep-alive"))
                 {
                     httpd->request_keep_alive = 1;
                 }
@@ -895,7 +913,13 @@ static char *_zhttpd_request_data_do_save_tmpfile(zhttpd_t *httpd, zbuf_t *lineb
 {
     if (zempty(httpd->tmp_path_for_post))
     {
+        zbuf_reset(linebuf);
+#ifdef __linux__
         zbuf_memcpy(linebuf, "/tmp/", 5);
+#endif // __linux__
+#ifdef _WIN32
+        zbuf_strcpy(linebuf, "%userprofile%/AppData/Local/Temp/");
+#endif // __linux__
     }
     else
     {

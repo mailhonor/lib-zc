@@ -24,9 +24,9 @@ int main(int argc, char **argv)
 
     zmsearch_t *ms = 0;
     char buf[9];
-    FILE *fp = fopen(listfn, "r");
+    FILE *fp = fopen(listfn, "rb");
     if (!fp) {
-        printf("ERR open %s(%m)\n", listfn);
+        printf("ERROR open %s(%m)\n", listfn);
         exit(1);
     }
     if (fread(buf, 1, 8, fp) != 8) {
@@ -36,13 +36,13 @@ int main(int argc, char **argv)
     if (!memcmp(buf, "ZMSH", 4)) {
         ms = zmsearch_create_from_pathname(listfn);
         if (!ms) {
-            printf("ERR open %s\n", listfn);
+            printf("ERROR open %s\n", listfn);
             exit(1);
         }
     } else {
         ms = zmsearch_create();
         if (zmsearch_add_token_from_pathname(ms, listfn) < 1) {
-            printf("ERR open %s\n", listfn);
+            printf("ERROR open %s\n", listfn);
             exit(1);
         }
         zmsearch_add_over(ms);

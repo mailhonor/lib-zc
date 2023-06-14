@@ -9,6 +9,7 @@
 #include "zc.h"
 #include <pthread.h>
 #include <signal.h>
+#include <time.h>
 
 typedef struct _data_node_t _data_node_t;
 struct _data_node_t
@@ -86,7 +87,7 @@ static int _pool_timeout_tree_cmp(zrbtree_node_t *n1, zrbtree_node_t *n2);
 
 static void _pool_show_status_debug(zpthread_pool_t *ptp, const char *title, const char *fn, size_t ln)
 {
-    zlog_info(fn, ln, "### PTHREAD_POOL: %s, tid:%ld current:%d, idle:%d, queue:%d, timer:%d", title, zgettid(), ptp->current_count, ptp->idle_count, ptp->queue_length, ptp->timeout_length);
+    zlog_info(fn, ln, "### PTHREAD_POOL: %s, tid:%lld current:%d, idle:%d, queue:%d, timer:%d", title, zgettid(), ptp->current_count, ptp->idle_count, ptp->queue_length, ptp->timeout_length);
 }
 
 zpthread_pool_t *zpthread_pool_create()
@@ -124,13 +125,13 @@ void zpthread_pool_free(zpthread_pool_t *ptp)
     zfree(ptp);
 }
 
-long zpthread_pool_get_max_running_millisecond(zpthread_pool_t *ptp)
+long long zpthread_pool_get_max_running_millisecond(zpthread_pool_t *ptp)
 {
     if (!ptp)
     {
         return 0;
     }
-    long min_time = 0;
+    long long min_time = 0;
     POOL_INNER_LOCK();
     for (zlink_node_t *ln = zlink_head(&(ptp->pthread_node_link)); ln; ln = zlink_node_next(ln))
     {

@@ -53,7 +53,7 @@ void zmail_debug_show(zmail_t *parser)
     zbuf_t *tmpstr = zmail_zbuf_cache_require(parser, 128); 
 
     zdebug_show(fmt, "Date", zmail_get_date(parser));
-    zdebug_show("%15s: %ld","", zmail_get_date_unix(parser));
+    zdebug_show("%15s: %lld","", zmail_get_date_unix(parser));
     zdebug_show("");
     zdebug_show(fmt, "Subject", zmail_get_subject(parser));
     zdebug_show(fmt, "Subject_utf8", zmail_get_subject_utf8(parser));

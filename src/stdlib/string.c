@@ -42,8 +42,7 @@ unsigned const char zchar_lowercase_vector[256] = {
     0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
     0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
     0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
-    0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
-};
+    0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff};
 
 unsigned const char zchar_uppercase_vector[256] = {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -77,14 +76,14 @@ unsigned const char zchar_uppercase_vector[256] = {
     0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
     0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
     0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
-    0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
-};
+    0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff};
 
 char *zstr_tolower(char *str)
 {
     char *scan = str;
 
-    while (*scan) {
+    while (*scan)
+    {
         *scan = ztolower(*scan);
         scan++;
     }
@@ -96,7 +95,8 @@ char *zstr_toupper(char *str)
 {
     char *scan = str;
 
-    while (*scan) {
+    while (*scan)
+    {
         *scan = ztoupper(*scan);
         scan++;
     }
@@ -121,8 +121,7 @@ unsigned const char zchar_isalnum_vector[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-};
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* ################################################################## */
 unsigned const char zchar_isalpha_vector[256] = {
@@ -141,8 +140,7 @@ unsigned const char zchar_isalpha_vector[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-};
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* ################################################################## */
 unsigned const char zchar_islower_vector[256] = {
@@ -161,8 +159,7 @@ unsigned const char zchar_islower_vector[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-};
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* ################################################################## */
 unsigned const char zchar_isupper_vector[256] = {
@@ -181,8 +178,7 @@ unsigned const char zchar_isupper_vector[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-};
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* ################################################################## */
 unsigned const char zchar_isdigit_vector[256] = {
@@ -201,8 +197,7 @@ unsigned const char zchar_isdigit_vector[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-};
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* ################################################################## */
 unsigned const char zchar_isxdigit_vector[256] = {
@@ -221,8 +216,7 @@ unsigned const char zchar_isxdigit_vector[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-};
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* ################################################################## */
 unsigned const char zchar_xdigitval_vector[256] = {
@@ -241,8 +235,7 @@ unsigned const char zchar_xdigitval_vector[256] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
-};
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 /* ################################################################## */
 unsigned const char zchar_istrim_vector[256] = {
@@ -261,20 +254,19 @@ unsigned const char zchar_istrim_vector[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-};
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* ################################################################## */
 /* strtok */
 
-void zstrtok_init(zstrtok_t * k, const char *sstr)
+void zstrtok_init(zstrtok_t *k, const char *sstr)
 {
     k->sstr = (char *)sstr;
     k->len = 0;
     k->str = 0;
 }
 
-zstrtok_t *zstrtok(zstrtok_t * k, const char *delim)
+zstrtok_t *zstrtok(zstrtok_t *k, const char *delim)
 {
     char *r;
 
@@ -294,9 +286,17 @@ zstrtok_t *zstrtok(zstrtok_t * k, const char *delim)
 /* ################################################################## */
 /* trim */
 
-#define ___SKIP(start, var, cond) for (var = start; *var && (cond); var++);
+#define ___SKIP(start, var, cond)            \
+    for (var = start; *var && (cond); var++) \
+        ;
 #define ___DELETE(ch) ((isascii(ch) && isspace(ch)) || iscntrl(ch))
-#define ___TRIM(s) { char *p; for (p = (s) + strlen(s); p > (s) && ___DELETE(p[-1]); p--); *p = 0; }
+#define ___TRIM(s)                                                  \
+    {                                                               \
+        char *p;                                                    \
+        for (p = (s) + strlen(s); p > (s) && ___DELETE(p[-1]); p--) \
+            ;                                                       \
+        *p = 0;                                                     \
+    }
 
 char *ztrim_left(char *str)
 {
@@ -331,8 +331,10 @@ char *zskip_left(const char *str, const char *ignores)
     char ch;
     int i = 0;
 
-    while((ch = str[i])) {
-        if (strchr(ignores, ch)) {
+    while ((ch = str[i]))
+    {
+        if (strchr(ignores, ch))
+        {
             i++;
             continue;
         }
@@ -344,11 +346,14 @@ char *zskip_left(const char *str, const char *ignores)
 int zskip_right(const char *str, int len, const char *ignores)
 {
     int i = 0;
-    if (len < 0) {
+    if (len < 0)
+    {
         len = strlen(str);
     }
-    for (i = len - 1; i >= 0; i--) {
-        if (strchr(ignores, str[i])) {
+    for (i = len - 1; i >= 0; i--)
+    {
+        if (strchr(ignores, str[i]))
+        {
             continue;
         }
         break;
@@ -358,50 +363,57 @@ int zskip_right(const char *str, int len, const char *ignores)
         return 0;
     }
 #endif
-    return i+1;
+    return i + 1;
 }
 
 int zskip(const char *line, int len, const char *ignores_left, const char *ignores_right, char **start)
 {
-    const char *ps,  *pend;
+    const char *ps, *pend;
     int i, ch;
 
-    if (len < 0) {
+    if (len < 0)
+    {
         len = strlen(line);
     }
     pend = line + len;
 
-    for (i = 0; i < len; i++) {
+    for (i = 0; i < len; i++)
+    {
         ch = line[i];
-        if (strchr(ignores_left, ch)) {
+        if (strchr(ignores_left, ch))
+        {
             continue;
         }
         break;
     }
-    if (i == len) {
+    if (i == len)
+    {
         return 0;
     }
 
-    if (!ignores_right) {
+    if (!ignores_right)
+    {
         ignores_right = ignores_left;
     }
     ps = line + i;
     len = pend - ps;
-    for (i = len - 1; i >= 0; i--) {
+    for (i = len - 1; i >= 0; i--)
+    {
         ch = ps[i];
-        if (strchr(ignores_right, ch)) {
+        if (strchr(ignores_right, ch))
+        {
             continue;
         }
         break;
     }
-    if (i < 0) {
+    if (i < 0)
+    {
         return 0;
     }
 
     *start = (char *)ps;
 
-    return i+1;
-
+    return i + 1;
 }
 
 /* ################################################################## */
@@ -417,16 +429,18 @@ zbool_t zstr_to_bool(const char *s, int def)
     return def;
 }
 
-long zstr_to_second(const char *s, long def)
+long long zstr_to_second(const char *s, long long def)
 {
     char unit, junk;
-    long intval;
+    long long intval;
 
-    switch (sscanf(s, "%ld%c%c", &intval, &unit, &junk)) {
+    switch (sscanf(s, "%lld%c%c", &intval, &unit, &junk))
+    {
     case 1:
         unit = 's';
     case 2:
-        switch (ztolower(unit)) {
+        switch (ztolower(unit))
+        {
         case 'w':
             return (intval * (7 * 24 * 3600));
         case 'd':
@@ -444,16 +458,18 @@ long zstr_to_second(const char *s, long def)
     return def;
 }
 
-long zstr_to_size(const char *s, long def)
+long long zstr_to_size(const char *s, long long def)
 {
     char unit, junk;
-    long intval;
+    long long intval;
 
-    switch (sscanf(s, "%ld%c%c", &intval, &unit, &junk)) {
+    switch (sscanf(s, "%lld%c%c", &intval, &unit, &junk))
+    {
     case 1:
         unit = 'b';
     case 2:
-        switch (ztolower(unit)) {
+        switch (ztolower(unit))
+        {
         case 'g':
             return (intval * (1024 * 1024 * 1024));
         case 'm':

@@ -9,11 +9,13 @@
 #include "zc.h"
 
 #include <assert.h>
+#include <unistd.h>
+#ifdef __linux__
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <syslog.h>
-#include <unistd.h>
+#endif
 
 zbool_t zvar_log_fatal_catch = 0;
 zbool_t zvar_log_debug_enable = 0;
@@ -25,7 +27,7 @@ static void zvprintf_default(const char *source_fn, size_t line_number, const ch
     char fmt_buf[1024 + 1];
     if (line_number)
     {
-        snprintf(fmt_buf, 1024, "%s [%s:%zu]\n", fmt, source_fn, line_number);
+        snprintf(fmt_buf, 1024, "%s [%s:%lu]\n", fmt, source_fn, line_number);
     }
     else
     {
@@ -94,7 +96,7 @@ static void zvprintf_stdout(const char *source_fn, size_t line_number, const cha
     char fmt_buf[1024 + 1];
     if (line_number)
     {
-        snprintf(fmt_buf, 1024, "%s [%s:%zu]\n", fmt, source_fn, line_number);
+        snprintf(fmt_buf, 1024, "%s [%s:%lu]\n", fmt, source_fn, line_number);
     }
     else
     {
@@ -113,6 +115,7 @@ void zlog_use_default()
     zlog_vprintf = zvprintf_default;
 }
 
+#ifdef __linux__
 /* SYSLOG ############################################## */
 static void zvprintf_syslog(const char *source_fn, size_t line_number, const char *fmt, va_list ap)
 {
@@ -253,7 +256,7 @@ void zlog_use_masterlog(const char *identity, const char *dest)
 
     if ((zvar_master_log_sock = ___syscall_socket(AF_UNIX, SOCK_DGRAM, 0)) < 0)
     {
-        zdebug_show("ERR socket (%m)");
+        zdebug_show("ERROR socket (%m)");
         exit(1);
     }
 
@@ -268,3 +271,4 @@ void zlog_use_masterlog(const char *identity, const char *dest)
 
     zatexit(clear_masterlog, 0);
 }
+#endif // __linux__

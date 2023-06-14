@@ -57,7 +57,7 @@ static zbool_t _zcdb_open(zcdb_t *reader, const void *data)
             char buf[5];
             memcpy(buf, ((const char *)data)+4, 4);
             buf[4] = 0;
-            zinfo("WARN zcdb version mismatch, code version:%s, data version:%s", zvar_cdb_code_version, buf);
+            zinfo("WARNING zcdb version mismatch, code version:%s, data version:%s", zvar_cdb_code_version, buf);
         }
         goto err;
     }

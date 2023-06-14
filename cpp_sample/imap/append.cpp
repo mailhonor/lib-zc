@@ -7,6 +7,7 @@
  */
 
 #include "zc.h"
+#include <time.h>
 
 static char *server = 0;
 static int ssl_mode = 0;

@@ -72,6 +72,7 @@ static void explore_data_fini()
     zbuf_free(explore_data_2);
 }
 
+#ifdef __linux__
 static void explore_page(zhttpd_t *httpd)
 {
     char uri[4096 + 1];
@@ -170,6 +171,33 @@ static void explore_page(zhttpd_t *httpd)
         zhttpd_response_404(httpd);
     }
 }
+#endif // __linux__
+
+#ifdef _WIN32
+#include <fileapi.h>
+static void explore_page(zhttpd_t *httpd)
+{
+    zhttpd_response_200(httpd, "abc", 3);
+    // HANDLE hFind = FindFirstFile(szDir, &ffd);
+
+    // // List all the files in the directory with some info about them.
+    // do
+    // {
+    //     if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+    //     {
+    //         _tprintf(TEXT("  %s   <DIR>\n"), ffd.cFileName);
+    //     }
+    //     else
+    //     {
+    //         filesize.LowPart = ffd.nFileSizeLow;
+    //         filesize.HighPart = ffd.nFileSizeHigh;
+    //         _tprintf(TEXT("  %s   %ld bytes\n"), ffd.cFileName, filesize.QuadPart);
+    //     }
+    // } while (FindNextFile(hFind, &ffd) != 0);
+
+    // FindClose(hFind);
+}
+#endif // _WIN32
 
 static void upload_page(zhttpd_t *httpd)
 {
@@ -316,7 +344,8 @@ static void *do_httpd(void *arg)
             zhttpd_response_404(httpd);
         }
         zhttpd_response_flush(httpd);
-        if (!zhttpd_maybe_continue(httpd)) {
+        if (!zhttpd_maybe_continue(httpd))
+        {
             break;
         }
     }
@@ -342,7 +371,7 @@ static void load_ssl()
     {
         char error_buf[1024];
         zopenssl_get_error(0, error_buf, 1024);
-        printf("ERR can load cert/key:%s", error_buf);
+        printf("ERROR can load cert/key:%s", error_buf);
         usage();
     }
 #endif

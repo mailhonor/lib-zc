@@ -9,7 +9,7 @@
 #pragma GCC diagnostic ignored "-Wredundant-decls"
 #pragma GCC diagnostic ignored "-Wpacked-not-aligned"
 
-# include "./coroutine.h"
+#include "./coroutine.h"
 
 #ifndef __x86_64__
 #include <ucontext.h>
@@ -49,72 +49,154 @@
 
 #define zvar_coroutine_max_timeout_millisecond (3600L * 24 * 365 * 10 * 1000)
 
-#define ZEMPTY(str)                  (!(str)||!(*((const char *)str)))
+#define ZEMPTY(str) (!(str) || !(*((const char *)str)))
 
-#define ZCONTAINER_OF(ptr,app_type,member) ((app_type *) (((char *) (ptr)) - offsetof(app_type,member)))
+#define ZCONTAINER_OF(ptr, app_type, member) ((app_type *)(((char *)(ptr)) - offsetof(app_type, member)))
 
 #define zinline inline __attribute__((always_inline))
 
-#define zcoroutine_fatal(fmt, args...) { \
-    fprintf(stderr, "FATAL "fmt, ##args); \
-    fprintf(stderr, " [%s:%u]\n", __FILE__, __LINE__);\
-    fflush(stderr); \
-    _exit(1); \
-}
+#define zcoroutine_fatal(fmt, args...)                     \
+    {                                                      \
+        fprintf(stderr, "FATAL " fmt, ##args);             \
+        fprintf(stderr, " [%s:%u]\n", __FILE__, __LINE__); \
+        fflush(stderr);                                    \
+        _exit(1);                                          \
+    }
 
-#define zpthread_lock(l)    {if(pthread_mutex_lock((pthread_mutex_t *)(l))){zcoroutine_fatal("mutex:%m");}}
-#define zpthread_unlock(l)  {if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zcoroutine_fatal("mutex:%m");}}
+#define zpthread_lock(l)                                \
+    {                                                   \
+        if (pthread_mutex_lock((pthread_mutex_t *)(l))) \
+        {                                               \
+            zcoroutine_fatal("mutex:%m");               \
+        }                                               \
+    }
+#define zpthread_unlock(l)                                \
+    {                                                     \
+        if (pthread_mutex_unlock((pthread_mutex_t *)(l))) \
+        {                                                 \
+            zcoroutine_fatal("mutex:%m");                 \
+        }                                                 \
+    }
 
 /* 一组宏, 可实现, 栈, 链表等, 例子见 src/stdlib/list.c */
 
 /* head: 头; tail: 尾; node:节点变量; prev:head/tail 指向的struct成员的属性"前一个" */
 
 /* 追加node到尾部 */
-#define ZMLINK_APPEND(head, tail, node, prev, next) {\
-    typeof(head) _head_1106=head, _tail_1106=tail, _node_1106 = node;\
-    if(_head_1106 == 0){_node_1106->prev=_node_1106->next=0;_head_1106=_tail_1106=_node_1106;}\
-    else {_tail_1106->next=_node_1106;_node_1106->prev=_tail_1106;_node_1106->next=0;_tail_1106=_node_1106;}\
-    head = _head_1106; tail = _tail_1106; \
-}
+#define ZMLINK_APPEND(head, tail, node, prev, next)                           \
+    {                                                                         \
+        typeof(head) _head_1106 = head, _tail_1106 = tail, _node_1106 = node; \
+        if (_head_1106 == 0)                                                  \
+        {                                                                     \
+            _node_1106->prev = _node_1106->next = 0;                          \
+            _head_1106 = _tail_1106 = _node_1106;                             \
+        }                                                                     \
+        else                                                                  \
+        {                                                                     \
+            _tail_1106->next = _node_1106;                                    \
+            _node_1106->prev = _tail_1106;                                    \
+            _node_1106->next = 0;                                             \
+            _tail_1106 = _node_1106;                                          \
+        }                                                                     \
+        head = _head_1106;                                                    \
+        tail = _tail_1106;                                                    \
+    }
 
 /* 追加node到首部 */
-#define ZMLINK_PREPEND(head, tail, node, prev, next) {\
-    typeof(head) _head_1106=head, _tail_1106=tail, _node_1106 = node;\
-    if(_head_1106 == 0){_node_1106->prev=_node_1106->next=0;_head_1106=_tail_1106=_node_1106;}\
-    else {_head_1106->prev=_node_1106;_node_1106->next=_head_1106;_node_1106->prev=0;_head_1106=_node_1106;}\
-    head = _head_1106; tail = _tail_1106; \
-}
+#define ZMLINK_PREPEND(head, tail, node, prev, next)                          \
+    {                                                                         \
+        typeof(head) _head_1106 = head, _tail_1106 = tail, _node_1106 = node; \
+        if (_head_1106 == 0)                                                  \
+        {                                                                     \
+            _node_1106->prev = _node_1106->next = 0;                          \
+            _head_1106 = _tail_1106 = _node_1106;                             \
+        }                                                                     \
+        else                                                                  \
+        {                                                                     \
+            _head_1106->prev = _node_1106;                                    \
+            _node_1106->next = _head_1106;                                    \
+            _node_1106->prev = 0;                                             \
+            _head_1106 = _node_1106;                                          \
+        }                                                                     \
+        head = _head_1106;                                                    \
+        tail = _tail_1106;                                                    \
+    }
 
 /* 插入node到before前 */
-#define ZMLINK_ATTACH_BEFORE(head, tail, node, prev, next, before) {\
-    typeof(head) _head_1106=head, _tail_1106=tail, _node_1106 = node, _before_1106 = before;\
-    if(_head_1106 == 0){_node_1106->prev=_node_1106->next=0;_head_1106=_tail_1106=_node_1106;}\
-    else if(_before_1106==0){_tail_1106->next=_node_1106;_node_1106->prev=_tail_1106;_node_1106->next=0;_tail_1106=_node_1106;}\
-    else if(_before_1106==_head_1106){_head_1106->prev=_node_1106;_node_1106->next=_head_1106;_node_1106->prev=0;_head_1106=_node_1106;}\
-    else {_node_1106->prev=_before_1106->prev; _node_1106->next=_before_1106; _before_1106->prev->next=_node_1106; _before_1106->prev=_node_1106;}\
-    head = _head_1106; tail = _tail_1106; \
-}
+#define ZMLINK_ATTACH_BEFORE(head, tail, node, prev, next, before)                                   \
+    {                                                                                                \
+        typeof(head) _head_1106 = head, _tail_1106 = tail, _node_1106 = node, _before_1106 = before; \
+        if (_head_1106 == 0)                                                                         \
+        {                                                                                            \
+            _node_1106->prev = _node_1106->next = 0;                                                 \
+            _head_1106 = _tail_1106 = _node_1106;                                                    \
+        }                                                                                            \
+        else if (_before_1106 == 0)                                                                  \
+        {                                                                                            \
+            _tail_1106->next = _node_1106;                                                           \
+            _node_1106->prev = _tail_1106;                                                           \
+            _node_1106->next = 0;                                                                    \
+            _tail_1106 = _node_1106;                                                                 \
+        }                                                                                            \
+        else if (_before_1106 == _head_1106)                                                         \
+        {                                                                                            \
+            _head_1106->prev = _node_1106;                                                           \
+            _node_1106->next = _head_1106;                                                           \
+            _node_1106->prev = 0;                                                                    \
+            _head_1106 = _node_1106;                                                                 \
+        }                                                                                            \
+        else                                                                                         \
+        {                                                                                            \
+            _node_1106->prev = _before_1106->prev;                                                   \
+            _node_1106->next = _before_1106;                                                         \
+            _before_1106->prev->next = _node_1106;                                                   \
+            _before_1106->prev = _node_1106;                                                         \
+        }                                                                                            \
+        head = _head_1106;                                                                           \
+        tail = _tail_1106;                                                                           \
+    }
 
 /* 去掉节点node */
-#define ZMLINK_DETACH(head, tail, node, prev, next) {\
-    typeof(head) _head_1106=head, _tail_1106=tail, _node_1106 = node;\
-    if(_node_1106->prev){ _node_1106->prev->next=_node_1106->next; }else{ _head_1106=_node_1106->next; }\
-    if(_node_1106->next){ _node_1106->next->prev=_node_1106->prev; }else{ _tail_1106=_node_1106->prev; }\
-    head = _head_1106; tail = _tail_1106; \
-}
+#define ZMLINK_DETACH(head, tail, node, prev, next)                           \
+    {                                                                         \
+        typeof(head) _head_1106 = head, _tail_1106 = tail, _node_1106 = node; \
+        if (_node_1106->prev)                                                 \
+        {                                                                     \
+            _node_1106->prev->next = _node_1106->next;                        \
+        }                                                                     \
+        else                                                                  \
+        {                                                                     \
+            _head_1106 = _node_1106->next;                                    \
+        }                                                                     \
+        if (_node_1106->next)                                                 \
+        {                                                                     \
+            _node_1106->next->prev = _node_1106->prev;                        \
+        }                                                                     \
+        else                                                                  \
+        {                                                                     \
+            _tail_1106 = _node_1106->prev;                                    \
+        }                                                                     \
+        head = _head_1106;                                                    \
+        tail = _tail_1106;                                                    \
+    }
 
 /* }}} */
 
 #pragma pack(push, 4)
 
-#ifdef  __cplusplus
-extern "C" {
+#define _namespace_c_begin \
+    extern "C"             \
+    {
+#define _namespace_c_end }
+#ifdef __cplusplus
+_namespace_c_begin;
 #endif
 
 /* {{{ type convert */
 
 typedef union _co_type_convert_t _co_type_convert_t;
-union _co_type_convert_t {
+union _co_type_convert_t
+{
     const void *CONST_VOID_PTR;
     void *VOID_PTR;
     const char *CONST_CHAR_PTR;
@@ -135,10 +217,11 @@ union _co_type_convert_t {
     off_t OFF_T;
     uid_t UID_T;
     gid_t GID_T;
-    struct {
-        int fd:30;
-        int is_ssl:2;
-        int fd_type:8;
+    struct
+    {
+        int fd : 30;
+        int is_ssl : 2;
+        int fd_type : 8;
     } fdinfo;
 };
 
@@ -149,7 +232,8 @@ union _co_type_convert_t {
 static void *_co_mem_valloc(int len)
 {
     void *r;
-    if ((r = valloc(len)) == 0) {
+    if ((r = valloc(len)) == 0)
+    {
         zcoroutine_fatal("_co_mem_valloc: insufficient memory for %d bytes: %m", len);
     }
     return r;
@@ -159,10 +243,12 @@ static void *_co_mem_malloc(int len)
 {
     void *r;
 
-    if (len < 0) {
+    if (len < 0)
+    {
         len = 0;
     }
-    if ((r = malloc(len)) == 0) {
+    if ((r = malloc(len)) == 0)
+    {
         zcoroutine_fatal("_co_mem_malloc: insufficient memory for %d bytes: %m", len);
     }
 
@@ -173,13 +259,16 @@ static void *_co_mem_calloc(int nmemb, int size)
 {
     void *r;
 
-    if (nmemb < 0) {
+    if (nmemb < 0)
+    {
         nmemb = 0;
     }
-    if (size < 0) {
+    if (size < 0)
+    {
         size = 0;
     }
-    if ((r = calloc(nmemb, size)) == 0) {
+    if ((r = calloc(nmemb, size)) == 0)
+    {
         zcoroutine_fatal("_co_mem_calloc: insufficient memory for %dx%d bytes: %m", nmemb, size);
     }
 
@@ -188,7 +277,8 @@ static void *_co_mem_calloc(int nmemb, int size)
 
 static void _co_mem_free(const void *ptr)
 {
-    if (ptr) {
+    if (ptr)
+    {
         free((void *)ptr);
     }
 }
@@ -299,11 +389,12 @@ zinline static int _syscall_poll(struct pollfd fds[], nfds_t nfds, int timeout)
     return syscall(__NR_poll, fds, nfds, timeout);
 #else
     struct timespec tmo;
-    if (timeout > -1) {
-        tmo.tv_sec = timeout/1000;
-        tmo.tv_nsec = 1000000L * (timeout%1000);
+    if (timeout > -1)
+    {
+        tmo.tv_sec = timeout / 1000;
+        tmo.tv_nsec = 1000000L * (timeout % 1000);
     }
-    return syscall(__NR_ppoll, fds, nfds, ((timeout>-1)?(&tmo):0), 0);
+    return syscall(__NR_ppoll, fds, nfds, ((timeout > -1) ? (&tmo) : 0), 0);
 #endif
 }
 
@@ -316,34 +407,34 @@ static int _syscall_fcntl(int fildes, int cmd, ...)
 {
     int ret = -1;
     va_list args;
-    va_start(args,cmd);
-    switch(cmd)
+    va_start(args, cmd);
+    switch (cmd)
     {
-        case F_DUPFD:
-        case F_SETFD:
-        case F_SETFL:
-        case F_SETOWN:
-            {
-                int param = va_arg(args,int);
-                ret = syscall(__NR_fcntl, fildes, cmd, param);
-                break;
-            }
-        case F_GETFD:
-        case F_GETFL:
-        case F_GETOWN:
-            {
-                ret = syscall(__NR_fcntl, fildes, cmd);
-                break;
-            }
-        case F_GETLK:
-        case F_SETLK:
-        case F_SETLKW:
-            {
-                /* struct flock *param = va_arg(args,struct flock *); */
-                void *param = va_arg(args, void *);
-                ret = syscall(__NR_fcntl, fildes, cmd, param);
-                break;
-            }
+    case F_DUPFD:
+    case F_SETFD:
+    case F_SETFL:
+    case F_SETOWN:
+    {
+        int param = va_arg(args, int);
+        ret = syscall(__NR_fcntl, fildes, cmd, param);
+        break;
+    }
+    case F_GETFD:
+    case F_GETFL:
+    case F_GETOWN:
+    {
+        ret = syscall(__NR_fcntl, fildes, cmd);
+        break;
+    }
+    case F_GETLK:
+    case F_SETLK:
+    case F_SETLKW:
+    {
+        /* struct flock *param = va_arg(args,struct flock *); */
+        void *param = va_arg(args, void *);
+        ret = syscall(__NR_fcntl, fildes, cmd, param);
+        break;
+    }
     }
     va_end(args);
     return ret;
@@ -357,7 +448,8 @@ zinline static pid_t _syscall_gettid(void)
 static int _syscall_open(const char *pathname, int flags, ...)
 {
     mode_t mode = 0;
-    if (flags & O_CREAT) {
+    if (flags & O_CREAT)
+    {
         va_list args;
         va_start(args, flags);
         mode = va_arg(args, mode_t);
@@ -373,7 +465,8 @@ static int _syscall_open(const char *pathname, int flags, ...)
 static int _syscall_openat(int dirfd, const char *pathname, int flags, ...)
 {
     mode_t mode = 0;
-    if (flags & O_CREAT) {
+    if (flags & O_CREAT)
+    {
         va_list args;
         va_start(args, flags);
         mode = va_arg(args, mode_t);
@@ -387,7 +480,7 @@ zinline static int _syscall_creat(const char *pathname, mode_t mode)
 #ifdef __NR_creat
     return syscall(__NR_creat, pathname, mode);
 #else
-    return syscall(__NR_openat, AT_FDCWD, pathname, O_WRONLY|O_CREAT|O_TRUNC, mode);
+    return syscall(__NR_openat, AT_FDCWD, pathname, O_WRONLY | O_CREAT | O_TRUNC, mode);
 #endif
 }
 
@@ -592,11 +685,13 @@ int _syscall_lutimes(const char *filename, const struct timeval tv[2])
 }
 #endif
 
-static int zrobust_syscall_close(int fd) {
+static int zrobust_syscall_close(int fd)
+{
     int ret;
-    do {
+    do
+    {
         ret = _syscall_close(fd);
-    } while((ret<0) && (errno==EINTR));
+    } while ((ret < 0) && (errno == EINTR));
     return ret;
 }
 
@@ -605,18 +700,20 @@ static int zrobust_syscall_close(int fd) {
 /* {{{ list */
 typedef struct _co_list_t _co_list_t;
 typedef struct _co_list_node_t _co_list_node_t;
-struct _co_list_t {
+struct _co_list_t
+{
     _co_list_node_t *head;
     _co_list_node_t *tail;
     int len;
 };
-struct _co_list_node_t {
+struct _co_list_node_t
+{
     _co_list_node_t *prev;
     _co_list_node_t *next;
     void *value;
 };
 
-static  _co_list_t *_co_list_create(void);
+static _co_list_t *_co_list_create(void);
 static void _co_list_free(_co_list_t *list);
 zinline static int _co_list_len(const _co_list_t *list) { return list->len; }
 zinline static _co_list_node_t *_co_list_head(const _co_list_t *list) { return list->head; }
@@ -629,18 +726,22 @@ static void _co_list_attach_before(_co_list_t *list, _co_list_node_t *n, _co_lis
 static void _co_list_detach(_co_list_t *list, _co_list_node_t *n);
 static _co_list_node_t *_co_list_add_before(_co_list_t *list, const void *value, _co_list_node_t *before);
 static zbool_t _co_list_delete(_co_list_t *list, _co_list_node_t *n, void **value);
-zinline static _co_list_node_t *_co_list_push(_co_list_t *l,const void *v){return _co_list_add_before(l,v,0);}
-zinline static _co_list_node_t *_co_list_unshift(_co_list_t *l,const void *v){return _co_list_add_before(l,v,l->head);}
-zinline static zbool_t _co_list_pop(_co_list_t *l, void **v){return _co_list_delete(l,l->tail,v);}
-zinline static zbool_t _co_list_shift(_co_list_t *l, void **v){return _co_list_delete(l,l->head,v);}
+zinline static _co_list_node_t *_co_list_push(_co_list_t *l, const void *v) { return _co_list_add_before(l, v, 0); }
+zinline static _co_list_node_t *_co_list_unshift(_co_list_t *l, const void *v) { return _co_list_add_before(l, v, l->head); }
+zinline static zbool_t _co_list_pop(_co_list_t *l, void **v) { return _co_list_delete(l, l->tail, v); }
+zinline static zbool_t _co_list_shift(_co_list_t *l, void **v) { return _co_list_delete(l, l->head, v); }
 
 /* 宏, 遍历 */
-#define ZCOROUTINE_LIST_WALK_BEGIN(list, var_your_type, var_your_ptr)  { \
-    _co_list_node_t *list_current_node=(list)->head; var_your_type var_your_ptr; \
-    for(;list_current_node;list_current_node=list_current_node->next){ \
-        var_your_ptr = (var_your_type)(void *)(list_current_node->value);
-#define ZCOROUTINE_LIST_WALK_END                          }}
-
+#define ZCOROUTINE_LIST_WALK_BEGIN(list, var_your_type, var_your_ptr)          \
+    {                                                                          \
+        _co_list_node_t *list_current_node = (list)->head;                     \
+        var_your_type var_your_ptr;                                            \
+        for (; list_current_node; list_current_node = list_current_node->next) \
+        {                                                                      \
+            var_your_ptr = (var_your_type)(void *)(list_current_node->value);
+#define ZCOROUTINE_LIST_WALK_END \
+    }                            \
+    }
 
 static void _co_list_init(_co_list_t *list)
 {
@@ -650,11 +751,13 @@ static void _co_list_init(_co_list_t *list)
 static void _co_list_fini(_co_list_t *list)
 {
     _co_list_node_t *n, *next;
-    if (!list) {
+    if (!list)
+    {
         return;
     }
     n = list->head;
-    for (; n; n = next) {
+    for (; n; n = next)
+    {
         next = n->next;
         _co_mem_free(n);
     }
@@ -667,41 +770,43 @@ static _co_list_t *_co_list_create(void)
     return (list);
 }
 
-static void _co_list_free(_co_list_t * list)
+static void _co_list_free(_co_list_t *list)
 {
     _co_list_fini(list);
     _co_mem_free(list);
 }
 
-static void _co_list_attach_before(_co_list_t * list, _co_list_node_t * n, _co_list_node_t * before)
+static void _co_list_attach_before(_co_list_t *list, _co_list_node_t *n, _co_list_node_t *before)
 {
     ZMLINK_ATTACH_BEFORE(list->head, list->tail, n, prev, next, before);
     list->len++;
 }
 
-static void _co_list_detach(_co_list_t * list, _co_list_node_t * n)
+static void _co_list_detach(_co_list_t *list, _co_list_node_t *n)
 {
     ZMLINK_DETACH(list->head, list->tail, n, prev, next);
     list->len--;
 }
 
-static _co_list_node_t *_co_list_add_before(_co_list_t * list, const void *value, _co_list_node_t * before)
+static _co_list_node_t *_co_list_add_before(_co_list_t *list, const void *value, _co_list_node_t *before)
 {
     _co_list_node_t *n;
 
-    n = (_co_list_node_t *) _co_mem_calloc(1, sizeof(_co_list_node_t));
+    n = (_co_list_node_t *)_co_mem_calloc(1, sizeof(_co_list_node_t));
     n->value = (char *)value;
     _co_list_attach_before(list, n, before);
 
     return n;
 }
 
-static int _co_list_delete(_co_list_t * list, _co_list_node_t * n, void **value)
+static int _co_list_delete(_co_list_t *list, _co_list_node_t *n, void **value)
 {
-    if (n == 0) {
+    if (n == 0)
+    {
         return 0;
     }
-    if (value) {
+    if (value)
+    {
         *value = n->value;
     }
     _co_list_detach(list, n);
@@ -715,19 +820,21 @@ static int _co_list_delete(_co_list_t * list, _co_list_node_t * n, void **value)
 /* {{{ rbtree */
 typedef struct _co_rbtree_node_t _co_rbtree_node_t;
 typedef struct _co_rbtree_t _co_rbtree_t;
-typedef int (*_co_rbtree_cmp_t) (_co_rbtree_node_t *node1, _co_rbtree_node_t *node2);
-struct _co_rbtree_t {
+typedef int (*_co_rbtree_cmp_t)(_co_rbtree_node_t *node1, _co_rbtree_node_t *node2);
+struct _co_rbtree_t
+{
     _co_rbtree_node_t *_co_rbtree_node;
     _co_rbtree_cmp_t cmp_fn;
 };
-struct _co_rbtree_node_t {
-    unsigned long ___co_rbtree_parent_color;
+struct _co_rbtree_node_t
+{
+    ssize_t ___co_rbtree_parent_color;
     _co_rbtree_node_t *_co_rbtree_right;
     _co_rbtree_node_t *_co_rbtree_left;
     /* The alignment might seem pointless, but allegedly CRIS needs it */
-} __attribute__ ((aligned(sizeof(long))));
+} __attribute__((aligned(sizeof(long))));
 
-zinline static int _co_rbtree_have_data(_co_rbtree_t *tree) { return ((tree)->_co_rbtree_node?1:0); }
+zinline static int _co_rbtree_have_data(_co_rbtree_t *tree) { return ((tree)->_co_rbtree_node ? 1 : 0); }
 static void _co_rbtree_init(_co_rbtree_t *tree, _co_rbtree_cmp_t cmp_fn);
 static void _co_rbtree_insert_color(_co_rbtree_t *, _co_rbtree_node_t *);
 static void _co_rbtree_erase(_co_rbtree_t *tree, _co_rbtree_node_t *node);
@@ -738,113 +845,118 @@ static _co_rbtree_node_t *_co_rbtree_attach(_co_rbtree_t *tree, _co_rbtree_node_
 static _co_rbtree_node_t *_co_rbtree_detach(_co_rbtree_t *tree, _co_rbtree_node_t *node);
 static void _co_rbtree_link_node(_co_rbtree_node_t *node, _co_rbtree_node_t *parent, _co_rbtree_node_t **_co_rbtree_link);
 
-#define ZCOROUTINE_RBTREE_PARENT(node)    ((_co_rbtree_node_t *)((node)->___co_rbtree_parent_color & ~3))
+#define ZCOROUTINE_RBTREE_PARENT(node) ((_co_rbtree_node_t *)((node)->___co_rbtree_parent_color & ~3))
 
-static void ___co_rbtree_insert_augmented(_co_rbtree_t * root, _co_rbtree_node_t * node, void (*augment_rotate) (_co_rbtree_node_t * old, _co_rbtree_node_t * new_node));
-static void ___co_rbtree_erase_color(_co_rbtree_t * root, _co_rbtree_node_t * parent, void (*augment_rotate) (_co_rbtree_node_t * old, _co_rbtree_node_t * new_node));
+static void ___co_rbtree_insert_augmented(_co_rbtree_t *root, _co_rbtree_node_t *node, void (*augment_rotate)(_co_rbtree_node_t *old, _co_rbtree_node_t *new_node));
+static void ___co_rbtree_erase_color(_co_rbtree_t *root, _co_rbtree_node_t *parent, void (*augment_rotate)(_co_rbtree_node_t *old, _co_rbtree_node_t *new_node));
 
-#define RB_RED          0
-#define RB_BLACK        1
-#define true    1
-#define false   0
+#define RB_RED 0
+#define RB_BLACK 1
+#define true 1
+#define false 0
 
-#define RB_ROOT    (_co_rbtree_t) { NULL, }
-#define    _co_rbtree_entry(ptr, type, member) container_of(ptr, type, member)
+#define RB_ROOT \
+    (_co_rbtree_t) { NULL, }
+#define _co_rbtree_entry(ptr, type, member) container_of(ptr, type, member)
 
-#define RB_EMPTY_ROOT(root)  ((root)->_co_rbtree_node == NULL)
+#define RB_EMPTY_ROOT(root) ((root)->_co_rbtree_node == NULL)
 
 /* 'empty' nodes are nodes that are known not to be inserted in an rbree */
-#define RB_EMPTY_NODE(node)  \
+#define RB_EMPTY_NODE(node) \
     ((node)->___co_rbtree_parent_color == (unsigned long)(node))
-#define RB_CLEAR_NODE(node)  \
+#define RB_CLEAR_NODE(node) \
     ((node)->___co_rbtree_parent_color = (unsigned long)(node))
 
-struct _co_rbtree_augment_callbacks {
-    void (*propagate) (_co_rbtree_node_t * node, _co_rbtree_node_t * stop);
-    void (*copy) (_co_rbtree_node_t * old, _co_rbtree_node_t * new_node);
-    void (*rotate) (_co_rbtree_node_t * old, _co_rbtree_node_t * new_node);
+struct _co_rbtree_augment_callbacks
+{
+    void (*propagate)(_co_rbtree_node_t *node, _co_rbtree_node_t *stop);
+    void (*copy)(_co_rbtree_node_t *old, _co_rbtree_node_t *new_node);
+    void (*rotate)(_co_rbtree_node_t *old, _co_rbtree_node_t *new_node);
 };
 
-zinline static void _co_rbtree_insert_augmented(_co_rbtree_node_t * node, _co_rbtree_t * root, const struct _co_rbtree_augment_callbacks *augment)
+zinline static void _co_rbtree_insert_augmented(_co_rbtree_node_t *node, _co_rbtree_t *root, const struct _co_rbtree_augment_callbacks *augment)
 {
     ___co_rbtree_insert_augmented(root, node, augment->rotate);
 }
 
-#define RB_DECLARE_CALLBACKS(rbstatic, rbname, rbstruct, rbfield,    \
-        rbtype, rbaugmented, rbcompute)        \
-        zinline static void                            \
-        rbname ## _propagate(_co_rbtree_node_t *rb, _co_rbtree_node_t *stop)        \
-{                                    \
-    while (rb != stop) {                        \
-        rbstruct *node = _co_rbtree_entry(rb, rbstruct, rbfield);    \
-        rbtype augmented = rbcompute(node);            \
-        if (node->rbaugmented == augmented)            \
-        break;                        \
-        node->rbaugmented = augmented;                \
-        rb = ZCOROUTINE_RBTREE_PARENT(&node->rbfield);                \
-    }                                \
-}                                    \
-zinline static void                            \
-rbname ## _copy(_co_rbtree_node_t *_co_rbtree_old, _co_rbtree_node_t *_co_rbtree_new)        \
-{                                    \
-    rbstruct *old = _co_rbtree_entry(_co_rbtree_old, rbstruct, rbfield);        \
-    rbstruct *new_node = _co_rbtree_entry(_co_rbtree_new, rbstruct, rbfield);        \
-    new_node->rbaugmented = old->rbaugmented;                \
-}                                    \
-static void                                \
-rbname ## _rotate(_co_rbtree_node_t *_co_rbtree_old, _co_rbtree_node_t *_co_rbtree_new)    \
-{                                    \
-    rbstruct *old = _co_rbtree_entry(_co_rbtree_old, rbstruct, rbfield);        \
-    rbstruct *new_node = _co_rbtree_entry(_co_rbtree_new, rbstruct, rbfield);        \
-    new_node->rbaugmented = old->rbaugmented;                \
-    old->rbaugmented = rbcompute(old);                \
-}                                    \
-static rbstatic const struct _co_rbtree_augment_callbacks rbname = {            \
-    rbname ## _propagate, rbname ## _copy, rbname ## _rotate    \
-};
+#define RB_DECLARE_CALLBACKS(rbstatic, rbname, rbstruct, rbfield,                             \
+                             rbtype, rbaugmented, rbcompute)                                  \
+    zinline static void                                                                       \
+        rbname##_propagate(_co_rbtree_node_t *rb, _co_rbtree_node_t *stop)                    \
+    {                                                                                         \
+        while (rb != stop)                                                                    \
+        {                                                                                     \
+            rbstruct *node = _co_rbtree_entry(rb, rbstruct, rbfield);                         \
+            rbtype augmented = rbcompute(node);                                               \
+            if (node->rbaugmented == augmented)                                               \
+                break;                                                                        \
+            node->rbaugmented = augmented;                                                    \
+            rb = ZCOROUTINE_RBTREE_PARENT(&node->rbfield);                                    \
+        }                                                                                     \
+    }                                                                                         \
+    zinline static void                                                                       \
+        rbname##_copy(_co_rbtree_node_t *_co_rbtree_old, _co_rbtree_node_t *_co_rbtree_new)   \
+    {                                                                                         \
+        rbstruct *old = _co_rbtree_entry(_co_rbtree_old, rbstruct, rbfield);                  \
+        rbstruct *new_node = _co_rbtree_entry(_co_rbtree_new, rbstruct, rbfield);             \
+        new_node->rbaugmented = old->rbaugmented;                                             \
+    }                                                                                         \
+    static void                                                                               \
+        rbname##_rotate(_co_rbtree_node_t *_co_rbtree_old, _co_rbtree_node_t *_co_rbtree_new) \
+    {                                                                                         \
+        rbstruct *old = _co_rbtree_entry(_co_rbtree_old, rbstruct, rbfield);                  \
+        rbstruct *new_node = _co_rbtree_entry(_co_rbtree_new, rbstruct, rbfield);             \
+        new_node->rbaugmented = old->rbaugmented;                                             \
+        old->rbaugmented = rbcompute(old);                                                    \
+    }                                                                                         \
+    static rbstatic const struct _co_rbtree_augment_callbacks rbname = {                      \
+        rbname##_propagate, rbname##_copy, rbname##_rotate};
 
-#define    RB_RED        0
-#define    RB_BLACK    1
+#define RB_RED 0
+#define RB_BLACK 1
 
-#define __ZCOROUTINE_RBTREE_PARENT(pc)    ((_co_rbtree_node_t *)(pc & ~3))
+#define __ZCOROUTINE_RBTREE_PARENT(pc) ((_co_rbtree_node_t *)(pc & ~3))
 
-#define ___co_rbtree_color(pc)     ((pc) & 1)
-#define ___co_rbtree_is_black(pc)  ___co_rbtree_color(pc)
-#define ___co_rbtree_is_red(pc)    (!___co_rbtree_color(pc))
-#define _co_rbtree_color(rb)       ___co_rbtree_color((rb)->___co_rbtree_parent_color)
-#define _co_rbtree_is_red(rb)      ___co_rbtree_is_red((rb)->___co_rbtree_parent_color)
-#define _co_rbtree_is_black(rb)    ___co_rbtree_is_black((rb)->___co_rbtree_parent_color)
+#define ___co_rbtree_color(pc) ((pc)&1)
+#define ___co_rbtree_is_black(pc) ___co_rbtree_color(pc)
+#define ___co_rbtree_is_red(pc) (!___co_rbtree_color(pc))
+#define _co_rbtree_color(rb) ___co_rbtree_color((rb)->___co_rbtree_parent_color)
+#define _co_rbtree_is_red(rb) ___co_rbtree_is_red((rb)->___co_rbtree_parent_color)
+#define _co_rbtree_is_black(rb) ___co_rbtree_is_black((rb)->___co_rbtree_parent_color)
 
-zinline static void _co_rbtree_set_parent(_co_rbtree_node_t * rb, _co_rbtree_node_t * p)
+zinline static void _co_rbtree_set_parent(_co_rbtree_node_t *rb, _co_rbtree_node_t *p)
 {
     rb->___co_rbtree_parent_color = _co_rbtree_color(rb) | (unsigned long)p;
 }
 
-zinline static void _co_rbtree_set_parent_color(_co_rbtree_node_t * rb, _co_rbtree_node_t * p, int color)
+zinline static void _co_rbtree_set_parent_color(_co_rbtree_node_t *rb, _co_rbtree_node_t *p, int color)
 {
     rb->___co_rbtree_parent_color = (unsigned long)p | color;
 }
 
-zinline static void ___co_rbtree_change_child(_co_rbtree_node_t * old, _co_rbtree_node_t * new_node, _co_rbtree_node_t * parent, _co_rbtree_t * root)
+zinline static void ___co_rbtree_change_child(_co_rbtree_node_t *old, _co_rbtree_node_t *new_node, _co_rbtree_node_t *parent, _co_rbtree_t *root)
 {
-    if (parent) {
+    if (parent)
+    {
         if (parent->_co_rbtree_left == old)
             parent->_co_rbtree_left = new_node;
         else
             parent->_co_rbtree_right = new_node;
-    } else
+    }
+    else
         root->_co_rbtree_node = new_node;
 }
 
-static void ___co_rbtree_erase_color(_co_rbtree_t * root, _co_rbtree_node_t * parent, void (*augment_rotate) (_co_rbtree_node_t * old, _co_rbtree_node_t * new_node));
+static void ___co_rbtree_erase_color(_co_rbtree_t *root, _co_rbtree_node_t *parent, void (*augment_rotate)(_co_rbtree_node_t *old, _co_rbtree_node_t *new_node));
 
-zinline static _co_rbtree_node_t *___co_rbtree_erase_augmented(_co_rbtree_node_t * node, _co_rbtree_t * root, const struct _co_rbtree_augment_callbacks *augment)
+zinline static _co_rbtree_node_t *___co_rbtree_erase_augmented(_co_rbtree_node_t *node, _co_rbtree_t *root, const struct _co_rbtree_augment_callbacks *augment)
 {
     _co_rbtree_node_t *child = node->_co_rbtree_right, *tmp = node->_co_rbtree_left;
     _co_rbtree_node_t *parent, *rebalance;
-    unsigned long pc;
+    size_t pc;
 
-    if (!tmp) {
+    if (!tmp)
+    {
         /*
          * Case 1: node to erase has no more than 1 child (easy!)
          *
@@ -855,23 +967,30 @@ zinline static _co_rbtree_node_t *___co_rbtree_erase_augmented(_co_rbtree_node_t
         pc = node->___co_rbtree_parent_color;
         parent = __ZCOROUTINE_RBTREE_PARENT(pc);
         ___co_rbtree_change_child(node, child, parent, root);
-        if (child) {
+        if (child)
+        {
             child->___co_rbtree_parent_color = pc;
             rebalance = NULL;
-        } else
+        }
+        else
             rebalance = ___co_rbtree_is_black(pc) ? parent : NULL;
         tmp = parent;
-    } else if (!child) {
+    }
+    else if (!child)
+    {
         /* Still case 1, but this time the child is node->_co_rbtree_left */
         tmp->___co_rbtree_parent_color = pc = node->___co_rbtree_parent_color;
         parent = __ZCOROUTINE_RBTREE_PARENT(pc);
         ___co_rbtree_change_child(node, tmp, parent, root);
         rebalance = NULL;
         tmp = parent;
-    } else {
+    }
+    else
+    {
         _co_rbtree_node_t *successor = child, *child2;
         tmp = child->_co_rbtree_left;
-        if (!tmp) {
+        if (!tmp)
+        {
             /*
              * Case 2: node's successor is its right child
              *
@@ -884,7 +1003,9 @@ zinline static _co_rbtree_node_t *___co_rbtree_erase_augmented(_co_rbtree_node_t
             parent = successor;
             child2 = successor->_co_rbtree_right;
             augment->copy(node, successor);
-        } else {
+        }
+        else
+        {
             /*
              * Case 3: node's successor is leftmost under
              * node's right child subtree
@@ -899,12 +1020,12 @@ zinline static _co_rbtree_node_t *___co_rbtree_erase_augmented(_co_rbtree_node_t
              *    \
              *    (c)
              */
-            do {
+            do
+            {
                 parent = successor;
                 successor = tmp;
                 tmp = tmp->_co_rbtree_left;
-            }
-            while (tmp);
+            } while (tmp);
             parent->_co_rbtree_left = child2 = successor->_co_rbtree_right;
             successor->_co_rbtree_right = child;
             _co_rbtree_set_parent(child, successor);
@@ -918,12 +1039,15 @@ zinline static _co_rbtree_node_t *___co_rbtree_erase_augmented(_co_rbtree_node_t
         pc = node->___co_rbtree_parent_color;
         tmp = __ZCOROUTINE_RBTREE_PARENT(pc);
         ___co_rbtree_change_child(node, successor, tmp, root);
-        if (child2) {
+        if (child2)
+        {
             successor->___co_rbtree_parent_color = pc;
             _co_rbtree_set_parent_color(child2, parent, RB_BLACK);
             rebalance = NULL;
-        } else {
-            unsigned long pc2 = successor->___co_rbtree_parent_color;
+        }
+        else
+        {
+            size_t pc2 = successor->___co_rbtree_parent_color;
             successor->___co_rbtree_parent_color = pc;
             rebalance = ___co_rbtree_is_black(pc2) ? parent : NULL;
         }
@@ -934,21 +1058,21 @@ zinline static _co_rbtree_node_t *___co_rbtree_erase_augmented(_co_rbtree_node_t
     return rebalance;
 }
 
-zinline static void _co_rbtree_erase_augmented(_co_rbtree_node_t * node, _co_rbtree_t * root, const struct _co_rbtree_augment_callbacks *augment)
+zinline static void _co_rbtree_erase_augmented(_co_rbtree_node_t *node, _co_rbtree_t *root, const struct _co_rbtree_augment_callbacks *augment)
 {
     _co_rbtree_node_t *rebalance = ___co_rbtree_erase_augmented(node, root, augment);
     if (rebalance)
         ___co_rbtree_erase_color(root, rebalance, augment->rotate);
 }
 
-zinline static void _co_rbtree_set_black(_co_rbtree_node_t * rb)
+zinline static void _co_rbtree_set_black(_co_rbtree_node_t *rb)
 {
     rb->___co_rbtree_parent_color |= RB_BLACK;
 }
 
-zinline static _co_rbtree_node_t *_co_rbtree_red_parent(_co_rbtree_node_t * red)
+zinline static _co_rbtree_node_t *_co_rbtree_red_parent(_co_rbtree_node_t *red)
 {
-    return (_co_rbtree_node_t *) red->___co_rbtree_parent_color;
+    return (_co_rbtree_node_t *)red->___co_rbtree_parent_color;
 }
 
 /*
@@ -956,7 +1080,7 @@ zinline static _co_rbtree_node_t *_co_rbtree_red_parent(_co_rbtree_node_t * red)
  * - old's parent and color get assigned to new_node
  * - old gets assigned new_node as a parent and 'color' as a color.
  */
-zinline static void ___co_rbtree_rotate_set_parents(_co_rbtree_node_t * old, _co_rbtree_node_t * new_node, _co_rbtree_t * root, int color)
+zinline static void ___co_rbtree_rotate_set_parents(_co_rbtree_node_t *old, _co_rbtree_node_t *new_node, _co_rbtree_t *root, int color)
 {
     _co_rbtree_node_t *parent = ZCOROUTINE_RBTREE_PARENT(old);
     new_node->___co_rbtree_parent_color = old->___co_rbtree_parent_color;
@@ -964,11 +1088,12 @@ zinline static void ___co_rbtree_rotate_set_parents(_co_rbtree_node_t * old, _co
     ___co_rbtree_change_child(old, new_node, parent, root);
 }
 
-zinline static void ___co_rbtree_insert(_co_rbtree_node_t * node, _co_rbtree_t * root, void (*augment_rotate) (_co_rbtree_node_t * old, _co_rbtree_node_t * new_node))
+zinline static void ___co_rbtree_insert(_co_rbtree_node_t *node, _co_rbtree_t *root, void (*augment_rotate)(_co_rbtree_node_t *old, _co_rbtree_node_t *new_node))
 {
     _co_rbtree_node_t *parent = _co_rbtree_red_parent(node), *gparent, *tmp;
 
-    while (true) {
+    while (true)
+    {
         /*
          * Loop invariant: node is red
          *
@@ -976,17 +1101,21 @@ zinline static void ___co_rbtree_insert(_co_rbtree_node_t * node, _co_rbtree_t *
          * Otherwise, take some corrective action as we don't
          * want a red root or two consecutive red nodes.
          */
-        if (!parent) {
+        if (!parent)
+        {
             _co_rbtree_set_parent_color(node, NULL, RB_BLACK);
             break;
-        } else if (_co_rbtree_is_black(parent))
+        }
+        else if (_co_rbtree_is_black(parent))
             break;
 
         gparent = _co_rbtree_red_parent(parent);
 
         tmp = gparent->_co_rbtree_right;
-        if (parent != tmp) {    /* parent == gparent->_co_rbtree_left */
-            if (tmp && _co_rbtree_is_red(tmp)) {
+        if (parent != tmp)
+        { /* parent == gparent->_co_rbtree_left */
+            if (tmp && _co_rbtree_is_red(tmp))
+            {
                 /*
                  * Case 1 - color flips
                  *
@@ -1009,7 +1138,8 @@ zinline static void ___co_rbtree_insert(_co_rbtree_node_t * node, _co_rbtree_t *
             }
 
             tmp = parent->_co_rbtree_right;
-            if (node == tmp) {
+            if (node == tmp)
+            {
                 /*
                  * Case 2 - left rotate at parent
                  *
@@ -1041,16 +1171,19 @@ zinline static void ___co_rbtree_insert(_co_rbtree_node_t * node, _co_rbtree_t *
              *     /                 \
              *    n                   U
              */
-            gparent->_co_rbtree_left = tmp;    /* == parent->_co_rbtree_right */
+            gparent->_co_rbtree_left = tmp; /* == parent->_co_rbtree_right */
             parent->_co_rbtree_right = gparent;
             if (tmp)
                 _co_rbtree_set_parent_color(tmp, gparent, RB_BLACK);
             ___co_rbtree_rotate_set_parents(gparent, parent, root, RB_RED);
             augment_rotate(gparent, parent);
             break;
-        } else {
+        }
+        else
+        {
             tmp = gparent->_co_rbtree_left;
-            if (tmp && _co_rbtree_is_red(tmp)) {
+            if (tmp && _co_rbtree_is_red(tmp))
+            {
                 /* Case 1 - color flips */
                 _co_rbtree_set_parent_color(tmp, gparent, RB_BLACK);
                 _co_rbtree_set_parent_color(parent, gparent, RB_BLACK);
@@ -1061,7 +1194,8 @@ zinline static void ___co_rbtree_insert(_co_rbtree_node_t * node, _co_rbtree_t *
             }
 
             tmp = parent->_co_rbtree_left;
-            if (node == tmp) {
+            if (node == tmp)
+            {
                 /* Case 2 - right rotate at parent */
                 parent->_co_rbtree_left = tmp = node->_co_rbtree_right;
                 node->_co_rbtree_right = parent;
@@ -1074,7 +1208,7 @@ zinline static void ___co_rbtree_insert(_co_rbtree_node_t * node, _co_rbtree_t *
             }
 
             /* Case 3 - left rotate at gparent */
-            gparent->_co_rbtree_right = tmp;   /* == parent->_co_rbtree_left */
+            gparent->_co_rbtree_right = tmp; /* == parent->_co_rbtree_left */
             parent->_co_rbtree_left = gparent;
             if (tmp)
                 _co_rbtree_set_parent_color(tmp, gparent, RB_BLACK);
@@ -1089,11 +1223,12 @@ zinline static void ___co_rbtree_insert(_co_rbtree_node_t * node, _co_rbtree_t *
  * Inline version for _co_rbtree_erase() use - we want to be able to inline
  * and eliminate the dummy_rotate callback there
  */
-zinline static void _____co_rbtree_erase_color(_co_rbtree_node_t * parent, _co_rbtree_t * root, void (*augment_rotate) (_co_rbtree_node_t * old, _co_rbtree_node_t * new_node))
+zinline static void _____co_rbtree_erase_color(_co_rbtree_node_t *parent, _co_rbtree_t *root, void (*augment_rotate)(_co_rbtree_node_t *old, _co_rbtree_node_t *new_node))
 {
     _co_rbtree_node_t *node = NULL, *sibling, *tmp1, *tmp2;
 
-    while (true) {
+    while (true)
+    {
         /*
          * Loop invariants:
          * - node is black (or NULL on first iteration)
@@ -1102,8 +1237,10 @@ zinline static void _____co_rbtree_erase_color(_co_rbtree_node_t * parent, _co_r
          *   black node count that is 1 lower than other leaf paths.
          */
         sibling = parent->_co_rbtree_right;
-        if (node != sibling) {  /* node == parent->_co_rbtree_left */
-            if (_co_rbtree_is_red(sibling)) {
+        if (node != sibling)
+        { /* node == parent->_co_rbtree_left */
+            if (_co_rbtree_is_red(sibling))
+            {
                 /*
                  * Case 1 - left rotate at parent
                  *
@@ -1121,9 +1258,11 @@ zinline static void _____co_rbtree_erase_color(_co_rbtree_node_t * parent, _co_r
                 sibling = tmp1;
             }
             tmp1 = sibling->_co_rbtree_right;
-            if (!tmp1 || _co_rbtree_is_black(tmp1)) {
+            if (!tmp1 || _co_rbtree_is_black(tmp1))
+            {
                 tmp2 = sibling->_co_rbtree_left;
-                if (!tmp2 || _co_rbtree_is_black(tmp2)) {
+                if (!tmp2 || _co_rbtree_is_black(tmp2))
+                {
                     /*
                      * Case 2 - sibling color flip
                      * (p could be either color here)
@@ -1142,7 +1281,8 @@ zinline static void _____co_rbtree_erase_color(_co_rbtree_node_t * parent, _co_r
                     _co_rbtree_set_parent_color(sibling, parent, RB_RED);
                     if (_co_rbtree_is_red(parent))
                         _co_rbtree_set_black(parent);
-                    else {
+                    else
+                    {
                         node = parent;
                         parent = ZCOROUTINE_RBTREE_PARENT(node);
                         if (parent)
@@ -1191,9 +1331,12 @@ zinline static void _____co_rbtree_erase_color(_co_rbtree_node_t * parent, _co_r
             ___co_rbtree_rotate_set_parents(parent, sibling, root, RB_BLACK);
             augment_rotate(parent, sibling);
             break;
-        } else {
+        }
+        else
+        {
             sibling = parent->_co_rbtree_left;
-            if (_co_rbtree_is_red(sibling)) {
+            if (_co_rbtree_is_red(sibling))
+            {
                 /* Case 1 - right rotate at parent */
                 parent->_co_rbtree_left = tmp1 = sibling->_co_rbtree_right;
                 sibling->_co_rbtree_right = parent;
@@ -1203,14 +1346,17 @@ zinline static void _____co_rbtree_erase_color(_co_rbtree_node_t * parent, _co_r
                 sibling = tmp1;
             }
             tmp1 = sibling->_co_rbtree_left;
-            if (!tmp1 || _co_rbtree_is_black(tmp1)) {
+            if (!tmp1 || _co_rbtree_is_black(tmp1))
+            {
                 tmp2 = sibling->_co_rbtree_right;
-                if (!tmp2 || _co_rbtree_is_black(tmp2)) {
+                if (!tmp2 || _co_rbtree_is_black(tmp2))
+                {
                     /* Case 2 - sibling color flip */
                     _co_rbtree_set_parent_color(sibling, parent, RB_RED);
                     if (_co_rbtree_is_red(parent))
                         _co_rbtree_set_black(parent);
-                    else {
+                    else
+                    {
                         node = parent;
                         parent = ZCOROUTINE_RBTREE_PARENT(node);
                         if (parent)
@@ -1242,7 +1388,7 @@ zinline static void _____co_rbtree_erase_color(_co_rbtree_node_t * parent, _co_r
 }
 
 /* Non-inline version for _co_rbtree_erase_augmented() use */
-static void ___co_rbtree_erase_color(_co_rbtree_t * root, _co_rbtree_node_t * parent, void (*augment_rotate) (_co_rbtree_node_t * old, _co_rbtree_node_t * new_node))
+static void ___co_rbtree_erase_color(_co_rbtree_t *root, _co_rbtree_node_t *parent, void (*augment_rotate)(_co_rbtree_node_t *old, _co_rbtree_node_t *new_node))
 {
     _____co_rbtree_erase_color(parent, root, augment_rotate);
 }
@@ -1254,28 +1400,27 @@ static void ___co_rbtree_erase_color(_co_rbtree_t * root, _co_rbtree_node_t * pa
  * out of the _co_rbtree_insert_color() and _co_rbtree_erase() function definitions.
  */
 
-zinline static void dummy_propagate(_co_rbtree_node_t * node, _co_rbtree_node_t * stop)
+zinline static void dummy_propagate(_co_rbtree_node_t *node, _co_rbtree_node_t *stop)
 {
 }
 
-zinline static void dummy_copy(_co_rbtree_node_t * old, _co_rbtree_node_t * new_node)
+zinline static void dummy_copy(_co_rbtree_node_t *old, _co_rbtree_node_t *new_node)
 {
 }
 
-zinline static void dummy_rotate(_co_rbtree_node_t * old, _co_rbtree_node_t * new_node)
+zinline static void dummy_rotate(_co_rbtree_node_t *old, _co_rbtree_node_t *new_node)
 {
 }
 
 static const struct _co_rbtree_augment_callbacks dummy_callbacks = {
-    dummy_propagate, dummy_copy, dummy_rotate
-};
+    dummy_propagate, dummy_copy, dummy_rotate};
 
-static void _co_rbtree_insert_color(_co_rbtree_t * root, _co_rbtree_node_t * node)
+static void _co_rbtree_insert_color(_co_rbtree_t *root, _co_rbtree_node_t *node)
 {
     ___co_rbtree_insert(node, root, dummy_rotate);
 }
 
-static void _co_rbtree_erase(_co_rbtree_t * root, _co_rbtree_node_t * node)
+static void _co_rbtree_erase(_co_rbtree_t *root, _co_rbtree_node_t *node)
 {
     _co_rbtree_node_t *rebalance;
     rebalance = ___co_rbtree_erase_augmented(node, root, &dummy_callbacks);
@@ -1290,7 +1435,7 @@ static void _co_rbtree_erase(_co_rbtree_t * root, _co_rbtree_node_t * node)
  * case, but this time with user-defined callbacks.
  */
 
-static void ___co_rbtree_insert_augmented(_co_rbtree_t * root, _co_rbtree_node_t * node, void (*augment_rotate) (_co_rbtree_node_t * old, _co_rbtree_node_t * new_node))
+static void ___co_rbtree_insert_augmented(_co_rbtree_t *root, _co_rbtree_node_t *node, void (*augment_rotate)(_co_rbtree_node_t *old, _co_rbtree_node_t *new_node))
 {
     ___co_rbtree_insert(node, root, augment_rotate);
 }
@@ -1298,7 +1443,7 @@ static void ___co_rbtree_insert_augmented(_co_rbtree_t * root, _co_rbtree_node_t
 /*
  * This function returns the first node (in sort order) of the tree.
  */
-static _co_rbtree_node_t *_co_rbtree_first(const _co_rbtree_t * root)
+static _co_rbtree_node_t *_co_rbtree_first(const _co_rbtree_t *root)
 {
     _co_rbtree_node_t *n;
 
@@ -1310,7 +1455,7 @@ static _co_rbtree_node_t *_co_rbtree_first(const _co_rbtree_t * root)
     return n;
 }
 
-static _co_rbtree_node_t *_co_rbtree_next(const _co_rbtree_node_t * node)
+static _co_rbtree_node_t *_co_rbtree_next(const _co_rbtree_node_t *node)
 {
     _co_rbtree_node_t *parent;
 
@@ -1321,11 +1466,12 @@ static _co_rbtree_node_t *_co_rbtree_next(const _co_rbtree_node_t * node)
      * If we have a right-hand child, go down and then left as far
      * as we can.
      */
-    if (node->_co_rbtree_right) {
+    if (node->_co_rbtree_right)
+    {
         node = node->_co_rbtree_right;
         while (node->_co_rbtree_left)
             node = node->_co_rbtree_left;
-        return (_co_rbtree_node_t *) node;
+        return (_co_rbtree_node_t *)node;
     }
 
     /*
@@ -1341,30 +1487,36 @@ static _co_rbtree_node_t *_co_rbtree_next(const _co_rbtree_node_t * node)
     return parent;
 }
 
-static void _co_rbtree_init(_co_rbtree_t * tree, _co_rbtree_cmp_t cmp_fn)
+static void _co_rbtree_init(_co_rbtree_t *tree, _co_rbtree_cmp_t cmp_fn)
 {
     tree->_co_rbtree_node = 0;
     tree->cmp_fn = cmp_fn;
 }
 
-zinline static _co_rbtree_node_t *_co_rbtree_parent(const _co_rbtree_node_t * node)
+zinline static _co_rbtree_node_t *_co_rbtree_parent(const _co_rbtree_node_t *node)
 {
-    return ((_co_rbtree_node_t *) ((node)->___co_rbtree_parent_color & ~3));
+    return ((_co_rbtree_node_t *)((node)->___co_rbtree_parent_color & ~3));
 }
 
-static _co_rbtree_node_t *_co_rbtree_attach(_co_rbtree_t * tree, _co_rbtree_node_t * node)
+static _co_rbtree_node_t *_co_rbtree_attach(_co_rbtree_t *tree, _co_rbtree_node_t *node)
 {
     _co_rbtree_node_t **new_node = &(tree->_co_rbtree_node), *parent = 0;
     int cmp_result;
 
-    while (*new_node) {
+    while (*new_node)
+    {
         parent = *new_node;
         cmp_result = tree->cmp_fn(node, *new_node);
-        if (cmp_result < 0) {
+        if (cmp_result < 0)
+        {
             new_node = &((*new_node)->_co_rbtree_left);
-        } else if (cmp_result > 0) {
+        }
+        else if (cmp_result > 0)
+        {
             new_node = &((*new_node)->_co_rbtree_right);
-        } else {
+        }
+        else
+        {
             return (*new_node);
         }
     }
@@ -1374,13 +1526,13 @@ static _co_rbtree_node_t *_co_rbtree_attach(_co_rbtree_t * tree, _co_rbtree_node
     return node;
 }
 
-static _co_rbtree_node_t *_co_rbtree_detach(_co_rbtree_t * tree, _co_rbtree_node_t * node)
+static _co_rbtree_node_t *_co_rbtree_detach(_co_rbtree_t *tree, _co_rbtree_node_t *node)
 {
     _co_rbtree_erase(tree, node);
     return node;
 }
 
-static void _co_rbtree_link_node(_co_rbtree_node_t * node, _co_rbtree_node_t * parent, _co_rbtree_node_t ** _co_rbtree_link)
+static void _co_rbtree_link_node(_co_rbtree_node_t *node, _co_rbtree_node_t *parent, _co_rbtree_node_t **_co_rbtree_link)
 {
     node->___co_rbtree_parent_color = (unsigned long)parent;
     node->_co_rbtree_left = node->_co_rbtree_right = 0;
@@ -1396,42 +1548,47 @@ static int _co_nonblocking(int fd, int no)
 {
     int flags;
 
-    if ((flags = fcntl(fd, F_GETFL, 0)) < 0) {
+    if ((flags = fcntl(fd, F_GETFL, 0)) < 0)
+    {
         return -1;
     }
 
-    if (fcntl(fd, F_SETFL, no ? flags | O_NONBLOCK : flags & ~O_NONBLOCK) < 0) {
+    if (fcntl(fd, F_SETFL, no ? flags | O_NONBLOCK : flags & ~O_NONBLOCK) < 0)
+    {
         return -1;
     }
 
-    return ((flags & O_NONBLOCK)?1:0);
+    return ((flags & O_NONBLOCK) ? 1 : 0);
 }
 
 static int _co_close_on_exec(int fd, int on)
 {
     int flags;
 
-    if ((flags = fcntl(fd, F_GETFD, 0)) < 0) {
+    if ((flags = fcntl(fd, F_GETFD, 0)) < 0)
+    {
         return -1;
     }
 
-    if (fcntl(fd, F_SETFD, on ? flags | FD_CLOEXEC : flags & ~FD_CLOEXEC) < 0) {
+    if (fcntl(fd, F_SETFD, on ? flags | FD_CLOEXEC : flags & ~FD_CLOEXEC) < 0)
+    {
         return -1;
     }
 
-    return ((flags & FD_CLOEXEC)?1:0);
+    return ((flags & FD_CLOEXEC) ? 1 : 0);
 }
 
-static long zcoroutine_timeout_set_millisecond(long timeout)
+static ssize_t zcoroutine_timeout_set_millisecond(ssize_t timeout)
 {
-    if (timeout < 0) {
+    if (timeout < 0)
+    {
         timeout = (3600L * 24 * 365 * 10 * 1000);
     }
-    long r;
+    ssize_t r;
     struct timeval tv;
     gettimeofday(&tv, 0);
     r = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-    return (r+timeout);
+    return (r + timeout);
 }
 
 /* }}} */
@@ -1456,8 +1613,9 @@ int _syscall_poll(struct pollfd fds[], nfds_t nfds, int timeout);
 /* ################################################################################# */
 #ifdef __x86_64__
 typedef struct zcoroutine_sys_context zcoroutine_sys_context;
-struct zcoroutine_sys_context {
-    void *regs[ 14 ];
+struct zcoroutine_sys_context
+{
+    void *regs[14];
     size_t ss_size;
     char *ss_sp;
 };
@@ -1469,22 +1627,23 @@ typedef union zcoroutine_hook_arg_t zcoroutine_hook_arg_t;
 typedef struct zcoroutine_hook_fileio_t zcoroutine_hook_fileio_t;
 
 typedef struct zgethostbyname_buf_t zgethostbyname_buf_t;
-struct zgethostbyname_buf_t 
+struct zgethostbyname_buf_t
 {
     struct hostent host;
-    char* buf_ptr;
+    char *buf_ptr;
     int buf_size;
     int h_errno2;
 };
 
-union zcoroutine_hook_arg_t {
+union zcoroutine_hook_arg_t
+{
     const void *const_void_ptr_t;
     void *void_ptr_t;
     const char *const_char_ptr_t;
     char *char_ptr_t;
     struct iovec *iovec_t;
     const struct iovec *const_iovec_t;
-    long long_t;
+    size_t long_t;
     int int_t;
     unsigned uint_t;
     size_t size_size_t;
@@ -1495,7 +1654,8 @@ union zcoroutine_hook_arg_t {
     gid_t gid_gid_t;
     void *(*block_func)(void *);
 };
-struct zcoroutine_hook_fileio_t {
+struct zcoroutine_hook_fileio_t
+{
     zcoroutine_t *current_coroutine;
     zcoroutine_hook_arg_t args[6];
     zcoroutine_hook_fileio_t *prev;
@@ -1503,8 +1663,8 @@ struct zcoroutine_hook_fileio_t {
     zcoroutine_hook_arg_t retval;
     int co_errno;
     int cmdcode;
-    unsigned int is_regular_file:1;
-    unsigned int is_block_func:1;
+    unsigned int is_regular_file : 1;
+    unsigned int is_block_func : 1;
 };
 
 static pthread_mutex_t zvar_coroutine_hook_fileio_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -1516,7 +1676,8 @@ static zcoroutine_hook_fileio_t *zvar_coroutine_hook_fileio_head = 0;
 static zcoroutine_hook_fileio_t *zvar_coroutine_hook_fileio_tail = 0;
 static int zvar_coroutine_hook_fileio_count = 0;
 
-enum zcoroutine_hook_fileio_cmd_t {
+enum zcoroutine_hook_fileio_cmd_t
+{
     zcoroutine_hook_fileio_open = 1,
     zcoroutine_hook_fileio_openat,
     zcoroutine_hook_fileio_close,
@@ -1557,70 +1718,75 @@ enum zcoroutine_hook_fileio_cmd_t {
 typedef enum zcoroutine_hook_fileio_cmd_t zcoroutine_hook_fileio_cmd_t;
 
 #define zcoroutine_hook_fileio_run_part0() \
-    zcoroutine_base_t *cobs = 0; \
-if ((cobs = zcoroutine_base_get_current_inner())==0)
+    zcoroutine_base_t *cobs = 0;           \
+    if ((cobs = zcoroutine_base_get_current_inner()) == 0)
 
 #define zcoroutine_hook_fileio_run_part1() \
-    zcoroutine_base_t *cobs = 0; \
-if ((!zvar_coroutine_fileio_use_block_pthread) || (zvar_coroutine_block_pthread_count_limit<1) || ((cobs = zcoroutine_base_get_current_inner())==0))
+    zcoroutine_base_t *cobs = 0;           \
+    if ((!zvar_coroutine_fileio_use_block_pthread) || (zvar_coroutine_block_pthread_count_limit < 1) || ((cobs = zcoroutine_base_get_current_inner()) == 0))
 
-#define zcoroutine_hook_fileio_run_part2(func)  \
+#define zcoroutine_hook_fileio_run_part2(func)                 \
     zcoroutine_t *current_coroutine = cobs->current_coroutine; \
-zcoroutine_hook_fileio_t fileio;\
-fileio.is_block_func = 0; \
-fileio.current_coroutine = cobs->current_coroutine; \
-fileio.co_errno = 0; \
-fileio.cmdcode = zcoroutine_hook_fileio_ ## func;
+    zcoroutine_hook_fileio_t fileio;                           \
+    fileio.is_block_func = 0;                                  \
+    fileio.current_coroutine = cobs->current_coroutine;        \
+    fileio.co_errno = 0;                                       \
+    fileio.cmdcode = zcoroutine_hook_fileio_##func;
 
-#define zcoroutine_hook_fileio_run_part3()  \
-    zpthread_lock(&zvar_coroutine_hook_fileio_lock); \
-ZMLINK_APPEND(zvar_coroutine_hook_fileio_head, zvar_coroutine_hook_fileio_tail, &fileio, prev, next); \
-zvar_coroutine_hook_fileio_count++; \
-if (zvar_coroutine_block_pthread_count_current < zvar_coroutine_block_pthread_count_limit) { \
-    if ((zvar_coroutine_block_pthread_count_current == 0)||(zvar_coroutine_hook_fileio_count > (zvar_coroutine_block_pthread_count_current))) { \
-        pthread_t pth; \
-        if (pthread_create(&pth, 0, zcoroutine_hook_fileio_worker, 0)) { \
-            zcoroutine_fatal("pthread_create error(%m)"); \
-        } \
-        zvar_coroutine_block_pthread_count_current++; \
-    } \
-} \
-zpthread_unlock(&zvar_coroutine_hook_fileio_lock); \
-pthread_cond_signal(&zvar_coroutine_hook_fileio_cond); \
-current_coroutine->inner_yield = 1; \
-zcoroutine_yield_my(current_coroutine); \
-errno = fileio.co_errno; \
-zcoroutine_hook_arg_t retval; \
-retval.long_t = fileio.retval.long_t; \
+#define zcoroutine_hook_fileio_run_part3()                                                                                                          \
+    zpthread_lock(&zvar_coroutine_hook_fileio_lock);                                                                                                \
+    ZMLINK_APPEND(zvar_coroutine_hook_fileio_head, zvar_coroutine_hook_fileio_tail, &fileio, prev, next);                                           \
+    zvar_coroutine_hook_fileio_count++;                                                                                                             \
+    if (zvar_coroutine_block_pthread_count_current < zvar_coroutine_block_pthread_count_limit)                                                      \
+    {                                                                                                                                               \
+        if ((zvar_coroutine_block_pthread_count_current == 0) || (zvar_coroutine_hook_fileio_count > (zvar_coroutine_block_pthread_count_current))) \
+        {                                                                                                                                           \
+            pthread_t pth;                                                                                                                          \
+            if (pthread_create(&pth, 0, zcoroutine_hook_fileio_worker, 0))                                                                          \
+            {                                                                                                                                       \
+                zcoroutine_fatal("pthread_create error(%m)");                                                                                       \
+            }                                                                                                                                       \
+            zvar_coroutine_block_pthread_count_current++;                                                                                           \
+        }                                                                                                                                           \
+    }                                                                                                                                               \
+    zpthread_unlock(&zvar_coroutine_hook_fileio_lock);                                                                                              \
+    pthread_cond_signal(&zvar_coroutine_hook_fileio_cond);                                                                                          \
+    current_coroutine->inner_yield = 1;                                                                                                             \
+    zcoroutine_yield_my(current_coroutine);                                                                                                         \
+    errno = fileio.co_errno;                                                                                                                        \
+    zcoroutine_hook_arg_t retval;                                                                                                                   \
+    retval.long_t = fileio.retval.long_t;
 
 /* ######################################## */
 static void zcoroutine_yield_my(zcoroutine_t *co);
 
 static int zvar_coroutine_mode_flag = 0;
 
-struct  zcoroutine_t {
+struct zcoroutine_t
+{
     void *(*start_job)(void *ctx);
     void *context;
-    long sleep_timeout;
+    ssize_t sleep_timeout;
     _co_rbtree_node_t sleep_rbnode;
     /* system */
     zcoroutine_sys_context sys_context;
     zcoroutine_t *prev;
     zcoroutine_t *next;
     zcoroutine_base_t *base; /* FIXME, should be removed */
-    _co_list_t *mutex_list; /* zcoroutine_mutex_t* */
+    _co_list_t *mutex_list;  /* zcoroutine_mutex_t* */
     struct __res_state *res_state;
     zgethostbyname_buf_t *gethostbyname;
-    long id;
+    ssize_t id;
     /* flags */
-    unsigned char ended:1;
-    unsigned char ep_loop:1;
-    unsigned char active_list:1;
-    unsigned char inner_yield:1;
-    unsigned char mprotect_flag:1;
+    unsigned char ended : 1;
+    unsigned char ep_loop : 1;
+    unsigned char active_list : 1;
+    unsigned char inner_yield : 1;
+    unsigned char mprotect_flag : 1;
 };
 
-struct zcoroutine_base_t {
+struct zcoroutine_base_t
+{
     int epoll_fd;
     int event_fd;
     int epoll_event_size;
@@ -1640,31 +1806,34 @@ struct zcoroutine_base_t {
     zcoroutine_t *deleted_coroutine_head;
     zcoroutine_t *deleted_coroutine_tail;
     void (*loop_fn)(zcoroutine_base_t *cb);
-    long id_plus;
-    unsigned char ___break:1;
+    ssize_t id_plus;
+    unsigned char ___break : 1;
 };
 
 typedef struct _co_fd_attribute_t _co_fd_attribute_t;
-struct _co_fd_attribute_t {
-    long timeout;
+struct _co_fd_attribute_t
+{
+    ssize_t timeout;
     _co_rbtree_node_t rbnode;
     zcoroutine_t *co;
     unsigned int read_timeout;
     unsigned int write_timeout;
     unsigned int revents;
-    unsigned short int nonblock:1;
-    unsigned short int pseudo_mode:1;
-    unsigned short int in_epoll:1;
-    unsigned short int by_epoll:1;
-    unsigned short int is_regular_file:1;
-    unsigned short int is_udp:1;
+    unsigned short int nonblock : 1;
+    unsigned short int pseudo_mode : 1;
+    unsigned short int in_epoll : 1;
+    unsigned short int by_epoll : 1;
+    unsigned short int is_regular_file : 1;
+    unsigned short int is_udp : 1;
 };
 
-struct  zcoroutine_mutex_t {
+struct zcoroutine_mutex_t
+{
     _co_list_t *colist; /* zcoroutine_t* */
 };
 
-struct zcoroutine_cond_t {
+struct zcoroutine_cond_t
+{
     _co_list_t *colist; /* zcoroutine_t* */
 };
 
@@ -1678,12 +1847,12 @@ static _co_fd_attribute_t **_co_fd_attribute_vec = 0;
 
 zinline static zcoroutine_base_t *zcoroutine_base_get_current_inner()
 {
-    return (zvar_coroutine_mode_flag?zvar_coroutine_base_per_pthread:0);
+    return (zvar_coroutine_mode_flag ? zvar_coroutine_base_per_pthread : 0);
 }
 
 zcoroutine_base_t *zcoroutine_base_get_current()
 {
-    return (zvar_coroutine_mode_flag?zvar_coroutine_base_per_pthread:0);
+    return (zvar_coroutine_mode_flag ? zvar_coroutine_base_per_pthread : 0);
 }
 /* }}} */
 
@@ -1692,42 +1861,42 @@ static int _co_start_wrap(zcoroutine_t *co, void *unused);
 
 #ifdef __x86_64__
 asm("\n"
-        ".type ___coroutine_context_swap, @function\n"
-        "___coroutine_context_swap:\n"
-        "\tleaq 8(%rsp),%rax\n"
-        "\tleaq 112(%rdi),%rsp\n"
-        "\tpushq %rax\n"
-        "\tpushq %rbx\n"
-        "\tpushq %rcx\n"
-        "\tpushq %rdx\n"
-        "\tpushq -8(%rax)\n"
-        "\tpushq %rsi\n"
-        "\tpushq %rdi\n"
-        "\tpushq %rbp\n"
-        "\tpushq %r8\n"
-        "\tpushq %r9\n"
-        "\tpushq %r12\n"
-        "\tpushq %r13\n"
-        "\tpushq %r14\n"
-        "\tpushq %r15\n"
-        "\tmovq %rsi, %rsp\n"
-        "\tpopq %r15\n"
-"\tpopq %r14\n"
-"\tpopq %r13\n"
-"\tpopq %r12\n"
-"\tpopq %r9\n"
-"\tpopq %r8\n"
-"\tpopq %rbp\n"
-"\tpopq %rdi\n"
-"\tpopq %rsi\n"
-"\tpopq %rax\n"
-"\tpopq %rdx\n"
-"\tpopq %rcx\n"
-"\tpopq %rbx\n"
-"\tpopq %rsp\n"
-"\tpushq %rax\n"
-"\txorl %eax, %eax\n"
-"\tret\n");
+    ".type ___coroutine_context_swap, @function\n"
+    "___coroutine_context_swap:\n"
+    "\tleaq 8(%rsp),%rax\n"
+    "\tleaq 112(%rdi),%rsp\n"
+    "\tpushq %rax\n"
+    "\tpushq %rbx\n"
+    "\tpushq %rcx\n"
+    "\tpushq %rdx\n"
+    "\tpushq -8(%rax)\n"
+    "\tpushq %rsi\n"
+    "\tpushq %rdi\n"
+    "\tpushq %rbp\n"
+    "\tpushq %r8\n"
+    "\tpushq %r9\n"
+    "\tpushq %r12\n"
+    "\tpushq %r13\n"
+    "\tpushq %r14\n"
+    "\tpushq %r15\n"
+    "\tmovq %rsi, %rsp\n"
+    "\tpopq %r15\n"
+    "\tpopq %r14\n"
+    "\tpopq %r13\n"
+    "\tpopq %r12\n"
+    "\tpopq %r9\n"
+    "\tpopq %r8\n"
+    "\tpopq %rbp\n"
+    "\tpopq %rdi\n"
+    "\tpopq %rsi\n"
+    "\tpopq %rax\n"
+    "\tpopq %rdx\n"
+    "\tpopq %rcx\n"
+    "\tpopq %rbx\n"
+    "\tpopq %rsp\n"
+    "\tpushq %rax\n"
+    "\txorl %eax, %eax\n"
+    "\tret\n");
 void zcoroutine_context_swap(zcoroutine_sys_context *, zcoroutine_sys_context *) asm("___coroutine_context_swap");
 #else
 #define zcoroutine_context_swap swapcontext
@@ -1737,9 +1906,10 @@ void zcoroutine_context_swap(zcoroutine_sys_context *, zcoroutine_sys_context *)
 
 /* {{{ fd attribute */
 /* FIXME 是否需要加锁? 不需要! */
-zinline static _co_fd_attribute_t * _co_fd_attribute_get(int fd)
+zinline static _co_fd_attribute_t *_co_fd_attribute_get(int fd)
 {
-    if ((fd > -1) &&  (fd <= zvar_coroutine_max_fd) && (zvar_coroutine_mode_flag)) {
+    if ((fd > -1) && (fd <= zvar_coroutine_max_fd) && (zvar_coroutine_mode_flag))
+    {
         return _co_fd_attribute_vec[fd];
     }
     return 0;
@@ -1747,12 +1917,13 @@ zinline static _co_fd_attribute_t * _co_fd_attribute_get(int fd)
 
 static _co_fd_attribute_t *_co_fd_attribute_create(int fd)
 {
-    if ((fd > -1) &&  (fd <= zvar_coroutine_max_fd) && (zvar_coroutine_mode_flag)) {
+    if ((fd > -1) && (fd <= zvar_coroutine_max_fd) && (zvar_coroutine_mode_flag))
+    {
         _co_mem_free(_co_fd_attribute_vec[fd]);
         _co_fd_attribute_t *cfa = (_co_fd_attribute_t *)_co_mem_calloc(1, sizeof(_co_fd_attribute_t));
         _co_fd_attribute_vec[fd] = cfa;
-        cfa->read_timeout = 10 * 1000  + (fd%1000);
-        cfa->write_timeout = 10 * 1000 + (fd%1000);
+        cfa->read_timeout = 10 * 1000 + (fd % 1000);
+        cfa->write_timeout = 10 * 1000 + (fd % 1000);
         return cfa;
     }
     return 0;
@@ -1760,7 +1931,8 @@ static _co_fd_attribute_t *_co_fd_attribute_create(int fd)
 
 zinline static void _co_fd_attribute_free(int fd)
 {
-    if ((fd > -1) &&  (fd <= zvar_coroutine_max_fd) && (zvar_coroutine_mode_flag)) {
+    if ((fd > -1) && (fd <= zvar_coroutine_max_fd) && (zvar_coroutine_mode_flag))
+    {
         _co_mem_free(_co_fd_attribute_vec[fd]);
         _co_fd_attribute_vec[fd] = 0;
     }
@@ -1768,72 +1940,88 @@ zinline static void _co_fd_attribute_free(int fd)
 /* }}} */
 
 /* {{{ zcoroutine_t */
-static int var_page_size =  -1;
+static int var_page_size = -1;
 static zcoroutine_t *zcoroutine_create(zcoroutine_base_t *base, int stack_kilobyte, void *self_buf)
 {
-    if (stack_kilobyte < 1) {
+    if (stack_kilobyte < 1)
+    {
         stack_kilobyte = 128;
     }
-    if (var_page_size == -1) {
+    if (var_page_size == -1)
+    {
         var_page_size = sysconf(_SC_PAGE_SIZE);
     }
     int page_count = ((stack_kilobyte * 1024) / var_page_size);
-    if ((stack_kilobyte * 1024) % var_page_size) {
+    if ((stack_kilobyte * 1024) % var_page_size)
+    {
         page_count += 1;
     }
-    zcoroutine_t *co = (zcoroutine_t *)(self_buf?self_buf:_co_mem_calloc(1, sizeof (zcoroutine_t)));
+    zcoroutine_t *co = (zcoroutine_t *)(self_buf ? self_buf : _co_mem_calloc(1, sizeof(zcoroutine_t)));
     co->base = base;
     co->id = base->id_plus++;
     memset(&(co->sys_context), 0, sizeof(zcoroutine_sys_context));
     co->mprotect_flag = zvar_coroutine_mprotect_flag;
 #ifdef __x86_64__
-    if (co->mprotect_flag) {
+    if (co->mprotect_flag)
+    {
         co->sys_context.ss_sp = ((char *)_co_mem_valloc((page_count + 2) * var_page_size) + var_page_size);
         mprotect(co->sys_context.ss_sp - var_page_size, var_page_size, PROT_READ | PROT_WRITE);
-        mprotect(co->sys_context.ss_sp + (page_count + 1) * var_page_size , var_page_size, PROT_READ | PROT_WRITE);
-    } else {
+        mprotect(co->sys_context.ss_sp + (page_count + 1) * var_page_size, var_page_size, PROT_READ | PROT_WRITE);
+    }
+    else
+    {
         co->sys_context.ss_sp = ((char *)_co_mem_valloc(page_count * var_page_size));
     }
     co->sys_context.ss_size = page_count * var_page_size;
     char *sp = co->sys_context.ss_sp + co->sys_context.ss_size;
-    sp = (char*) ((unsigned long)sp & -16LL  );
+    sp = (char *)((unsigned long)sp & -16LL);
     co->sys_context.regs[13] = sp - 8;
-    co->sys_context.regs[9] = (char*)_co_start_wrap;
+    co->sys_context.regs[9] = (char *)_co_start_wrap;
     co->sys_context.regs[7] = (char *)co;
     co->sys_context.regs[8] = 0;
 #else
-    if (co->mprotect_flag) {
+    if (co->mprotect_flag)
+    {
         co->sys_context.uc_stack.ss_sp = ((char *)_co_mem_valloc((page_count + 2) * var_page_size) + var_page_size);
         mprotect(co->sys_context.uc_stack.ss_sp - var_page_size, var_page_size, PROT_READ | PROT_WRITE);
-        mprotect(co->sys_context.uc_stack.ss_sp + (page_count + 1) * var_page_size , var_page_size, PROT_READ | PROT_WRITE);
-    } else {
+        mprotect(co->sys_context.uc_stack.ss_sp + (page_count + 1) * var_page_size, var_page_size, PROT_READ | PROT_WRITE);
+    }
+    else
+    {
         co->sys_context.uc_stack.ss_sp = ((char *)_co_mem_valloc(page_count * var_page_size));
     }
     co->sys_context.uc_stack.ss_size = page_count * var_page_size;
     co->sys_context.uc_link = NULL;
-    makecontext(&(co->sys_context), (void (*)(void)) _co_start_wrap, 2, co, 0);
+    makecontext(&(co->sys_context), (void (*)(void))_co_start_wrap, 2, co, 0);
 #endif
     return co;
 }
 
 static void zcoroutine_free(zcoroutine_t *co)
 {
-    if (co->res_state) {
+    if (co->res_state)
+    {
         void __res_iclose(struct __res_state *, int);
         __res_iclose(co->res_state, 1);
         _co_mem_free(co->res_state);
     }
     _co_mem_free(co->gethostbyname);
 #ifdef __x86_64__
-    if (co->mprotect_flag) {
+    if (co->mprotect_flag)
+    {
         _co_mem_free(co->sys_context.ss_sp - var_page_size);
-    } else {
+    }
+    else
+    {
         _co_mem_free(co->sys_context.ss_sp);
     }
 #else
-    if (co->mprotect_flag) {
+    if (co->mprotect_flag)
+    {
         _co_mem_free(co->sys_context.uc_stack.ss_sp - var_page_size);
-    } else {
+    }
+    else
+    {
         _co_mem_free(co->sys_context.uc_stack.ss_sp);
     }
 #endif
@@ -1842,37 +2030,47 @@ static void zcoroutine_free(zcoroutine_t *co)
 
 static void zcoroutine_append_mutex(zcoroutine_t *co, zcoroutine_mutex_t *mutex)
 {
-    if (co->mutex_list == 0) {
+    if (co->mutex_list == 0)
+    {
         co->mutex_list = _co_list_create();
         _co_list_push(co->mutex_list, mutex);
         return;
     }
 
-    ZCOROUTINE_LIST_WALK_BEGIN(co->mutex_list, zcoroutine_mutex_t *, m) {
-        if (m == mutex) {
+    ZCOROUTINE_LIST_WALK_BEGIN(co->mutex_list, zcoroutine_mutex_t *, m)
+    {
+        if (m == mutex)
+        {
             return;
         }
-    } ZCOROUTINE_LIST_WALK_END;
+    }
+    ZCOROUTINE_LIST_WALK_END;
     _co_list_push(co->mutex_list, mutex);
 }
 
 static void zcoroutine_remove_mutex(zcoroutine_t *co, zcoroutine_mutex_t *mutex)
 {
-    if (!co->mutex_list) {
+    if (!co->mutex_list)
+    {
         return;
     }
     _co_list_node_t *del = 0;
-    ZCOROUTINE_LIST_WALK_BEGIN(co->mutex_list, zcoroutine_mutex_t *, m) {
-        if (m == mutex) {
+    ZCOROUTINE_LIST_WALK_BEGIN(co->mutex_list, zcoroutine_mutex_t *, m)
+    {
+        if (m == mutex)
+        {
             del = list_current_node;
             break;
         }
-    } ZCOROUTINE_LIST_WALK_END;
+    }
+    ZCOROUTINE_LIST_WALK_END;
 
-    if (del) {
+    if (del)
+    {
         _co_list_delete(co->mutex_list, del, 0);
     }
-    if (!_co_list_len(co->mutex_list)) {
+    if (!_co_list_len(co->mutex_list))
+    {
         _co_list_free(co->mutex_list);
         co->mutex_list = 0;
     }
@@ -1880,11 +2078,13 @@ static void zcoroutine_remove_mutex(zcoroutine_t *co, zcoroutine_mutex_t *mutex)
 
 static void zcoroutine_release_all_mutex(zcoroutine_t *co)
 {
-    if (!co->mutex_list) {
+    if (!co->mutex_list)
+    {
         return;
     }
     zcoroutine_mutex_t *mutex;
-    while(co->mutex_list && _co_list_pop(co->mutex_list, (void **)&mutex) ) {
+    while (co->mutex_list && _co_list_pop(co->mutex_list, (void **)&mutex))
+    {
         zcoroutine_mutex_unlock(mutex);
     }
     _co_list_free(co->mutex_list);
@@ -1893,7 +2093,8 @@ static void zcoroutine_release_all_mutex(zcoroutine_t *co)
 
 static int _co_start_wrap(zcoroutine_t *co, void *unused)
 {
-    if (co->start_job) {
+    if (co->start_job)
+    {
         co->start_job(co->context);
     }
     zcoroutine_release_all_mutex(co);
@@ -1911,22 +2112,29 @@ zcoroutine_base_t *zcoroutine_base_init()
     zcoroutine_base_t *cobs = 0;
     pthread_mutex_lock(&zvar_coroutine_base_mutex);
     zvar_coroutine_mode_flag = 1;
-    if (_co_fd_attribute_vec == 0) {
-        if (zvar_coroutine_max_fd < 1) {
+    if (_co_fd_attribute_vec == 0)
+    {
+        if (zvar_coroutine_max_fd < 1)
+        {
             struct rlimit rlimit;
-            if (getrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
+            if (getrlimit(RLIMIT_NOFILE, &rlimit) < 0)
+            {
                 zcoroutine_fatal("getrlimit: %m");
                 zvar_coroutine_max_fd = 1024;
-            } else {
+            }
+            else
+            {
                 zvar_coroutine_max_fd = rlimit.rlim_cur;
             }
-            if (zvar_coroutine_max_fd < 1024) {
+            if (zvar_coroutine_max_fd < 1024)
+            {
                 zvar_coroutine_max_fd = 1024;
             }
         }
         _co_fd_attribute_vec = (_co_fd_attribute_t **)_co_mem_calloc(zvar_coroutine_max_fd + 1, sizeof(void *));
     }
-    if (zvar_coroutine_base_per_pthread == 0) {
+    if (zvar_coroutine_base_per_pthread == 0)
+    {
         cobs = zcoroutine_base_create();
         base_count++;
     }
@@ -1937,7 +2145,8 @@ zcoroutine_base_t *zcoroutine_base_init()
 static void _remove_coroutines(zcoroutine_t *co_head)
 {
     zcoroutine_t *co, *next_co;
-    for (co = co_head; co; co = next_co) {
+    for (co = co_head; co; co = next_co)
+    {
         next_co = co->next;
         zcoroutine_free(co);
     }
@@ -1945,26 +2154,30 @@ static void _remove_coroutines(zcoroutine_t *co_head)
 
 void zcoroutine_base_fini()
 {
-    if (_co_fd_attribute_vec == 0) {
+    if (_co_fd_attribute_vec == 0)
+    {
         return;
     }
     pthread_mutex_lock(&zvar_coroutine_base_mutex);
     zcoroutine_base_t *cobs = zvar_coroutine_base_per_pthread;
-    if (cobs) {
+    if (cobs)
+    {
         _remove_coroutines(cobs->deleted_coroutine_head);
         _remove_coroutines(cobs->extern_coroutines_head);
         _remove_coroutines(cobs->fileio_coroutines_head);
         _remove_coroutines(cobs->active_coroutines_head);
         _remove_coroutines(cobs->prepare_coroutines_head);
 
-        while (_co_rbtree_have_data(&(cobs->sleep_zrbtree))) {
+        while (_co_rbtree_have_data(&(cobs->sleep_zrbtree)))
+        {
             _co_rbtree_node_t *rn = _co_rbtree_first(&(cobs->sleep_zrbtree));
             _co_rbtree_detach(&(cobs->sleep_zrbtree), rn);
             zcoroutine_t *co = ZCONTAINER_OF(rn, zcoroutine_t, sleep_rbnode);
             zcoroutine_free(co);
         }
 
-        while (_co_rbtree_have_data(&(cobs->fd_timeout_zrbtree))) {
+        while (_co_rbtree_have_data(&(cobs->fd_timeout_zrbtree)))
+        {
             _co_rbtree_node_t *rn = _co_rbtree_first(&(cobs->fd_timeout_zrbtree));
             _co_rbtree_detach(&(cobs->fd_timeout_zrbtree), rn);
             _co_fd_attribute_t *cfa = ZCONTAINER_OF(rn, _co_fd_attribute_t, rbnode);
@@ -1978,7 +2191,8 @@ void zcoroutine_base_fini()
         _co_mem_free(cobs);
         zvar_coroutine_base_per_pthread = 0;
         base_count--;
-        if (base_count == 0) {
+        if (base_count == 0)
+        {
             _co_mem_free(_co_fd_attribute_vec);
             _co_fd_attribute_vec = 0;
             zvar_coroutine_mode_flag = 0;
@@ -1989,11 +2203,13 @@ void zcoroutine_base_fini()
 
 void zcoroutine_go(void *(*start_job)(void *ctx), void *ctx, int stack_kilobyte)
 {
-    if (start_job == 0) {
+    if (start_job == 0)
+    {
         return;
     }
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
-    if (!cobs) {
+    if (!cobs)
+    {
         zcoroutine_fatal("excute zcoroutine_enable() when the pthread begin");
     }
     _remove_deleted_coroutines(cobs);
@@ -2006,7 +2222,8 @@ void zcoroutine_go(void *(*start_job)(void *ctx), void *ctx, int stack_kilobyte)
 static void zcoroutine_advanced_go_now(zcoroutine_base_t *cobs, zcoroutine_t *pseudo_co_list)
 {
     zcoroutine_t *pseudo_co, *pseudo_next;
-    for (pseudo_co = pseudo_co_list; pseudo_co; pseudo_co = pseudo_next) {
+    for (pseudo_co = pseudo_co_list; pseudo_co; pseudo_co = pseudo_next)
+    {
         pseudo_next = pseudo_co->next;
         _remove_deleted_coroutines(cobs);
 
@@ -2022,10 +2239,12 @@ static void zcoroutine_advanced_go_now(zcoroutine_base_t *cobs, zcoroutine_t *ps
 
 void zcoroutine_advanced_go(zcoroutine_base_t *cobs, void *(*start_job)(void *ctx), void *ctx, int stack_kilobyte)
 {
-    if (start_job == 0) {
+    if (start_job == 0)
+    {
         return;
     }
-    if (cobs == 0) {
+    if (cobs == 0)
+    {
         zcoroutine_go(start_job, ctx, stack_kilobyte);
         return;
     }
@@ -2039,23 +2258,24 @@ void zcoroutine_advanced_go(zcoroutine_base_t *cobs, void *(*start_job)(void *ct
     zpthread_unlock(&zvar_coroutine_extern_lock);
     uint64_t u = 1;
     _syscall_write(cobs->event_fd, &u, sizeof(uint64_t));
-
 }
 
-zcoroutine_t * zcoroutine_self()
+zcoroutine_t *zcoroutine_self()
 {
-    zcoroutine_base_t *cobs =  zcoroutine_base_get_current_inner();
-    if (cobs == 0) {
+    zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
+    if (cobs == 0)
+    {
         return 0;
     }
     return cobs->current_coroutine;
 }
 
 /* 返回当前协程ID */
-long zcoroutine_getid()
+ssize_t zcoroutine_getid()
 {
-    zcoroutine_base_t *cobs =  zcoroutine_base_get_current_inner();
-    if ((cobs == 0)||(cobs->current_coroutine==0) ) {
+    zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
+    if ((cobs == 0) || (cobs->current_coroutine == 0))
+    {
         return 0;
     }
     return cobs->current_coroutine->id;
@@ -2063,27 +2283,35 @@ long zcoroutine_getid()
 
 static void zcoroutine_yield_my(zcoroutine_t *co)
 {
-    if (!co) {
+    if (!co)
+    {
         co = zcoroutine_self();
     }
-    if (!co) {
+    if (!co)
+    {
         return;
     }
     zcoroutine_base_t *cobs = co->base;
     cobs->current_coroutine = 0;
-    if (co->ended) {
+    if (co->ended)
+    {
         ZMLINK_APPEND(cobs->deleted_coroutine_head, cobs->deleted_coroutine_tail, co, prev, next);
-    } else if ((co->inner_yield == 0) && (co != cobs->self_coroutine)) {
+    }
+    else if ((co->inner_yield == 0) && (co != cobs->self_coroutine))
+    {
         ZMLINK_APPEND(cobs->prepare_coroutines_head, cobs->prepare_coroutines_tail, co, prev, next);
     }
     zcoroutine_t *next_co = cobs->active_coroutines_head;
-    if (next_co == 0) {
-        if (co == cobs->self_coroutine) {
+    if (next_co == 0)
+    {
+        if (co == cobs->self_coroutine)
+        {
             return;
         }
         next_co = cobs->self_coroutine;
     }
-    if (next_co != cobs->self_coroutine) {
+    if (next_co != cobs->self_coroutine)
+    {
         ZMLINK_DETACH(cobs->active_coroutines_head, cobs->active_coroutines_tail, next_co, prev, next);
     }
     cobs->current_coroutine = next_co;
@@ -2099,7 +2327,8 @@ void zcoroutine_yield()
 void zcoroutine_exit()
 {
     zcoroutine_t *co = zcoroutine_self();
-    if (!co) {
+    if (!co)
+    {
         return;
     }
     zcoroutine_release_all_mutex(co);
@@ -2111,7 +2340,8 @@ void zcoroutine_exit()
 void *zcoroutine_get_context()
 {
     zcoroutine_t *co = zcoroutine_self();
-    if (!co) {
+    if (!co)
+    {
         return 0;
     }
     return (void *)(co->context);
@@ -2120,7 +2350,8 @@ void *zcoroutine_get_context()
 void zcoroutine_set_context(const void *ctx)
 {
     zcoroutine_t *co = zcoroutine_self();
-    if (!co) {
+    if (!co)
+    {
         return;
     }
     co->context = (void *)ctx;
@@ -2133,13 +2364,16 @@ void zcoroutine_enable_fd(int fd)
 
 void zcoroutine_disable_fd(int fd)
 {
-    _co_fd_attribute_t  *cfa = _co_fd_attribute_get(fd);
-    if (cfa) {
+    _co_fd_attribute_t *cfa = _co_fd_attribute_get(fd);
+    if (cfa)
+    {
         int flags;
-        if ((flags = _syscall_fcntl(fd, F_GETFL, 0)) < 0) {
+        if ((flags = _syscall_fcntl(fd, F_GETFL, 0)) < 0)
+        {
             zcoroutine_fatal("fcntl _co(%m)");
         }
-        if (_syscall_fcntl(fd, F_SETFL, (cfa->nonblock?flags | O_NONBLOCK : flags & ~O_NONBLOCK)) < 0) {
+        if (_syscall_fcntl(fd, F_SETFL, (cfa->nonblock ? flags | O_NONBLOCK : flags & ~O_NONBLOCK)) < 0)
+        {
             zcoroutine_fatal("fcntl _co(%m)");
         }
         _co_fd_attribute_free(fd);
@@ -2148,7 +2382,7 @@ void zcoroutine_disable_fd(int fd)
 /* }}} */
 
 /* {{{ mutex cond */
-zcoroutine_mutex_t * zcoroutine_mutex_create()
+zcoroutine_mutex_t *zcoroutine_mutex_create()
 {
     zcoroutine_mutex_t *m = (zcoroutine_mutex_t *)_co_mem_calloc(1, sizeof(zcoroutine_mutex_t));
     m->colist = _co_list_create();
@@ -2157,7 +2391,8 @@ zcoroutine_mutex_t * zcoroutine_mutex_create()
 
 void zcoroutine_mutex_free(zcoroutine_mutex_t *m)
 {
-    if (m) {
+    if (m)
+    {
         _co_list_free(m->colist);
         _co_mem_free(m);
     }
@@ -2165,20 +2400,24 @@ void zcoroutine_mutex_free(zcoroutine_mutex_t *m)
 
 void zcoroutine_mutex_lock(zcoroutine_mutex_t *m)
 {
-    if (m == 0) {
+    if (m == 0)
+    {
         zcoroutine_fatal("not in zcoroutine_t");
     }
-    zcoroutine_t * co = zcoroutine_self();
-    if (co == 0) {
+    zcoroutine_t *co = zcoroutine_self();
+    if (co == 0)
+    {
         zcoroutine_fatal("not in zcoroutine_t");
     }
     _co_list_t *colist = m->colist;
-    if (!(_co_list_len(colist))) {
+    if (!(_co_list_len(colist)))
+    {
         _co_list_push(colist, co);
         zcoroutine_append_mutex(co, m);
         return;
     }
-    if ((zcoroutine_t *)_co_list_node_value(_co_list_head(colist)) == co) {
+    if ((zcoroutine_t *)_co_list_node_value(_co_list_head(colist)) == co)
+    {
         zcoroutine_append_mutex(co, m);
         return;
     }
@@ -2190,24 +2429,29 @@ void zcoroutine_mutex_lock(zcoroutine_mutex_t *m)
 void zcoroutine_mutex_unlock(zcoroutine_mutex_t *m)
 {
     /* FIXME */
-    if (m == 0) {
+    if (m == 0)
+    {
         zcoroutine_fatal("mutex is null");
         return;
     }
-    zcoroutine_t * co = zcoroutine_self();
-    if (co == 0) {
+    zcoroutine_t *co = zcoroutine_self();
+    if (co == 0)
+    {
         return;
     }
     _co_list_t *colist = m->colist;
-    if (!(_co_list_len(colist))) {
+    if (!(_co_list_len(colist)))
+    {
         return;
     }
-    if ((zcoroutine_t *)_co_list_node_value(_co_list_head(colist)) != co) {
+    if ((zcoroutine_t *)_co_list_node_value(_co_list_head(colist)) != co)
+    {
         return;
     }
     zcoroutine_remove_mutex(co, m);
     _co_list_shift(colist, 0);
-    if (!_co_list_len(colist)) {
+    if (!_co_list_len(colist))
+    {
         return;
     }
     co = (zcoroutine_t *)_co_list_node_value(_co_list_head(colist));
@@ -2217,29 +2461,33 @@ void zcoroutine_mutex_unlock(zcoroutine_mutex_t *m)
 
 zcoroutine_cond_t *zcoroutine_cond_create()
 {
-    zcoroutine_cond_t *c= (zcoroutine_cond_t *)_co_mem_calloc(1, sizeof(zcoroutine_cond_t));
+    zcoroutine_cond_t *c = (zcoroutine_cond_t *)_co_mem_calloc(1, sizeof(zcoroutine_cond_t));
     c->colist = _co_list_create();
     return c;
 }
 
-void zcoroutine_cond_free(zcoroutine_cond_t * c)
+void zcoroutine_cond_free(zcoroutine_cond_t *c)
 {
-    if (c) {
+    if (c)
+    {
         _co_list_free(c->colist);
         _co_mem_free(c);
     }
 }
 
-void zcoroutine_cond_wait(zcoroutine_cond_t *cond, zcoroutine_mutex_t * mutex)
+void zcoroutine_cond_wait(zcoroutine_cond_t *cond, zcoroutine_mutex_t *mutex)
 {
-    zcoroutine_t * co = zcoroutine_self();
-    if (co == 0) {
+    zcoroutine_t *co = zcoroutine_self();
+    if (co == 0)
+    {
         zcoroutine_fatal("not in zcoroutine_t");
     }
-    if (!cond) {
+    if (!cond)
+    {
         zcoroutine_fatal("cond is null");
     }
-    if (!cond) {
+    if (!cond)
+    {
         zcoroutine_fatal("mutex is null");
     }
 
@@ -2252,18 +2500,21 @@ void zcoroutine_cond_wait(zcoroutine_cond_t *cond, zcoroutine_mutex_t * mutex)
     zcoroutine_mutex_lock(mutex);
 }
 
-void zcoroutine_cond_signal(zcoroutine_cond_t * cond)
+void zcoroutine_cond_signal(zcoroutine_cond_t *cond)
 {
-    if (!cond) {
+    if (!cond)
+    {
         zcoroutine_fatal("cond is null");
     }
     zcoroutine_base_t *cobs;
-    if ((cobs = zcoroutine_base_get_current_inner()) == 0) {
+    if ((cobs = zcoroutine_base_get_current_inner()) == 0)
+    {
         zcoroutine_fatal("not in zcoroutine_t");
     }
 
     zcoroutine_t *co;
-    if (!_co_list_shift(cond->colist, (void **)&co)) {
+    if (!_co_list_shift(cond->colist, (void **)&co))
+    {
         return;
     }
     ZMLINK_APPEND(cobs->prepare_coroutines_head, cobs->prepare_coroutines_tail, co, prev, next);
@@ -2272,15 +2523,18 @@ void zcoroutine_cond_signal(zcoroutine_cond_t * cond)
 
 void zcoroutine_cond_broadcast(zcoroutine_cond_t *cond)
 {
-    if (!cond) {
+    if (!cond)
+    {
         zcoroutine_fatal("cond is null");
     }
     zcoroutine_base_t *cobs;
-    if ((cobs = zcoroutine_base_get_current_inner()) == 0) {
+    if ((cobs = zcoroutine_base_get_current_inner()) == 0)
+    {
         zcoroutine_fatal("not in zcoroutine_t");
     }
     zcoroutine_t *co;
-    while(_co_list_shift(cond->colist, (void **)&co)) {
+    while (_co_list_shift(cond->colist, (void **)&co))
+    {
         ZMLINK_APPEND(cobs->prepare_coroutines_head, cobs->prepare_coroutines_tail, co, prev, next);
     }
     zcoroutine_yield_my(cobs->current_coroutine);
@@ -2289,37 +2543,45 @@ void zcoroutine_cond_broadcast(zcoroutine_cond_t *cond)
 /* }}} */
 
 /* {{{ rbtree cmp*/
-static int _co_base_sleep_tree_cmp(_co_rbtree_node_t * n1, _co_rbtree_node_t * n2)
+static int _co_base_sleep_tree_cmp(_co_rbtree_node_t *n1, _co_rbtree_node_t *n2)
 {
     zcoroutine_t *c1, *c2;
-    long r;
+    ssize_t r;
     c1 = ZCONTAINER_OF(n1, zcoroutine_t, sleep_rbnode);
     c2 = ZCONTAINER_OF(n2, zcoroutine_t, sleep_rbnode);
     r = c1->sleep_timeout - c2->sleep_timeout;
-    if (!r) {
+    if (!r)
+    {
         r = (char *)(n1) - (char *)(n2);
     }
-    if (r > 0) {
+    if (r > 0)
+    {
         return 1;
-    } else if (r < 0) {
+    }
+    else if (r < 0)
+    {
         return -1;
     }
     return 0;
 }
 
-static int _co_base_fd_timeout_tree_cmp(_co_rbtree_node_t * n1, _co_rbtree_node_t * n2)
+static int _co_base_fd_timeout_tree_cmp(_co_rbtree_node_t *n1, _co_rbtree_node_t *n2)
 {
     _co_fd_attribute_t *c1, *c2;
-    long r;
+    ssize_t r;
     c1 = ZCONTAINER_OF(n1, _co_fd_attribute_t, rbnode);
     c2 = ZCONTAINER_OF(n2, _co_fd_attribute_t, rbnode);
     r = c1->timeout - c2->timeout;
-    if (!r) {
+    if (!r)
+    {
         r = (char *)(n1) - (char *)(n2);
     }
-    if (r > 0) {
+    if (r > 0)
+    {
         return 1;
-    } else if (r < 0) {
+    }
+    else if (r < 0)
+    {
         return -1;
     }
     return 0;
@@ -2337,7 +2599,7 @@ static zcoroutine_base_t *zcoroutine_base_create()
     cobs->epoll_fd = epoll_create(1024);
     _co_close_on_exec(cobs->epoll_fd, 1);
     cobs->epoll_event_size = 256;
-    cobs->epoll_event_vec = (struct epoll_event *)_co_mem_malloc(cobs->epoll_event_size*sizeof(struct epoll_event));
+    cobs->epoll_event_vec = (struct epoll_event *)_co_mem_malloc(cobs->epoll_event_size * sizeof(struct epoll_event));
 
     cobs->event_fd = eventfd(0, 0);
     _co_close_on_exec(cobs->event_fd, 1);
@@ -2346,7 +2608,8 @@ static zcoroutine_base_t *zcoroutine_base_create()
     epev.events = EPOLLIN;
     epev.data.fd = cobs->event_fd;
     int eret = epoll_ctl(cobs->epoll_fd, EPOLL_CTL_ADD, cobs->event_fd, &epev);
-    if (eret < 0) {
+    if (eret < 0)
+    {
         zcoroutine_fatal("epoll_ctl ADD event_fd:%d (%m)", cobs->event_fd);
     }
 
@@ -2357,11 +2620,13 @@ static zcoroutine_base_t *zcoroutine_base_create()
 
 static void _remove_deleted_coroutines(zcoroutine_base_t *cobs)
 {
-    if (!cobs->deleted_coroutine_head) {
+    if (!cobs->deleted_coroutine_head)
+    {
         return;
     }
     zcoroutine_t *co, *next_co;
-    for (co = cobs->deleted_coroutine_head; co; co = next_co) {
+    for (co = cobs->deleted_coroutine_head; co; co = next_co)
+    {
         next_co = co->next;
         zcoroutine_free(co);
     }
@@ -2370,10 +2635,12 @@ static void _remove_deleted_coroutines(zcoroutine_base_t *cobs)
 
 void zcoroutine_base_stop_notify(zcoroutine_base_t *cobs)
 {
-    if (!cobs) {
+    if (!cobs)
+    {
         cobs = zcoroutine_base_get_current_inner();
     }
-    if (cobs) {
+    if (cobs)
+    {
         cobs->___break = 1;
     }
 }
@@ -2384,7 +2651,8 @@ void zcoroutine_base_stop_notify(zcoroutine_base_t *cobs)
 void zcoroutine_base_set_loop_fn(void (*loop_fn)(zcoroutine_base_t *cb))
 {
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
-    if (!cobs) {
+    if (!cobs)
+    {
         zcoroutine_fatal("excute zcoroutine_enable() when the pthread begin");
     }
     cobs->loop_fn = loop_fn;
@@ -2393,16 +2661,19 @@ void zcoroutine_base_set_loop_fn(void (*loop_fn)(zcoroutine_base_t *cb))
 void zcoroutine_base_run(void (*loop_fn)())
 {
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
-    if (!cobs) {
+    if (!cobs)
+    {
         zcoroutine_fatal("excute zcoroutine_enable() when the pthread begin");
     }
     zcoroutine_t *co;
     _co_rbtree_node_t *rn;
     _co_fd_attribute_t *cfa;
-    long delay, tmp_delay, tmp_ms;
+    ssize_t delay, tmp_delay, tmp_ms;
 
-    while(cobs->___break == 0) {
-        if (cobs->loop_fn) {
+    while (cobs->___break == 0)
+    {
+        if (cobs->loop_fn)
+        {
             cobs->loop_fn(cobs);
         }
         _remove_deleted_coroutines(cobs);
@@ -2410,28 +2681,36 @@ void zcoroutine_base_run(void (*loop_fn)())
         delay = 1000;
         tmp_ms = zcoroutine_timeout_set_millisecond(0) - 1;
 
-        if (cobs->extern_coroutines_head) {
+        if (cobs->extern_coroutines_head)
+        {
             zcoroutine_t *pseudo_co_list = 0;
             zpthread_lock(&zvar_coroutine_extern_lock);
-            if (cobs->extern_coroutines_head) {
+            if (cobs->extern_coroutines_head)
+            {
                 pseudo_co_list = cobs->extern_coroutines_head;
                 cobs->extern_coroutines_head = 0;
                 cobs->extern_coroutines_tail = 0;
             }
             zpthread_unlock(&zvar_coroutine_extern_lock);
-            if (pseudo_co_list) {
+            if (pseudo_co_list)
+            {
                 zcoroutine_advanced_go_now(cobs, pseudo_co_list);
             }
         }
 
         /* fileio list */
-        if (cobs->fileio_coroutines_head) {
+        if (cobs->fileio_coroutines_head)
+        {
             zpthread_lock(&zvar_coroutine_hook_fileio_lock);
-            if (cobs->fileio_coroutines_head) {
-                if (cobs->active_coroutines_head == 0) {
+            if (cobs->fileio_coroutines_head)
+            {
+                if (cobs->active_coroutines_head == 0)
+                {
                     cobs->active_coroutines_head = cobs->fileio_coroutines_head;
                     cobs->active_coroutines_tail = cobs->fileio_coroutines_tail;
-                } else if (cobs->fileio_coroutines_head) {
+                }
+                else if (cobs->fileio_coroutines_head)
+                {
                     cobs->active_coroutines_tail->next = cobs->fileio_coroutines_head;
                     cobs->fileio_coroutines_head->prev = cobs->active_coroutines_tail;
                     cobs->active_coroutines_tail = cobs->fileio_coroutines_tail;
@@ -2442,10 +2721,13 @@ void zcoroutine_base_run(void (*loop_fn)())
         }
 
         /* prepared list */
-        if (cobs->active_coroutines_head == 0) {
+        if (cobs->active_coroutines_head == 0)
+        {
             cobs->active_coroutines_head = cobs->prepare_coroutines_head;
             cobs->active_coroutines_tail = cobs->prepare_coroutines_tail;
-        } else if (cobs->prepare_coroutines_head) {
+        }
+        else if (cobs->prepare_coroutines_head)
+        {
             cobs->active_coroutines_tail->next = cobs->prepare_coroutines_head;
             cobs->prepare_coroutines_head->prev = cobs->active_coroutines_tail;
             cobs->active_coroutines_tail = cobs->prepare_coroutines_tail;
@@ -2453,16 +2735,20 @@ void zcoroutine_base_run(void (*loop_fn)())
         cobs->prepare_coroutines_head = cobs->prepare_coroutines_tail = 0;
 
         /* sleep timeout */
-        if (_co_rbtree_have_data(&(cobs->sleep_zrbtree))) {
+        if (_co_rbtree_have_data(&(cobs->sleep_zrbtree)))
+        {
             rn = _co_rbtree_first(&(cobs->sleep_zrbtree));
             co = ZCONTAINER_OF(rn, zcoroutine_t, sleep_rbnode);
             tmp_delay = co->sleep_timeout - tmp_ms;
-            if (tmp_delay < delay) {
+            if (tmp_delay < delay)
+            {
                 delay = tmp_delay;
             }
-            for(; rn; rn = _co_rbtree_next(rn)) {
+            for (; rn; rn = _co_rbtree_next(rn))
+            {
                 co = ZCONTAINER_OF(rn, zcoroutine_t, sleep_rbnode);
-                if (tmp_ms < co->sleep_timeout) {
+                if (tmp_ms < co->sleep_timeout)
+                {
                     break;
                 }
                 ZMLINK_APPEND(cobs->active_coroutines_head, cobs->active_coroutines_tail, co, prev, next);
@@ -2470,20 +2756,25 @@ void zcoroutine_base_run(void (*loop_fn)())
         }
 
         /* fd timeout */
-        if (_co_rbtree_have_data(&(cobs->fd_timeout_zrbtree))) {
+        if (_co_rbtree_have_data(&(cobs->fd_timeout_zrbtree)))
+        {
             rn = _co_rbtree_first(&(cobs->fd_timeout_zrbtree));
             cfa = ZCONTAINER_OF(rn, _co_fd_attribute_t, rbnode);
             tmp_delay = cfa->timeout - tmp_ms;
-            if (tmp_delay < delay) {
+            if (tmp_delay < delay)
+            {
                 delay = tmp_delay;
             }
-            for(; rn; rn = _co_rbtree_next(rn)) {
+            for (; rn; rn = _co_rbtree_next(rn))
+            {
                 cfa = ZCONTAINER_OF(rn, _co_fd_attribute_t, rbnode);
-                if (tmp_ms < cfa->timeout) {
+                if (tmp_ms < cfa->timeout)
+                {
                     break;
                 }
                 co = cfa->co;
-                if ((co->ep_loop == 1) && (co->active_list == 0)) {
+                if ((co->ep_loop == 1) && (co->active_list == 0))
+                {
                     ZMLINK_APPEND(cobs->active_coroutines_head, cobs->active_coroutines_tail, co, prev, next);
                     co->active_list = 1;
                 }
@@ -2492,46 +2783,55 @@ void zcoroutine_base_run(void (*loop_fn)())
         }
 
         /* epoll_wait */
-        if ((delay < 0) || cobs->active_coroutines_head) {
+        if ((delay < 0) || cobs->active_coroutines_head)
+        {
             delay = 0;
         }
         int nfds = epoll_wait(cobs->epoll_fd, cobs->epoll_event_vec, cobs->epoll_event_size, (int)delay);
-        if ((nfds == -1) && (errno != EINTR)) {
+        if ((nfds == -1) && (errno != EINTR))
+        {
             zcoroutine_fatal("epoll_wait: %m");
         }
-        for (int i = 0; i < nfds; i++) {
+        for (int i = 0; i < nfds; i++)
+        {
             struct epoll_event *epev = cobs->epoll_event_vec + i;
             int fd = epev->data.fd;
-            if (fd == cobs->event_fd) {
+            if (fd == cobs->event_fd)
+            {
                 uint64_t u;
                 _syscall_read(fd, &u, sizeof(uint64_t));
                 continue;
             }
             cfa = _co_fd_attribute_get(fd);
-            if (!cfa) {
+            if (!cfa)
+            {
                 zcoroutine_fatal("fd:%d be closed unexpectedly", fd);
                 continue;
             }
             cfa->by_epoll = 1;
             cfa->revents = epev->events;
             co = cfa->co;
-            if (co->active_list == 1) {
+            if (co->active_list == 1)
+            {
                 ZMLINK_DETACH(cobs->active_coroutines_head, cobs->active_coroutines_tail, co, prev, next);
                 co->active_list = 0;
             }
-            if (co->active_list == 0) {
+            if (co->active_list == 0)
+            {
                 ZMLINK_APPEND(cobs->active_coroutines_head, cobs->active_coroutines_tail, co, prev, next);
                 co->active_list = 1;
             }
         }
-        if ((nfds == cobs->epoll_event_size)&&(cobs->epoll_event_size<4096)) {
+        if ((nfds == cobs->epoll_event_size) && (cobs->epoll_event_size < 4096))
+        {
             _co_mem_free(cobs->epoll_event_vec);
             cobs->epoll_event_size *= 2;
-            cobs->epoll_event_vec = (struct epoll_event *)_co_mem_malloc(cobs->epoll_event_size*sizeof(struct epoll_event));
+            cobs->epoll_event_vec = (struct epoll_event *)_co_mem_malloc(cobs->epoll_event_size * sizeof(struct epoll_event));
         }
 
         /* */
-        if (cobs->active_coroutines_head == 0) {
+        if (cobs->active_coroutines_head == 0)
+        {
             continue;
         }
         zcoroutine_yield_my(cobs->self_coroutine);
@@ -2548,73 +2848,91 @@ static int _co_poll(zcoroutine_t *co, struct pollfd fds[], nfds_t nfds, int time
     co->ep_loop = 0;
 
     zcoroutine_base_t *cobs = co->base;
-    long now_ms = zcoroutine_timeout_set_millisecond(0);
+    ssize_t now_ms = zcoroutine_timeout_set_millisecond(0);
     int is_epoll_ctl = 0;
 
-    do {
+    do
+    {
         int fdcount = 0;
         int last_fd = -1;
-        for (nfds_t i = 0; i < nfds; i++) {
+        for (nfds_t i = 0; i < nfds; i++)
+        {
             fds[i].revents = 0;
-            int fd  = fds[i].fd;
-            if (fd < 0) {
+            int fd = fds[i].fd;
+            if (fd < 0)
+            {
                 continue;
             }
             fdcount++;
             last_fd = fd;
-            if (fdcount > 1) {
+            if (fdcount > 1)
+            {
                 break;
             }
         }
-        if (fdcount != 1) {
+        if (fdcount != 1)
+        {
             break;
         }
 
         _co_fd_attribute_t *cfa = _co_fd_attribute_get(last_fd);
-        if (cfa == 0) {
+        if (cfa == 0)
+        {
             return _syscall_poll(fds, nfds, timeout);
         }
 
-    } while(0);
+    } while (0);
 
-    for (nfds_t i = 0; i < nfds; i++) {
+    for (nfds_t i = 0; i < nfds; i++)
+    {
         fds[i].revents = 0;
-        int fd  = fds[i].fd;
-        if (fd < 0) {
+        int fd = fds[i].fd;
+        if (fd < 0)
+        {
             continue;
         }
         _co_fd_attribute_t *cfa = _co_fd_attribute_get(fd);
-        if (cfa == 0) {
+        if (cfa == 0)
+        {
             cfa = _co_fd_attribute_create(fd);
             cfa->pseudo_mode = 1;
         }
-        if (cfa->in_epoll) {
+        if (cfa->in_epoll)
+        {
             zcoroutine_fatal("mutli monitor fd:%d", fd);
         }
         short int events = fds[i].events;
-        unsigned int ep_events = 0;	
-        if(events & POLLIN) 	ep_events |= EPOLLIN;
-        if(events & POLLOUT)    ep_events |= EPOLLOUT;
-        if(events & POLLHUP) 	ep_events |= EPOLLHUP;
-        if(events & POLLERR)	ep_events |= EPOLLERR;
-        if(events & POLLRDNORM) ep_events |= EPOLLRDNORM;
-        if(events & POLLWRNORM) ep_events |= EPOLLWRNORM;
+        unsigned int ep_events = 0;
+        if (events & POLLIN)
+            ep_events |= EPOLLIN;
+        if (events & POLLOUT)
+            ep_events |= EPOLLOUT;
+        if (events & POLLHUP)
+            ep_events |= EPOLLHUP;
+        if (events & POLLERR)
+            ep_events |= EPOLLERR;
+        if (events & POLLRDNORM)
+            ep_events |= EPOLLRDNORM;
+        if (events & POLLWRNORM)
+            ep_events |= EPOLLWRNORM;
         struct epoll_event epev;
         epev.events = ep_events;
         epev.data.fd = fd;
         int eret = epoll_ctl(cobs->epoll_fd, EPOLL_CTL_ADD, fd, &epev);
-        if ((eret<0) && (errno==EPERM) && (nfds==1)) {
+        if ((eret < 0) && (errno == EPERM) && (nfds == 1))
+        {
             return _syscall_poll(fds, nfds, timeout);
         }
         is_epoll_ctl = 1;
         cfa->by_epoll = 0;
         cfa->co = co;
-        cfa->timeout = now_ms + (timeout<0?zvar_coroutine_max_timeout_millisecond:timeout);
+        cfa->timeout = now_ms + (timeout < 0 ? zvar_coroutine_max_timeout_millisecond : timeout);
         _co_rbtree_attach(&(cobs->fd_timeout_zrbtree), &(cfa->rbnode));
     }
 
-    if (is_epoll_ctl == 0) {
-        co->sleep_timeout = now_ms + (timeout<0?zvar_coroutine_max_timeout_millisecond:timeout);
+    if (is_epoll_ctl == 0)
+    {
+        co->sleep_timeout = now_ms + (timeout < 0 ? zvar_coroutine_max_timeout_millisecond : timeout);
         _co_rbtree_attach(&(cobs->sleep_zrbtree), &(co->sleep_rbnode));
         co->inner_yield = 1;
         zcoroutine_yield_my(co);
@@ -2626,31 +2944,44 @@ static int _co_poll(zcoroutine_t *co, struct pollfd fds[], nfds_t nfds, int time
     zcoroutine_yield_my(co);
 
     int raise_count = 0;
-    for (nfds_t i = 0; i < nfds; i++) {
-        int fd  = fds[i].fd;
-        if (fd < 0) {
+    for (nfds_t i = 0; i < nfds; i++)
+    {
+        int fd = fds[i].fd;
+        if (fd < 0)
+        {
             continue;
         }
         _co_fd_attribute_t *cfa = _co_fd_attribute_get(fd);
-        if (!cfa) {
+        if (!cfa)
+        {
             /* the fd be closed */
-        } else {
+        }
+        else
+        {
             cfa->in_epoll = 0;
             unsigned int revents = cfa->revents;
             fds[i].revents = 0;
-            if (cfa->by_epoll && revents) {
+            if (cfa->by_epoll && revents)
+            {
                 raise_count++;
-                short int p_events = 0;	
-                if(revents & EPOLLIN)     p_events |= POLLIN;
-                if(revents & EPOLLOUT)    p_events |= POLLOUT;
-                if(revents & EPOLLHUP)    p_events |= POLLHUP;
-                if(revents & EPOLLERR)    p_events |= POLLERR;
-                if(revents & EPOLLRDNORM) p_events |= POLLRDNORM;
-                if(revents & EPOLLWRNORM) p_events |= POLLWRNORM;
+                short int p_events = 0;
+                if (revents & EPOLLIN)
+                    p_events |= POLLIN;
+                if (revents & EPOLLOUT)
+                    p_events |= POLLOUT;
+                if (revents & EPOLLHUP)
+                    p_events |= POLLHUP;
+                if (revents & EPOLLERR)
+                    p_events |= POLLERR;
+                if (revents & EPOLLRDNORM)
+                    p_events |= POLLRDNORM;
+                if (revents & EPOLLWRNORM)
+                    p_events |= POLLWRNORM;
                 fds[i].revents = p_events;
             }
             int eret = epoll_ctl(cobs->epoll_fd, EPOLL_CTL_DEL, fd, 0);
-            if (eret < 0) {
+            if (eret < 0)
+            {
                 zcoroutine_fatal("epoll_ctl del fd:%d (%m)", fd);
             }
         }
@@ -2666,167 +2997,189 @@ static void zcoroutine_hook_fileio_worker_do(zcoroutine_hook_fileio_t *cio)
     zcoroutine_hook_arg_t *args = cio->args;
     zcoroutine_hook_arg_t *retval = &(cio->retval);
     int errno_bak = 0;
-    if (cio->is_block_func) {
+    if (cio->is_block_func)
+    {
         retval->void_ptr_t = args[0].block_func(args[1].void_ptr_t);
-        if (errno_bak) {
+        if (errno_bak)
+        {
             cio->co_errno = errno_bak;
-        } else {
+        }
+        else
+        {
             cio->co_errno = errno;
         }
         return;
     }
 
-    switch(cio->cmdcode) {
-        case zcoroutine_hook_fileio_open:
-            retval->int_t = _syscall_open(args[0].char_ptr_t, args[1].int_t, args[2].int_t);
-            if (retval->int_t > -1) {
-                struct stat st;
-                if (_syscall_fstat(retval->int_t, &st) == -1) {
-                    errno_bak = errno;
-                    zrobust_syscall_close(retval->int_t);
-                    retval->int_t = -1;
-                } else {
-                    if (S_ISFIFO(st.st_mode)) {
-                        cio->is_regular_file = 0;
-                    } else {
-                        cio->is_regular_file = 1;
-                    }
+    switch (cio->cmdcode)
+    {
+    case zcoroutine_hook_fileio_open:
+        retval->int_t = _syscall_open(args[0].char_ptr_t, args[1].int_t, args[2].int_t);
+        if (retval->int_t > -1)
+        {
+            struct stat st;
+            if (_syscall_fstat(retval->int_t, &st) == -1)
+            {
+                errno_bak = errno;
+                zrobust_syscall_close(retval->int_t);
+                retval->int_t = -1;
+            }
+            else
+            {
+                if (S_ISFIFO(st.st_mode))
+                {
+                    cio->is_regular_file = 0;
+                }
+                else
+                {
+                    cio->is_regular_file = 1;
                 }
             }
-            break;
-        case zcoroutine_hook_fileio_openat:
-            retval->int_t = _syscall_openat(args[0].int_t, args[1].char_ptr_t, args[2].int_t, args[3].int_t);
-            if (retval->int_t > -1) {
-                struct stat st;
-                if (_syscall_fstat(retval->int_t, &st) == -1) {
-                    errno_bak = errno;
-                    zrobust_syscall_close(retval->int_t);
-                    retval->int_t = -1;
-                } else {
-                    if (S_ISFIFO(st.st_mode)) {
-                        cio->is_regular_file = 0;
-                    } else {
-                        cio->is_regular_file = 1;
-                    }
+        }
+        break;
+    case zcoroutine_hook_fileio_openat:
+        retval->int_t = _syscall_openat(args[0].int_t, args[1].char_ptr_t, args[2].int_t, args[3].int_t);
+        if (retval->int_t > -1)
+        {
+            struct stat st;
+            if (_syscall_fstat(retval->int_t, &st) == -1)
+            {
+                errno_bak = errno;
+                zrobust_syscall_close(retval->int_t);
+                retval->int_t = -1;
+            }
+            else
+            {
+                if (S_ISFIFO(st.st_mode))
+                {
+                    cio->is_regular_file = 0;
+                }
+                else
+                {
+                    cio->is_regular_file = 1;
                 }
             }
-            break;
-        case zcoroutine_hook_fileio_read:
-            retval->ssize_ssize_t = _syscall_read(args[0].int_t, args[1].void_ptr_t, args[2].size_size_t);
-            break;
-        case zcoroutine_hook_fileio_readv:
-            retval->ssize_ssize_t = _syscall_readv(args[0].int_t, args[1].const_iovec_t, args[2].int_t);
-            break;
-        case zcoroutine_hook_fileio_write:
-            retval->ssize_ssize_t = _syscall_write(args[0].int_t, args[1].void_ptr_t, args[2].size_size_t);
-            break;
-        case zcoroutine_hook_fileio_writev:
-            retval->ssize_ssize_t = _syscall_writev(args[0].int_t, args[1].const_iovec_t, args[2].int_t);
-            break;
-        case zcoroutine_hook_fileio_lseek:
-            retval->off_off_t = _syscall_lseek(args[0].int_t, args[1].off_off_t, args[2].int_t);
-            break;
-        case zcoroutine_hook_fileio_fdatasync:
-            retval->int_t = _syscall_fdatasync(args[0].int_t);
-            break;
-        case zcoroutine_hook_fileio_fsync:
-            retval->int_t = _syscall_fsync(args[0].int_t);
-            break;
-        case zcoroutine_hook_fileio_rename:
-            retval->int_t = _syscall_rename(args[0].const_char_ptr_t, args[1].const_char_ptr_t);
-            break;
-        case zcoroutine_hook_fileio_renameat:
-            retval->int_t = _syscall_renameat(args[0].int_t, args[1].const_char_ptr_t, args[2].int_t, args[3].const_char_ptr_t);
-            break;
-        case zcoroutine_hook_fileio_truncate:
-            retval->int_t = _syscall_truncate(args[0].const_char_ptr_t, args[1].off_off_t);
-            break;
-        case zcoroutine_hook_fileio_ftruncate:
-            retval->int_t = _syscall_ftruncate(args[0].int_t, args[1].off_off_t);
-            break;
-        case zcoroutine_hook_fileio_rmdir:
-            retval->int_t = _syscall_rmdir(args[0].const_char_ptr_t);
-            break;
-        case zcoroutine_hook_fileio_mkdir:
-            retval->int_t = _syscall_mkdir(args[0].const_char_ptr_t, args[1].mode_mode_t);
-            break;
+        }
+        break;
+    case zcoroutine_hook_fileio_read:
+        retval->ssize_ssize_t = _syscall_read(args[0].int_t, args[1].void_ptr_t, args[2].size_size_t);
+        break;
+    case zcoroutine_hook_fileio_readv:
+        retval->ssize_ssize_t = _syscall_readv(args[0].int_t, args[1].const_iovec_t, args[2].int_t);
+        break;
+    case zcoroutine_hook_fileio_write:
+        retval->ssize_ssize_t = _syscall_write(args[0].int_t, args[1].void_ptr_t, args[2].size_size_t);
+        break;
+    case zcoroutine_hook_fileio_writev:
+        retval->ssize_ssize_t = _syscall_writev(args[0].int_t, args[1].const_iovec_t, args[2].int_t);
+        break;
+    case zcoroutine_hook_fileio_lseek:
+        retval->off_off_t = _syscall_lseek(args[0].int_t, args[1].off_off_t, args[2].int_t);
+        break;
+    case zcoroutine_hook_fileio_fdatasync:
+        retval->int_t = _syscall_fdatasync(args[0].int_t);
+        break;
+    case zcoroutine_hook_fileio_fsync:
+        retval->int_t = _syscall_fsync(args[0].int_t);
+        break;
+    case zcoroutine_hook_fileio_rename:
+        retval->int_t = _syscall_rename(args[0].const_char_ptr_t, args[1].const_char_ptr_t);
+        break;
+    case zcoroutine_hook_fileio_renameat:
+        retval->int_t = _syscall_renameat(args[0].int_t, args[1].const_char_ptr_t, args[2].int_t, args[3].const_char_ptr_t);
+        break;
+    case zcoroutine_hook_fileio_truncate:
+        retval->int_t = _syscall_truncate(args[0].const_char_ptr_t, args[1].off_off_t);
+        break;
+    case zcoroutine_hook_fileio_ftruncate:
+        retval->int_t = _syscall_ftruncate(args[0].int_t, args[1].off_off_t);
+        break;
+    case zcoroutine_hook_fileio_rmdir:
+        retval->int_t = _syscall_rmdir(args[0].const_char_ptr_t);
+        break;
+    case zcoroutine_hook_fileio_mkdir:
+        retval->int_t = _syscall_mkdir(args[0].const_char_ptr_t, args[1].mode_mode_t);
+        break;
 #ifdef __NR_getdents
-        case zcoroutine_hook_fileio_getdents:
-            retval->int_t = _syscall_getdents(args[0].uint_t, args[1].void_ptr_t, args[1].uint_t);
-            break;
+    case zcoroutine_hook_fileio_getdents:
+        retval->int_t = _syscall_getdents(args[0].uint_t, args[1].void_ptr_t, args[1].uint_t);
+        break;
 #endif
 #ifdef __NR_stat
-        case zcoroutine_hook_fileio_stat:
-            retval->int_t = _syscall_stat(args[0].const_char_ptr_t, (struct stat *)args[0].char_ptr_t);
-            break;
+    case zcoroutine_hook_fileio_stat:
+        retval->int_t = _syscall_stat(args[0].const_char_ptr_t, (struct stat *)args[0].char_ptr_t);
+        break;
 #endif
-        case zcoroutine_hook_fileio_fstat:
-            retval->int_t = _syscall_fstat(args[0].int_t, (struct stat *)args[0].char_ptr_t);
-            break;
+    case zcoroutine_hook_fileio_fstat:
+        retval->int_t = _syscall_fstat(args[0].int_t, (struct stat *)args[0].char_ptr_t);
+        break;
 #ifdef __NR_lstat
-        case zcoroutine_hook_fileio_lstat:
-            retval->int_t = _syscall_lstat(args[0].const_char_ptr_t, (struct stat *)args[0].char_ptr_t);
-            break;
+    case zcoroutine_hook_fileio_lstat:
+        retval->int_t = _syscall_lstat(args[0].const_char_ptr_t, (struct stat *)args[0].char_ptr_t);
+        break;
 #endif
-        case zcoroutine_hook_fileio_link:
-            retval->int_t = _syscall_link(args[0].const_char_ptr_t, args[1].const_char_ptr_t);
-            break;
-        case zcoroutine_hook_fileio_linkat:
-            retval->int_t = _syscall_linkat(args[0].int_t, args[1].const_char_ptr_t, args[2].int_t, args[3].const_char_ptr_t, args[4].int_t);
-            break;
-        case zcoroutine_hook_fileio_symlink:
-            retval->int_t = _syscall_symlink(args[0].const_char_ptr_t, args[1].const_char_ptr_t);
-            break;
-        case zcoroutine_hook_fileio_symlinkat:
-            retval->int_t = _syscall_symlinkat(args[0].const_char_ptr_t, args[1].int_t, args[2].const_char_ptr_t);
-            break;
-        case zcoroutine_hook_fileio_readlink:
-            retval->int_t = _syscall_readlink(args[0].const_char_ptr_t, args[1].char_ptr_t, args[2].size_size_t);
-            break;
-        case zcoroutine_hook_fileio_readlinkat:
-            retval->int_t = _syscall_readlinkat(args[0].int_t, args[1].const_char_ptr_t, args[2].char_ptr_t, args[3].size_size_t);
-            break;
-        case zcoroutine_hook_fileio_unlink:
-            retval->int_t = _syscall_unlink(args[0].const_char_ptr_t);
-            break;
-        case zcoroutine_hook_fileio_unlinkat:
-            retval->int_t = _syscall_unlinkat(args[0].int_t, args[1].const_char_ptr_t, args[2].int_t);
-            break;
+    case zcoroutine_hook_fileio_link:
+        retval->int_t = _syscall_link(args[0].const_char_ptr_t, args[1].const_char_ptr_t);
+        break;
+    case zcoroutine_hook_fileio_linkat:
+        retval->int_t = _syscall_linkat(args[0].int_t, args[1].const_char_ptr_t, args[2].int_t, args[3].const_char_ptr_t, args[4].int_t);
+        break;
+    case zcoroutine_hook_fileio_symlink:
+        retval->int_t = _syscall_symlink(args[0].const_char_ptr_t, args[1].const_char_ptr_t);
+        break;
+    case zcoroutine_hook_fileio_symlinkat:
+        retval->int_t = _syscall_symlinkat(args[0].const_char_ptr_t, args[1].int_t, args[2].const_char_ptr_t);
+        break;
+    case zcoroutine_hook_fileio_readlink:
+        retval->int_t = _syscall_readlink(args[0].const_char_ptr_t, args[1].char_ptr_t, args[2].size_size_t);
+        break;
+    case zcoroutine_hook_fileio_readlinkat:
+        retval->int_t = _syscall_readlinkat(args[0].int_t, args[1].const_char_ptr_t, args[2].char_ptr_t, args[3].size_size_t);
+        break;
+    case zcoroutine_hook_fileio_unlink:
+        retval->int_t = _syscall_unlink(args[0].const_char_ptr_t);
+        break;
+    case zcoroutine_hook_fileio_unlinkat:
+        retval->int_t = _syscall_unlinkat(args[0].int_t, args[1].const_char_ptr_t, args[2].int_t);
+        break;
 #ifdef __NR_chmod
-        case zcoroutine_hook_fileio_chmod:
-            retval->int_t = _syscall_chmod(args[0].const_char_ptr_t, args[1].mode_mode_t);
-            break;
+    case zcoroutine_hook_fileio_chmod:
+        retval->int_t = _syscall_chmod(args[0].const_char_ptr_t, args[1].mode_mode_t);
+        break;
 #endif
-        case zcoroutine_hook_fileio_fchmod:
-            retval->int_t = _syscall_fchmod(args[0].int_t, args[1].mode_mode_t);
-            break;
+    case zcoroutine_hook_fileio_fchmod:
+        retval->int_t = _syscall_fchmod(args[0].int_t, args[1].mode_mode_t);
+        break;
 #ifdef __NR_chown
-        case zcoroutine_hook_fileio_chown:
-            retval->int_t = _syscall_chown(args[0].const_char_ptr_t, args[1].uid_uid_t, args[2].gid_gid_t);
-            break;
+    case zcoroutine_hook_fileio_chown:
+        retval->int_t = _syscall_chown(args[0].const_char_ptr_t, args[1].uid_uid_t, args[2].gid_gid_t);
+        break;
 #endif
-        case zcoroutine_hook_fileio_fchown:
-            retval->int_t = _syscall_fchown(args[0].int_t, args[1].uid_uid_t, args[2].gid_gid_t);
-            break;
+    case zcoroutine_hook_fileio_fchown:
+        retval->int_t = _syscall_fchown(args[0].int_t, args[1].uid_uid_t, args[2].gid_gid_t);
+        break;
 #ifdef __NR_lchown
-        case zcoroutine_hook_fileio_lchown:
-            retval->int_t = _syscall_lchown(args[0].const_char_ptr_t, args[1].uid_uid_t, args[2].gid_gid_t);
-            break;
+    case zcoroutine_hook_fileio_lchown:
+        retval->int_t = _syscall_lchown(args[0].const_char_ptr_t, args[1].uid_uid_t, args[2].gid_gid_t);
+        break;
 #endif
 #ifdef __NR_utime
-        case zcoroutine_hook_fileio_utime:
-            retval->int_t = _syscall_utime(args[0].const_char_ptr_t, (const struct utimbuf *)args[1].char_ptr_t);
-            break;
+    case zcoroutine_hook_fileio_utime:
+        retval->int_t = _syscall_utime(args[0].const_char_ptr_t, (const struct utimbuf *)args[1].char_ptr_t);
+        break;
 #endif
 #ifdef __NR_utimes
-        case zcoroutine_hook_fileio_utimes:
-            retval->int_t = _syscall_utimes(args[0].const_char_ptr_t, (struct timeval *)args[1].char_ptr_t);
-            break;
+    case zcoroutine_hook_fileio_utimes:
+        retval->int_t = _syscall_utimes(args[0].const_char_ptr_t, (struct timeval *)args[1].char_ptr_t);
+        break;
 #endif
     }
-    if (errno_bak) {
+    if (errno_bak)
+    {
         cio->co_errno = errno_bak;
-    } else {
+    }
+    else
+    {
         cio->co_errno = errno;
     }
 }
@@ -2835,8 +3188,10 @@ static pthread_key_t gethostbyname_pthread_key;
 void gethostbyname_pthread_key_destroy(void *buf)
 {
     char **g = (char **)buf;
-    if (g) {
-        if (*g) {
+    if (g)
+    {
+        if (*g)
+        {
             _co_mem_free(*g);
         }
         _co_mem_free(g);
@@ -2856,9 +3211,11 @@ static void _hook_fileio_worker_init()
 static void *zcoroutine_hook_fileio_worker(void *arg)
 {
     _hook_fileio_worker_init();
-    while (1) {
+    while (1)
+    {
         zpthread_lock(&zvar_coroutine_hook_fileio_lock);
-        while(!zvar_coroutine_hook_fileio_head) {
+        while (!zvar_coroutine_hook_fileio_head)
+        {
             struct timespec ts;
             ts.tv_sec = time(0) + 1;
             ts.tv_nsec = 0;
@@ -2871,7 +3228,7 @@ static void *zcoroutine_hook_fileio_worker(void *arg)
         zcoroutine_hook_fileio_worker_do(cio);
 
         zpthread_lock(&zvar_coroutine_hook_fileio_lock);
-        zcoroutine_t  *co = cio->current_coroutine;
+        zcoroutine_t *co = cio->current_coroutine;
         zcoroutine_base_t *cobs = co->base;
         ZMLINK_APPEND(cobs->fileio_coroutines_head, cobs->fileio_coroutines_tail, co, prev, next);
         zpthread_unlock(&zvar_coroutine_hook_fileio_lock);
@@ -2885,7 +3242,7 @@ static void *zcoroutine_hook_fileio_worker(void *arg)
 /* {{{ general read/write wait */
 static int _co_general_read_wait(int fd)
 {
-    _co_fd_attribute_t *cfa =  _co_fd_attribute_get(fd);
+    _co_fd_attribute_t *cfa = _co_fd_attribute_get(fd);
     struct pollfd pf;
     pf.fd = fd;
     pf.events = (POLLIN | POLLERR | POLLHUP);
@@ -2896,7 +3253,7 @@ static int _co_general_read_wait(int fd)
 
 static int _co_general_write_wait(int fd)
 {
-    _co_fd_attribute_t *cfa =  _co_fd_attribute_get(fd);
+    _co_fd_attribute_t *cfa = _co_fd_attribute_get(fd);
     struct pollfd pf;
     pf.fd = fd;
     pf.events = (POLLOUT | POLLERR | POLLHUP);
@@ -2908,9 +3265,9 @@ static int _co_general_write_wait(int fd)
 /* }}} */
 
 /* {{{ sleep */
-zinline static long _zmillisecond(void)
+zinline static ssize_t _zmillisecond(void)
 {
-    long r;
+    ssize_t r;
     struct timeval tv;
     gettimeofday(&tv, 0);
     r = tv.tv_sec * 1000 + tv.tv_usec / 1000;
@@ -2920,27 +3277,31 @@ zinline static long _zmillisecond(void)
 unsigned int sleep(unsigned int seconds)
 {
     int left = seconds * 1000;
-    if (left < 1) {
+    if (left < 1)
+    {
         return 0;
     }
-    long end = _zmillisecond() + left + 1;
+    ssize_t end = _zmillisecond() + left + 1;
     poll(0, 0, (int)left);
     left = end - _zmillisecond();
-    if (left <10) {
+    if (left < 10)
+    {
         return 0;
     }
-    return (left/1000);
+    return (left / 1000);
 }
 
 void zcoroutine_sleep_millisecond(int milliseconds)
 {
     int left = milliseconds;
-    if (left < 1) {
+    if (left < 1)
+    {
         return;
     }
 
-    long end = _zmillisecond() + left + 1;
-    while (left > 0) {
+    ssize_t end = _zmillisecond() + left + 1;
+    while (left > 0)
+    {
         poll(0, 0, left);
         left = end - _zmillisecond();
     }
@@ -2951,14 +3312,16 @@ void zcoroutine_sleep_millisecond(int milliseconds)
 /* {{{ poll hook */
 int poll(struct pollfd fds[], nfds_t nfds, int timeout)
 {
-    if (timeout == 0) {
+    if (timeout == 0)
+    {
         return _syscall_poll(fds, nfds, 0);
     }
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
-    if ((cobs == 0) || (cobs->current_coroutine == 0)) {
+    if ((cobs == 0) || (cobs->current_coroutine == 0))
+    {
         return _syscall_poll(fds, nfds, timeout);
     }
-    return  _co_poll(cobs->current_coroutine, fds, nfds, timeout);
+    return _co_poll(cobs->current_coroutine, fds, nfds, timeout);
 }
 
 int __poll(struct pollfd fds[], nfds_t nfds, int timeout)
@@ -2973,11 +3336,14 @@ int pipe(int pipefd[2])
 {
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
     int ret = _syscall_pipe(pipefd);
-    if (ret < 0) {
+    if (ret < 0)
+    {
         return ret;
     }
-    if (!cobs) {
-        return ret;;
+    if (!cobs)
+    {
+        return ret;
+        ;
     }
     _co_fd_attribute_create(pipefd[0]);
     fcntl(pipefd[0], F_SETFL, fcntl(pipefd[0], F_GETFL, 0));
@@ -2992,11 +3358,14 @@ int pipe2(int pipefd[2], int flags)
 {
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
     int ret = _syscall_pipe2(pipefd, flags);
-    if (ret < 0) {
+    if (ret < 0)
+    {
         return ret;
     }
-    if (!cobs) {
-        return ret;;
+    if (!cobs)
+    {
+        return ret;
+        ;
     }
     _co_fd_attribute_create(pipefd[0]);
     fcntl(pipefd[0], F_SETFL, fcntl(pipefd[0], F_GETFL, 0));
@@ -3011,20 +3380,24 @@ int dup(int oldfd)
 {
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
     int newfd = _syscall_dup(oldfd);
-    if (newfd < 0) {
+    if (newfd < 0)
+    {
         return newfd;
     }
-    if (!cobs) {
+    if (!cobs)
+    {
         return newfd;
     }
     _co_fd_attribute_t *cfa = _co_fd_attribute_get(oldfd);
     _co_fd_attribute_t *new_cfa = _co_fd_attribute_create(newfd);
-    if (cfa) {
+    if (cfa)
+    {
         new_cfa->is_regular_file = cfa->is_regular_file;
         new_cfa->pseudo_mode = cfa->pseudo_mode;
         new_cfa->read_timeout = cfa->read_timeout;
         new_cfa->write_timeout = cfa->write_timeout;
-        if (cfa && (cfa->pseudo_mode == 0)) {
+        if (cfa && (cfa->pseudo_mode == 0))
+        {
             fcntl(newfd, F_SETFL, fcntl(newfd, F_GETFL, 0));
         }
     }
@@ -3037,23 +3410,29 @@ int dup2(int oldfd, int newfd)
 {
     int ret;
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
-    if ((ret = _syscall_dup2(oldfd, newfd)) < 0) {
+    if ((ret = _syscall_dup2(oldfd, newfd)) < 0)
+    {
         return ret;
     }
-    if (!cobs) {
+    if (!cobs)
+    {
         return ret;
     }
     _co_fd_attribute_t *cfa = _co_fd_attribute_get(oldfd);
-    if (cfa && (cfa->pseudo_mode == 0)) {
+    if (cfa && (cfa->pseudo_mode == 0))
+    {
         cfa = _co_fd_attribute_get(newfd);
-        if (cfa) {
+        if (cfa)
+        {
             zcoroutine_fatal("the newfd be used by other zcoroutine_t");
 #if 0
             /* note: the newfd be used by other zcoroutine_t. */
             _co_fd_attribute_free(newfd);
             _co_fd_attribute_create(newfd);
 #endif
-        } else {
+        }
+        else
+        {
             _co_fd_attribute_t *new_cfa = _co_fd_attribute_create(newfd);
             new_cfa->is_regular_file = cfa->is_regular_file;
             new_cfa->pseudo_mode = cfa->pseudo_mode;
@@ -3071,23 +3450,29 @@ int dup3(int oldfd, int newfd, int flags)
 {
     int ret;
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
-    if ((ret = _syscall_dup3(oldfd, newfd, flags)) < 0) {
+    if ((ret = _syscall_dup3(oldfd, newfd, flags)) < 0)
+    {
         return ret;
     }
-    if (!cobs) {
+    if (!cobs)
+    {
         return ret;
     }
     _co_fd_attribute_t *cfa = _co_fd_attribute_get(oldfd);
-    if (cfa && (cfa->pseudo_mode == 0)) {
+    if (cfa && (cfa->pseudo_mode == 0))
+    {
         cfa = _co_fd_attribute_get(newfd);
-        if (cfa) {
+        if (cfa)
+        {
             zcoroutine_fatal("the newfd be used by other zcoroutine_t");
 #if 0
             /* note: the newfd be used by other zcoroutine_t. */
             _co_fd_attribute_free(newfd);
             _co_fd_attribute_create(newfd);
 #endif
-        } else {
+        }
+        else
+        {
             _co_fd_attribute_t *new_cfa = _co_fd_attribute_create(newfd);
             new_cfa->is_regular_file = cfa->is_regular_file;
             new_cfa->pseudo_mode = cfa->pseudo_mode;
@@ -3105,10 +3490,12 @@ int socketpair(int domain, int type, int protocol, int sv[2])
 {
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
     int ret = _syscall_socketpair(domain, type, protocol, sv);
-    if (ret < 0) {
+    if (ret < 0)
+    {
         return ret;
     }
-    if (!cobs) {
+    if (!cobs)
+    {
         return ret;
     }
     _co_fd_attribute_create(sv[0]);
@@ -3123,13 +3510,15 @@ int socketpair(int domain, int type, int protocol, int sv[2])
 int open(const char *pathname, int flags, ...)
 {
     mode_t mode = 0;
-    if (flags & O_CREAT) {
+    if (flags & O_CREAT)
+    {
         va_list args;
         va_start(args, flags);
         mode = va_arg(args, mode_t);
         va_end(args);
     }
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_open(pathname, flags, mode);
     }
     zcoroutine_hook_fileio_run_part2(open);
@@ -3138,10 +3527,12 @@ int open(const char *pathname, int flags, ...)
     fileio.args[2].int_t = mode;
     zcoroutine_hook_fileio_run_part3();
     int retfd = retval.int_t;
-    if (retfd > -1) {
+    if (retfd > -1)
+    {
         _co_fd_attribute_t *fdatts = _co_fd_attribute_create(retfd);
         fdatts->is_regular_file = fileio.is_regular_file;
-        if (fileio.is_regular_file == 0) {
+        if (fileio.is_regular_file == 0)
+        {
             fcntl(retfd, F_SETFL, fcntl(retfd, F_GETFL, 0));
         }
     }
@@ -3151,13 +3542,15 @@ int open(const char *pathname, int flags, ...)
 int openat(int dirid, const char *pathname, int flags, ...)
 {
     mode_t mode = 0;
-    if (flags & O_CREAT) {
+    if (flags & O_CREAT)
+    {
         va_list args;
         va_start(args, flags);
         mode = va_arg(args, mode_t);
         va_end(args);
     }
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_openat(dirid, pathname, flags, mode);
     }
     zcoroutine_hook_fileio_run_part2(openat);
@@ -3167,10 +3560,12 @@ int openat(int dirid, const char *pathname, int flags, ...)
     fileio.args[3].int_t = mode;
     zcoroutine_hook_fileio_run_part3();
     int retfd = retval.int_t;
-    if (retfd > -1) {
+    if (retfd > -1)
+    {
         _co_fd_attribute_t *fdatts = _co_fd_attribute_create(retfd);
         fdatts->is_regular_file = fileio.is_regular_file;
-        if (fileio.is_regular_file == 0) {
+        if (fileio.is_regular_file == 0)
+        {
             fcntl(retfd, F_SETFL, fcntl(retfd, F_GETFL, 0));
         }
     }
@@ -3181,7 +3576,7 @@ int openat(int dirid, const char *pathname, int flags, ...)
 /* {{{ creat hook */
 int creat(const char *pathname, mode_t mode)
 {
-    return open(pathname, O_WRONLY|O_CREAT|O_TRUNC, mode);
+    return open(pathname, O_WRONLY | O_CREAT | O_TRUNC, mode);
 }
 /* }}} */
 
@@ -3189,19 +3584,23 @@ int creat(const char *pathname, mode_t mode)
 int socket(int domain, int type, int protocol)
 {
     int fd = _syscall_socket(domain, type, protocol);
-    if(fd < 0) {
+    if (fd < 0)
+    {
         return fd;
     }
-    if ((zvar_coroutine_disable_udp == 1) && (type & SOCK_DGRAM)) {
+    if ((zvar_coroutine_disable_udp == 1) && (type & SOCK_DGRAM))
+    {
         return fd;
     }
 
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
-    if (cobs == 0) {
+    if (cobs == 0)
+    {
         return fd;
     }
     _co_fd_attribute_t *cfa = _co_fd_attribute_create(fd);
-    if (cfa && (zvar_coroutine_disable_udp_53 == 1) && (type & SOCK_DGRAM)) {
+    if (cfa && (zvar_coroutine_disable_udp_53 == 1) && (type & SOCK_DGRAM))
+    {
         cfa->is_udp = 1;
     }
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0));
@@ -3211,13 +3610,10 @@ int socket(int domain, int type, int protocol)
 /* }}} */
 
 /* {{{ return_zc_call */
-#define return_zc_call_co(fd)  \
-    zcoroutine_base_t *cobs = 0; \
+#define return_zc_call_co(fd)       \
+    zcoroutine_base_t *cobs = 0;    \
     _co_fd_attribute_t *fdatts = 0; \
-    if (((cobs = zcoroutine_base_get_current_inner()) ==0) \
-            || ((fdatts = _co_fd_attribute_get(fd)) == 0)  \
-            || (fdatts->nonblock == 1) \
-            || (fdatts->pseudo_mode == 1))
+    if (((cobs = zcoroutine_base_get_current_inner()) == 0) || ((fdatts = _co_fd_attribute_get(fd)) == 0) || (fdatts->nonblock == 1) || (fdatts->pseudo_mode == 1))
 
 /* }}} */
 
@@ -3225,34 +3621,42 @@ int socket(int domain, int type, int protocol)
 int accept(int fd, struct sockaddr *addr, socklen_t *len)
 {
     const int ___accept_timeout = 100 * 1000;
-    return_zc_call_co(fd) {
+    return_zc_call_co(fd)
+    {
         int sock = _syscall_accept(fd, addr, len);
-        if (cobs && (sock > -1)) {
+        if (cobs && (sock > -1))
+        {
             _co_fd_attribute_create(sock);
-            fcntl(sock, F_SETFL, _syscall_fcntl(sock, F_GETFL,0));
+            fcntl(sock, F_SETFL, _syscall_fcntl(sock, F_GETFL, 0));
         }
         return sock;
     }
     struct pollfd pf;
-    memset(&pf,0,sizeof(pf));
+    memset(&pf, 0, sizeof(pf));
     pf.fd = fd;
     pf.events = (POLLIN | POLLERR | POLLHUP);
     poll(&pf, 1, ___accept_timeout);
-    if (pf.revents & (POLLERR|POLLHUP)) {
+    if (pf.revents & (POLLERR | POLLHUP))
+    {
         errno = ECONNABORTED;
         return -1;
     }
-    if (!(pf.revents & (POLLIN))) {
+    if (!(pf.revents & (POLLIN)))
+    {
         errno = EINTR;
         return -1;
     }
 
     int sock = _syscall_accept(fd, addr, len);
-    if (sock > -1) {
+    if (sock > -1)
+    {
         _co_fd_attribute_create(sock);
-        fcntl(sock, F_SETFL, _syscall_fcntl(sock, F_GETFL,0));
-    } else {
-        if (errno == EAGAIN) {
+        fcntl(sock, F_SETFL, _syscall_fcntl(sock, F_GETFL, 0));
+    }
+    else
+    {
+        if (errno == EAGAIN)
+        {
             errno = EINTR;
         }
     }
@@ -3266,31 +3670,37 @@ int connect(int fd, const struct sockaddr *address, socklen_t address_len)
 {
     const int ___connect_timeout = 100 * 1000;
 
-    if (zvar_coroutine_disable_udp_53) {
+    if (zvar_coroutine_disable_udp_53)
+    {
         _co_fd_attribute_t *tmp_fdatts = _co_fd_attribute_get(fd);
-        if (tmp_fdatts && tmp_fdatts->is_udp) {
+        if (tmp_fdatts && tmp_fdatts->is_udp)
+        {
             const struct sockaddr_in *addr = (struct sockaddr_in *)address;
-            if ((addr->sin_family == AF_INET) && (ntohs(addr->sin_port) == 53)) {
+            if ((addr->sin_family == AF_INET) && (ntohs(addr->sin_port) == 53))
+            {
                 zcoroutine_disable_fd(fd);
             }
         }
     }
 
     int ret = _syscall_connect(fd, address, address_len);
-    return_zc_call_co(fd) {
+    return_zc_call_co(fd)
+    {
         return ret;
     }
 
-    if (!((ret < 0) && (errno == EINPROGRESS))) {
+    if (!((ret < 0) && (errno == EINPROGRESS)))
+    {
         return ret;
     }
 
     struct pollfd pf;
-    memset(&pf,0,sizeof(pf));
+    memset(&pf, 0, sizeof(pf));
     pf.fd = fd;
     pf.events = (POLLOUT | POLLERR | POLLHUP);
     poll(&pf, 1, ___connect_timeout);
-    if (pf.revents & POLLOUT) {
+    if (pf.revents & POLLOUT)
+    {
         errno = 0;
         return 0;
     }
@@ -3298,11 +3708,14 @@ int connect(int fd, const struct sockaddr *address, socklen_t address_len)
     int err = 0;
     socklen_t errlen = sizeof(err);
     getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errlen);
-    if(err) {
+    if (err)
+    {
         errno = err;
-    } else {
+    }
+    else
+    {
         errno = ETIMEDOUT;
-    } 
+    }
     return ret;
 }
 /* }}} */
@@ -3311,28 +3724,34 @@ int connect(int fd, const struct sockaddr *address, socklen_t address_len)
 int close(int fd)
 {
     int ret;
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         ret = zrobust_syscall_close(fd);
-        if (ret > -1) {
+        if (ret > -1)
+        {
             _co_fd_attribute_free(fd);
         }
         return ret;
     }
 
     _co_fd_attribute_t *fdatts = 0;
-    if (((fdatts = _co_fd_attribute_get(fd)) == 0) || (fdatts->pseudo_mode == 1)) {
+    if (((fdatts = _co_fd_attribute_get(fd)) == 0) || (fdatts->pseudo_mode == 1))
+    {
         ret = zrobust_syscall_close(fd);
-        if (ret > -1) {
+        if (ret > -1)
+        {
             _co_fd_attribute_free(fd);
         }
         return ret;
     }
-    if (fdatts->is_regular_file) {
+    if (fdatts->is_regular_file)
+    {
         zcoroutine_hook_fileio_run_part2(close);
         fileio.args[0].int_t = fd;
         zcoroutine_hook_fileio_run_part3();
         ret = retval.int_t;
-        if (ret > -1) {
+        if (ret > -1)
+        {
             _co_fd_attribute_free(fd);
         }
 #if 0
@@ -3341,7 +3760,8 @@ int close(int fd)
         return ret;
     }
     ret = zrobust_syscall_close(fd);
-    if (ret > -1) {
+    if (ret > -1)
+    {
         _co_fd_attribute_free(fd);
     }
     return ret;
@@ -3351,16 +3771,20 @@ int close(int fd)
 /* {{{ read hook */
 ssize_t read(int fd, void *buf, size_t nbyte)
 {
-    zcoroutine_hook_fileio_run_part0() {
+    zcoroutine_hook_fileio_run_part0()
+    {
         return _syscall_read(fd, buf, nbyte);
     }
 
     _co_fd_attribute_t *fdatts = 0;
-    if (((fdatts = _co_fd_attribute_get(fd)) == 0) || (fdatts->pseudo_mode == 1)) {
+    if (((fdatts = _co_fd_attribute_get(fd)) == 0) || (fdatts->pseudo_mode == 1))
+    {
         return _syscall_read(fd, buf, nbyte);
     }
-    if (fdatts->is_regular_file) {
-        if (zvar_coroutine_block_pthread_count_limit < 1) {
+    if (fdatts->is_regular_file)
+    {
+        if (zvar_coroutine_block_pthread_count_limit < 1)
+        {
             return _syscall_read(fd, buf, nbyte);
         }
         zcoroutine_hook_fileio_run_part2(read);
@@ -3375,7 +3799,8 @@ ssize_t read(int fd, void *buf, size_t nbyte)
         return retfd;
     }
 
-    if (fdatts->nonblock) {
+    if (fdatts->nonblock)
+    {
         return _syscall_read(fd, buf, nbyte);
     }
 #if 0
@@ -3387,12 +3812,14 @@ ssize_t read(int fd, void *buf, size_t nbyte)
         }
     }
     return readret;
-#else 
-    while(1) {
+#else
+    while (1)
+    {
         _co_general_read_wait(fd);
-        ssize_t readret = _syscall_read(fd,(char*)buf ,nbyte);
+        ssize_t readret = _syscall_read(fd, (char *)buf, nbyte);
         int ec = errno;
-        if ((readret >= 0) || (ec != EAGAIN)) {
+        if ((readret >= 0) || (ec != EAGAIN))
+        {
             return readret;
         }
     }
@@ -3404,16 +3831,20 @@ ssize_t read(int fd, void *buf, size_t nbyte)
 /* {{{ readv hook */
 ssize_t readv(int fd, const struct iovec *iov, int iovcnt)
 {
-    zcoroutine_hook_fileio_run_part0() {
+    zcoroutine_hook_fileio_run_part0()
+    {
         return _syscall_readv(fd, iov, iovcnt);
     }
 
     _co_fd_attribute_t *fdatts = 0;
-    if (((fdatts = _co_fd_attribute_get(fd)) == 0) || (fdatts->pseudo_mode == 1)) {
+    if (((fdatts = _co_fd_attribute_get(fd)) == 0) || (fdatts->pseudo_mode == 1))
+    {
         return _syscall_readv(fd, iov, iovcnt);
     }
-    if (fdatts->is_regular_file) {
-        if (zvar_coroutine_block_pthread_count_limit < 1) {
+    if (fdatts->is_regular_file)
+    {
+        if (zvar_coroutine_block_pthread_count_limit < 1)
+        {
             return _syscall_readv(fd, iov, iovcnt);
         }
         zcoroutine_hook_fileio_run_part2(readv);
@@ -3428,7 +3859,8 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt)
         return retfd;
     }
 
-    if (fdatts->nonblock) {
+    if (fdatts->nonblock)
+    {
         return _syscall_readv(fd, iov, iovcnt);
     }
 #if 0
@@ -3441,11 +3873,13 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt)
     }
     return readret;
 #else
-    while(1) {
+    while (1)
+    {
         _co_general_read_wait(fd);
         ssize_t readret = _syscall_readv(fd, iov, iovcnt);
         int ec = errno;
-        if ((readret >= 0) || (ec != EAGAIN)) {
+        if ((readret >= 0) || (ec != EAGAIN))
+        {
             return readret;
         }
     }
@@ -3457,16 +3891,20 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt)
 /* {{{ write hook */
 ssize_t write(int fd, const void *buf, size_t nbyte)
 {
-    zcoroutine_hook_fileio_run_part0() {
+    zcoroutine_hook_fileio_run_part0()
+    {
         return _syscall_write(fd, buf, nbyte);
     }
 
     _co_fd_attribute_t *fdatts = 0;
-    if (((fdatts = _co_fd_attribute_get(fd)) == 0) || (fdatts->pseudo_mode == 1)) {
+    if (((fdatts = _co_fd_attribute_get(fd)) == 0) || (fdatts->pseudo_mode == 1))
+    {
         return _syscall_write(fd, buf, nbyte);
     }
-    if (fdatts->is_regular_file) {
-        if (zvar_coroutine_block_pthread_count_limit < 1) {
+    if (fdatts->is_regular_file)
+    {
+        if (zvar_coroutine_block_pthread_count_limit < 1)
+        {
             return _syscall_write(fd, buf, nbyte);
         }
         zcoroutine_hook_fileio_run_part2(write);
@@ -3481,7 +3919,8 @@ ssize_t write(int fd, const void *buf, size_t nbyte)
         return retfd;
     }
 
-    if (fdatts->nonblock) {
+    if (fdatts->nonblock)
+    {
         return _syscall_write(fd, buf, nbyte);
     }
 
@@ -3495,11 +3934,13 @@ ssize_t write(int fd, const void *buf, size_t nbyte)
     }
     return writeret;
 #else
-    while(1) {
+    while (1)
+    {
         _co_general_write_wait(fd);
-        ssize_t writeret = _syscall_write(fd, buf ,nbyte);
+        ssize_t writeret = _syscall_write(fd, buf, nbyte);
         int ec = errno;
-        if ((writeret >= 0) || (ec != EAGAIN)) {
+        if ((writeret >= 0) || (ec != EAGAIN))
+        {
             return writeret;
         }
     }
@@ -3511,16 +3952,20 @@ ssize_t write(int fd, const void *buf, size_t nbyte)
 /* {{{ writev hook */
 ssize_t writev(int fd, const struct iovec *iov, int iovcnt)
 {
-    zcoroutine_hook_fileio_run_part0() {
+    zcoroutine_hook_fileio_run_part0()
+    {
         return _syscall_writev(fd, iov, iovcnt);
     }
 
     _co_fd_attribute_t *fdatts = 0;
-    if (((fdatts = _co_fd_attribute_get(fd)) == 0) || (fdatts->pseudo_mode == 1)) {
+    if (((fdatts = _co_fd_attribute_get(fd)) == 0) || (fdatts->pseudo_mode == 1))
+    {
         return _syscall_writev(fd, iov, iovcnt);
     }
-    if (fdatts->is_regular_file) {
-        if (zvar_coroutine_block_pthread_count_limit < 1) {
+    if (fdatts->is_regular_file)
+    {
+        if (zvar_coroutine_block_pthread_count_limit < 1)
+        {
             return _syscall_writev(fd, iov, iovcnt);
         }
         zcoroutine_hook_fileio_run_part2(writev);
@@ -3535,7 +3980,8 @@ ssize_t writev(int fd, const struct iovec *iov, int iovcnt)
         return retfd;
     }
 
-    if (fdatts->nonblock) {
+    if (fdatts->nonblock)
+    {
         return _syscall_writev(fd, iov, iovcnt);
     }
 #if 0
@@ -3548,11 +3994,13 @@ ssize_t writev(int fd, const struct iovec *iov, int iovcnt)
     }
     return writeret;
 #else
-    while(1) {
+    while (1)
+    {
         _co_general_write_wait(fd);
         ssize_t writeret = _syscall_writev(fd, iov, iovcnt);
         int ec = errno;
-        if ((writeret >= 0) || (ec != EAGAIN)) {
+        if ((writeret >= 0) || (ec != EAGAIN))
+        {
             return writeret;
         }
     }
@@ -3565,8 +4013,9 @@ ssize_t writev(int fd, const struct iovec *iov, int iovcnt)
 ssize_t sendto(int socket, const void *message, size_t length, int flags, const struct sockaddr *dest_addr, socklen_t dest_len)
 {
     int ret;
-    return_zc_call_co(socket) {
-        return _syscall_sendto(socket,message,length,flags,dest_addr,dest_len);
+    return_zc_call_co(socket)
+    {
+        return _syscall_sendto(socket, message, length, flags, dest_addr, dest_len);
     }
 #if 0
     _co_general_write_wait(socket);
@@ -3579,11 +4028,13 @@ ssize_t sendto(int socket, const void *message, size_t length, int flags, const 
     }
     return ret;
 #else
-    while(1) {
+    while (1)
+    {
         _co_general_write_wait(socket);
-        ret = _syscall_sendto(socket,message,length,flags,dest_addr,dest_len);
+        ret = _syscall_sendto(socket, message, length, flags, dest_addr, dest_len);
         int ec = errno;
-        if ((ret >= 0) || (ec != EAGAIN)) {
+        if ((ret >= 0) || (ec != EAGAIN))
+        {
             return ret;
         }
     }
@@ -3595,8 +4046,9 @@ ssize_t sendto(int socket, const void *message, size_t length, int flags, const 
 /* {{{ recvfrom hook */
 ssize_t recvfrom(int socket, void *buf, size_t length, int flags, struct sockaddr *address, socklen_t *address_len)
 {
-    return_zc_call_co(socket) {
-        return _syscall_recvfrom(socket,buf,length,flags,address,address_len);
+    return_zc_call_co(socket)
+    {
+        return _syscall_recvfrom(socket, buf, length, flags, address, address_len);
     }
 #if 0
     _co_general_read_wait(socket);
@@ -3609,11 +4061,13 @@ ssize_t recvfrom(int socket, void *buf, size_t length, int flags, struct sockadd
     }
     return ret;
 #else
-    while(1) {
+    while (1)
+    {
         _co_general_read_wait(socket);
-        ssize_t ret = _syscall_recvfrom(socket,buf,length,flags,address,address_len);
+        ssize_t ret = _syscall_recvfrom(socket, buf, length, flags, address, address_len);
         int ec = errno;
-        if ((ret >= 0) || (ec != EAGAIN)) {
+        if ((ret >= 0) || (ec != EAGAIN))
+        {
             return ret;
         }
     }
@@ -3625,8 +4079,9 @@ ssize_t recvfrom(int socket, void *buf, size_t length, int flags, struct sockadd
 /* {{{ send hook */
 ssize_t send(int socket, const void *buffer, size_t length, int flags)
 {
-    return_zc_call_co(socket) {
-        return _syscall_send(socket,buffer,length,flags);
+    return_zc_call_co(socket)
+    {
+        return _syscall_send(socket, buffer, length, flags);
     }
 #if 0
     _co_general_write_wait(socket);
@@ -3639,25 +4094,27 @@ ssize_t send(int socket, const void *buffer, size_t length, int flags)
     }
     return ret;
 #else
-    while(1) {
+    while (1)
+    {
         _co_general_write_wait(socket);
-        int ret = _syscall_send(socket,(const char*)buffer, length, flags);
+        int ret = _syscall_send(socket, (const char *)buffer, length, flags);
         int ec = errno;
-        if ((ret >= 0) || (ec != EAGAIN)) {
+        if ((ret >= 0) || (ec != EAGAIN))
+        {
             return ret;
         }
     }
     return -1;
 #endif
-
 }
 /* }}} */
 
 /* {{{ recv hook */
 ssize_t recv(int socket, void *buffer, size_t length, int flags)
 {
-    return_zc_call_co(socket) {
-        return _syscall_recv(socket,buffer,length,flags);
+    return_zc_call_co(socket)
+    {
+        return _syscall_recv(socket, buffer, length, flags);
     }
 #if 0
     _co_general_read_wait(socket);
@@ -3670,11 +4127,13 @@ ssize_t recv(int socket, void *buffer, size_t length, int flags)
     }
     return ret;
 #else
-    while(1) {
+    while (1)
+    {
         _co_general_read_wait(socket);
-        ssize_t ret = _syscall_recv(socket,buffer,length,flags);
+        ssize_t ret = _syscall_recv(socket, buffer, length, flags);
         int ec = errno;
-        if ((ret >= 0) || (ec != EAGAIN)) {
+        if ((ret >= 0) || (ec != EAGAIN))
+        {
             return ret;
         }
     }
@@ -3686,123 +4145,137 @@ ssize_t recv(int socket, void *buffer, size_t length, int flags)
 /* {{{ setsockopt hook */
 int setsockopt(int fd, int level, int option_name, const void *option_value, socklen_t option_len)
 {
-    return_zc_call_co(fd) {
-        return _syscall_setsockopt(fd,level,option_name,option_value,option_len);
+    return_zc_call_co(fd)
+    {
+        return _syscall_setsockopt(fd, level, option_name, option_value, option_len);
     }
 
-    if(SOL_SOCKET == level) {
-        struct timeval *val = (struct timeval*)option_value;
-        long t = val->tv_sec * 1000 + val->tv_usec/1000;
-        if (t > 1000 * 60 * 24 * 10) {
+    if (SOL_SOCKET == level)
+    {
+        struct timeval *val = (struct timeval *)option_value;
+        ssize_t t = val->tv_sec * 1000 + val->tv_usec / 1000;
+        if (t > 1000 * 60 * 24 * 10)
+        {
             t = 1000 * 60 * 24 * 10;
         }
-        if (t < 0) {
+        if (t < 0)
+        {
             t = 1;
         }
-        if(SO_RCVTIMEO == option_name ) {
+        if (SO_RCVTIMEO == option_name)
+        {
             fdatts->read_timeout = t;
-        } else if(SO_SNDTIMEO == option_name) {
+        }
+        else if (SO_SNDTIMEO == option_name)
+        {
             fdatts->write_timeout = t;
         }
     }
-    return _syscall_setsockopt(fd,level,option_name,option_value,option_len);
+    return _syscall_setsockopt(fd, level, option_name, option_value, option_len);
 }
 /* }}} */
 
 /* {{{ fcntl hook */
 int fcntl(int fildes, int cmd, ...)
 {
-    if(fildes < 0) {
+    if (fildes < 0)
+    {
         errno = EINVAL;
         return -1;
     }
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
 
     va_list args;
-    va_start(args,cmd);
+    va_start(args, cmd);
 
     int ret = -1;
-    switch(cmd)
+    switch (cmd)
     {
-        case F_DUPFD:
+    case F_DUPFD:
+    {
+        int param = va_arg(args, int);
+        ret = _syscall_fcntl(fildes, cmd, param);
+        if (cobs == 0)
+        {
+            break;
+        }
+        if (ret > -1)
+        {
+            _co_fd_attribute_t *cfa = _co_fd_attribute_get(fildes);
+            if (cfa && (cfa->pseudo_mode == 0))
             {
-                int param = va_arg(args,int);
-                ret = _syscall_fcntl(fildes,cmd,param);
-                if (cobs == 0) {
-                    break;
-                }
-                if (ret > -1) {
-                    _co_fd_attribute_t *cfa = _co_fd_attribute_get(fildes);
-                    if (cfa && (cfa->pseudo_mode == 0)) {
-                        _co_fd_attribute_create(ret);
-                        fcntl(ret, F_SETFL, _syscall_fcntl(ret, F_GETFL,0));
-                    }
-                }
-                break;
+                _co_fd_attribute_create(ret);
+                fcntl(ret, F_SETFL, _syscall_fcntl(ret, F_GETFL, 0));
             }
-        case F_GETFD:
-            {
-                ret = _syscall_fcntl(fildes,cmd);
-                break;
-            }
-        case F_SETFD:
-            {
-                int param = va_arg(args,int);
-                ret = _syscall_fcntl(fildes,cmd,param);
-                break;
-            }
-        case F_GETFL:
-            {
-                ret = _syscall_fcntl(fildes,cmd);
-                break;
-            }
-        case F_SETFL:
-            {
-                int param = va_arg(args,int);
-                if (cobs == 0) {
-                    ret = _syscall_fcntl(fildes,cmd,param);
-                    break;
-                }
-                int flag = param;
-                _co_fd_attribute_t *cfa = _co_fd_attribute_get(fildes);
-                if (cfa) {
-                    flag |= O_NONBLOCK;
-                }
-                ret = _syscall_fcntl(fildes,cmd,flag);
-                if((0 == ret) && cfa) {
-                    cfa->nonblock = ((param&O_NONBLOCK)?1:0);
-                }
-                break;
-            }
-        case F_GETOWN:
-            {
-                ret = _syscall_fcntl(fildes,cmd);
-                break;
-            }
-        case F_SETOWN:
-            {
-                int param = va_arg(args,int);
-                ret = _syscall_fcntl(fildes,cmd,param);
-                break;
-            }
-        case F_GETLK:
-            {
-                struct flock *param = va_arg(args,struct flock *);
-                ret = _syscall_fcntl(fildes,cmd,param);
-                break;
-            }
-        case F_SETLK:
-            {
-                struct flock *param = va_arg(args,struct flock *);
-                ret = _syscall_fcntl(fildes,cmd,param);
-                break;
-            }
-        case F_SETLKW:
-            {
-                struct flock *param = va_arg(args,struct flock *);
-                ret = _syscall_fcntl(fildes,cmd,param);
-                break;
-            }
+        }
+        break;
+    }
+    case F_GETFD:
+    {
+        ret = _syscall_fcntl(fildes, cmd);
+        break;
+    }
+    case F_SETFD:
+    {
+        int param = va_arg(args, int);
+        ret = _syscall_fcntl(fildes, cmd, param);
+        break;
+    }
+    case F_GETFL:
+    {
+        ret = _syscall_fcntl(fildes, cmd);
+        break;
+    }
+    case F_SETFL:
+    {
+        int param = va_arg(args, int);
+        if (cobs == 0)
+        {
+            ret = _syscall_fcntl(fildes, cmd, param);
+            break;
+        }
+        int flag = param;
+        _co_fd_attribute_t *cfa = _co_fd_attribute_get(fildes);
+        if (cfa)
+        {
+            flag |= O_NONBLOCK;
+        }
+        ret = _syscall_fcntl(fildes, cmd, flag);
+        if ((0 == ret) && cfa)
+        {
+            cfa->nonblock = ((param & O_NONBLOCK) ? 1 : 0);
+        }
+        break;
+    }
+    case F_GETOWN:
+    {
+        ret = _syscall_fcntl(fildes, cmd);
+        break;
+    }
+    case F_SETOWN:
+    {
+        int param = va_arg(args, int);
+        ret = _syscall_fcntl(fildes, cmd, param);
+        break;
+    }
+    case F_GETLK:
+    {
+        struct flock *param = va_arg(args, struct flock *);
+        ret = _syscall_fcntl(fildes, cmd, param);
+        break;
+    }
+    case F_SETLK:
+    {
+        struct flock *param = va_arg(args, struct flock *);
+        ret = _syscall_fcntl(fildes, cmd, param);
+        break;
+    }
+    case F_SETLKW:
+    {
+        struct flock *param = va_arg(args, struct flock *);
+        ret = _syscall_fcntl(fildes, cmd, param);
+        break;
+    }
     }
     va_end(args);
 
@@ -3814,7 +4287,8 @@ int fcntl(int fildes, int cmd, ...)
 /* file io hook {{{ */
 off_t lseek(int fd, off_t offset, int whence)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_lseek(fd, offset, whence);
     }
     zcoroutine_hook_fileio_run_part2(lseek);
@@ -3827,7 +4301,8 @@ off_t lseek(int fd, off_t offset, int whence)
 
 int fdatasync(int fd)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_fdatasync(fd);
     }
     zcoroutine_hook_fileio_run_part2(fdatasync);
@@ -3838,7 +4313,8 @@ int fdatasync(int fd)
 
 int fsync(int fd)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_fsync(fd);
     }
     zcoroutine_hook_fileio_run_part2(fsync);
@@ -3849,7 +4325,8 @@ int fsync(int fd)
 
 int rename(const char *oldpath, const char *newpath)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_rename(oldpath, newpath);
     }
     zcoroutine_hook_fileio_run_part2(rename);
@@ -3861,7 +4338,8 @@ int rename(const char *oldpath, const char *newpath)
 
 int renameat(int olddirfd, const char *oldpath, int newdirfd, const char *newpath)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_renameat(olddirfd, oldpath, newdirfd, newpath);
     }
     zcoroutine_hook_fileio_run_part2(renameat);
@@ -3875,7 +4353,8 @@ int renameat(int olddirfd, const char *oldpath, int newdirfd, const char *newpat
 
 int truncate(const char *path, off_t length)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_truncate(path, length);
     }
     zcoroutine_hook_fileio_run_part2(truncate);
@@ -3887,7 +4366,8 @@ int truncate(const char *path, off_t length)
 
 int ftruncate(int fd, off_t length)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_ftruncate(fd, length);
     }
     zcoroutine_hook_fileio_run_part2(ftruncate);
@@ -3899,7 +4379,8 @@ int ftruncate(int fd, off_t length)
 
 int rmdir(const char *pathname)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_rmdir(pathname);
     }
     zcoroutine_hook_fileio_run_part2(rmdir);
@@ -3910,7 +4391,8 @@ int rmdir(const char *pathname)
 
 int mkdir(const char *pathname, mode_t mode)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_mkdir(pathname, mode);
     }
     zcoroutine_hook_fileio_run_part2(mkdir);
@@ -3923,7 +4405,8 @@ int mkdir(const char *pathname, mode_t mode)
 #ifdef __NR_getdents
 int getdents(unsigned int fd, char *dirp, unsigned int count)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_getdents(fd, (void *)dirp, count);
     }
     zcoroutine_hook_fileio_run_part2(getdents);
@@ -3938,7 +4421,8 @@ int getdents(unsigned int fd, char *dirp, unsigned int count)
 #ifdef __NR_stat
 int stat(const char *pathname, struct stat *buf)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_stat(pathname, buf);
     }
     zcoroutine_hook_fileio_run_part2(stat);
@@ -3951,7 +4435,8 @@ int stat(const char *pathname, struct stat *buf)
 
 int fstat(int fd, struct stat *buf)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_fstat(fd, buf);
     }
     zcoroutine_hook_fileio_run_part2(fstat);
@@ -3964,7 +4449,8 @@ int fstat(int fd, struct stat *buf)
 #ifdef __NR_lstat
 int lstat(const char *pathname, struct stat *buf)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_lstat(pathname, buf);
     }
     zcoroutine_hook_fileio_run_part2(lstat);
@@ -3977,7 +4463,8 @@ int lstat(const char *pathname, struct stat *buf)
 
 int link(const char *oldpath, const char *newpath)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_link(oldpath, newpath);
     }
     zcoroutine_hook_fileio_run_part2(link);
@@ -3989,7 +4476,8 @@ int link(const char *oldpath, const char *newpath)
 
 int linkat(int olddirfd, const char *oldpath, int newdirfd, const char *newpath, int flags)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_linkat(olddirfd, oldpath, newdirfd, newpath, flags);
     }
     zcoroutine_hook_fileio_run_part2(linkat);
@@ -4004,7 +4492,8 @@ int linkat(int olddirfd, const char *oldpath, int newdirfd, const char *newpath,
 
 int symlink(const char *target, const char *linkpath)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_symlink(target, linkpath);
     }
     zcoroutine_hook_fileio_run_part2(symlink);
@@ -4016,7 +4505,8 @@ int symlink(const char *target, const char *linkpath)
 
 int symlinkat(const char *target, int newdirfd, const char *linkpath)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_symlinkat(target, newdirfd, linkpath);
     }
     zcoroutine_hook_fileio_run_part2(symlinkat);
@@ -4029,7 +4519,8 @@ int symlinkat(const char *target, int newdirfd, const char *linkpath)
 
 ssize_t readlink(const char *pathname, char *buf, size_t bufsiz)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_readlink(pathname, buf, bufsiz);
     }
     zcoroutine_hook_fileio_run_part2(readlink);
@@ -4042,7 +4533,8 @@ ssize_t readlink(const char *pathname, char *buf, size_t bufsiz)
 
 ssize_t readlinkat(int dirfd, const char *pathname, char *buf, size_t bufsiz)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_readlinkat(dirfd, pathname, buf, bufsiz);
     }
     zcoroutine_hook_fileio_run_part2(readlinkat);
@@ -4056,7 +4548,8 @@ ssize_t readlinkat(int dirfd, const char *pathname, char *buf, size_t bufsiz)
 
 int unlink(const char *pathname)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_unlink(pathname);
     }
     zcoroutine_hook_fileio_run_part2(unlink);
@@ -4067,7 +4560,8 @@ int unlink(const char *pathname)
 
 int unlinkat(int dirfd, const char *pathname, int flags)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_unlinkat(dirfd, pathname, flags);
     }
     zcoroutine_hook_fileio_run_part2(unlinkat);
@@ -4081,7 +4575,8 @@ int unlinkat(int dirfd, const char *pathname, int flags)
 #ifdef __NR_chmod
 int chmod(const char *pathname, mode_t mode)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_chmod(pathname, mode);
     }
     zcoroutine_hook_fileio_run_part2(chmod);
@@ -4094,7 +4589,8 @@ int chmod(const char *pathname, mode_t mode)
 
 int fchmod(int fd, mode_t mode)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_fchmod(fd, mode);
     }
     zcoroutine_hook_fileio_run_part2(fchmod);
@@ -4107,7 +4603,8 @@ int fchmod(int fd, mode_t mode)
 #ifdef __NR_chown
 int chown(const char *pathname, uid_t owner, gid_t group)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_chown(pathname, owner, group);
     }
     zcoroutine_hook_fileio_run_part2(chown);
@@ -4121,7 +4618,8 @@ int chown(const char *pathname, uid_t owner, gid_t group)
 
 int fchown(int fd, uid_t owner, gid_t group)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_fchown(fd, owner, group);
     }
     zcoroutine_hook_fileio_run_part2(fchown);
@@ -4135,7 +4633,8 @@ int fchown(int fd, uid_t owner, gid_t group)
 #ifdef __NR_lchown
 int lchown(const char *pathname, uid_t owner, gid_t group)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_lchown(pathname, owner, group);
     }
     zcoroutine_hook_fileio_run_part2(lchown);
@@ -4150,7 +4649,8 @@ int lchown(const char *pathname, uid_t owner, gid_t group)
 #ifdef __NR_utime
 int utime(const char *filename, const struct utimbuf *times)
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_utime(filename, times);
     }
     zcoroutine_hook_fileio_run_part2(utime);
@@ -4164,7 +4664,8 @@ int utime(const char *filename, const struct utimbuf *times)
 #ifdef __NR_utimes
 int utimes(const char *filename, const struct timeval times[2])
 {
-    zcoroutine_hook_fileio_run_part1() {
+    zcoroutine_hook_fileio_run_part1()
+    {
         return _syscall_utimes(filename, times);
     }
     zcoroutine_hook_fileio_run_part2(utimes);
@@ -4182,15 +4683,19 @@ extern __thread struct __res_state __resp;
 struct __res_state *__res_state()
 {
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
-    if (cobs == 0) {
-        if (__resp.options == 0) {
+    if (cobs == 0)
+    {
+        if (__resp.options == 0)
+        {
             res_ninit(&__resp);
         }
         return &__resp;
     }
-    if (cobs->current_coroutine->res_state == 0) {
+    if (cobs->current_coroutine->res_state == 0)
+    {
         cobs->current_coroutine->res_state = (struct __res_state *)_co_mem_calloc(1, sizeof(struct __res_state));
-        if (cobs->current_coroutine->res_state->options == 0) {
+        if (cobs->current_coroutine->res_state->options == 0)
+        {
             res_ninit(cobs->current_coroutine->res_state);
         }
     }
@@ -4199,29 +4704,37 @@ struct __res_state *__res_state()
 /* }}} */
 
 /* {{{ gethostbyname hook */
-struct hostent* gethostbyname2(const char* name, int af)
+struct hostent *gethostbyname2(const char *name, int af)
 {
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
     char **_hp_char_ptr = 0;
     zgethostbyname_buf_t *_hp;
-    if (cobs) {
+    if (cobs)
+    {
         _hp = cobs->current_coroutine->gethostbyname;
-    } else {
+    }
+    else
+    {
         _hp_char_ptr = (char **)pthread_getspecific(gethostbyname_pthread_key);
         _hp = (zgethostbyname_buf_t *)(*_hp_char_ptr);
     }
 
-    if (_hp && (_hp->buf_size > 1024)) {
+    if (_hp && (_hp->buf_size > 1024))
+    {
         _co_mem_free(_hp);
         _hp = 0;
     }
-    if (_hp == 0) {
+    if (_hp == 0)
+    {
         _hp = (zgethostbyname_buf_t *)_co_mem_malloc(sizeof(zgethostbyname_buf_t) + 1024 + 1);
         _hp->buf_ptr = ((char *)_hp) + sizeof(zgethostbyname_buf_t);
         _hp->buf_size = 1024;
-        if (cobs) {
+        if (cobs)
+        {
             cobs->current_coroutine->gethostbyname = _hp;
-        } else {
+        }
+        else
+        {
             *_hp_char_ptr = (char *)_hp;
         }
     }
@@ -4230,19 +4743,24 @@ struct hostent* gethostbyname2(const char* name, int af)
     int *h_errnop = &(_hp->h_errno2);
 
     int ret = -1;
-    while (((ret = gethostbyname2_r(name, af, host, _hp->buf_ptr, _hp->buf_size, &result, h_errnop)) == ERANGE) && (*h_errnop == NETDB_INTERNAL)) {
+    while (((ret = gethostbyname2_r(name, af, host, _hp->buf_ptr, _hp->buf_size, &result, h_errnop)) == ERANGE) && (*h_errnop == NETDB_INTERNAL))
+    {
         size_t nsize = _hp->buf_size * 2;
         _co_mem_free(_hp);
         _hp = (zgethostbyname_buf_t *)_co_mem_malloc(sizeof(zgethostbyname_buf_t) + nsize + 1);
         _hp->buf_ptr = ((char *)_hp) + sizeof(zgethostbyname_buf_t);
         _hp->buf_size = nsize;
-        if (cobs) {
+        if (cobs)
+        {
             cobs->current_coroutine->gethostbyname = _hp;
-        } else {
+        }
+        else
+        {
             *_hp_char_ptr = (char *)_hp;
         }
-    } 
-    if ((ret == 0) && (host == result)){
+    }
+    if ((ret == 0) && (host == result))
+    {
         return host;
     }
     h_errno = _hp->h_errno2;
@@ -4259,24 +4777,32 @@ struct hostent *gethostbyaddr(const void *addr, socklen_t len, int type)
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
     char **_hp_char_ptr = 0;
     zgethostbyname_buf_t *_hp;
-    if (cobs) {
+    if (cobs)
+    {
         _hp = cobs->current_coroutine->gethostbyname;
-    } else {
+    }
+    else
+    {
         _hp_char_ptr = (char **)pthread_getspecific(gethostbyname_pthread_key);
         _hp = (zgethostbyname_buf_t *)(*_hp_char_ptr);
     }
 
-    if (_hp && (_hp->buf_size > 1024)) {
+    if (_hp && (_hp->buf_size > 1024))
+    {
         _co_mem_free(_hp);
         _hp = 0;
     }
-    if (_hp == 0) {
+    if (_hp == 0)
+    {
         _hp = (zgethostbyname_buf_t *)_co_mem_malloc(sizeof(zgethostbyname_buf_t) + 1024 + 1);
         _hp->buf_ptr = ((char *)_hp) + sizeof(zgethostbyname_buf_t);
         _hp->buf_size = 1024;
-        if (cobs) {
+        if (cobs)
+        {
             cobs->current_coroutine->gethostbyname = _hp;
-        } else {
+        }
+        else
+        {
             *_hp_char_ptr = (char *)_hp;
         }
     }
@@ -4285,19 +4811,24 @@ struct hostent *gethostbyaddr(const void *addr, socklen_t len, int type)
     int *h_errnop = &(_hp->h_errno2);
 
     int ret = -1;
-    while (((ret = gethostbyaddr_r(addr, len, type, host, _hp->buf_ptr, _hp->buf_size, &result, h_errnop)) == ERANGE) && (*h_errnop == NETDB_INTERNAL)) {
+    while (((ret = gethostbyaddr_r(addr, len, type, host, _hp->buf_ptr, _hp->buf_size, &result, h_errnop)) == ERANGE) && (*h_errnop == NETDB_INTERNAL))
+    {
         size_t nsize = _hp->buf_size * 2;
         _co_mem_free(_hp);
         _hp = (zgethostbyname_buf_t *)_co_mem_malloc(sizeof(zgethostbyname_buf_t) + nsize + 1);
         _hp->buf_ptr = ((char *)_hp) + sizeof(zgethostbyname_buf_t);
         _hp->buf_size = nsize;
-        if (cobs) {
+        if (cobs)
+        {
             cobs->current_coroutine->gethostbyname = _hp;
-        } else {
+        }
+        else
+        {
             *_hp_char_ptr = (char *)_hp;
         }
-    } 
-    if ((ret == 0) && (host == result)){
+    }
+    if ((ret == 0) && (host == result))
+    {
         return host;
     }
     h_errno = _hp->h_errno2;
@@ -4310,7 +4841,8 @@ struct hostent *gethostbyaddr(const void *addr, socklen_t len, int type)
 void *zcoroutine_block_do(void *(*block_func)(void *ctx), void *ctx)
 {
     zcoroutine_base_t *cobs = 0;
-    if ((zvar_coroutine_block_pthread_count_limit<1) || ((cobs = zcoroutine_base_get_current_inner())==0)) {
+    if ((zvar_coroutine_block_pthread_count_limit < 1) || ((cobs = zcoroutine_base_get_current_inner()) == 0))
+    {
         return block_func(ctx);
     }
     zcoroutine_hook_fileio_run_part2(unknown);
@@ -4327,35 +4859,43 @@ static void *_pwrite(void *ctx)
     int fd = args[1].INT;
     const char *data = args[2].CONST_CHAR_PTR;
     int len = args[3].INT, wlen = 0, ret;
-    long offset = args[4].LONG;
+    ssize_t offset = args[4].LONG;
 
-    if (offset > 0) {
-        if (lseek(fd, offset, SEEK_SET) == (off_t)-1) {
+    if (offset > 0)
+    {
+        if (lseek(fd, offset, SEEK_SET) == (off_t)-1)
+        {
             args[0].INT = -1;
             return 0;
         }
     }
-    while (len > wlen) {
+    while (len > wlen)
+    {
         ret = _syscall_write(fd, data + wlen, len - wlen);
-        if (ret > -1) {
+        if (ret > -1)
+        {
             wlen += ret;
             continue;
         }
-        if (errno == EINTR) {
+        if (errno == EINTR)
+        {
             continue;
         }
         break;
     }
-    if (len != wlen) {
+    if (len != wlen)
+    {
         args[0].INT = -1;
-    } else {
+    }
+    else
+    {
         args[0].INT = len;
     }
 
     return 0;
 }
 
-int zcoroutine_block_pwrite(int fd, const void *data, int len, long offset)
+int zcoroutine_block_pwrite(int fd, const void *data, int len, ssize_t offset)
 {
     _co_type_convert_t args[5];
     args[0].INT = -1;
@@ -4374,20 +4914,26 @@ static void *_write(void *ctx)
     const char *data = args[2].CONST_CHAR_PTR;
     int len = args[3].INT, wlen = 0, ret;
 
-    while (len > wlen) {
+    while (len > wlen)
+    {
         ret = _syscall_write(fd, data + wlen, len - wlen);
-        if (ret > -1) {
+        if (ret > -1)
+        {
             wlen += ret;
             continue;
         }
-        if (errno == EINTR) {
+        if (errno == EINTR)
+        {
             continue;
         }
         break;
     }
-    if (len != wlen) {
+    if (len != wlen)
+    {
         args[0].INT = -1;
-    } else {
+    }
+    else
+    {
         args[0].INT = len;
     }
 
@@ -4409,13 +4955,14 @@ static void *_lseek(void *ctx)
 {
     _co_type_convert_t *args = (_co_type_convert_t *)ctx;
     int fd = args[1].INT;
-    long offset = args[2].LONG;;
+    ssize_t offset = args[2].LONG;
+    ;
     int whence = args[3].INT;
     args[0].LONG = lseek(fd, offset, whence);
     return 0;
 }
 
-long zcoroutine_block_lseek(int fd, long offset, int whence)
+ssize_t zcoroutine_block_lseek(int fd, ssize_t offset, int whence)
 {
     _co_type_convert_t args[4];
     args[0].LONG = -1;
@@ -4432,9 +4979,10 @@ static void *_open(void *ctx)
     const char *pathname = args[1].CONST_CHAR_PTR;
     int flags = args[2].INT;
     mode_t mode = args[3].INT;
-    do {
+    do
+    {
         args[0].INT = _syscall_open(pathname, flags, mode);
-    } while ((args[0].INT < 0) && (errno==EINTR));
+    } while ((args[0].INT < 0) && (errno == EINTR));
     return 0;
 }
 
@@ -4453,9 +5001,10 @@ static void *_close(void *ctx)
 {
     _co_type_convert_t *args = (_co_type_convert_t *)ctx;
     int fd = args[1].INT;
-    do {
+    do
+    {
         args[0].INT = _syscall_close(fd);
-    } while ((args[0].INT < 0) && (errno==EINTR));
+    } while ((args[0].INT < 0) && (errno == EINTR));
     return 0;
 }
 
@@ -4473,9 +5022,10 @@ static void *_rename(void *ctx)
     _co_type_convert_t *args = (_co_type_convert_t *)ctx;
     const char *oldpath = args[1].CONST_CHAR_PTR;
     const char *newpath = args[2].CONST_CHAR_PTR;
-    do {
+    do
+    {
         args[0].INT = _syscall_rename(oldpath, newpath);
-    } while ((args[0].INT < 0) && (errno==EINTR));
+    } while ((args[0].INT < 0) && (errno == EINTR));
     return 0;
 }
 
@@ -4493,9 +5043,10 @@ static void *_unlink(void *ctx)
 {
     _co_type_convert_t *args = (_co_type_convert_t *)ctx;
     const char *pathname = args[1].CONST_CHAR_PTR;
-    do {
+    do
+    {
         args[0].INT = _syscall_unlink(pathname);
-    } while ((args[0].INT < 0) && (errno==EINTR));
+    } while ((args[0].INT < 0) && (errno == EINTR));
     return 0;
 }
 
@@ -4510,8 +5061,8 @@ int zcoroutine_block_unlink(const char *pathname)
 
 /* }}} */
 
-#ifdef  __cplusplus
-}
+#ifdef __cplusplus
+_namespace_c_end;
 #endif
 
 #pragma pack(pop)

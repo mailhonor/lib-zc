@@ -19,30 +19,45 @@
 #define zinline inline __attribute__((always_inline))
 #endif
 
+#define _namespace_begin \
+    namespace zcc           \
+    {
+#define _namespace_end }
+
+_namespace_begin;
 #pragma pack(push, 1)
-namespace zcc
-{
+
+/* 宏 */
+#define ZCC_JSON_ARRAY_WALK_BEGIN(js, child_js_p)                                                                            \
+    {                                                                                                                        \
+        auto const TMP_JS_0531_VECTOR = (js).get_array_value();                                                              \
+        for (auto TMP_JS_0531_it = TMP_JS_0531_VECTOR.begin(); TMP_JS_0531_it != TMP_JS_0531_VECTOR.end(); TMP_JS_0531_it++) \
+        {                                                                                                                    \
+            auto &child_js_p = *TMP_JS_0531_it;                                                                              \
+            {
+#define ZCC_JSON_ARRAY_WALK_END \
+    }                           \
+    }                           \
+    }
 
 class json;
-const unsigned char json_type_null    = 0;
-const unsigned char json_type_string  = 1;
-const unsigned char json_type_long    = 2;
-const unsigned char json_type_double  = 3;
-const unsigned char json_type_object  = 4;
-const unsigned char json_type_array   = 5;
-const unsigned char json_type_bool    = 6;
+const unsigned char json_type_null = 0;
+const unsigned char json_type_string = 1;
+const unsigned char json_type_long = 2;
+const unsigned char json_type_double = 3;
+const unsigned char json_type_object = 4;
+const unsigned char json_type_array = 5;
+const unsigned char json_type_bool = 6;
 const unsigned char json_type_unknown = 7;
 const int json_serialize_strict = 0X01;
 const int json_serialize_pretty = 0X02;
-
 class json
 {
 public:
     json();
     json(const std::string &val);
     json(const char *val, int len = -1);
-    json(long val);
-    json(int val);
+    json(long long val);
     json(double val);
     json(bool val);
     json(const unsigned char type);
@@ -59,17 +74,17 @@ public:
     zinline bool unserialize(const std::string &jstr) { return unserialize(jstr.c_str(), (int)(jstr.size())); }
 
     /* 序列化 */
-    json *serialize(std::string &result, int flags = 0/* json_serialize_XXX */);
+    json *serialize(std::string &result, int flags = 0 /* json_serialize_XXX */);
 
     /* 类型 */
-    zinline int get_type()   { return type_; }
-    zinline bool is_string() { return type_==json_type_string; }
-    zinline bool is_long()   { return type_==json_type_long; }
-    zinline bool is_double() { return type_==json_type_double; }
-    zinline bool is_object() { return type_==json_type_object; }
-    zinline bool is_array()  { return type_==json_type_array; }
-    zinline bool is_bool()   { return type_==json_type_bool; }
-    zinline bool is_null()   { return type_==json_type_null; }
+    zinline int get_type() { return type_; }
+    zinline bool is_string() { return type_ == json_type_string; }
+    zinline bool is_long() { return type_ == json_type_long; }
+    zinline bool is_double() { return type_ == json_type_double; }
+    zinline bool is_object() { return type_ == json_type_object; }
+    zinline bool is_array() { return type_ == json_type_array; }
+    zinline bool is_bool() { return type_ == json_type_bool; }
+    zinline bool is_null() { return type_ == json_type_null; }
 
     /* 重置为 null */
     json *reset();
@@ -100,7 +115,7 @@ public:
      * 原来是 array, 则为 def
      * 原来是 object, 则为 def
      * */
-    long &get_long_value(long def = 0);
+    long long &get_long_value(long long def = 0);
 
     /* 获取 double 值; 如果不是 double 类型, 则首先转换为 double 类型, 其值:
      * 原来是 null, 则为 def
@@ -142,18 +157,48 @@ public:
 
     /* 设置值 */
     json *set_string_value(const char *val, int len = -1);
-    zinline json *set_string_value(const std::string &val) { get_string_value() = val; return this; }
-    zinline json *set_long_value(long val) { get_long_value() = val; return this; }
-    zinline json *set_long_value(int val) { get_long_value() = val*1L; return this; }
-    zinline json *set_double_value(double val) { get_double_value() = val; return this; }
-    zinline json *set_bool_value(bool val) { get_bool_value() = val; return this; }
+    zinline json *set_string_value(const std::string &val)
+    {
+        get_string_value() = val;
+        return this;
+    }
+    zinline json *set_long_value(long long val)
+    {
+        get_long_value() = val;
+        return this;
+    }
+    zinline json *set_double_value(double val)
+    {
+        get_double_value() = val;
+        return this;
+    }
+    zinline json *set_bool_value(bool val)
+    {
+        get_bool_value() = val;
+        return this;
+    }
 
     zinline json *set_value(const char *val, int len = -1) { return set_string_value(val, len); }
-    zinline json *set_value(const std::string &val) { get_string_value() = val; return this; }
-    zinline json *set_value(long val) { get_long_value() = val; return this; }
-    zinline json *set_value(int val) { get_long_value() = val*1L; return this; }
-    zinline json *set_value(double val) { get_double_value() = val; return this; }
-    zinline json *set_value(bool val) { get_bool_value() = val; return this; }
+    zinline json *set_value(const std::string &val)
+    {
+        get_string_value() = val;
+        return this;
+    }
+    zinline json *set_value(long long val)
+    {
+        get_long_value() = val;
+        return this;
+    }
+    zinline json *set_value(double val)
+    {
+        get_double_value() = val;
+        return this;
+    }
+    zinline json *set_value(bool val)
+    {
+        get_bool_value() = val;
+        return this;
+    }
 
     /* 获取下标为 idx 的 json 节点, 如果不是 array 类型, 则先转为 array 类型 */
     json *array_get(int idx);
@@ -166,12 +211,14 @@ public:
     json *array_insert(int idx, json *j, bool return_child = false);
 
     /* 在最前面插入 j */
-    zinline json *array_unshift(json *j, bool return_child = false) {
+    zinline json *array_unshift(json *j, bool return_child = false)
+    {
         return array_insert(0, j, return_child);
     }
 
     /* 在尾部追加节点 j */
-    zinline json *array_add(json *j, bool return_child = false) {
+    zinline json *array_add(json *j, bool return_child = false)
+    {
         return array_insert(-1, j, return_child);
     }
     zinline json *array_push(json *j, bool return_child = false) { return array_add(j, return_child); }
@@ -180,13 +227,16 @@ public:
 
     /* 设置下表为 idx 的成员 j, 如果键idx存在则, 则把idx对应的json赋给 *old, 如果old为0, 则销毁 */
     json *array_update(int idx, json *j, json **old, bool return_child = false);
-    zinline json *array_update(int idx, json *j, bool return_child = false) {
+    zinline json *array_update(int idx, json *j, bool return_child = false)
+    {
         return array_update(idx, j, 0, return_child);
     }
-    zinline json *array_update(size_t idx, const char *val, int len, bool return_child = false) {
+    zinline json *array_update(size_t idx, const char *val, int len, bool return_child = false)
+    {
         return array_update(idx, new json(val, len), return_child);
     }
-    zinline json *array_update(size_t idx, const char *val, int len, json **old, bool return_child = false) {
+    zinline json *array_update(size_t idx, const char *val, int len, json **old, bool return_child = false)
+    {
         return array_update(idx, new json(val, len), old, return_child);
     }
 
@@ -210,70 +260,86 @@ public:
 
     /* 更新键为key的节点, 旧值赋值给 *old, 如果 old为 0, 则销毁 */
     json *object_update(const std::string &key, json *j, json **old, bool return_child = false);
-    json *object_add(const std::string &key, json *j, json **old, bool return_child = false) {
+    json *object_add(const std::string &key, json *j, json **old, bool return_child = false)
+    {
         return object_update(key, j, old, return_child);
     }
 
-    zinline json *object_update(const std::string &key, json *j, bool return_child = false) {
+    zinline json *object_update(const std::string &key, json *j, bool return_child = false)
+    {
         return object_update(key, j, 0, return_child);
     }
-    zinline json *object_add(const std::string &key, json *j, bool return_child = false) {
+    zinline json *object_add(const std::string &key, json *j, bool return_child = false)
+    {
         return object_update(key, j, 0, return_child);
     }
-    zinline json *object_update(const std::string &key, const char *val, int len, json **old, bool return_child = false) {
+    zinline json *object_update(const std::string &key, const char *val, int len, json **old, bool return_child = false)
+    {
         return object_update(key, new json(val, len), old, return_child);
     }
-    zinline json *object_add(const std::string &key, const char *val, int len, json **old, bool return_child = false) {
+    zinline json *object_add(const std::string &key, const char *val, int len, json **old, bool return_child = false)
+    {
         return object_update(key, new json(val, len), old, return_child);
     }
-    zinline json *object_update(const std::string &key, const char *val, int len, bool return_child = false) {
+    zinline json *object_update(const std::string &key, const char *val, int len, bool return_child = false)
+    {
         return object_update(key, new json(val, len), return_child);
     }
-    zinline json *object_add(const std::string &key, const char *val, int len, bool return_child = false) {
+    zinline json *object_add(const std::string &key, const char *val, int len, bool return_child = false)
+    {
         return object_update(key, new json(val, len), return_child);
     }
 
     /* 删除键为key的节点, 存在则返回true, 赋值给 *old, 如果 old为 0, 则销毁 */
     bool object_delete(const char *key, json **old);
 
-#define ___zcc_json_update(TTT) \
-    json *array_insert(int idx, TTT val, bool return_child = false) { \
-        return array_insert(idx, new json(val), return_child); \
-    } \
-    zinline json *array_unshift(TTT val, bool return_child = false) { \
-        return array_insert(0, new json(val), return_child); \
-    } \
-    zinline json *array_add(TTT val, bool return_child = false) { \
-        return array_insert(-1, new json(val), return_child); \
-    } \
-    zinline json *array_push(TTT val, bool return_child = false) { \
-        return array_insert(-1, new json(val), return_child); \
-    } \
-    zinline json *array_update(int idx, TTT val, bool return_child = false) { \
-        return array_update(idx, new json(val), return_child); \
-    } \
-    zinline json *array_update(int idx, TTT val, json **old, bool return_child = false) { \
-        return array_update(idx, new json(val), old, return_child); \
-    } \
-    zinline json *object_update(const std::string &key, TTT val, bool return_child = false) { \
-        return object_update(key, new json(val), return_child); \
-    } \
-    zinline json *object_update(const std::string &key, TTT val, json **old, bool return_child = false) { \
-        return object_update(key, new json(val), old, return_child); \
-    } \
-    zinline json *object_add(const std::string &key, TTT val, bool return_child = false) { \
-        return object_update(key, new json(val), 0, return_child); \
-    } \
-    zinline json *object_add(const std::string &key, TTT val, json **old, bool return_child = false) { \
-        return object_update(key, new json(val), old, return_child); \
-    } \
+#define ___zcc_json_update(TTT)                                                                         \
+    json *array_insert(int idx, TTT val, bool return_child = false)                                     \
+    {                                                                                                   \
+        return array_insert(idx, new json(val), return_child);                                          \
+    }                                                                                                   \
+    zinline json *array_unshift(TTT val, bool return_child = false)                                     \
+    {                                                                                                   \
+        return array_insert(0, new json(val), return_child);                                            \
+    }                                                                                                   \
+    zinline json *array_add(TTT val, bool return_child = false)                                         \
+    {                                                                                                   \
+        return array_insert(-1, new json(val), return_child);                                           \
+    }                                                                                                   \
+    zinline json *array_push(TTT val, bool return_child = false)                                        \
+    {                                                                                                   \
+        return array_insert(-1, new json(val), return_child);                                           \
+    }                                                                                                   \
+    zinline json *array_update(int idx, TTT val, bool return_child = false)                             \
+    {                                                                                                   \
+        return array_update(idx, new json(val), return_child);                                          \
+    }                                                                                                   \
+    zinline json *array_update(int idx, TTT val, json **old, bool return_child = false)                 \
+    {                                                                                                   \
+        return array_update(idx, new json(val), old, return_child);                                     \
+    }                                                                                                   \
+    zinline json *object_update(const std::string &key, TTT val, bool return_child = false)             \
+    {                                                                                                   \
+        return object_update(key, new json(val), return_child);                                         \
+    }                                                                                                   \
+    zinline json *object_update(const std::string &key, TTT val, json **old, bool return_child = false) \
+    {                                                                                                   \
+        return object_update(key, new json(val), old, return_child);                                    \
+    }                                                                                                   \
+    zinline json *object_add(const std::string &key, TTT val, bool return_child = false)                \
+    {                                                                                                   \
+        return object_update(key, new json(val), 0, return_child);                                      \
+    }                                                                                                   \
+    zinline json *object_add(const std::string &key, TTT val, json **old, bool return_child = false)    \
+    {                                                                                                   \
+        return object_update(key, new json(val), old, return_child);                                    \
+    }                                                                                                   \
     zinline void operator=(TTT val) { set_value(val); }
 
     /* 这几组方法类似 array_update, object_update, 只不过参数不同 */
     ___zcc_json_update(const std::string &);
     ___zcc_json_update(const char *);
-    ___zcc_json_update(long);
-    ___zcc_json_update(int);
+    ___zcc_json_update(long long);
     ___zcc_json_update(double);
     ___zcc_json_update(bool);
 #undef ___zcc_json_update
@@ -298,7 +364,7 @@ public:
 
     /* 获取 路径 pathname 对应的节点 的 值 */
     bool get_value_by_path(const char *pathname, std::string &value);
-    bool get_value_by_path(const char *pathname, long *value);
+    bool get_value_by_path(const char *pathname, long long *value);
 
     /* */
     zinline json *get_parent() { return parent_; }
@@ -309,14 +375,15 @@ public:
     /* 扩展 */
     /* 如果不是 object 类型, 则先转为 object 类型 */
     std::string object_get_string_value(const std::string &key, const char *def = "");
-    long object_get_long_value(const std::string &key, long def = 0);
+    long long object_get_long_value(const std::string &key, long long def = 0);
     bool object_get_bool_value(const std::string &key, bool def = false);
 
 private:
     unsigned char type_;
-    union {
+    union
+    {
         bool b;
-        long l;
+        long long l;
         double d;
         char s[sizeof(std::string)];
         std::vector<json *> *v;
@@ -325,8 +392,7 @@ private:
     json *parent_;
 };
 
-}
-
 #pragma pack(pop)
+_namespace_end;
 #endif /*___ZC_LIB_INCLUDE_JSON___ */
 

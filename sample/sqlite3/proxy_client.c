@@ -12,7 +12,7 @@
 
 static void usage()
 {
-    printf("ERR USAGE %s -server server -query/exec/log sql_sentense\n", zvar_progname);
+    printf("ERROR USAGE %s -server server -query/exec/log sql_sentense\n", zvar_progname);
     exit(1);
 }
 
@@ -36,14 +36,14 @@ int main(int argc, char **argv)
 
     zsqlite3_proxy_client_t *pr = zsqlite3_proxy_client_connect(server);
     if (pr == 0) {
-        printf("ERR can not open %s(%m)\n", server);
+        printf("ERROR can not open %s(%m)\n", server);
         exit(1);
     }
     zsqlite3_proxy_client_set_auto_reconnect(pr, 1);
     if (op == 'q') {
         ret = zsqlite3_proxy_client_query(pr, sentense, strlen(sentense));
         if (ret < 1) {
-            printf("ERR %s\n", zsqlite3_proxy_client_get_error_msg(pr));
+            printf("ERROR %s\n", zsqlite3_proxy_client_get_error_msg(pr));
             exit(1);
         }
 
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
         while (1) {
             int r = zsqlite3_proxy_client_get_row(pr, &row);
             if (r < 0) {
-                printf("ERR %s\n", zsqlite3_proxy_client_get_error_msg(pr));
+                printf("ERROR %s\n", zsqlite3_proxy_client_get_error_msg(pr));
                 exit(1);
             }
             if (r == 0) {
@@ -66,14 +66,14 @@ int main(int argc, char **argv)
     } else if (op == 'e') {
         ret = zsqlite3_proxy_client_exec(pr, sentense, strlen(sentense));
         if (ret < 1) {
-            printf("ERR %s\n", zsqlite3_proxy_client_get_error_msg(pr));
+            printf("ERROR %s\n", zsqlite3_proxy_client_get_error_msg(pr));
             exit(1);
         }
         printf("ok\n");
     } else if (op == 'l') {
         ret = zsqlite3_proxy_client_log(pr, sentense, strlen(sentense));
         if (ret < 1) {
-            printf("ERR %s\n", zsqlite3_proxy_client_get_error_msg(pr));
+            printf("ERROR %s\n", zsqlite3_proxy_client_get_error_msg(pr));
             exit(1);
         }
         printf("ok\n");

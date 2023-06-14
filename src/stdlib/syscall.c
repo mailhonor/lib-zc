@@ -373,18 +373,26 @@ int zsyscall_lutimes(const char *filename, const struct timeval tv[2])
     return syscall(__NR_lutimes, filename, tv);
 }
 #else
+#ifdef __linux__
 #include <unistd.h>
 #include <sys/syscall.h>
 
-long zgettid(void)
+ssize_t zgettid(void)
 {
 #ifdef __NR_gettid
-    return syscall(__NR_gettid);
+    return (ssize_t)syscall(__NR_gettid);
 #else
     errno = ENOSYS;
     return -1;
 #endif
 }
+#else // __linux__
+#include <pthread.h>
+ssize_t zgettid(void)
+{
+    return (ssize_t)pthread_self();
+}
+#endif // __linux__
 
 #endif
 

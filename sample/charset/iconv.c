@@ -40,14 +40,14 @@ int main(int argc, char **argv)
     if ((zcharset_convert(from_charset, zbuf_data(content), zbuf_len(content),
                     to_charset , result, &converted_len 
                     ,ignore_bytes, 0)) < 0) {
-        printf("ERR can not convert\n");
+        printf("ERROR can not convert\n");
     } else if (converted_len < zbuf_len(content)) {
         if (ignore_bytes == 0) {
-            printf("ERR illegal char at %d\n", converted_len+1);
+            printf("ERROR illegal char at %d\n", converted_len+1);
         } else if (ignore_bytes == -1) {
-            printf("ERR unknown\n");
+            printf("ERROR unknown\n");
         } else {
-            printf("ERR illegal char too much > %d\n", ignore_bytes);
+            printf("ERROR illegal char too much > %d\n", ignore_bytes);
         }
     } else {
         if (zbuf_len(result)) {

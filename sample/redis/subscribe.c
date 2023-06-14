@@ -22,7 +22,7 @@ int main(int argc, char **argv)
     char *server = zconfig_get_str(zvar_default_config, "server", "127.0.0.1:6379");
     rc = zredis_client_connect(server, 0, 10);
     if (!rc) {
-        printf("ERR can not open %s(%m)\n", server);
+        printf("ERROR can not open %s(%m)\n", server);
         usage();
     }
     zredis_client_set_auto_reconnect(rc, 1);
@@ -41,7 +41,7 @@ int main(int argc, char **argv)
         zbuf_vector_reset(msg_vec);
         int ret = zredis_client_fetch_channel_message(rc, msg_vec);
         if (ret < 0) {
-            printf("ERR network or protocal\n");
+            printf("ERROR network or protocal\n");
             break;
         } else if (ret == 0) {
             printf("no message\n");

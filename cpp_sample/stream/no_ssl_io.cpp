@@ -37,7 +37,7 @@ int main(int argc, char **argv)
     printf("\n##############################\n\n");
     zcc::iostream fp;
     if (!fp.connect(server, 0)) {
-        printf("ERR open %s error, (%m)\n", server);
+        printf("ERROR open %s error, (%m)\n", server);
         exit(1);
     }
     std::string tmpline;

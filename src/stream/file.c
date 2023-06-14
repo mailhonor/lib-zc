@@ -8,6 +8,9 @@
 
 #include "zc.h"
 #include <errno.h>
+#ifdef _WIN32
+#include <Winsock2.h>
+#endif // _WIN32
 #include <fcntl.h>
 
 static const char *fp_get_type()
@@ -38,7 +41,7 @@ static int fp_read(zstream_t *fp, void *buf, int len)
     int ret = ztimed_read(fd, buf, len, 0);
     if (ret < 0) {
         if (errno == EAGAIN) {
-            zfatal("FATAL zstream_t: can not use nonblocking fd in file mode");
+            zfatal("zstream_t: can not use nonblocking fd in file mode");
         }
     }
 
@@ -134,6 +137,9 @@ zstream_t *zstream_open_file_engine(zstream_t *fp, const char *pathname, const c
 
 zstream_t *zstream_open_file(const char *pathname, const char *mode)
 {
+#ifdef _WIN32
+    zfatal("zstream_open_file, not supported ON win32");
+#endif // _WIN32
     zstream_t *fp = (zstream_t *)zmalloc(sizeof(zstream_t));
     if (!zstream_open_file_engine(fp, pathname, mode)) {
         zfree(fp);

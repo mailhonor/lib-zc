@@ -30,13 +30,14 @@ int main(int argc, char **argv)
     int sock, type;
     sock = zlisten(listen, &type, 5);
     if (sock < 0) {
-        printf("ERR can not open %s(%m)\n", listen);
+        printf("ERROR can not open %s(%m)\n", listen);
         exit(1);
     }
 
     while (1) {
         int fd = zaccept(sock, type);
-        if (fd < 0) {
+        if (fd < 0)
+        {
             if (errno == EAGAIN) {
                 continue;
             }

@@ -128,14 +128,7 @@ json::json(const char *val, int len)
     }
 }
 
-json::json(long val)
-{
-    parent_ = 0;
-    type_ = json_type_long;
-    val_.l = val;
-}
-
-json::json(int val)
+json::json(long long val)
 {
     parent_ = 0;
     type_ = json_type_long;
@@ -258,7 +251,7 @@ std::string &json::get_string_value(const char *def)
         }
         else if (type_ == json_type_long)
         {
-            sprintf(buf, "%ld", val_.l);
+            sprintf(buf, "%lld", val_.l);
             v = buf;
         }
         else if (type_ == json_type_double)
@@ -276,9 +269,9 @@ std::string &json::get_string_value(const char *def)
     return *((std::string *)(val_.s));
 }
 
-long &json::get_long_value(long def)
+long long &json::get_long_value(long long def)
 {
-    long v = def;
+    long long v = def;
 
     if (type_ != json_type_long) {
         if (type_ == json_type_string)
@@ -791,7 +784,7 @@ bool json::get_value_by_path(const char *name, std::string &value)
     return true;
 }
 
-bool json::get_value_by_path(const char *name, long *value)
+bool json::get_value_by_path(const char *name, long long *value)
 {
     json *j = get_by_path(name);
     if (!j) {
@@ -826,7 +819,7 @@ bool json::load_from_pathname(const char *pathname)
 {
     std::string con;
     int ch;
-    FILE *fp = fopen(pathname, "r");;
+    FILE *fp = fopen(pathname, "rb");;
     if (!fp) {
         return false;
     }
@@ -1259,11 +1252,11 @@ json *json::serialize(std::string &result, int flags)
         } else if (type == json_type_bool) {
             result.append((current_json->val_.b)?"true":"false");
         } else if (type == json_type_long) {
-            _sprintf_1024(result, "%ld", current_json->get_long_value());
+            _sprintf_1024(result, "%lld", current_json->get_long_value());
         } else if (type == json_type_double) {
             double d = current_json->get_double_value();
-            long l = (long)d;
-            if ((l > 1000L * 1000 * 1000 * 1000) || (l < -1000L * 1000 * 1000 * 1000)){
+            long long l = (long)d;
+            if ((l > 1000LL * 1000 * 1000 * 1000) || (l < -1000LL * 1000 * 1000 * 1000)){
                 _sprintf_1024(result, "%e", d);
             } else {
                 _sprintf_1024(result, "%lf", d);
@@ -1539,7 +1532,7 @@ std::string json::object_get_string_value(const std::string &key, const char *de
     return js->get_string_value(def);
 }
 
-long json::object_get_long_value(const std::string &key, long def)
+long long json::object_get_long_value(const std::string &key, long long def)
 {
     json *js = object_get(key);
     if (!js) {

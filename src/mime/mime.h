@@ -91,7 +91,7 @@ struct zmail_t {
     char *subject;
     char *subject_utf8;
     char *date;
-    long date_unix;
+    ssize_t date_unix;
     zmime_address_t *from;
     zmime_address_t *sender;
     zmime_address_t *reply_to;

@@ -30,7 +30,7 @@ int main(int argc, char **argv)
         } else if (ret == 0) {
             printf("NO\n");
         } else if (ret < 0) {
-            printf("ERR\n");
+            printf("ERROR\n");
         } else {
             printf("UNKNOWN\n");
         }

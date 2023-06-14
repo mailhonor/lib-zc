@@ -8,11 +8,6 @@
 
 #include "zc.h"
 
-#include <sys/ioctl.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <net/if.h>
-
 typedef struct _license_cache_t _license_cache_t;
 struct _license_cache_t {
     zargv_t *mac_argv;

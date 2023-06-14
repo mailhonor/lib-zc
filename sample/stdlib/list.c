@@ -16,7 +16,7 @@ void test_password(void)
     zargv_t *av;
 
     list = zlist_create();
-    fp = fopen("/etc/passwd", "r");
+    fp = fopen("/etc/passwd", "rb");
     while (fgets(linebuf, 102400, fp)) {
         av = zargv_create(0);
         zargv_split_append(av, linebuf, ":");

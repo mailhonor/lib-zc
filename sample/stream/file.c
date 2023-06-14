@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     zmain_argument_run(argc, argv);
     zstream_t *fp = zstream_open_file("./dd", "w+");
     if (!fp) {
-        printf("ERR can not open dd(%m)\n");
+        printf("ERROR can not open dd(%m)\n");
         return 0;
     }
     for (int i=0;i<1000;i++) {
@@ -23,7 +23,7 @@ int main(int argc, char **argv)
 
     fp = zstream_open_file("./dd", "r");
     if (!fp) {
-        printf("ERR can not open dd(%m) only read\n");
+        printf("ERROR can not open dd(%m) only read\n");
         return 0;
     }
     zbuf_t *linebuf = zbuf_create(0);

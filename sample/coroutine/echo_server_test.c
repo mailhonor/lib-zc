@@ -34,23 +34,23 @@ static int test_listen(int port)
     addr.sin_addr.s_addr = inet_addr("0");
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("ERR socket(%m)\n");
+        printf("ERROR socket(%m)\n");
         return -1;
     }
 
     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on)) < 0) {
-        printf("ERR getsockopt(%m)\n");
+        printf("ERROR getsockopt(%m)\n");
         goto err;
     }
 
 
     if (bind(sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0) {
-        printf("ERR bind(%m)\n");
+        printf("ERROR bind(%m)\n");
         goto err;
     }
 
     if (listen(sock, 5) < 0) {
-        printf("ERR listen(%m)\n");
+        printf("ERROR listen(%m)\n");
         goto err;
     }
 
@@ -61,7 +61,7 @@ err:
     close(sock);
     errno = errno2;
 
-    printf("ERR listen on 0:%d\n", port);
+    printf("ERROR listen on 0:%d\n", port);
     exit(1);
 
     return -1;
@@ -100,7 +100,7 @@ void *do_listen(void *context)
             if (errno == EINTR) {
                 continue;
             }
-            printf("ERR accept(%m)");
+            printf("ERROR accept(%m)");
             exit(1);
         }
         zcoroutine_go(echo_service, (void *)((long)fd), 0);

@@ -9,7 +9,8 @@
 #include "zc.h"
 
 typedef struct ssl_ioctx_t ssl_ioctx_t;
-struct ssl_ioctx_t {
+struct ssl_ioctx_t
+{
     SSL *ssl;
     int fd;
 };
@@ -24,7 +25,8 @@ static int fp_close(zstream_t *fp, int release_ioctx)
     ssl_ioctx_t *ioctx = (ssl_ioctx_t *)(fp->ioctx);
 
     int ret = 0;
-    if (release_ioctx) {
+    if (release_ioctx)
+    {
         ret = zclose(ioctx->fd);
     }
     zfree(ioctx);
@@ -35,7 +37,6 @@ static int fp_close(zstream_t *fp, int release_ioctx)
 static int fp_read(zstream_t *fp, void *buf, int len)
 {
     ssl_ioctx_t *ioctx = (ssl_ioctx_t *)(fp->ioctx);
-
     return ztimed_read(ioctx->fd, buf, len, fp->read_wait_timeout);
 }
 
@@ -74,8 +75,7 @@ static zstream_engine_t fp_engine = {
     fp_write,
     fp_timed_read_wait,
     fp_timed_write_wait,
-    fp_get_fd
-};
+    fp_get_fd};
 
 zstream_t *zstream_open_fd_engine(zstream_t *fp, int fd)
 {
@@ -102,10 +102,10 @@ zstream_t *zstream_open_fd(int fd)
 zstream_t *zstream_open_destination(const char *destination, int timeout)
 {
     int fd = zconnect(destination, timeout);
-    if (fd < 0) {
+    if (fd < 0)
+    {
         return 0;
     }
     znonblocking(fd, 1);
     return zstream_open_fd(fd);
 }
-

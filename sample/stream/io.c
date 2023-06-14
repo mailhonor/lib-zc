@@ -60,7 +60,7 @@ int main(int argc, char **argv)
     printf("\n##############################\n\n");
     fd = zconnect(server, 10);
     if (fd < 0) {
-        printf("ERR open %s error, (%m)\n", server);
+        printf("ERROR open %s error, (%m)\n", server);
         exit(1);
     }
     znonblocking(fd, 1);
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
             unsigned long ecode;
             char buf[1024];
             zopenssl_get_error(&ecode, buf, 1024);
-            printf("ERR ssl initialization error:%s\n", buf);
+            printf("ERROR ssl initialization error:%s\n", buf);
             goto over;
         }
         fp = zstream_open_ssl(ssl);
@@ -87,7 +87,7 @@ int main(int argc, char **argv)
     if (tls_mode && !ssl_mode) {
         write_line_read_line(fp, tmpline, "STARTTLS");
         if (zstream_tls_connect(fp, ssl_ctx) < 0) {
-            printf("ERR STARTTLS error (%m)\n");
+            printf("ERROR STARTTLS error (%m)\n");
             goto over;
         }
     }

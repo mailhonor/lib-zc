@@ -31,7 +31,6 @@ char *zbuild_unique_id(char *buf)
 #endif
     plus = build_unique_id_plus++;
     if (build_unique_id_tid == 0) {
-        pid_t getpid(void);
         build_unique_id_tid = getpid();
     }
 #if defined(PTHREAD_SPINLOCK_INITIALIZER)
@@ -52,9 +51,9 @@ char *zbuild_unique_id(char *buf)
     return buf;
 }
 
-long zget_time_from_unique_id(const char *buf)
+long long zget_time_from_unique_id(const char *buf)
 {
-    long r = 0;
+    long long r = 0;
     for (int i = 6; i < 14; i++) {
         r = (r<<4) + buf[i] - '0';
     }

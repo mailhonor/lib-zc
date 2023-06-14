@@ -6,6 +6,7 @@
  * ================================
  */
 
+#ifdef __linux__
 #include "zc.h"
 #include <signal.h>
 #include <sys/resource.h>
@@ -16,14 +17,15 @@
 
 /* {{{ _exit_after */
 static void ___timeout_do(int pid)
-{ 
+{
     exit(1);
 }
 
 static void _exit_after()
 {
     int i = zconfig_get_second(zvar_default_config, "exit-after", 0);
-    if (i < 1) {
+    if (i < 1)
+    {
         return;
     }
     alarm(0);
@@ -37,20 +39,25 @@ static void _fork_concurrency()
 {
     /* 主要用于测试 */
     int cc = zconfig_get_int(zvar_default_config, "fork-concurrency", 0);
-    if (cc < 1) {
+    if (cc < 1)
+    {
         return;
     }
 
-    for (int ci = 0; ci < cc; ci ++) {
-        if (!fork()) {
+    for (int ci = 0; ci < cc; ci++)
+    {
+        if (!fork())
+        {
             return;
         }
     }
 
     int status;
-    while (wait(&status) > 0) {
-        cc --;
-        if (cc == 0) {
+    while (wait(&status) > 0)
+    {
+        cc--;
+        if (cc == 0)
+        {
             _exit(0);
         }
     }
@@ -68,13 +75,16 @@ static void _sigint_handler(int sig)
 
 static void _config_memleak_check()
 {
-    if (!(zvar_memleak_check = zconfig_get_bool(zvar_default_config, "memleak-check", zvar_memleak_check))) {
+    if (!(zvar_memleak_check = zconfig_get_bool(zvar_default_config, "memleak-check", zvar_memleak_check)))
+    {
         char *env_ld_preload = getenv("LD_PRELOAD");
-        if (env_ld_preload && strstr(env_ld_preload, "vgpreload_memcheck")) {
+        if (env_ld_preload && strstr(env_ld_preload, "vgpreload_memcheck"))
+        {
             zvar_memleak_check = 1;
         }
     }
-    if (!zvar_memleak_check) {
+    if (!zvar_memleak_check)
+    {
         return;
     }
     zsignal(SIGINT, _sigint_handler);
@@ -85,16 +95,21 @@ static void _config_memleak_check()
 static zbool_t _quick_setrlimit(int cmd, unsigned long cur_val)
 {
     struct rlimit rlim;
-    if (getrlimit(RLIMIT_CORE, &rlim) == 0) {
-        if (rlim.rlim_cur != cur_val) {
+    if (getrlimit(RLIMIT_CORE, &rlim) == 0)
+    {
+        if (rlim.rlim_cur != cur_val)
+        {
             rlim.rlim_cur = cur_val;
-            if (setrlimit(cmd, &rlim)) {
-                zinfo("WARN: setrlimit(%m)");
+            if (setrlimit(cmd, &rlim))
+            {
+                zinfo("WARNING: setrlimit(%m)");
                 return 0;
             }
         }
-    } else {
-        zinfo("WARN: getrlimit(%m)");
+    }
+    else
+    {
+        zinfo("WARNING: getrlimit(%m)");
     }
     return 1;
 }
@@ -104,7 +119,8 @@ static zbool_t _quick_setrlimit(int cmd, unsigned long cur_val)
 zbool_t zset_core_file_size(int megabyte)
 {
     unsigned long l = RLIM_INFINITY;
-    if (megabyte >= 0) {
+    if (megabyte >= 0)
+    {
         l = 1UL * 1024 * 1024 * megabyte;
     }
     return _quick_setrlimit(RLIMIT_CORE, l);
@@ -114,16 +130,21 @@ static void _config_core_file_size()
 {
     int v;
     long vv = zconfig_get_size(zvar_default_config, "core-file-size", -2);
-    if (vv < -1) {
+    if (vv < -1)
+    {
         return;
     }
-    if (vv == -1) {
+    if (vv == -1)
+    {
         v = vv;
-    } else {
-        v = (int)(vv/(1024*1024));
     }
-    if (!zset_core_file_size(v)) {
-        zinfo("WARN set core-file-size error");
+    else
+    {
+        v = (int)(vv / (1024 * 1024));
+    }
+    if (!zset_core_file_size(v))
+    {
+        zinfo("WARNING set core-file-size error");
     }
 }
 /* }}} */
@@ -133,7 +154,8 @@ zbool_t zset_max_mem(int megabyte)
 {
     int ret = 1;
     unsigned long l = RLIM_INFINITY;
-    if (megabyte >= 0) {
+    if (megabyte >= 0)
+    {
         l = 1UL * 1024 * 1024 * megabyte;
     }
 #ifdef RLIMIT_AS
@@ -154,16 +176,21 @@ static void _config_max_mem()
 {
     int v;
     long vv = zconfig_get_size(zvar_default_config, "max-memory", -2);
-    if (vv < -1) {
+    if (vv < -1)
+    {
         return;
     }
-    if (vv == -1) {
+    if (vv == -1)
+    {
         v = vv;
-    } else {
-        v = (int)(vv/(1024*1024));
     }
-    if (!zset_max_mem(v)) {
-        zinfo("WARN set max-memory error");
+    else
+    {
+        v = (int)(vv / (1024 * 1024));
+    }
+    if (!zset_max_mem(v))
+    {
+        zinfo("WARNING set max-memory error");
     }
 }
 /* }}} */
@@ -171,7 +198,8 @@ static void _config_max_mem()
 /* {{{ zset_cgroup_name */
 zbool_t zset_cgroup_name(const char *name)
 {
-    if (!zempty(name)) {
+    if (!zempty(name))
+    {
         return 0;
     }
     int r = 0;
@@ -184,13 +212,17 @@ zbool_t zset_cgroup_name(const char *name)
     snprintf(fn, 1024, "/sys/fs/cgroup/memory/%s/cgroup.procs", name);
 
     int fd = zopen(fn, O_RDONLY, 0);
-    if (fd == -1) {
-        zinfo("WARN open %s(%m)", fn);
+    if (fd == -1)
+    {
+        zinfo("WARNING open %s(%m)", fn);
         return 0;
     }
-    while (1) {
-        if (write(fd, pbuf, strlen(pbuf)) != -1) {
-            if (errno == EINTR) {
+    while (1)
+    {
+        if (write(fd, pbuf, strlen(pbuf)) != -1)
+        {
+            if (errno == EINTR)
+            {
                 continue;
             }
             break;
@@ -206,11 +238,13 @@ zbool_t zset_cgroup_name(const char *name)
 static void _config_cgroup_name()
 {
     char *name = zconfig_get_str(zvar_default_config, "cgroup-name", 0);
-    if (zempty(name)) {
+    if (zempty(name))
+    {
         return;
     }
-    if (!zset_cgroup_name(name)) {
-        zinfo("WARN set cgroup-name error");
+    if (!zset_cgroup_name(name))
+    {
+        zinfo("WARNING set cgroup-name error");
     }
 }
 /* }}} */
@@ -220,22 +254,28 @@ static void _config_path_user()
 {
     char *root = zconfig_get_str(zvar_default_config, "run-chroot", 0);
     char *user = zconfig_get_str(zvar_default_config, "run-user", 0);
-    if (zempty(root)) {
+    if (zempty(root))
+    {
         root = 0;
     }
-    if (zempty(user)) {
+    if (zempty(user))
+    {
         user = 0;
     }
-    if ((!zempty(root)) || (!zempty(user))) {
-        if(zchroot_user(root, user) < 0) {
-            zfatal("FATAL chroot_user(%s, %s): %m", root?root:"", user?user:"");
+    if ((!zempty(root)) || (!zempty(user)))
+    {
+        if (zchroot_user(root, user) < 0)
+        {
+            zfatal("chroot_user(%s, %s): %m", root ? root : "", user ? user : "");
         }
     }
 
     char *dir = zconfig_get_str(zvar_default_config, "run-chdir", 0);
-    if (!zempty(dir)) {
-        if (chdir(dir) == -1) {
-            zfatal("FATAL chdir(%s): %m", dir);
+    if (!zempty(dir))
+    {
+        if (chdir(dir) == -1)
+        {
+            zfatal("chdir(%s): %m", dir);
         }
     }
 }
@@ -257,4 +297,11 @@ void _zmain_argument_do_set_run_config()
 /*
  * vim600: fdm=marker
  */
+#else // __linux__
+int zvar_memleak_check = 0;
 
+void _zmain_argument_do_set_run_config()
+{
+}
+
+#endif // __linux__

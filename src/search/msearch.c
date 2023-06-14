@@ -450,7 +450,7 @@ int zmsearch_match(zmsearch_t *ms, const char *str, int len, const char **matche
 int zmsearch_add_token_from_pathname(zmsearch_t *ms, const char *pathname)
 {
     char buf[4096+1];
-    FILE *fp = fopen(pathname, "r");
+    FILE *fp = fopen(pathname, "rb");
     if (!fp) {
         return -1;
     }
@@ -473,14 +473,14 @@ zmsearch_t *zmsearch_create_from_data(const void *data)
 {
     if (memcmp(data, _CODE_ID, 4)) {
         if (zvar_msearch_error_msg) {
-            zinfo("ERR zmsearch_t invalid data");
+            zinfo("ERROR zmsearch_t invalid data");
         }
         return 0;
     }
 
     if (memcmp((char *)data + 4, _CODE_VERSION, 4)) { 
         if (zvar_msearch_error_msg) {
-            zinfo("ERR zmsearch_t version mismatched");
+            zinfo("ERROR zmsearch_t version mismatched");
         }
         return 0;
     }
@@ -502,7 +502,7 @@ zmsearch_t *zmsearch_create_from_pathname(const char *pathname)
         zmmap_reader_fini(reader);
         zfree(ms);
         if (zvar_msearch_error_msg) {
-            zinfo("ERR zmsearch_t invalid data");
+            zinfo("ERROR zmsearch_t invalid data");
         }
         return 0;
     }
@@ -510,7 +510,7 @@ zmsearch_t *zmsearch_create_from_pathname(const char *pathname)
         zmmap_reader_fini(reader);
         zfree(ms);
         if (zvar_msearch_error_msg) {
-            zinfo("ERR zmsearch_t invalid data");
+            zinfo("ERROR zmsearch_t invalid data");
         }
         return 0;
     }
@@ -519,7 +519,7 @@ zmsearch_t *zmsearch_create_from_pathname(const char *pathname)
         zmmap_reader_fini(reader);
         zfree(ms);
         if (zvar_msearch_error_msg) {
-            zinfo("ERR zmsearch_t version mismatched");
+            zinfo("ERROR zmsearch_t version mismatched");
         }
         return 0;
     }

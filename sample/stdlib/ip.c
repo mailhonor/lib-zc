@@ -31,7 +31,7 @@ int main(int argc, char **argv)
         return 0;
     }
     if ((masklen < 1) || (masklen > 32)) {
-        printf("ERR unknown mask-length: %s\n", argv[2]);
+        printf("ERROR unknown mask-length: %s\n", argv[2]);
         return 1;
     }
 

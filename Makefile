@@ -9,6 +9,7 @@ test sample: lib
 	cd tmp_build && make
 
 clean: 
+	rm -rf build
 	rm -rf tmp_build
 	mkdir -p tmp_build && cd tmp_build && cmake ../ $(ZCC_LIB_CMAKE_DEFINITIONS) && make clean >/dev/null
 	rm -rf tmp_build

@@ -6,6 +6,8 @@
  * ================================
  */
 
+#ifdef __linux__
+
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include "zc.h"
@@ -292,3 +294,10 @@ int main(int argc, char **argv)
     return 0;
 #endif
 }
+
+#else // __linux__
+int main()
+{
+    return 0;
+}
+#endif // __linux__

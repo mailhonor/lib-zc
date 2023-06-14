@@ -17,7 +17,7 @@ static void test_string()
 {
     printf("\n### STRING \n");
     test_string_one(zcc::json("abc"));
-    test_string_one(zcc::json(123L));
+    test_string_one(zcc::json(123LL));
     test_string_one(zcc::json(false));
     test_string_one(zcc::json(true));
     test_string_one(zcc::json(0.001));
@@ -35,8 +35,8 @@ static void test_bool()
     printf("\n### bool \n");
     test_bool_one(zcc::json("abc"));
     test_bool_one(zcc::json("True"));
-    test_bool_one(zcc::json(123L));
-    test_bool_one(zcc::json(0));
+    test_bool_one(zcc::json(123LL));
+    test_bool_one(zcc::json(0LL));
     test_bool_one(zcc::json(false));
     test_bool_one(zcc::json(true));
     test_bool_one(zcc::json(0.001));
@@ -46,7 +46,7 @@ static void test_bool()
 
 static void test_long_one(zcc::json js)
 {
-    printf("long: %ld\n", js.get_long_value(111));
+    printf("long: %lld\n", js.get_long_value(111));
 }
 
 static void test_long()
@@ -54,8 +54,8 @@ static void test_long()
     printf("\n### long \n");
     test_long_one(zcc::json("abc"));
     test_long_one(zcc::json("True"));
-    test_long_one(zcc::json(123L));
-    test_long_one(zcc::json(0));
+    test_long_one(zcc::json(123LL));
+    test_long_one(zcc::json(0LL));
     test_long_one(zcc::json(false));
     test_long_one(zcc::json(true));
     test_long_one(zcc::json(0.001));
@@ -73,8 +73,8 @@ static void test_double()
     printf("\n### double \n");
     test_double_one(zcc::json("abc"));
     test_double_one(zcc::json("True"));
-    test_double_one(zcc::json(123L));
-    test_double_one(zcc::json(0));
+    test_double_one(zcc::json(123LL));
+    test_double_one(zcc::json(0LL));
     test_double_one(zcc::json(false));
     test_double_one(zcc::json(true));
     test_double_one(zcc::json(0.001));
@@ -87,7 +87,7 @@ static void test_object()
     printf("\n### object \n");
     zcc::json js;
     printf("object/str: %s\n", js.object_get_string_value("one", "111").c_str());
-    js["one"] = 123;
+    js["one"] = 123LL;
     printf("object/str: %s\n", js.object_get_string_value("one", "111").c_str());
     printf("object/bool: %d\n", js.object_get_bool_value("one", true));
 }

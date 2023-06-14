@@ -115,7 +115,7 @@ int main(int argc, char **argv)
 
     int sock = zlisten(listen, 0, 5);
     if (sock < 0) {
-        zinfo("ERR listen on %s(%m)", listen);
+        zinfo("ERROR listen on %s(%m)", listen);
         return 1;
     }
     znonblocking(sock, 1);

@@ -6,6 +6,7 @@
  * ================================
  */
 
+#ifdef __linux__
 #include <openssl/ssl.h>
 #include "zc.h"
 #include <pthread.h>
@@ -30,8 +31,8 @@
 
 #define zinline inline __attribute__((always_inline))
 
-#define _zpthread_lock(l)    {if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}}
-#define _zpthread_unlock(l)  {if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("FATAL mutex:%m");}}
+#define _zpthread_lock(l)    {if(pthread_mutex_lock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
+#define _zpthread_unlock(l)  {if(pthread_mutex_unlock((pthread_mutex_t *)(l))){zfatal("mutex:%m");}}
 
 #define _base_lock_extern(eb) {_zpthread_lock(&((eb)->extern_plocker));}
 #define _base_unlock_extern(eb) {_zpthread_unlock(&((eb)->extern_plocker));}
@@ -612,7 +613,7 @@ void _zaio_event_monitor(zaio_t *aio, int monitor_cmd)
     if (new_input_events == 0) {
         if (old_input_events) {
             if (epoll_ctl(eb->epoll_fd, EPOLL_CTL_DEL, aio->fd, NULL) == -1) {
-                zfatal("FATAL epoll_ctl del fd=%d(%m)", aio->fd);
+                zfatal("epoll_ctl del fd=%d(%m)", aio->fd);
             }
         }
     } else if (new_input_events != old_input_events) {
@@ -624,7 +625,7 @@ void _zaio_event_monitor(zaio_t *aio, int monitor_cmd)
         }
         epev.data.ptr = aio;
         if (epoll_ctl(eb->epoll_fd, (old_input_events ? EPOLL_CTL_MOD : EPOLL_CTL_ADD), aio->fd, &epev) == -1) {
-            zfatal("FATAL epoll_ctl %s fd=%d(%m)", (old_input_events ? "mod" : "add"), aio->fd);
+            zfatal("epoll_ctl %s fd=%d(%m)", (old_input_events ? "mod" : "add"), aio->fd);
         }
     }
     aio->old_input_events = new_input_events;
@@ -639,11 +640,11 @@ void _zaio_enter_incoming(zaio_t *aio)
     int is_self = _function_pthread_is_self(eb);
 
     if ((!is_self) && (aio->in_base_context)) {
-        zfatal("FATAL cannot operate the same zaio_t instance in another thread at the same time");
+        zfatal("cannot operate the same zaio_t instance in another thread at the same time");
     }
 
     if (aio->callback == 0) {
-        zfatal("FATAL callback is null");
+        zfatal("callback is null");
     }
 
     aio->in_base_context = 1;
@@ -1211,7 +1212,7 @@ void zaio_disable(zaio_t *aio)
 {
     int is_self = _function_pthread_is_self(aio->aiobase);
     if (!is_self) {
-        zfatal("FATAL zaio_disable can only be executed in the pthread it belongs to"); 
+        zfatal("zaio_disable can only be executed in the pthread it belongs to"); 
     }
 
     zaio_base_t *eb = (aio)->aiobase;
@@ -1270,7 +1271,7 @@ void zaio_free(zaio_t *aio, int close_fd_and_release_ssl)
     int is_self = _function_pthread_is_self(eb);
 
     if ((!is_self) && (aio->in_base_context)) {
-        zfatal("FATAL cannot operate the same zaio_t instance in another thread at the same time");
+        zfatal("cannot operate the same zaio_t instance in another thread at the same time");
     }
 
     if (is_self) {
@@ -1295,7 +1296,7 @@ void zaio_rebind_aio_base(zaio_t *aio, zaio_base_t *aiobase)
     int is_self = _function_pthread_is_self(eb);
 
     if ((!is_self) && (aio->in_base_context)) {
-        zfatal("FATAL cannot operate the same zaio_t instance in another thread at the same time");
+        zfatal("cannot operate the same zaio_t instance in another thread at the same time");
     }
     aio->aiobase = (aiobase?aiobase:zvar_default_aio_base);
 }
@@ -1661,7 +1662,7 @@ void zaio_base_run(zaio_base_t *eb)
     int nfds = epoll_wait(eb->epoll_fd, eb->epoll_event_vec, eb->epoll_event_size, delay);
     if (nfds < 0) {
         if (errno != EINTR) {
-            zfatal("FATAL epoll_wait(%m)");
+            zfatal("epoll_wait(%m)");
         }
         continue;
     }
@@ -1712,6 +1713,8 @@ void *zaio_base_get_context_for_child(zaio_base_t *eb)
 #endif /* ___ZC_AIO_USE_SSL_INNER___ */
 
 #pragma pack(pop)
+
+#endif // __linux__
 
 /*
 * vim600: fdm=marker

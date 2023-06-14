@@ -6,6 +6,8 @@
  * ================================
  */
 
+#ifdef __linux__
+
 #define ZCC_AIO_NEED_PUBLIC
 #include "../event/aio.cpp"
 
@@ -92,4 +94,6 @@ int aio_server::run(int argc, char **argv)
 }
 
 } /* namespace zcc */
+
+#endif // __linux__
 

@@ -120,7 +120,7 @@ void zlog_use_masterlog(const char *identity, const char *dest);
 zinfo("start");
 zinfo("progname: %s",  "do_something");
 zdebug("哦了");
-zfatal("FATAL: can not do something!"); /* then exist */
+zfatal("can not do something!"); /* then exist */
 ```
 
 ## 例子: 自定义后端函数

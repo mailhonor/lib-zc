@@ -588,7 +588,7 @@ const char *zmail_get_date(zmail_t *parser)
     return parser->date;
 }
 
-long zmail_get_date_unix(zmail_t *parser)
+long long zmail_get_date_unix(zmail_t *parser)
 {
     if (!parser->date_flag) {
         zmail_get_date(parser);

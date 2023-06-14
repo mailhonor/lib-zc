@@ -61,7 +61,7 @@ zdict_t *zhttp_cookie_parse(const char *raw_cookie, zdict_t *cookies)
     return result;
 }
 
-char *zhttp_cookie_build_item(const char *name, const char *value, long expires, const char *path, const char *domain, zbool_t secure, zbool_t httponly, zbuf_t *cookie_result)
+char *zhttp_cookie_build_item(const char *name, const char *value, long long expires, const char *path, const char *domain, zbool_t secure, zbool_t httponly, zbuf_t *cookie_result)
 {
     int ch;
     char *p;
@@ -89,12 +89,12 @@ char *zhttp_cookie_build_item(const char *name, const char *value, long expires,
     if (expires > 0) {
         struct tm tmbuf;
         char timestringbuf[64 + 1];
-        gmtime_r((time_t *)expires, &tmbuf);
+        gmtime_r((const time_t *)&expires, &tmbuf);
         strftime(timestringbuf, 64, "%a, %d %b %Y %H:%M:%S GMT", &tmbuf);
         zbuf_strcat(cookie_result, "; expires=");
         zbuf_strcat(cookie_result, timestringbuf);
         zbuf_strcat(cookie_result, "; Max-Age=");
-        zbuf_printf_1024(cookie_result, "%ld", expires - time(0));
+        zbuf_printf_1024(cookie_result, "%lld", expires - time(0));
     }
 
     if (!zempty(path)) {

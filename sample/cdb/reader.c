@@ -18,14 +18,14 @@ int main(int argc, char **argv)
     char *key = argv[2];
     zcdb_t *cdb = zcdb_open(fn);
     if (!cdb) {
-        printf("ERR can not open zcdb %s\n", fn);
+        printf("ERROR can not open zcdb %s\n", fn);
         exit(1);
     }
     char *val;
     int vlen;
     int ret = zcdb_find(cdb, key, -1, (void **)&val, &vlen);
     if (ret < 0){
-        printf("ERR find\n");
+        printf("ERROR find\n");
     } else if (ret == 0) {
         printf("OK not found\n");
     } else {

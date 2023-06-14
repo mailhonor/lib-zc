@@ -7,6 +7,7 @@
  */
 
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 
 #include "zc.h"
 #include <ctype.h>
@@ -422,7 +423,7 @@ void zjson_serialize(zjson_t *j, zbuf_t *result, int strict)
     zvector_push(object_vec, 0);
     int length;
     double d;
-    long l;
+    long long l;
     while(1) {
         if (zvector_len(json_vec)==0) {
             break;
@@ -451,12 +452,12 @@ void zjson_serialize(zjson_t *j, zbuf_t *result, int strict)
             zbuf_puts(result, ((*zjson_get_bool_value(current_json))?"true":"false"));
             break;
         case zvar_json_type_long:
-            zbuf_printf_1024(result, "%ld", *zjson_get_long_value(current_json));
+            zbuf_printf_1024(result, "%lld", *zjson_get_long_value(current_json));
             break;
         case zvar_json_type_double:
             d = *zjson_get_double_value(current_json);
             l = (long)d;
-            if ((l > 1000L * 1000 * 1000 * 1000) || (l < -1000L * 1000 * 1000 * 1000)){
+            if ((l > 1000LL * 1000 * 1000 * 1000) || (l < -1000LL * 1000 * 1000 * 1000)){
                 zbuf_printf_1024(result, "%e", d);
             } else {
                 zbuf_printf_1024(result, "%lf", d);

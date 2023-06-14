@@ -10,6 +10,8 @@
 ab -n 1000 -c 1000 http://127.0.0.1:8080/
 */
 
+#ifdef __linux__
+
 #ifndef ___INNER_DONOT_USE_SSL___
 #define ___INNER_USE_SSL___
 #endif
@@ -60,7 +62,7 @@ int main(int argc, char **argv)
     int fd, type;
     fd = zlisten(listen, &type, 5);
     if (fd < 0) {
-        printf("ERR can not open %s(%m)\n", listen);
+        printf("ERROR can not open %s(%m)\n", listen);
         exit(1);
     }
     linfo.sockinfo.fd = fd;
@@ -79,3 +81,10 @@ int main(int argc, char **argv)
 
     return 0;
 }
+#else // __linux__
+int main()
+{
+    return 0;
+}
+#endif // __linux__
+

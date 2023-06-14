@@ -63,7 +63,7 @@ void sysuser_load(void)
     sysuser_t *user, ulist[10240];
     int count = 0;
 
-    fp = fopen("/etc/passwd", "r");
+    fp = fopen("/etc/passwd", "rb");
     while (fgets(linebuf, 102400, fp)) {
         user = ulist + count;
         if (sysuser_parseline(linebuf, sdlist) != 7) {

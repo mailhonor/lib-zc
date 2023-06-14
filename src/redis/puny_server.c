@@ -347,12 +347,12 @@ static void main_node_free(main_db_t *db, main_node_t *node)
     zstream_write(context->fp, "-WRONGTYPE Operation against a key holding the wrong kind of value\r\n", 68); return;
 
 #define RETURN_WRONG_NUMBER_ARGUMENTS(c) \
-    zstream_write(context->fp, "-ERR wrong number of arguments for '", 36); \
+    zstream_write(context->fp, "-ERROR wrong number of arguments for '", 36); \
     zstream_write(context->fp, c, sizeof(c)-1); \
     zstream_write(context->fp, "' command\r\n", 11); return;
 
 #define RETURN_NOT_INTEGER_OUR_OUT_OF_RANGE() \
-    zstream_write(context->fp, "-ERR value is not an integer or out of range\r\n", 46); return;
+    zstream_write(context->fp, "-ERROR value is not an integer or out of range\r\n", 46); return;
 
 static zbool_t get_check_long_integer(const char *str, long *r)
 {
@@ -370,7 +370,7 @@ static zbool_t get_check_long_integer(const char *str, long *r)
 
 static void do_cmd_unkonwn(connection_context_t *context, zvector_t *cmd_vector)
 {
-    zstream_puts(context->fp, "-ERR unknown command '");
+    zstream_puts(context->fp, "-ERROR unknown command '");
     zstream_puts(context->fp, zstr_tolower(zbuf_data((zbuf_t *)(zvector_data(cmd_vector)[0]))));
     zstream_puts(context->fp, "\r\n");
 }
@@ -592,12 +592,12 @@ static void do_cmd_rename(connection_context_t *context, zvector_t *cmd_vector)
         RETURN_WRONG_NUMBER_ARGUMENTS("rename");
     }
     if ((zbuf_t *)(zvector_data(cmd_vector)[1]) == (zbuf_t *)(zvector_data(cmd_vector)[2])) {
-        zstream_puts(context->fp, "-ERR source and destination objects are the same\r\n");
+        zstream_puts(context->fp, "-ERROR source and destination objects are the same\r\n");
         return;
     }
     main_node_t *fn = main_node_find(context->current_db, (zbuf_t *)(zvector_data(cmd_vector)[1]));
     if (!fn) {
-        zstream_puts(context->fp, "-ERR no such key\r\n");
+        zstream_puts(context->fp, "-ERROR no such key\r\n");
         return;
     }
 
@@ -624,12 +624,12 @@ static void do_cmd_renamenx(connection_context_t *context, zvector_t *cmd_vector
         RETURN_WRONG_NUMBER_ARGUMENTS("rename");
     }
     if ((zbuf_t *)(zvector_data(cmd_vector)[1]) == (zbuf_t *)(zvector_data(cmd_vector)[2])) {
-        zstream_puts(context->fp, "-ERR source and destination objects are the same\r\n");
+        zstream_puts(context->fp, "-ERROR source and destination objects are the same\r\n");
         return;
     }
     main_node_t *fn = main_node_find(context->current_db, (zbuf_t *)(zvector_data(cmd_vector)[1]));
     if (!fn) {
-        zstream_puts(context->fp, "-ERR no such key\r\n");
+        zstream_puts(context->fp, "-ERROR no such key\r\n");
         return;
     }
 
@@ -1255,7 +1255,7 @@ static void do_cmd_hincrby(connection_context_t *context, zvector_t *cmd_vector)
         long num2;
         if (!get_check_long_integer(zbuf_data(tmpv), &num2)) {
             zbuf_free(tmpv);
-            zstream_write(context->fp, "-ERR hash value is not an integerr\r\n", 36);
+            zstream_write(context->fp, "-ERROR hash value is not an integerr\r\n", 36);
             return;
         }
         zbuf_free(tmpv);
@@ -1762,7 +1762,7 @@ static void *do_accept(void *arg)
             if (errno == EINTR) {
                 continue;
             }
-            zfatal("FATAL redis_puny_server, socket fd error");
+            zfatal("redis_puny_server, socket fd error");
         }
         ct.fdinfo.fd = fd;
         zcoroutine_go(do_job, ct.VOID_PTR, 0);
@@ -1819,7 +1819,7 @@ static void ___before_service_prepare_load(char *fn)
     ctx.fp = zstream_open_file("/dev/null", "w");
     zstream_t *fp = zstream_open_file(fn, "r");
     if (!fp) {
-        zfatal("FATAL can not open %s(%m)", fn);
+        zfatal("can not open %s(%m)", fn);
     }
     zbuf_t *linebuf = zbuf_create(4096);
     zvector_t *cmds = zvector_create(-1);
@@ -1839,7 +1839,7 @@ static void ___before_service_prepare_load(char *fn)
         for (int i=0;i < zvector_len(jvec); i++) {
             zjson_t *js = (zjson_t *)(zvector_data(jvec)[i]);
             if (!zjson_is_string(js)) {
-                zfatal("FATAL all element must be string: %s", zbuf_data(linebuf));
+                zfatal("all element must be string: %s", zbuf_data(linebuf));
             }
             zbuf_t *bf, *bf2 = *zjson_get_string_value(js);
             bf = zbuf_create(zbuf_len(bf2));
@@ -1853,7 +1853,7 @@ static void ___before_service_prepare_load(char *fn)
         zstr_toupper(cmd_name);
         do_cmd_fn_t cmdfn = 0;
         if (!zmap_find(redis_cmd_tree, cmd_name, (void **)&cmdfn)) {
-            zfatal("FATAL unknown cmd: %s", cmd_name);
+            zfatal("unknown cmd: %s", cmd_name);
         }
         cmdfn(&ctx, cmds);
     }

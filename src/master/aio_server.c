@@ -6,6 +6,8 @@
  * ================================
  */
 
+#ifdef __linux__
+
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 #include "zc.h"
@@ -102,7 +104,7 @@ static void ___inet_server_accept(zaio_t *ev)
         if (ec == EAGAIN) {
             return;
         }
-        zfatal("FATAL inet_server_accept: %m");
+        zfatal("inet_server_accept: %m");
         return;
     }
     zclose_on_exec(fd, 1);
@@ -128,7 +130,7 @@ static void ___unix_server_accept(zaio_t *ev)
         if (ec == EAGAIN) {
             return;
         }
-        zfatal("FATAL inet_server_accept: %m");
+        zfatal("inet_server_accept: %m");
         return;
     }
     zclose_on_exec(fd, 1);
@@ -156,7 +158,7 @@ static void alone_register(char *alone_url)
     zstrtok_init(&splitor, alone_url);
     while(zstrtok(&splitor, " \t,;\r\n")) {
         if (splitor.len > 1000) {
-            zfatal("FATAL alone_register: url too long");
+            zfatal("alone_register: url too long");
         }
         memcpy(service_buf, splitor.str, splitor.len);
         service_buf[splitor.len] = 0;
@@ -173,7 +175,7 @@ static void alone_register(char *alone_url)
         int fd_type;
         int fd = zlisten(url,  &fd_type, 5);
         if (fd < 0) {
-            zfatal("FATAL alone_register: open %s(%m)", alone_url);
+            zfatal("alone_register: open %s(%m)", alone_url);
         }
         zclose_on_exec(fd, 1);
         zaio_server_service_register(service, fd, fd_type);
@@ -202,12 +204,12 @@ static void master_register(char *master_url)
             case zvar_tcp_listen_type_fifo:
                 break;
             default:
-                zfatal("FATAL master_aio_server: unknown service type %c", fdtype);
+                zfatal("master_aio_server: unknown service type %c", fdtype);
                 break;
         }
         int fd = atoi(typefd+1);
         if (fd < zvar_aio_server_listen_fd) {
-            zfatal("FATAL master_aio_server: fd(%s) is invalid", typefd+1);
+            zfatal("master_aio_server: fd(%s) is invalid", typefd+1);
         }
         znonblocking(fd, 0);
         zclose_on_exec(fd, 1);
@@ -250,7 +252,7 @@ static void deal_argument()
         master_mode = 0;
     } else {
         fprintf(stderr, "FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]\n", zvar_progname);
-        zfatal("FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]", zvar_progname);
+        zfatal("USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]", zvar_progname);
     }
 }
 
@@ -294,7 +296,7 @@ static void zaio_server_main_loop(zaio_base_t *eb)
 static void zaio_server_init(int argc, char **argv)
 {
     if (flag_run) {
-        zfatal("FATAL zaio_server_main: only once");
+        zfatal("zaio_server_main: only once");
     }
     flag_run = 1;
 
@@ -310,7 +312,7 @@ static void zaio_server_init(int argc, char **argv)
     }
 
     if (!zaio_server_service_register) {
-        zfatal("FATAL zaio_server_service_register is null");
+        zfatal("zaio_server_service_register is null");
     }
     char *attr;
 
@@ -414,4 +416,6 @@ void zaio_server_detach_from_master()
 {
     flag_detach_from_master = 1;
 }
+
+#endif // __linux__
 

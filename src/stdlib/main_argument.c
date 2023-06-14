@@ -8,7 +8,9 @@
 
 #include "zc.h"
 #include <signal.h>
-#include <sys/resource.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif // _WIN32
 
 char *zvar_progname = 0;
 
@@ -48,6 +50,10 @@ static void zmain_argument_prepare_config(int argc, char **argv)
     zvar_main_argc = argc;
     zvar_main_argv = argv;
 
+#ifdef _WIN32
+    SetConsoleOutputCP(65001);
+#endif // _WIN32
+
     cmd_cf = zconfig_create();
     zdefault_config_init();
     zvar_main_kv_argument_vector = zvector_create(3);
@@ -70,7 +76,7 @@ static void zmain_argument_prepare_config(int argc, char **argv)
 
         /* -abc */
         if (i+1 >= argc) {
-            zdebug_show("ERR parameter %s need value", optname);
+            zdebug_show("ERROR parameter %s need value", optname);
             exit(1);
         }
         i++;
@@ -79,7 +85,7 @@ static void zmain_argument_prepare_config(int argc, char **argv)
         zvector_push(zvar_main_kv_argument_vector, optval);
         if (!strcmp(optname, "-config")) {
             if (zconfig_load_from_pathname(zvar_default_config, optval) < 0) {
-                zinfo("ERR load config error from %s", optval);
+                zdebug_show("ERROR load config error from %s", optval);
                 exit(1);
             }
         } else {

@@ -61,8 +61,6 @@ int zopen(const char *pathname, int flags, mode_t mode);
 ssize_t zread(int fd, void *buf, size_t count);
 ssize_t zwrite(int fd, const void *buf, size_t count);
 int zclose(int fd);
-int zflock(int fd, int operation);
-int zfunlock(int fd); /* 等价于 zflock(fd, LOCK_UN) */
 int zrename(const char *oldpath, const char *newpath);
 int zunlink(const char *pathname);
 ```

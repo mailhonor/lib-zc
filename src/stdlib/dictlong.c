@@ -55,7 +55,7 @@ void zdictlong_reset(zdictlong_t *dictlong)
     dictlong->len = 0;
 }
 
-zdictlong_node_t *zdictlong_update(zdictlong_t *dictlong, const char *key, long value)
+zdictlong_node_t *zdictlong_update(zdictlong_t *dictlong, const char *key, long long value)
 {
     zdictlong_node_t mp_n, *mp_np;
     zrbtree_node_t *rb_np;
@@ -77,7 +77,7 @@ zdictlong_node_t *zdictlong_update(zdictlong_t *dictlong, const char *key, long 
     return mp_np;
 }
 
-zdictlong_node_t *zdictlong_find(const zdictlong_t * dictlong, const char *key, long *value)
+zdictlong_node_t *zdictlong_find(const zdictlong_t * dictlong, const char *key, long long *value)
 {
     zdictlong_node_t mp_n, *mp_np;
     zrbtree_node_t *rb_np;
@@ -98,7 +98,7 @@ zdictlong_node_t *zdictlong_find(const zdictlong_t * dictlong, const char *key, 
     return 0;
 }
 
-zdictlong_node_t *zdictlong_find_near_prev(const zdictlong_t * dictlong, const char *key, long *value)
+zdictlong_node_t *zdictlong_find_near_prev(const zdictlong_t * dictlong, const char *key, long long *value)
 {
     zdictlong_node_t mp_n, *mp_np;
     zrbtree_node_t *rb_np;
@@ -120,7 +120,7 @@ zdictlong_node_t *zdictlong_find_near_prev(const zdictlong_t * dictlong, const c
     return 0;
 }
 
-zdictlong_node_t *zdictlong_find_near_next(const zdictlong_t * dictlong, const char *key, long *value)
+zdictlong_node_t *zdictlong_find_near_next(const zdictlong_t * dictlong, const char *key, long long *value)
 {
     zdictlong_node_t mp_n, *mp_np;
     zrbtree_node_t *rb_np;
@@ -203,6 +203,6 @@ zdictlong_node_t *zdictlong_next(const zdictlong_node_t * node)
 void zdictlong_debug_show(const zdictlong_t * dictlong)
 {
     ZDICTLONG_WALK_BEGIN(dictlong, k, v) {
-        zdebug_show("%s = %ld", k, v);
+        zdebug_show("%s = %lld", k, v);
     } ZDICTLONG_WALK_END;
 }

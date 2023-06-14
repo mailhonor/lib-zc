@@ -12,7 +12,7 @@ int main(int argc, char **argv)
 {
     zargv_t *ms = zargv_create(-1);
     if (zget_mac_address(ms) < 0) {
-        printf("ERR can not get mac address(%m)\n");
+        printf("ERROR can not get mac address(%m)\n");
         zargv_free(ms);
         return 1;
     }

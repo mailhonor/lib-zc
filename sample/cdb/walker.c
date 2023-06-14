@@ -17,7 +17,7 @@ int main(int argc, char **argv)
     char *fn = argv[1];
     zcdb_t *cdb = zcdb_open(fn);
     if (!cdb) {
-        printf("ERR can not open zcdb %s\n", fn);
+        printf("ERROR can not open zcdb %s\n", fn);
         exit(1);
     }
     zcdb_walker_t *walker = zcdb_walker_create(cdb);
@@ -27,7 +27,7 @@ int main(int argc, char **argv)
     while(1) {
         ret = zcdb_walker_walk(walker, (void **)&key, &klen, (void **)&val, &vlen);
         if (ret < 0) {
-            printf("ERR walker\n");
+            printf("ERROR walker\n");
             exit(1);
         }
         if (ret == 0) {

@@ -67,7 +67,7 @@ basic_stream &basic_stream::ungetc()
     if (basic_worker_->read_buf_p1 > 0) {
         basic_worker_->read_buf_p1--;
     } else {
-        zfatal("FATAL zstream_ungetc too much");
+        zfatal("zstream_ungetc too much");
     }
     return *this;
 }
@@ -537,11 +537,11 @@ int basic_stream::write_cint_and_int(int i)
     return len;
 }
 
-int basic_stream::write_cint_and_long(long i)
+int basic_stream::write_cint_and_long(long long i)
 {
 	char buf[64];
 	int len;
-	len = sprintf(buf, "%lu", i);
+	len = sprintf(buf, "%llu", i);
     write_cint_and_data(buf, len);
     return len;
 }

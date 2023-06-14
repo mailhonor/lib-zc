@@ -7,6 +7,7 @@
  */
 
 #include "./imap.h"
+#include <time.h>
 
 // 命令 COPY
 // 1 copy 1:3 abc
@@ -131,11 +132,36 @@ bool imap_client::parse_append_result(uidplus_result &result, const response_tok
     return false;
 }
 
-bool imap_client::cmd_store(const char *uids, bool plus_or_minus, mail_flags &flags)
+bool imap_client::cmd_store(const char *uids, bool plus_or_minus, const char *flags)
 {
-    if (strchr(uids, '\n'))
+    if (zempty(uids) || strchr(uids, '\n'))
+    {
+        return true;
+    }
+    if (zempty(flags) || strchr(flags, '\n'))
+    {
+        return true;
+    }
+    if (need_close_connection_)
     {
         return false;
+    }
+    std::string linebuf;
+    linebuf.clear();
+    linebuf.append("S UID STORE ").append(uids).append(" ");
+    linebuf.append(plus_or_minus ? "+" : "-").append("FLAGS.SILENT (").append(flags).append(")");
+    if (!do_quick_cmd(linebuf, true))
+    {
+        return false;
+    }
+    return true;
+}
+
+bool imap_client::cmd_store(const char *uids, bool plus_or_minus, mail_flags &flags)
+{
+    if (zempty(uids) || strchr(uids, '\n'))
+    {
+        return true;
     }
     if (need_close_connection_)
     {
@@ -372,11 +398,13 @@ bool imap_client::cmd_append_prepare_protocol(append_session &append)
 
     if ((fp_gets(linebuf, 10240) < 0) || linebuf.empty())
     {
+        zcc_imap_client_info("ERROR READ");
         return false;
     }
     zcc_imap_client_debug_read_line(linebuf);
     if (linebuf[0] != '+')
     {
+        zcc_imap_client_info("ERROR want '+ ...' instead of (%s)", linebuf.c_str());
         return false;
     }
     return true;
@@ -424,14 +452,16 @@ bool imap_client::append_file(uidplus_result &result, append_session &append, co
     long size, left;
     long len;
 
-    fp = fopen(filename, "r");
+    fp = fopen(filename, "rb");
     if (!fp)
     {
+        zcc_imap_client_info("ERROR open %s(%m)", filename);
         goto over;
     }
     size = zfile_get_size(filename);
     if (size < 0)
     {
+        zcc_imap_client_info("ERROR open %s(%m)", filename);
         goto over;
     }
     append.mail_size_ = size;
@@ -451,11 +481,13 @@ bool imap_client::append_file(uidplus_result &result, append_session &append, co
         len = fread(buf, 1, len, fp);
         if (len < 1)
         {
+            zcc_imap_client_info("ERROR read %s(%m)", filename);
             need_close_connection_ = true;
             goto over;
         }
         if (fp_.write(buf, (int)len) < 0)
         {
+            zcc_imap_client_info("ERROR write(%m)");
             need_close_connection_ = true;
             goto over;
         }
@@ -486,6 +518,9 @@ bool imap_client::append_data(uidplus_result &result, append_session &append, co
 
     if (fp_.write(data, (int)dlen) < 0)
     {
+        zcc_imap_client_info("ERROR write(%m)");
+        need_close_connection_ = true;
+        connection_error_ = true;
         goto over;
     }
     if (!cmd_append_over(result))

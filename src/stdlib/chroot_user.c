@@ -8,6 +8,7 @@
 
 /* postfix source, src/util/chroot_uid.c */
 
+#ifdef __linux__
 #include "zc.h"
 #include <pwd.h>
 #include <grp.h>
@@ -70,3 +71,4 @@ int zchroot_user(const char *root_dir, const char *user_name)
 
     return 0;
 }
+#endif

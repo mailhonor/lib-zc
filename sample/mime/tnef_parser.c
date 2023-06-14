@@ -39,7 +39,7 @@ static int save_att(ztnef_t * parser, ztnef_mime_t * mime, int i)
 
     printf("save attachment %s\n", tmpname);
     if (!zfile_put_contents(tmpname, ztnef_mime_get_body_data(mime), ztnef_mime_get_body_len(mime))) {
-        printf("ERR decode_mime_body: save %m\n");
+        printf("ERROR decode_mime_body: save %m\n");
     }
 
     return 0;
@@ -60,7 +60,7 @@ static void do_parse(char *eml_fn)
 {
     ztnef_t *parser = ztnef_create_parser_from_pathname(eml_fn, 0);
     if (parser == 0) {
-        printf("ERR open %s (%m)\n", eml_fn);
+        printf("ERROR open %s (%m)\n", eml_fn);
         exit(1);
     }
 

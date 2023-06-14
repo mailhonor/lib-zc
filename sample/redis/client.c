@@ -9,7 +9,7 @@
 
 #include "zc.h"
 
-static long nval;
+static long long nval;
 static zbuf_t *sval, *sval2;
 static zvector_t *vval;
 static zjson_t *jval;
@@ -25,7 +25,7 @@ static void _test_test(zredis_client_t *rc, const char *cmd, int cmd_ret, size_t
 {
     printf("\n%s\n%-8d", cmd, cmd_ret);
     if (cmd_ret < 0) {
-        printf("%s  ### line:%zd", zredis_client_get_error_msg(rc), line);
+        printf("%s  ### line:%lu", zredis_client_get_error_msg(rc), line);
     } else if (test_type == 'r') {
         if (cmd_ret == 0) {
             printf("none/no/not");
@@ -33,7 +33,7 @@ static void _test_test(zredis_client_t *rc, const char *cmd, int cmd_ret, size_t
             printf("exists/yes/ok/count");
         }
     } else if(test_type == 'n') {
-        printf("number: %ld", nval);
+        printf("number: %lld", nval);
     } else if(test_type == 's') {
         printf("string: %s", zbuf_data(sval));
     } else if(test_type == 'v') {
@@ -80,7 +80,7 @@ int main(int argc, char **argv)
     jval = zjson_create();
 
     if (!rc) {
-        printf("ERR can not connect %s\n", server);
+        printf("ERROR can not connect %s\n", server);
         goto over;
     }
     zredis_client_set_auto_reconnect(rc, 1);

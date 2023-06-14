@@ -11,9 +11,9 @@
 
 static void mime_header_line_walk_test(const char *filename, void (*walk_fn)(zbuf_t *line))
 {
-    FILE *fp = fopen(filename, "r");
+    FILE *fp = fopen(filename, "rb");
     if (!fp) {
-        fprintf(stderr, "ERR open %s(%m)\n", filename);
+        fprintf(stderr, "ERROR open %s(%m)\n", filename);
         exit(1);
     }
     char buf[102400+10];

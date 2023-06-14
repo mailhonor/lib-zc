@@ -47,7 +47,7 @@ int main(int argc, char **argv)
     }
     zmmap_reader_t fmap;
     if (zmmap_reader_init(&fmap, zvar_main_redundant_argv[0]) < 1) {
-        printf("ERR can not open %s (%m)\n", zvar_main_redundant_argv[0]);
+        printf("ERROR can not open %s (%m)\n", zvar_main_redundant_argv[0]);
         exit(1);
     }
 

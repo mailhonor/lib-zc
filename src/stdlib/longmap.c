@@ -45,7 +45,7 @@ void zlongmap_free(zlongmap_t *longmap)
     zfree(longmap);
 }
 
-zlongmap_node_t *zlongmap_update(zlongmap_t * longmap, long key, const void *value, void **old_value)
+zlongmap_node_t *zlongmap_update(zlongmap_t * longmap, long long key, const void *value, void **old_value)
 {
     zlongmap_node_t mp_n, *mp_np;
     zrbtree_node_t *rb_np;
@@ -74,7 +74,7 @@ zlongmap_node_t *zlongmap_update(zlongmap_t * longmap, long key, const void *val
     return mp_np;
 }
 
-zlongmap_node_t *zlongmap_find(const zlongmap_t * longmap, long key, void **value)
+zlongmap_node_t *zlongmap_find(const zlongmap_t * longmap, long long key, void **value)
 {
     zlongmap_node_t mp_n, *mp_np;
     zrbtree_node_t *rb_np;
@@ -95,7 +95,7 @@ zlongmap_node_t *zlongmap_find(const zlongmap_t * longmap, long key, void **valu
     return 0;
 }
 
-zlongmap_node_t *zlongmap_find_near_prev(const zlongmap_t * longmap, long key, void **value)
+zlongmap_node_t *zlongmap_find_near_prev(const zlongmap_t * longmap, long long key, void **value)
 {
     zlongmap_node_t mp_n, *mp_np;
     zrbtree_node_t *rb_np;
@@ -117,7 +117,7 @@ zlongmap_node_t *zlongmap_find_near_prev(const zlongmap_t * longmap, long key, v
     return 0;
 }
 
-zlongmap_node_t *zlongmap_find_near_next(const zlongmap_t * longmap, long key, void **value)
+zlongmap_node_t *zlongmap_find_near_next(const zlongmap_t * longmap, long long key, void **value)
 {
     zlongmap_node_t mp_n, *mp_np;
     zrbtree_node_t *rb_np;
@@ -149,7 +149,7 @@ void zlongmap_delete_node(zlongmap_t * longmap, zlongmap_node_t * n, void **old_
     longmap->len--;
 }
 
-zbool_t zlongmap_delete(zlongmap_t * longmap, long key, void **old_value)
+zbool_t zlongmap_delete(zlongmap_t * longmap, long long key, void **old_value)
 {
     zlongmap_node_t *n;
 

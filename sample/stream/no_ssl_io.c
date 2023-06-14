@@ -41,7 +41,7 @@ int main(int argc, char **argv)
     printf("\n##############################\n\n");
     fd = zconnect(server, 10);
     if (fd < 0) {
-        printf("ERR open %s error, (%m)\n", server);
+        printf("ERROR open %s error, (%m)\n", server);
         exit(1);
     }
     znonblocking(fd, 1);

@@ -7,18 +7,28 @@
  */
 
 #include "zc.h"
+
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <errno.h>
+#ifdef __linux__
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/un.h>
-#include <errno.h>
+#endif // __linux__
+#ifdef _WIN32
+#include <Winsock2.h>
+#include <ws2tcpip.h>
+#include <pthread.h>
+#endif // _WIN32
 
 /* accept */
-static int sane_accept(int sock, struct sockaddr *sa, socklen_t * len)
+static int sane_accept(int sock, struct sockaddr *sa, socklen_t *len)
 {
+    zWSAStartup();
     static int accept_ok_errors[] = {
+#ifdef __linux__
         EAGAIN,
         ECONNREFUSED,
         ECONNRESET,
@@ -28,31 +38,53 @@ static int sane_accept(int sock, struct sockaddr *sa, socklen_t * len)
         ENETUNREACH,
         ENOTCONN,
         EWOULDBLOCK,
-        ENOBUFS,                /* HPUX11 */
+        ENOBUFS, /* HPUX11 */
         ECONNABORTED,
+#endif // __linux__
+#ifdef _WIN32
+        WSAECONNREFUSED,
+        WSAECONNRESET,
+        WSAEHOSTDOWN,
+        WSAEHOSTUNREACH,
+        WSAENETDOWN,
+        WSAENETUNREACH,
+        WSAENOTCONN,
+        WSAEWOULDBLOCK,
+        WSAENOBUFS, /* HPUX11 */
+        WSAECONNABORTED,
+#endif // _WIN32
         0,
     };
     int count;
     int err;
-    int fd;
+    int fd = -1;
     int errno2;
 
-    while (1 ) {
-        if ((fd = accept(sock, sa, len)) < 0) {
-            errno2 = errno;
-            if (errno2 == EINTR) {
-                if (zvar_sigint_flag) {
+    while (1)
+    {
+        if ((fd = accept(sock, sa, len)) < 0)
+        {
+            errno2 = zget_errno();
+            if (errno2 == EINTR)
+            {
+                if (zvar_sigint_flag)
+                {
+                    errno = EINVAL;
                     break;
                 }
                 continue;
             }
-            for (count = 0; (err = accept_ok_errors[count]) != 0; count++) {
-                if (errno2 == err) {
+            for (count = 0; (err = accept_ok_errors[count]) != 0; count++)
+            {
+                if (errno2 == err)
+                {
                     errno = EAGAIN;
                     break;
                 }
             }
-        } else if (sa && (sa->sa_family == AF_INET || sa->sa_family == AF_INET6)) {
+        }
+        else if (sa && (sa->sa_family == AF_INET || sa->sa_family == AF_INET6))
+        {
             int on = 1;
             (void)setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char *)&on, sizeof(on));
         }
@@ -64,7 +96,7 @@ static int sane_accept(int sock, struct sockaddr *sa, socklen_t * len)
 
 int zunix_accept(int fd)
 {
-    return (sane_accept(fd, (struct sockaddr *)0, (socklen_t *) 0));
+    return (sane_accept(fd, (struct sockaddr *)0, (socklen_t *)0));
 }
 
 int zinet_accept(int fd)
@@ -77,12 +109,17 @@ int zinet_accept(int fd)
 int zaccept(int sock, int type)
 {
     int fd = -1;
-    if (type == zvar_tcp_listen_type_inet) {
+    if (type == zvar_tcp_listen_type_inet)
+    {
         fd = zinet_accept(sock);
-    } else if (type == zvar_tcp_listen_type_unix) {
+    }
+    else if (type == zvar_tcp_listen_type_unix)
+    {
         fd = zunix_accept(sock);
-    } else  {
-        zfatal("FATAL accept only support inet/unix");
+    }
+    else
+    {
+        zfatal("accept only support inet/unix");
     }
     return fd;
 }
@@ -90,12 +127,14 @@ int zaccept(int sock, int type)
 /* listen */
 int zunix_listen(char *addr, int backlog)
 {
+#ifdef __linux__
     struct sockaddr_un sun;
     int len = strlen(addr);
     int sock = -1;
     int errno2;
 
-    if (len >= (int)sizeof(sun.sun_path)) {
+    if (len >= (int)sizeof(sun.sun_path))
+    {
         errno = ENAMETOOLONG;
         return -1;
     }
@@ -104,19 +143,23 @@ int zunix_listen(char *addr, int backlog)
     sun.sun_family = AF_UNIX;
     memcpy(sun.sun_path, addr, len + 1);
 
-    if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+    if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+    {
         return -1;
     }
 
-    if (unlink(addr) < 0 && errno != ENOENT) {
-        zfatal("FATAL unlink: %s(%m)", addr);
+    if (unlink(addr) < 0 && errno != ENOENT)
+    {
+        zfatal("unlink: %s(%m)", addr);
     }
 
-    if (bind(sock, (struct sockaddr *)&sun, sizeof(struct sockaddr_un)) < 0) {
+    if (bind(sock, (struct sockaddr *)&sun, sizeof(struct sockaddr_un)) < 0)
+    {
         goto err;
     }
-    
-    if (listen(sock, backlog) < 0) {
+
+    if (listen(sock, backlog) < 0)
+    {
         goto err;
     }
 
@@ -124,10 +167,12 @@ int zunix_listen(char *addr, int backlog)
 
 err:
     errno2 = errno;
-    if (sock > -1) {
+    if (sock > -1)
+    {
         zclose(sock);
     }
     errno = errno2;
+#endif // __linux__
 
     return -1;
 }
@@ -139,16 +184,23 @@ int zinet_listen(const char *sip, int port, int backlog)
     struct sockaddr_in addr;
     int errno2;
 
+    zWSAStartup();
+
     memset(&addr, 0, sizeof(struct sockaddr_in));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = (zempty(sip) ? INADDR_ANY : inet_addr(sip));
 
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+#ifdef _WIN32
+        errno = zget_errno();
+#endif // _WIN32
         return -1;
     }
 
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on)) < 0) {
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on)) < 0)
+    {
         goto err;
     }
 
@@ -161,65 +213,84 @@ int zinet_listen(const char *sip, int port, int backlog)
     }
 #endif
 
-    if (bind(sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0) {
+    if (bind(sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0)
+    {
         goto err;
     }
 
-    if (listen(sock, backlog) < 0) {
+    if (listen(sock, backlog) < 0)
+    {
         goto err;
     }
 
     return (sock);
 
 err:
-    errno2 = errno;
+    errno2 = zget_errno();
     zclose(sock);
-    errno = errno2;
+    errno == errno2;
 
     return -1;
 }
 
 int zlisten(const char *netpath, int *type, int backlog)
 {
+    zWSAStartup();
     char _netpath[1024], *path, *host, *p;
     int fd = -1, port, tp;
 
     strncpy(_netpath, netpath, 1000);
     _netpath[1000] = 0;
-    if (*_netpath == 0) {
+    if (*_netpath == 0)
+    {
         errno = EACCES;
         return -1;
     }
     p = strchr(_netpath, ':');
-    if (p) {
+    if (p)
+    {
         *p++ = 0;
-        if (!strcmp(_netpath, "local")) {
+        if (!strcmp(_netpath, "local"))
+        {
             tp = zvar_tcp_listen_type_unix;
-            path  = p;
-        } else if (!strcmp(_netpath, "fifo")) {
+            path = p;
+        }
+        else if (!strcmp(_netpath, "fifo"))
+        {
             tp = zvar_tcp_listen_type_fifo;
-            path  = p;
-        } else {
+            path = p;
+        }
+        else
+        {
             tp = zvar_tcp_listen_type_inet;
             host = _netpath;
             port = atoi(p);
         }
-    } else {
+    }
+    else
+    {
         tp = zvar_tcp_listen_type_unix;
         path = _netpath;
     }
-    if ((tp == zvar_tcp_listen_type_inet) && (port <1)){
+    if ((tp == zvar_tcp_listen_type_inet) && (port < 1))
+    {
         errno = EINVAL;
         return -1;
     }
-    if (tp == zvar_tcp_listen_type_inet) {
+    if (tp == zvar_tcp_listen_type_inet)
+    {
         fd = zinet_listen(host, port, backlog);
-    } else if (tp == zvar_tcp_listen_type_unix) {
+    }
+    else if (tp == zvar_tcp_listen_type_unix)
+    {
         fd = zunix_listen(path, backlog);
-    } else if (tp == zvar_tcp_listen_type_fifo) {
+    }
+    else if (tp == zvar_tcp_listen_type_fifo)
+    {
         fd = zfifo_listen(path);
     }
-    if (type) {
+    if (type)
+    {
         *type = tp;
     }
 
@@ -229,14 +300,17 @@ int zlisten(const char *netpath, int *type, int backlog)
 /* fifo listen */
 int zfifo_listen(const char *path)
 {
+#ifdef __linux__
     int fd;
     int errno2;
 
     fd = -1;
-    if ((mkfifo(path, 0666) < 0) && (errno != EEXIST)) {
+    if ((mkfifo(path, 0666) < 0) && (errno != EEXIST))
+    {
         goto err;
     }
-    if ((fd = open(path, O_RDWR | O_NONBLOCK, 0)) < 0) {
+    if ((fd = open(path, O_RDWR | O_NONBLOCK, 0)) < 0)
+    {
         goto err;
     }
 
@@ -244,11 +318,12 @@ int zfifo_listen(const char *path)
 
 err:
     errno2 = errno;
-    if (fd != -1) {
+    if (fd != -1)
+    {
         zclose(fd);
     }
     errno = errno2;
-
+#endif // __linux__
     return -1;
 }
 
@@ -272,86 +347,111 @@ err:
 
 static int sane_connect(int sock, struct sockaddr *sa, int len)
 {
-    if (sa->sa_family == AF_INET) {
+    if (sa->sa_family == AF_INET)
+    {
         int on = 1;
         (void)setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (char *)&on, sizeof(on));
     }
-#if 1
-    while(1) {
-        if (connect(sock, sa, len) == 0) {
+    while (1)
+    {
+        if (connect(sock, sa, len) == 0)
+        {
             break;
         }
-        int ec = errno;
-        if (ec == EINTR) {
+        int ec = zget_errno();
+        if (ec == EINTR)
+        {
             continue;
         }
-        if (ec == EINPROGRESS) {
+        if ((ec == EINPROGRESS) || (ec == EWOULDBLOCK))
+        {
             break;
         }
+#ifdef _WIN32
+        errno = ec;
+#endif // _WIN32
         return -1;
     }
-#else
-    if ((connect(sock, sa, len) < 0) && (errno != EINPROGRESS)) {
-        return (-1);
-    }
-#endif
-
     return (0);
 }
 
 static int connect_and_wait_ok(int sock, struct sockaddr *sa, int len, int timeout)
 {
     int ret = sane_connect(sock, sa, len);
-    if (ret < 0) {
+    if (ret < 0)
+    {
         return ret;
     }
 
     int readable = 0, writeable = 0;
     ret = ztimed_read_write_wait(sock, timeout, &readable, &writeable);
-    if (ret < 1) {
+    if (ret < 1)
+    {
         return -1;
     }
-    if (writeable == 0) {
+    if (writeable == 0)
+    {
         return -1;
     }
-    if (readable == 0) {
+    if (readable == 0)
+    {
         return 0;
     }
 
     ret = connect(sock, sa, len);
-    if (ret == 0) {
+    if (ret == 0)
+    {
         return -1;
     }
-    switch (errno) {
-        case EISCONN:
-            return 0;
-            break;
-        case EALREADY:
-            return -1;
-            break;
-        case EINPROGRESS:
-            return -1;
-            break;
-        default:
-            return -1;
-            break;
+    int ec = zget_errno();
+    switch (ec)
+    {
+    case EISCONN:
+        return 0;
+        break;
+#if 0
+    case EALREADY:
+#ifdef _WIN32
+        errno = ec;
+#endif // _WIN32
+        return -1;
+        break;
+    case EINPROGRESS:
+#ifdef _WIN32
+        errno = ec;
+#endif // _WIN32
+        return -1;
+        break;
+#endif
+    default:
+#ifdef _WIN32
+        errno = ec;
+#endif // _WIN32
+        return -1;
+        break;
     }
+#ifdef _WIN32
+        errno = ec;
+#endif // _WIN32
     return -1;
 }
 
 int zunix_connect(const char *addr, int timeout)
 {
+    int sock = -1;
+#ifdef __linux__
     struct sockaddr_un sun;
     int len = strlen(addr);
-    int sock;
     int errno2;
 
-    if (len >= (int)sizeof(sun.sun_path)) {
+    if (len >= (int)sizeof(sun.sun_path))
+    {
         errno = ENAMETOOLONG;
         return -1;
     }
 
-    if (timeout < 0) {
+    if (timeout < 0)
+    {
         timeout = zvar_max_timeout;
     }
 
@@ -359,28 +459,34 @@ int zunix_connect(const char *addr, int timeout)
     sun.sun_family = AF_UNIX;
     memcpy(sun.sun_path, addr, len + 1);
 
-    if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+    if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+    {
         return (-1);
     }
 
-    if (timeout > 0) {
+    if (timeout > 0)
+    {
         znonblocking(sock, 1);
-        if (connect_and_wait_ok(sock, (struct sockaddr *)&sun, sizeof(sun), timeout)<0) {
+        if (connect_and_wait_ok(sock, (struct sockaddr *)&sun, sizeof(sun), timeout) < 0)
+        {
             errno2 = errno;
             zclose(sock);
             errno = errno2;
             return (-1);
         }
         znonblocking(sock, 0);
-    } else {
-        if (sane_connect(sock, (struct sockaddr *)&sun, sizeof(sun)) <0) {
+    }
+    else
+    {
+        if (sane_connect(sock, (struct sockaddr *)&sun, sizeof(sun)) < 0)
+        {
             errno2 = errno;
             zclose(sock);
             errno = errno2;
             return (-1);
         }
     }
-
+#endif // __linux__
     return (sock);
 }
 
@@ -390,11 +496,18 @@ int zinet_connect(const char *dip, int port, int timeout)
     struct sockaddr_in addr;
     int errno2;
 
-    if (timeout < 0) {
+    if (timeout < 0)
+    {
         timeout = zvar_max_timeout;
     }
 
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    zWSAStartup();
+
+    if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
+    {
+#ifdef _WIN32
+        errno = zget_errno();
+#endif // _WIN32
         return (-1);
     }
 
@@ -403,17 +516,22 @@ int zinet_connect(const char *dip, int port, int timeout)
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = inet_addr(dip);
 
-    if (timeout > 0) {
+    if (timeout > 0)
+    {
         znonblocking(sock, 1);
-        if (connect_and_wait_ok(sock, (struct sockaddr *)&addr, sizeof(addr), timeout)<0) {
+        if (connect_and_wait_ok(sock, (struct sockaddr *)&addr, sizeof(addr), timeout) < 0)
+        {
             errno2 = errno;
             zclose(sock);
             errno = errno2;
             return (-1);
         }
         znonblocking(sock, 0);
-    } else {
-        if (sane_connect(sock, (struct sockaddr *)&addr, sizeof(addr)) <0) {
+    }
+    else
+    {
+        if (sane_connect(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+        {
             errno2 = errno;
             zclose(sock);
             errno = errno2;
@@ -428,7 +546,8 @@ int zhost_connect(const char *host, int port, int timeout)
 {
     int sock = -1;
 
-    if (INADDR_NONE != inet_addr(host)) {
+    if (zis_ip(host))
+    {
         sock = zinet_connect(host, port, timeout);
         return sock;
     }
@@ -436,12 +555,15 @@ int zhost_connect(const char *host, int port, int timeout)
     zargv_t *addrs = zargv_create(0);
 
     zget_hostaddr(host, addrs);
-    ZARGV_WALK_BEGIN(addrs, ip) {
+    ZARGV_WALK_BEGIN(addrs, ip)
+    {
         sock = zinet_connect(ip, port, timeout);
-        if (sock > -1) {
+        if (sock > -1)
+        {
             break;
         }
-    } ZARGV_WALK_END;
+    }
+    ZARGV_WALK_END;
     zargv_free(addrs);
 
     return sock;
@@ -450,23 +572,28 @@ int zhost_connect(const char *host, int port, int timeout)
 static int ___zconnect_offset_idx = 0;
 int zconnect(const char *netpath, int timeout)
 {
-    int fd = -1, count, port, i, offset= ___zconnect_offset_idx++;
+    int fd = -1, count, port, i, offset = ___zconnect_offset_idx++;
     char *np, *p;
     zargv_t *ns = zargv_create(10);
     zargv_split_append(ns, netpath, " \t,;");
     count = ns->argc;
 
-    for(i=0;i<count;i++){ 
-        np = (ns->argv)[(i+offset)%count];
+    for (i = 0; i < count; i++)
+    {
+        np = (ns->argv)[(i + offset) % count];
         p = strchr(np, ':');
-        if (p) {
+        if (p)
+        {
             *p = 0;
             port = atoi(p + 1);
             fd = zhost_connect(np, port, timeout);
-        } else {
+        }
+        else
+        {
             fd = zunix_connect(np, timeout);
         }
-        if (fd > -1) {
+        if (fd > -1)
+        {
             break;
         }
     }

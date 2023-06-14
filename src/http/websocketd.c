@@ -6,6 +6,9 @@
  * ================================
  */
 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+// SHA1_Init
+
 // https://developer.mozilla.org/zh-CN/docs/Web/API/WebSockets_API/Writing_WebSocket_servers
 
 /*
@@ -38,7 +41,6 @@ DECODE:
 */
 
 #include "httpd.h"
-#include <arpa/inet.h>
 #include <openssl/sha.h>
 
 // 握手

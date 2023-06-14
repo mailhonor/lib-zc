@@ -91,7 +91,7 @@ void zstream_ungetc(zstream_t *fp)
     if (fp->read_buf_p1 > 0) {
         fp->read_buf_p1--;
     } else {
-        zfatal("FATAL zstream_ungetc too much");
+        zfatal("zstream_ungetc too much");
     }
 }
 
@@ -242,7 +242,8 @@ int zstream_readn_to_mem(zstream_t *fp, void *mem, int strict_len)
 
 int zstream_read_delimiter(zstream_t *fp, zbuf_t *bf, int delimiter, int max_len)
 {
-    if (max_len < 1) {
+    if (max_len < 1)
+    {
         return 0;
     }
     if (bf) {
@@ -483,11 +484,11 @@ int zstream_write_cint_and_int(zstream_t *fp, int i)
     return len;
 }
 
-int zstream_write_cint_and_long(zstream_t *fp, long i)
+int zstream_write_cint_and_long(zstream_t *fp, long long i)
 {
 	char buf[64];
 	int len;
-	len = sprintf(buf, "%lu", i);
+	len = sprintf(buf, "%lld", i);
     zstream_write_cint_and_data(fp, buf, len);
     return len;
 }

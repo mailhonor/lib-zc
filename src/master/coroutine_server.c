@@ -6,6 +6,7 @@
  * ================================
  */
 
+#ifdef __linux__
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 #include "zc.h"
@@ -158,12 +159,12 @@ static void master_register(char *master_url)
             case zvar_tcp_listen_type_fifo:
                 break;
             default:
-                zfatal("FATAL unknown service type %c", fdtype);
+                zfatal("unknown service type %c", fdtype);
                 break;
         }
         int fd = atoi(typefd+1);
         if (fd < zvar_aio_server_listen_fd) {
-            zfatal("FATAL fd(%s) is invalid", typefd+1);
+            zfatal("fd(%s) is invalid", typefd+1);
         }
         zcoroutine_enable_fd(fd);
         znonblocking(fd, 0);
@@ -186,7 +187,7 @@ static void deal_argument()
         master_mode = 0;
     } else {
         fprintf(stderr, "FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]\n", zvar_progname);
-        zfatal("FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]", zvar_progname);
+        zfatal("USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]", zvar_progname);
     }
 }
 
@@ -293,3 +294,6 @@ void zcoroutine_server_detach_from_master()
 {
     flag_detach_from_master = 1;
 }
+
+#endif // __linux__
+

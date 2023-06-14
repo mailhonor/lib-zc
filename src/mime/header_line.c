@@ -154,7 +154,7 @@ static int zmime_header_line_get_element_vector_inner(const char *in_line, int i
         found = 0;
         p_s = ps;
         while ((p_s < pend) && (pend - p_s > 6)) {
-            if (!(p_s = memmem(p_s, pend - p_s, "=?", 2))) {
+            if (!(p_s = zmemmem(p_s, pend - p_s, "=?", 2))) {
                 break;
             }
             if ((pend <= p_s) || (pend - p_s < 6)) {
@@ -180,7 +180,7 @@ static int zmime_header_line_get_element_vector_inner(const char *in_line, int i
                 break;
             }
             found = 1;
-            p = memmem(p_data, pend - p_data, "?=", 2);
+            p = zmemmem(p_data, pend - p_data, "?=", 2);
             if (p) {
                 ps_next = p + 2;
                 dlen = p - p_data;

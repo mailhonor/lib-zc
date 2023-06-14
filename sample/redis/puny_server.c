@@ -10,5 +10,9 @@
 
 int main(int argc, char **argv)
 {
+#ifdef __linux__
     return zredis_puny_server_main(argc, argv);
+#else // __linux__
+    zfatal("only run on linux");
+#endif // __linux__
 }

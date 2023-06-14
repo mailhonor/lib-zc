@@ -98,11 +98,11 @@ static void parameters_do(int argc, char **argv)
         server_ssl = 0;
     }
     if (zempty(proxy_address)) {
-        printf("ERR: proxy'address is null\n");
+        printf("ERROR: proxy'address is null\n");
         ___usage(0);
     }
     if (zempty(server_address)) {
-        printf("ERR: server'address is null\n");
+        printf("ERROR: server'address is null\n");
         ___usage(0);
     }
 }
@@ -115,12 +115,12 @@ static void ssl_do()
 
     if (proxy_ssl) {
         if (zempty(ssl_key) || zempty(ssl_cert)) {
-            printf("ERR: ssl-proxy mode, need --ssl-key, --ssl-cert\n");
+            printf("ERROR: ssl-proxy mode, need --ssl-key, --ssl-cert\n");
             ___usage(0);
         }
         ssl_proxy_ctx = zopenssl_SSL_CTX_create_server(ssl_cert, ssl_key);
         if (!ssl_proxy_ctx) {
-            printf("ERR: can load ssl err: %s, %s\n", ssl_cert, ssl_key);
+            printf("ERROR: can load ssl err: %s, %s\n", ssl_cert, ssl_key);
             exit(1);
         }
     }
@@ -202,7 +202,7 @@ int main(int argc, char **argv)
         int fd_type;
         int fd = zlisten(proxy_address, &fd_type, 5);
         if (fd < 0) {
-            printf("ERR: can not open %s (%m)\n", proxy_address);
+            printf("ERROR: can not open %s (%m)\n", proxy_address);
             exit(1);
         }
         znonblocking(fd, 1);

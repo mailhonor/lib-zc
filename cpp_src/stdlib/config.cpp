@@ -95,17 +95,17 @@ int config::get_int(const char *key, int default_val)
     return zconfig_get_int(cf_, key, default_val);
 }
 
-long config::get_long(const char *key, long default_val)
+long long config::get_long(const char *key, long long default_val)
 {
     return zconfig_get_long(cf_, key, default_val);
 }
 
-long config::get_second(const char *key, long default_val)
+long long config::get_second(const char *key, long long default_val)
 {
     return zconfig_get_second(cf_, key, default_val);
 }
 
-long config::get_size(const char *key, long default_val)
+long long config::get_size(const char *key, long long default_val)
 {
     return zconfig_get_size(cf_, key, default_val);
 }

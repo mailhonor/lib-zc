@@ -44,7 +44,7 @@ static int save_att(zmail_t * parser, zmime_t * mime)
 
     printf("save attachment %s\n", tmpname);
     if (!zfile_put_contents(tmpname, zbuf_data(dcon), zbuf_len(dcon))) {
-        printf("ERR decode_mime_body: save %m\n");
+        printf("ERROR decode_mime_body: save %m\n");
     }
 
     zbuf_free(dcon);
@@ -64,7 +64,7 @@ static void do_parse(char *eml_fn)
 {
     zmail_t *parser = zmail_create_parser_from_pathname(eml_fn, "");
     if (parser == 0) {
-        printf("ERR open %s (%m)\n", eml_fn);
+        printf("ERROR open %s (%m)\n", eml_fn);
         exit(1);
     }
     zmail_debug_show(parser);
