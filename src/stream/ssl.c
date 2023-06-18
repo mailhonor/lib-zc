@@ -28,7 +28,7 @@ static int fp_close(zstream_t *fp, int release_ioctx)
         if (ioctx->ssl) {
             zopenssl_SSL_free(ioctx->ssl);
         }
-        ret = zclose(ioctx->fd);
+        ret = zclosesocket(ioctx->fd);
     }
 
     zfree(ioctx);

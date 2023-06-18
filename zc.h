@@ -284,6 +284,7 @@ zinline ssize_t zgetline(char **lineptr, size_t *n, FILE *stream)
 }
 void *zmemmem(const void *l, size_t l_len, const void *s, size_t s_len);
 long long ztimegm(/* struct tm * */ void *void_tm);
+int zclosesocket(int sock);
 #else // _WIN32
 #define zWSAStartup()
 #define zget_errno() errno
@@ -291,6 +292,7 @@ long long ztimegm(/* struct tm * */ void *void_tm);
 #define zgetline(a, b, c) getline(a, b, c)
 #define zmemmem(a, b, c, d) memmem(a, b, c, d)
 #define ztimegm(a) timegm(a)
+#define zclosesocket(fd) zclose(fd)
 #endif // _WIN32
 
 /* 日志, src/stdlib/log.c ########################################## */
@@ -4619,9 +4621,6 @@ public:
     };
 
 public:
-    inline void *operator new(size_t size) { return zcalloc(1, size); }
-    inline void operator delete(void *p) { zfree(p); }
-
     static std::string escape_string(const char *s, int len = -1);
     static zinline std::string escape_string(const std::string &s)
     {

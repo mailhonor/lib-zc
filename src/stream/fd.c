@@ -27,7 +27,7 @@ static int fp_close(zstream_t *fp, int release_ioctx)
     int ret = 0;
     if (release_ioctx)
     {
-        ret = zclose(ioctx->fd);
+        ret = zclosesocket(ioctx->fd);
     }
     zfree(ioctx);
 

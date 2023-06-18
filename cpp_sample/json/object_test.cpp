@@ -31,7 +31,7 @@ int main(int argc, char **argv)
 
     do {
         /* 更改 "int" 的值为 3 */
-        js.object_update("int", 3LL);
+        js.object_update("int", (long long)3);
         /* 得到 {"bool":ture,"int":3,"str":"string"} */
         js.debug_show();
     } while (0);

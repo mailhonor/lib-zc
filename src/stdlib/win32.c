@@ -289,4 +289,9 @@ long long ztimegm(void *void_tm)
     return t;
 }
 
+int zclosesocket(int sock)
+{
+    return closesocket(sock);
+}
+
 #endif // _WIN32

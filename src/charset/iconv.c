@@ -294,9 +294,14 @@ void charset_convert_to_utf8(const char *from_charset, const char *data, int siz
         goto over;
     }
 
-    if (ZEMPTY(f_charset))
+    if ((!detected) && ZEMPTY(f_charset))
     {
         detected = 1;
+    }
+    if ((!detected) && ZSTR_CASE_EQ(from_charset, "cp1252")) {
+        detected = 1;
+    }
+    if (detected) {
         if (zcharset_detect_cjk(data, size, f_charset_buf))
         {
             f_charset = f_charset_buf;

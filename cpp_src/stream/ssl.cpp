@@ -29,7 +29,7 @@ int ssl_iostream::close(bool close_fd_or_release_ssl)
             zopenssl_SSL_free(ssl_);
         }
         if (fd_ > -1) {
-            ret = zclose(fd_);
+            ret = zclosesocket(fd_);
         }
     }
     ssl_ = 0;

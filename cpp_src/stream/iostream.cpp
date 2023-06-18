@@ -47,7 +47,7 @@ int iostream::close(bool close_fd_or_release_ssl)
 {
     int ret = 0, fd = get_fd();
     if (close_fd_or_release_ssl && (fd > -1)) {
-        ret = zclose(fd);
+        ret = zclosesocket(fd);
     }
     fd_ = -1;
     read_wait_timeout_ = -1;

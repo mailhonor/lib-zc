@@ -20,7 +20,7 @@ int main(int argc, char **argv)
 
     if (!js.load_from_pathname(argv[1]))
     {
-        printf("ERROR load json from %s(%m)\n", argv[1]);
+        printf("ERR load json from %s(%m)\n", argv[1]);
         return 1;
     }
 
