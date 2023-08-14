@@ -9,45 +9,45 @@
 
 #include "zc.h"
 
-static long long nval;
+static ssize_t nval;
 static zbuf_t *sval, *sval2;
 static zvector_t *vval;
 static zjson_t *jval;
 
 static void usage()
 {
-    printf("\n");
-    printf("%s [ -server 127.0.0.1:6379 ] [-password xxxxxx ] [ --cluster ] redis_cmd arg1 arg2 ...\n", zvar_progname);
+    zprintf("\n");
+    zprintf("%s [ -server 127.0.0.1:6379 ] [-password xxxxxx ] [ --cluster ] redis_cmd arg1 arg2 ...\n", zvar_progname);
     exit(1);
 }
 
 static void _test_test(zredis_client_t *rc, const char *cmd, int cmd_ret, size_t line, int test_type)
 {
-    printf("\n%s\n%-8d", cmd, cmd_ret);
+    zprintf("\n%s\n%-8d", cmd, cmd_ret);
     if (cmd_ret < 0) {
-        printf("%s  ### line:%lu", zredis_client_get_error_msg(rc), line);
+        zprintf("%s  ### line:%zd", zredis_client_get_error_msg(rc), line);
     } else if (test_type == 'r') {
         if (cmd_ret == 0) {
-            printf("none/no/not");
+            zprintf("none/no/not");
         } else {
-            printf("exists/yes/ok/count");
+            zprintf("exists/yes/ok/count");
         }
     } else if(test_type == 'n') {
-        printf("number: %lld", nval);
+        zprintf("number: %zd", nval);
     } else if(test_type == 's') {
-        printf("string: %s", zbuf_data(sval));
+        zprintf("string: %s", zbuf_data(sval));
     } else if(test_type == 'v') {
-        printf("vector: ");
+        zprintf("vector: ");
         ZVECTOR_WALK_BEGIN(vval, zbuf_t *, bf) {
-            printf("%s, ", bf?zbuf_data(bf):"null");
+            zprintf("%s, ", bf?zbuf_data(bf):"null");
         } ZVECTOR_WALK_END;
     } else if(test_type == 'j') {
         zbuf_t *out = zbuf_create(-1);
         zjson_serialize(jval, out, 0);
-        printf("json: %s", zbuf_data(out));
+        zprintf("json: %s", zbuf_data(out));
         zbuf_free(out);
     }
-    printf("\n"); fflush(stdout);
+    zprintf("\n"); fflush(stdout);
     nval = -1000;
     zbuf_reset(sval);
     zbuf_reset(sval2);
@@ -80,7 +80,7 @@ int main(int argc, char **argv)
     jval = zjson_create();
 
     if (!rc) {
-        printf("ERROR can not connect %s\n", server);
+        zprintf("ERROR can not connect %s(%m)\n", server);
         goto over;
     }
     zredis_client_set_auto_reconnect(rc, 1);

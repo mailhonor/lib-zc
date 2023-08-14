@@ -37,9 +37,9 @@ struct fd_to_fd_linker
 static void ___usage(char *parameter)
 {
 
-    printf("USAGE: %s -proxy host:port -dest host:port\n", zvar_progname);
-    printf("USAGE: %s -proxy host:port -ssl-dest host:port\n", zvar_progname);
-    printf("USAGE: %s -ssl-proxy host:port -server host:port -ssl-cert filename -ssl-key filename\n", zvar_progname);
+    zprintf("USAGE: %s -proxy host:port -dest host:port\n", zvar_progname);
+    zprintf("USAGE: %s -proxy host:port -ssl-dest host:port\n", zvar_progname);
+    zprintf("USAGE: %s -ssl-proxy host:port -server host:port -ssl-cert filename -ssl-key filename\n", zvar_progname);
     exit(1);
 }
 
@@ -98,11 +98,11 @@ static void parameters_do(int argc, char **argv)
         server_ssl = 0;
     }
     if (zempty(proxy_address)) {
-        printf("ERROR: proxy'address is null\n");
+        zprintf("ERROR: proxy'address is null\n");
         ___usage(0);
     }
     if (zempty(server_address)) {
-        printf("ERROR: server'address is null\n");
+        zprintf("ERROR: server'address is null\n");
         ___usage(0);
     }
 }
@@ -115,12 +115,12 @@ static void ssl_do()
 
     if (proxy_ssl) {
         if (zempty(ssl_key) || zempty(ssl_cert)) {
-            printf("ERROR: ssl-proxy mode, need --ssl-key, --ssl-cert\n");
+            zprintf("ERROR: ssl-proxy mode, need --ssl-key, --ssl-cert\n");
             ___usage(0);
         }
         ssl_proxy_ctx = zopenssl_SSL_CTX_create_server(ssl_cert, ssl_key);
         if (!ssl_proxy_ctx) {
-            printf("ERROR: can load ssl err: %s, %s\n", ssl_cert, ssl_key);
+            zprintf("ERROR: can load ssl err: %s, %s\n", ssl_cert, ssl_key);
             exit(1);
         }
     }
@@ -202,7 +202,7 @@ int main(int argc, char **argv)
         int fd_type;
         int fd = zlisten(proxy_address, &fd_type, 5);
         if (fd < 0) {
-            printf("ERROR: can not open %s (%m)\n", proxy_address);
+            zprintf("ERROR: can not open %s (%m)\n", proxy_address);
             exit(1);
         }
         znonblocking(fd, 1);

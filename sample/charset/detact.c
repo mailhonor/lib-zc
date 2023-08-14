@@ -10,7 +10,7 @@
 
 static void ___usage()
 {
-    printf("USAGE: %s [ --uconv ] filename1 [filename2 ...]\n", zvar_progname);
+    zprintf("USAGE: %s [ --uconv ] filename1 [filename2 ...]\n", zvar_progname);
     exit(1);
 }
 
@@ -22,9 +22,9 @@ static void dorun(const char *fn)
     zfile_get_contents_sample(fn, content);
 
     if (zcharset_detect_cjk(zbuf_data(content), zbuf_len(content), charset) == 0) {
-        printf("%-30s: not found, maybe ASCII\n", fn);
+        zprintf("%-30s: not found, maybe ASCII\n", fn);
     } else {
-        printf("%-30s: %s\n", fn, charset);
+        zprintf("%-30s: %s\n", fn, charset);
     }
 
     zbuf_free(content);

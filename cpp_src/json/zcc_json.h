@@ -57,7 +57,10 @@ public:
     json();
     json(const std::string &val);
     json(const char *val, int len = -1);
-    json(long long val);
+    json(ssize_t val);
+#ifdef _WIN32
+    json(long val);
+#endif // _WIN32
     json(double val);
     json(bool val);
     json(const unsigned char type);
@@ -115,7 +118,7 @@ public:
      * 原来是 array, 则为 def
      * 原来是 object, 则为 def
      * */
-    long long &get_long_value(long long def = 0);
+    ssize_t &get_long_value(ssize_t def = 0);
 
     /* 获取 double 值; 如果不是 double 类型, 则首先转换为 double 类型, 其值:
      * 原来是 null, 则为 def
@@ -162,7 +165,7 @@ public:
         get_string_value() = val;
         return this;
     }
-    zinline json *set_long_value(long long val)
+    zinline json *set_long_value(ssize_t val)
     {
         get_long_value() = val;
         return this;
@@ -184,11 +187,18 @@ public:
         get_string_value() = val;
         return this;
     }
-    zinline json *set_value(long long val)
+    zinline json *set_value(ssize_t val)
     {
         get_long_value() = val;
         return this;
     }
+#ifdef _WIN32
+    zinline json *set_value(long val)
+    {
+        get_long_value() = val;
+        return this;
+    }
+#endif // _WIN32
     zinline json *set_value(double val)
     {
         get_double_value() = val;
@@ -339,7 +349,10 @@ public:
     /* 这几组方法类似 array_update, object_update, 只不过参数不同 */
     ___zcc_json_update(const std::string &);
     ___zcc_json_update(const char *);
-    ___zcc_json_update(long long);
+    ___zcc_json_update(ssize_t);
+#ifdef _WIN32
+    ___zcc_json_update(long);
+#endif // _WIN32
     ___zcc_json_update(double);
     ___zcc_json_update(bool);
 #undef ___zcc_json_update
@@ -364,7 +377,7 @@ public:
 
     /* 获取 路径 pathname 对应的节点 的 值 */
     bool get_value_by_path(const char *pathname, std::string &value);
-    bool get_value_by_path(const char *pathname, long long *value);
+    bool get_value_by_path(const char *pathname, ssize_t *value);
 
     /* */
     zinline json *get_parent() { return parent_; }
@@ -375,7 +388,7 @@ public:
     /* 扩展 */
     /* 如果不是 object 类型, 则先转为 object 类型 */
     std::string object_get_string_value(const std::string &key, const char *def = "");
-    long long object_get_long_value(const std::string &key, long long def = 0);
+    ssize_t object_get_long_value(const std::string &key, ssize_t def = 0);
     bool object_get_bool_value(const std::string &key, bool def = false);
 
 private:
@@ -383,7 +396,7 @@ private:
     union
     {
         bool b;
-        long long l;
+        ssize_t l;
         double d;
         char s[sizeof(std::string)];
         std::vector<json *> *v;

@@ -42,12 +42,12 @@ int main(int argc, char **argv)
     if (zvar_main_redundant_argc < 1 ) {
         const char *s =  "{\"errcode\": \"-801\", \"errmsg\": \"Domain Not Exist\"}\r\n";
         test(s, strlen(s));
-        printf("USAGE: %s json_filename\n", argv[0]);
+        zprintf("USAGE: %s json_filename\n", argv[0]);
         exit(1);
     }
     zmmap_reader_t fmap;
     if (zmmap_reader_init(&fmap, zvar_main_redundant_argv[0]) < 1) {
-        printf("ERROR can not open %s (%m)\n", zvar_main_redundant_argv[0]);
+        zprintf("ERROR can not open %s\n", zvar_main_redundant_argv[0]);
         exit(1);
     }
 

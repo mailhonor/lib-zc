@@ -96,7 +96,7 @@ static int _do_line_request_parse_argv(simple_line_request *a, const std::string
             goto over;
         }
         zargv_truncate(cmdv, zargv_len(cmdv) - 1);
-        a->json_.object_update("length", (long long)a->extra_data_len_);
+        a->json_.object_update("length", (ssize_t)(a->extra_data_len_));
     }
     /* FIXME limit */
 

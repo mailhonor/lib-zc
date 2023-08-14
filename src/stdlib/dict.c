@@ -268,7 +268,7 @@ int zdict_get_int(const zdict_t * dict, const char *name, int def)
     return def;
 }
 
-long long zdict_get_long(const zdict_t * dict, const char *name, long long def)
+ssize_t zdict_get_long(const zdict_t * dict, const char *name, ssize_t def)
 {
     char *str_val = zdict_get_str(dict, name, 0);
     if (str_val && *str_val) {
@@ -277,7 +277,7 @@ long long zdict_get_long(const zdict_t * dict, const char *name, long long def)
     return def;
 }
 
-long long zdict_get_second(const zdict_t *dict, const char *name, long long def)
+ssize_t zdict_get_second(const zdict_t *dict, const char *name, ssize_t def)
 {
     char *str_val = zdict_get_str(dict, name, 0);
     if (str_val && *str_val) {
@@ -286,7 +286,7 @@ long long zdict_get_second(const zdict_t *dict, const char *name, long long def)
     return def;
 }
 
-long long zdict_get_size(const zdict_t *dict, const char *name, long long def)
+ssize_t zdict_get_size(const zdict_t *dict, const char *name, ssize_t def)
 {
     char *str_val = zdict_get_str(dict, name, 0);
     if (str_val && *str_val) {

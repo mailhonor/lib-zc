@@ -39,9 +39,9 @@ bool imap_client::cmd_capability(bool force)
         zcc_imap_client_debug_read_line(linebuf);
         if (linebuf[0] == '*')
         {
-            if (ZSTR_EQ(linebuf.c_str(), "* CAPABILITY "))
+            if (!linebuf.compare(0, 13, "* CAPABILITY "))
             {
-                capability_ = linebuf.c_str() + 13;
+                capability_ = linebuf.c_str() + 12;
                 capability_clear_flag_ = false;
             }
         }
@@ -76,8 +76,7 @@ bool imap_client::get_capability(const char *key)
         }
     }
     char keybuf[64 + 1];
-    snprintf(keybuf, 64, "%s ", key);
-    zstr_tolower(keybuf);
+    zsnprintf(keybuf, 64, " %s ", key);
     if (!strstr(capability_.c_str(), keybuf)) {
         return false;
     }

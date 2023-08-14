@@ -139,7 +139,7 @@ over:
             break;
         }
         int next_len = atoi(tmpstr.c_str() + 1);
-        sprintf(testbuf, "{%d}", next_len);
+        zsprintf(testbuf, "{%d}", next_len);
         if (tmpstr != testbuf)
         {
             break;

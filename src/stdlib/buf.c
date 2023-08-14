@@ -208,7 +208,7 @@ void zbuf_memcat(zbuf_t *bf, const void *src_raw, int len)
 }
 
 /* ################################################################## */
-/* printf */
+/* zprintf */
 
 void zbuf_printf_1024(zbuf_t *bf, const char *format, ...)
 {
@@ -217,7 +217,7 @@ void zbuf_printf_1024(zbuf_t *bf, const char *format, ...)
     int len;
 
     va_start(ap, format);
-    len = vsnprintf(buf, 1024, format, ap);
+    len = zvsnprintf(buf, 1024, format, ap);
     len = ((len<1024)?len:(1024-1));
     va_end(ap);
 
@@ -228,7 +228,7 @@ void zbuf_vprintf_1024(zbuf_t *bf, const char *format, va_list ap)
 {
     char buf[1024+1];
     int len;
-    len = vsnprintf(buf, 1024, format, ap);
+    len = zvsnprintf(buf, 1024, format, ap);
     len = ((len<1024)?len:(1024-1));
     zbuf_memcat(bf, buf, len);
 }

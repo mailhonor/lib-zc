@@ -10,7 +10,7 @@
 
 static void usage()
 {
-    printf("%s [ -server 127.0.0.1:6379 ] -channel news.a1,news.a2,... \n", zvar_progname);
+    zprintf("%s [ -server 127.0.0.1:6379 ] -channel news.a1,news.a2,... \n", zvar_progname);
     exit(1);
 }
 
@@ -22,7 +22,7 @@ int main(int argc, char **argv)
     char *server = zconfig_get_str(zvar_default_config, "server", "127.0.0.1:6379");
     rc = zredis_client_connect(server, 0, 10);
     if (!rc) {
-        printf("ERROR can not open %s(%m)\n", server);
+        zprintf("ERROR can not open %s\n", server);
         usage();
     }
     zredis_client_set_auto_reconnect(rc, 1);
@@ -41,19 +41,19 @@ int main(int argc, char **argv)
         zbuf_vector_reset(msg_vec);
         int ret = zredis_client_fetch_channel_message(rc, msg_vec);
         if (ret < 0) {
-            printf("ERROR network or protocal\n");
+            zprintf("ERROR network or protocal\n");
             break;
         } else if (ret == 0) {
-            printf("no message\n");
+            zprintf("no message\n");
         } else {
             ZVECTOR_WALK_BEGIN(msg_vec, zbuf_t *, bf) {
-                printf("%s\n", zbuf_data(bf));
+                zprintf("%s\n", zbuf_data(bf));
             } ZVECTOR_WALK_END;
-            printf("\n");
+            zprintf("\n");
         }
     }
 
-    printf("\n");
+    zprintf("\n");
 
     zargv_free(channel_argv);
     zbuf_vector_free(msg_vec);

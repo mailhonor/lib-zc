@@ -26,7 +26,7 @@ zjson_t *zjson_create_bool(zbool_t b)
     return j;
 }
 
-zjson_t *zjson_create_long(long long l)
+zjson_t *zjson_create_long(ssize_t l)
 {
     zjson_t *j = (zjson_t *)zcalloc(1, sizeof(zjson_t));
     j->type = zvar_json_type_long;
@@ -143,7 +143,7 @@ zbuf_t **zjson_get_string_value(zjson_t *j)
     return &(j->val.s);
 }
 
-long long *zjson_get_long_value(zjson_t *j)
+ssize_t *zjson_get_long_value(zjson_t *j)
 {
     if (j->type != zvar_json_type_long) {
         zjson_reset(j);

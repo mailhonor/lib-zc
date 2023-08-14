@@ -6,6 +6,15 @@ project(lib-zc)
 include(./dev/cmake_general_utils.cmake)
 
 # 跨操作系统平台相关
+set(platform_include_dirs)
+set(platform_lib_dirs)
+set(platform_libs)
+
+IF(CMAKE_SYSTEM_NAME MATCHES "Windows")
+	set(platform_include_dirs C:/_dev/vcpkg-master/installed/x64-mingw-static/include C:/_dev/mingw64/x86_64-w64-mingw32/include)
+	set(platform_lib_dirs C:/_dev/vcpkg-master/installed/x64-mingw-static/lib C:/_dev/mingw64/x86_64-w64-mingw32/lib)
+	set(platform_libs Winmm Ws2_32 Crypt32 Iphlpapi)
+ENDIF()
 IF(EXISTS "${PROJECT_SOURCE_DIR}/dev/platform.cmake")
     include("${PROJECT_SOURCE_DIR}/dev/platform.cmake")
 ENDIF()

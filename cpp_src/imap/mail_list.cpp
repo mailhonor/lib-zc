@@ -53,7 +53,7 @@ bool imap_client::_cmd_search_flag(std::vector<int> &uid_vector, const char *fla
             {
                 need_close_connection_ = true;
                 logic_error_ = true;
-                zcc_imap_client_error("imap  返回结果太多 > %ld", (size_t)uid_vector.size());
+                zcc_imap_client_error("imap  返回结果太多 > %zd", uid_vector.size());
                 goto over;
             }
             if (linebuf[len - 1] != '\n')

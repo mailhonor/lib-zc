@@ -150,6 +150,11 @@ int zstream_tls_accept(zstream_t *fp, SSL_CTX *ctx)
     if (ioctx->ssl) {
         return -1;
     }
+    
+    if (zstream_get_read_cache_len(fp) > 0) {
+        // http://www.postfix.org/CVE-2011-0411.html
+        return -1;
+    }
 
     SSL *_ssl = zopenssl_SSL_create(ctx, ioctx->fd);
     if (!_ssl) {

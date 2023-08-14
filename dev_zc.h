@@ -28,6 +28,7 @@
             continue;          \
         }                      \
         errno = ec;            \
+        return ret;            \
     }                          \
     return ret;
 
@@ -46,6 +47,7 @@
             continue;           \
         }                       \
         errno = ec;             \
+        return ret;             \
     }                           \
     return ret;
 

@@ -62,7 +62,7 @@ int main(int argc, char **argv)
     test_1();
     test_2();
     test_3();
-    printf("OVER\n");
+    zprintf("OVER\n");
     return 0;
 }
 

@@ -16,7 +16,7 @@ namespace zcc
 std::string &vsprintf_1024(std::string &str, const char *format, va_list ap)
 {
     char buf[1024+1];
-    ::vsnprintf(buf, 1024, format, ap);
+    ::zvsnprintf(buf, 1024, format, ap);
     str.append(buf);
     return str;
 }
@@ -27,7 +27,7 @@ std::string &sprintf_1024(std::string &str, const char *format, ...)
     char buf[1024+1];
 
     va_start(ap, format);
-    ::vsnprintf(buf, 1024, format, ap);
+    ::zvsnprintf(buf, 1024, format, ap);
     va_end(ap);
     str.append(buf);
     return str;
@@ -70,7 +70,7 @@ string &string::printf_1024(const char *format, ...)
     char buf[1024+1];
 
     va_start(ap, format);
-    ::vsnprintf(buf, 1024, format, ap);
+    ::zvsnprintf(buf, 1024, format, ap);
     va_end(ap);
     append(buf);
     return *this;

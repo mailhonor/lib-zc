@@ -22,7 +22,7 @@ typedef struct _timeout_node_t _timeout_node_t;
 struct _timeout_node_t
 {
     zrbtree_node_t rbnode_time;
-    long cutoff_time;
+    ssize_t cutoff_time;
     void (*fn)(void *ctx);
     void *ctx;
 };
@@ -57,7 +57,7 @@ struct _pthread_node_t
 {
     zpthread_pool_t *ptp;
     zlink_node_t link_node;
-    long job_start_time;
+    ssize_t job_start_time;
     int first_worker_flag : 2;
     int timeout_flag : 2;
     int enter_flag_for_idle : 2;
@@ -87,7 +87,7 @@ static int _pool_timeout_tree_cmp(zrbtree_node_t *n1, zrbtree_node_t *n2);
 
 static void _pool_show_status_debug(zpthread_pool_t *ptp, const char *title, const char *fn, size_t ln)
 {
-    zlog_info(fn, ln, "### PTHREAD_POOL: %s, tid:%lld current:%d, idle:%d, queue:%d, timer:%d", title, zgettid(), ptp->current_count, ptp->idle_count, ptp->queue_length, ptp->timeout_length);
+    zlog_info(fn, ln, "### PTHREAD_POOL: %s, tid:%zd current:%d, idle:%d, queue:%d, timer:%d", title, zgettid(), ptp->current_count, ptp->idle_count, ptp->queue_length, ptp->timeout_length);
 }
 
 zpthread_pool_t *zpthread_pool_create()
@@ -125,13 +125,13 @@ void zpthread_pool_free(zpthread_pool_t *ptp)
     zfree(ptp);
 }
 
-long long zpthread_pool_get_max_running_millisecond(zpthread_pool_t *ptp)
+ssize_t zpthread_pool_get_max_running_millisecond(zpthread_pool_t *ptp)
 {
     if (!ptp)
     {
         return 0;
     }
-    long long min_time = 0;
+    ssize_t min_time = 0;
     POOL_INNER_LOCK();
     for (zlink_node_t *ln = zlink_head(&(ptp->pthread_node_link)); ln; ln = zlink_node_next(ln))
     {
@@ -274,7 +274,7 @@ static void _pool_start_one_pthread(zpthread_pool_t *ptp)
     pthread_t pth;
     if (pthread_create(&pth, 0, _pool_worker_run, ptp))
     {
-        zfatal("create pthread(%m)");
+        zfatal("create pthread");
     }
 }
 
@@ -340,7 +340,7 @@ static _timeout_node_t *_pool_worker_run_get_timeout_node(_pthread_node_t *ptn, 
     zpthread_pool_t *ptp = ptn->ptp;
     zrbtree_node_t *rn;
     _timeout_node_t *tn;
-    long curtime, left;
+    ssize_t curtime, left;
 
     curtime = zmillisecond();
 
@@ -380,7 +380,7 @@ static zbool_t _pool_worker_run_get(_pthread_node_t *ptn, _data_node_t *dnode)
     _timeout_node_t *tn = 0;
     int left_timeout_flag = 0;
     int need_create = 0;
-    long curstamp = time(0);
+    ssize_t curstamp = time(0);
 
     POOL_INNER_LOCK();
     if (ptn->enter_flag_for_idle)
@@ -394,11 +394,11 @@ static zbool_t _pool_worker_run_get(_pthread_node_t *ptn, _data_node_t *dnode)
 
     while ((!zvar_sigint_flag) && (!(ptp->soft_stop_flag)))
     {
-        left_timeout_flag = 0;
-        if (/*ptn->first_worker_flag && */ (zrbtree_have_data(&(ptp->timeout_tree))))
+        timedwait.tv_sec = zsecond() + 1;
+        timedwait.tv_nsec = 0;
+        if (zrbtree_have_data(&(ptp->timeout_tree)))
         {
             tn = _pool_worker_run_get_timeout_node(ptn, &timedwait);
-            left_timeout_flag = 1;
             if (tn)
             {
                 break;
@@ -407,11 +407,6 @@ static zbool_t _pool_worker_run_get(_pthread_node_t *ptn, _data_node_t *dnode)
         if (ptp->queue_length)
         {
             break;
-        }
-        if (!left_timeout_flag)
-        {
-            timedwait.tv_sec = time(0) + 1;
-            timedwait.tv_nsec = 0;
         }
         if (ptp->timeout_flag == 0)
         {
@@ -546,7 +541,7 @@ static int _pool_timeout_tree_cmp(zrbtree_node_t *n1, zrbtree_node_t *n2)
     _timeout_node_t *t1 = ZCONTAINER_OF(n1, _timeout_node_t, rbnode_time);
     _timeout_node_t *t2 = ZCONTAINER_OF(n2, _timeout_node_t, rbnode_time);
 
-    long r = t1->cutoff_time - t2->cutoff_time;
+    ssize_t r = t1->cutoff_time - t2->cutoff_time;
     if (!r)
     {
         r = (char *)t1 - (char *)t2;

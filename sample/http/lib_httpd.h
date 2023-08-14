@@ -32,9 +32,9 @@ typedef void (*cmd_fn_t)(zhttpd_t *httpd);
 static void usage()
 {
 #ifdef ___INNER_USE_SSL___
-    printf("USAGE: %s -listen 0:8899 [ --ssl [ -cert ./ssl.cert, -key ./ssl.key ] ]\n", zvar_progname);
+    zprintf("USAGE: %s -listen 0:8899 [ --ssl [ -cert ./ssl.cert, -key ./ssl.key ] ]\n", zvar_progname);
 #else
-    printf("USAGE: %s -listen 0:8899\n", zvar_progname);
+    zprintf("USAGE: %s -listen 0:8899\n", zvar_progname);
 #endif
     exit(1);
 }
@@ -233,7 +233,7 @@ static void upload_do(zhttpd_t *httpd)
         zjson_object_update(tmpjs, "pathname", zjson_create_string(zhttpd_uploaded_file_get_pathname(fo), -1), 0);
         zjson_object_update(tmpjs, "size", zjson_create_long(zhttpd_uploaded_file_get_size(fo)), 0);
         char saved_pathname[1024];
-        sprintf(saved_pathname, "uploaded_files/%d.dat", file_id++);
+        zsprintf(saved_pathname, "uploaded_files/%d.dat", file_id++);
         zjson_object_update(tmpjs, "saved_pathname", zjson_create_string(saved_pathname, -1), 0);
         zjson_array_push(files_js, tmpjs);
         zhttpd_uploaded_file_save_to(fo, saved_pathname);
@@ -371,7 +371,7 @@ static void load_ssl()
     {
         char error_buf[1024];
         zopenssl_get_error(0, error_buf, 1024);
-        printf("ERROR can load cert/key:%s", error_buf);
+        zprintf("ERROR can load cert/key:%s", error_buf);
         usage();
     }
 #endif

@@ -24,7 +24,7 @@ static void show_decoded_line_utf8(zbuf_t *line)
     if (zbuf_len(result)) {
         fwrite(zbuf_data(result), 1, zbuf_len(result), stdout);
     }
-    printf("\n");
+    zprintf("\n");
 }
 
 int main(int argc, char **argv)

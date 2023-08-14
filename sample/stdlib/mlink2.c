@@ -37,17 +37,17 @@ int main(int argc, char **argv)
 
     n = head_111;
     ZMLINK_DETACH(head_111, tail_222, n, prev_123, next_456);
-    printf("%d\n", n->a);
+    zprintf("%d\n", n->a);
     free(n);
 
     n = head_111;
     ZMLINK_DETACH(head_111, tail_222, n, prev_123, next_456);
-    printf("%d\n", n->a);
+    zprintf("%d\n", n->a);
     free(n);
 
     n = tail_222;
     ZMLINK_DETACH(head_111, tail_222, n, prev_123, next_456);
-    printf("%d\n", n->a);
+    zprintf("%d\n", n->a);
     free(n);
 
     return 0;

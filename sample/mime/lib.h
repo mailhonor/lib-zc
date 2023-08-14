@@ -13,7 +13,7 @@ static void mime_header_line_walk_test(const char *filename, void (*walk_fn)(zbu
 {
     FILE *fp = fopen(filename, "rb");
     if (!fp) {
-        fprintf(stderr, "ERROR open %s(%m)\n", filename);
+        fprintf(stderr, "ERROR open %s\n", filename);
         exit(1);
     }
     char buf[102400+10];
@@ -27,7 +27,7 @@ static void mime_header_line_walk_test(const char *filename, void (*walk_fn)(zbu
         zbuf_reset(line);
         int have_data = 0;
         while(1){
-            long last_seek = ftell(fp);
+            size_t last_seek = ftell(fp);
             if (!fgets(buf, 102400, fp)) {
                 break;
             }

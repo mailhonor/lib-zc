@@ -139,12 +139,12 @@ int main(int argc, char **argv)
     demo_unshift(demo, ms);
 
     if (demo_pop(demo, (void **)&ms)) {
-        printf("pop value:%d\n", ms->a);
+        zprintf("pop value:%d\n", ms->a);
         free(ms);
     }
 
     if (demo_shift(demo, (void **)&ms)) {
-        printf("shift value:%d\n", ms->a);
+        zprintf("shift value:%d\n", ms->a);
         free(ms);
     }
 

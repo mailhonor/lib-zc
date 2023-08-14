@@ -100,7 +100,7 @@ typedef void (*cmd_fn_t)(zhttpd_t *httpd);
 static const char *www_root = 0;
 static void usage()
 {
-    printf("USAGE: %s -listen 0:8899 [ -www_root ./ ] \n", zvar_progname);
+    zprintf("USAGE: %s -listen 0:8899 [ -www_root ./ ] \n", zvar_progname);
     exit(1);
 }
 
@@ -112,7 +112,7 @@ static void httpd_handler(zhttpd_t *httpd)
     {
         uri++;
     }
-    snprintf(path, 4096, "%s%s", www_root, uri);
+    zsnprintf(path, 4096, "%s%s", www_root, uri);
 
     char *p = strchr(path, '?');
     if (p)
@@ -287,7 +287,7 @@ int main(int argc, char **argv)
     fd = zlisten(listen, &type, 5);
     if (fd < 0)
     {
-        printf("ERROR can not open %s(%m)\n", listen);
+        zprintf("ERROR can not open %s(%m)\n", listen);
         exit(1);
     }
     linfo.sockinfo.fd = fd;

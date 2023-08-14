@@ -185,7 +185,7 @@ char *zget_ipstring(int ip, char *ipstr)
     addr.s_addr = ip;
     return (char *)(void *)inet_ntoa(addr);
 #endif // _WIN32
-    sprintf(ipstr, "%d.%d.%d.%d", (ip >> 24) & 0XFF, (ip >> 16) & 0XFF, (ip >> 8) & 0XFF, ip & 0XFF);
+    zsprintf(ipstr, "%d.%d.%d.%d", (ip >> 24) & 0XFF, (ip >> 16) & 0XFF, (ip >> 8) & 0XFF, ip & 0XFF);
     return ipstr;
 }
 

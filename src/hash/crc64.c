@@ -9,11 +9,11 @@
 #include "zc.h"
 #include <stdint.h>
 
-unsigned long long zcrc64(const void *data, int size, unsigned long long init_value)
+size_t zcrc64(const void *data, int size, size_t init_value)
 {
     int i;
-    unsigned long long crc = init_value;
-    static unsigned long long crc64_tab[256] = {
+    size_t crc = init_value;
+    static size_t crc64_tab[256] = {
         0x0000000000000000UL, 0x7ad870c830358979UL,
         0xf5b0e190606b12f2UL, 0x8f689158505e9b8bUL,
         0xc038e5739841b68fUL, 0xbae095bba8743ff6UL,

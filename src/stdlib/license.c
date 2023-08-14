@@ -21,9 +21,9 @@ char *zlicense_build(const char *salt, const char *target, char *new_license)
     int len = zbuf_len(builder);
     zbuf_puts(builder, target);
     zstr_tolower(zbuf_data(builder) + len);
-    long crc = zcrc64(zbuf_data(builder), zbuf_len(builder), 0);
+    size_t crc = zcrc64(zbuf_data(builder), zbuf_len(builder), 0);
     zbuf_free(builder);
-    sprintf(new_license, "%016lX", crc);
+    zsprintf(new_license, "%016zX", crc);
     return new_license;
 }
 

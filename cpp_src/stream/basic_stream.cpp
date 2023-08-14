@@ -436,7 +436,7 @@ int basic_stream::printf_1024(const char *format, ...)
         format = "";
     }
     va_start(ap, format);
-    len = vsnprintf(buf, 1024, format, ap);
+    len = zvsnprintf(buf, 1024, format, ap);
     len = ((len<1024)?len:(1024-1));
     va_end(ap);
 
@@ -531,17 +531,17 @@ int basic_stream::write_cint_and_int(int i)
 {
 	char buf[32];
 	int len;
-	len = sprintf(buf, "%d", i);
+	len = zsprintf(buf, "%d", i);
     write_cint(len);
     write(buf, len);
     return len;
 }
 
-int basic_stream::write_cint_and_long(long long i)
+int basic_stream::write_cint_and_long(ssize_t i)
 {
 	char buf[64];
 	int len;
-	len = sprintf(buf, "%llu", i);
+	len = zsprintf(buf, "%zd", i);
     write_cint_and_data(buf, len);
     return len;
 }

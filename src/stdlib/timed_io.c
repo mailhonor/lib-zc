@@ -22,10 +22,10 @@
  *                 2, peer closed.
  * when receive POLLRDHUP, maybe have some readable data.
  */
-int ztimed_read_write_wait_millisecond(int fd, long long read_write_wait_timeout, int *readable, int *writeable)
+int ztimed_read_write_wait_millisecond(int fd, ssize_t read_write_wait_timeout, int *readable, int *writeable)
 {
     struct pollfd pollfd;
-    long long stamp_timeout = ztimeout_set_millisecond(read_write_wait_timeout), left_timeout;
+    ssize_t stamp_timeout = ztimeout_set_millisecond(read_write_wait_timeout), left_timeout;
     int timeout;
     if (readable)
     {
@@ -77,7 +77,7 @@ int ztimed_read_write_wait_millisecond(int fd, long long read_write_wait_timeout
         case -1:
             if (errno != EINTR)
             {
-                zfatal("poll error (%m)");
+                zfatal("poll error(%m)");
             }
             continue;
         case 0:
@@ -114,10 +114,10 @@ int ztimed_read_write_wait_millisecond(int fd, long long read_write_wait_timeout
 #endif // __linux__
 
 #ifdef _WIN32
-int ztimed_read_write_wait_millisecond(int fd, long long read_write_wait_timeout, int *readable, int *writeable)
+int ztimed_read_write_wait_millisecond(int fd, ssize_t read_write_wait_timeout, int *readable, int *writeable)
 {
     int ec;
-    long long stamp_timeout = ztimeout_set_millisecond(read_write_wait_timeout), left_timeout;
+    ssize_t stamp_timeout = ztimeout_set_millisecond(read_write_wait_timeout), left_timeout;
     int timeout;
 
     fd_set fds_r;
@@ -229,7 +229,7 @@ int ztimed_read_write_wait(int fd, int read_write_wait_timeout, int *readable, i
     return ztimed_read_write_wait_millisecond(fd, 1000L * read_write_wait_timeout, readable, writeable);
 }
 
-int ztimed_read_wait_millisecond(int fd, long long read_wait_timeout)
+int ztimed_read_wait_millisecond(int fd, ssize_t read_wait_timeout)
 {
     int want_read;
     int ret = ztimed_read_write_wait_millisecond(fd, read_wait_timeout, &want_read, 0);
@@ -315,7 +315,7 @@ int ztimed_read(int fd, void *buf, int size, int read_wait_timeout)
 }
 
 /* write */
-int ztimed_write_wait_millisecond(int fd, long long write_wait_timeout)
+int ztimed_write_wait_millisecond(int fd, ssize_t write_wait_timeout)
 {
     int want_write;
     int ret = ztimed_read_write_wait_millisecond(fd, write_wait_timeout, 0, &want_write);

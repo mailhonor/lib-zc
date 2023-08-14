@@ -13,7 +13,7 @@
 void test_default_mpool()
 {
     int i;
-    long start, end;
+    ssize_t start, end;
     zmpool_t *mp;
     char *ptr;
 
@@ -30,7 +30,7 @@ void test_default_mpool()
     zmpool_free(mp, ptr);
 
     end = ztimeout_set(0);
-    printf("%ld\n", end - start);
+    zinfo("%zd", end - start);
 
     zmpool_free_pool(mp);
 
@@ -39,7 +39,7 @@ void test_default_mpool()
 void test_grow_mpool()
 {
     int i, j;
-    long start, end;
+    ssize_t start, end;
     zmpool_t *mp;
     char *ptr;
 
@@ -58,7 +58,7 @@ void test_grow_mpool()
     }
 
     end = ztimeout_set(0);
-    printf("%ld\n", end - start);
+    zinfo("%zd", end - start);
 }
 
 int main(int argc, char **argv)

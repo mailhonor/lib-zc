@@ -206,10 +206,10 @@ zbool_t zset_cgroup_name(const char *name)
 
     long pid = (long)getpid();
     char pbuf[128];
-    sprintf(pbuf, "%ld", pid);
+    zsprintf(pbuf, "%ld", pid);
 
     char fn[1024 + 1];
-    snprintf(fn, 1024, "/sys/fs/cgroup/memory/%s/cgroup.procs", name);
+    zsnprintf(fn, 1024, "/sys/fs/cgroup/memory/%s/cgroup.procs", name);
 
     int fd = zopen(fn, O_RDONLY, 0);
     if (fd == -1)

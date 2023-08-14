@@ -62,7 +62,7 @@ int main(int argc, char **argv)
     int fd, type;
     fd = zlisten(listen, &type, 5);
     if (fd < 0) {
-        printf("ERROR can not open %s(%m)\n", listen);
+        zprintf("ERROR can not open %s(%m)\n", listen);
         exit(1);
     }
     linfo.sockinfo.fd = fd;

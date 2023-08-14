@@ -12,7 +12,7 @@ int main(int argc, char **argv)
 {
     zmemcache_client_t *mc = 0;
     zbuf_t *str = 0;
-    long l;
+    ssize_t l;
     int flag;
     char *server;
 
@@ -21,7 +21,7 @@ int main(int argc, char **argv)
     server = zconfig_get_str(zvar_default_config, "server", "127.0.0.1:11211");
     do {
         if ((mc = zmemcache_client_connect(server, 10)) == 0) {
-            printf("ERROR can not connect %s(%m)\n", server);
+            zprintf("ERROR can not connect %s(%m)\n", server);
             break;
         }
 #if 0
@@ -30,32 +30,32 @@ int main(int argc, char **argv)
 #endif
 
         if (zmemcache_client_set(mc, "iii", 0, 0, "123", 3) < 0) {
-            printf("ERROR zmemcache_client_set iii\n");
+            zprintf("ERROR zmemcache_client_set iii\n");
             break;
         }
-        printf("zmemcache_client_set iii 123\n");
+        zprintf("zmemcache_client_set iii 123\n");
 
         l = zmemcache_client_incr(mc, "iii", 3);
         if (l < 0) {
-            printf("ERROR zmemcache_client_incr iii\n");
+            zprintf("ERROR zmemcache_client_incr iii\n");
             break;
         }
-        printf("zmemcache_client_incr iii: %ld\n", l);
+        zprintf("zmemcache_client_incr iii: %zd\n", l);
 
         if (zmemcache_client_get(mc, "iii", &flag, str) < 0) {
-            printf("ERROR zmemcache_client_get iii\n");
+            zprintf("ERROR zmemcache_client_get iii\n");
             break;
         }
-        printf("zmemcache_client_get iii %s\n", zbuf_data(str));
+        zprintf("zmemcache_client_get iii %s\n", zbuf_data(str));
 
         if (zmemcache_client_version(mc, str) < 0) {
-            printf("ERROR zmemcache_client_version\n");
+            zprintf("ERROR zmemcache_client_version\n");
             break;
         }
-        printf("zmemcache_client_version %s\n", zbuf_data(str));
+        zprintf("zmemcache_client_version %s\n", zbuf_data(str));
 
     } while(0);
-    printf("USAGE: %s [ -server 127.0.0.1:11211 ]\n", argv[0]);
+    zprintf("USAGE: %s [ -server 127.0.0.1:11211 ]\n", argv[0]);
     zbuf_free(str);
     if (mc) {
         zmemcache_client_disconnect(mc);

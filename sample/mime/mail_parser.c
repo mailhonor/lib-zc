@@ -34,17 +34,17 @@ static int save_att(zmail_t * parser, zmime_t * mime)
     idx++;
     sname = zmime_get_show_name(mime);
     if (zempty(sname)) {
-        sprintf(tmpname, "atts/%s%d_unknown.dat", name_prefix, idx);
+        zsprintf(tmpname, "atts/%s%d_unknown.dat", name_prefix, idx);
     } else {
-        snprintf(tmpname, 255, "atts/%s%d_%s", name_prefix, idx, sname);
+        zsnprintf(tmpname, 255, "atts/%s%d_%s", name_prefix, idx, sname);
         name_char_validate(tmpname+5);
     }
     zbuf_t *dcon = zbuf_create(-1);
     zmime_get_decoded_content(mime, dcon);
 
-    printf("save attachment %s\n", tmpname);
+    zprintf("save attachment %s\n", tmpname);
     if (!zfile_put_contents(tmpname, zbuf_data(dcon), zbuf_len(dcon))) {
-        printf("ERROR decode_mime_body: save %m\n");
+        zprintf("ERROR decode_mime_body: save\n");
     }
 
     zbuf_free(dcon);
@@ -64,7 +64,7 @@ static void do_parse(char *eml_fn)
 {
     zmail_t *parser = zmail_create_parser_from_pathname(eml_fn, "");
     if (parser == 0) {
-        printf("ERROR open %s (%m)\n", eml_fn);
+        zprintf("ERROR open %s\n", eml_fn);
         exit(1);
     }
     zmail_debug_show(parser);
@@ -83,7 +83,7 @@ int main(int argc, char **argv)
     name_prefix = zconfig_get_str(zvar_default_config, "np", "");
 
     if (zvar_main_redundant_argc == 0) {
-        printf("USAGE: %s [--att] eml_fn...\n", zvar_progname);
+        zprintf("USAGE: %s [--att] eml_fn...\n", zvar_progname);
         exit(0);
     }
     for (int i = 0; i < zvar_main_redundant_argc; i++) {

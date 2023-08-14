@@ -48,7 +48,7 @@ static void test_split(void)
     ar = zargv_create(1);
     zargv_split_append(ar, "", "et");
     zargv_debug_show(ar);
-    printf("count:%d\n", zargv_len(ar));
+    zprintf("count:%d\n", zargv_len(ar));
     zargv_free(ar);
 }
 

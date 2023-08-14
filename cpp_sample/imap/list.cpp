@@ -15,7 +15,7 @@ const char *user = "";
 const char *pass = "";
 static void ___usage()
 {
-    printf("%s -server imap_server:port -user xxx@a.com -pass 123456 [--ssl ] [ --tls]\n", zvar_progname);
+    zprintf("%s -server imap_server:port -user xxx@a.com -pass 123456 [--ssl ] [ --tls]\n", zvar_progname);
     exit(1);
 }
 
@@ -49,6 +49,7 @@ int main(int argc, char **argv)
     ic.set_destination(server);
     ic.set_user_password(user, pass);
     ic.set_ssl_tls(ssl_mode, tls_mode, ssl_ctx);
+    ic.set_id("(\"name\" \"zcc\")");
 
     if (!ic.open())
     {
@@ -69,7 +70,7 @@ int main(int argc, char **argv)
         goto over;
     }
 
-    printf("\n##############################\n\n");
+    zprintf("\n##############################\n\n");
 
 over:
     if (tls_mode || ssl_mode)

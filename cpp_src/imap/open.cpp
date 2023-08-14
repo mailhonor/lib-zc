@@ -135,6 +135,19 @@ bool imap_client::open()
     {
         return true;
     }
+
+    if (get_capability("id"))
+    {
+        if (!cmd_id())
+        {
+            return false;
+        }
+        if (ok_no_bad_ != result_onb::ok)
+        {
+            return true;
+        }
+    }
+
     return true;
 }
 

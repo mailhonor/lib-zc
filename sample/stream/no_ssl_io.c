@@ -11,7 +11,7 @@
 static char *server = 0;
 static void ___usage()
 {
-    printf("%s -server smtp_server:port\n", zvar_progname);
+    zprintf("%s -server smtp_server:port\n", zvar_progname);
     exit(1);
 }
 
@@ -19,11 +19,11 @@ static void  write_line_read_line(zstream_t *fp, zbuf_t *tmpline, const char *qu
 {
     zstream_puts(fp, query);
     zstream_puts(fp, "\r\n");
-    printf("C: %s\r\n", query);
+    zprintf("C: %s\r\n", query);
 
     zbuf_reset(tmpline);
     zstream_gets(fp, tmpline, 10240);
-    printf("S: %s", zbuf_data(tmpline));
+    zprintf("S: %s", zbuf_data(tmpline));
 }
 
 int main(int argc, char **argv)
@@ -38,19 +38,19 @@ int main(int argc, char **argv)
     zstream_t *fp = 0;
     zbuf_t *tmpline = 0;
 
-    printf("\n##############################\n\n");
+    zprintf("\n##############################\n\n");
     fd = zconnect(server, 10);
     if (fd < 0) {
-        printf("ERROR open %s error, (%m)\n", server);
+        zprintf("ERROR open %s error\n", server);
         exit(1);
     }
     znonblocking(fd, 1);
 
     fp = zstream_open_fd(fd);
-    printf("connected\n");
+    zprintf("connected\n");
     tmpline = zbuf_create(0);
     zstream_gets(fp, tmpline, 10240);
-    printf("S: %s", zbuf_data(tmpline));
+    zprintf("S: %s", zbuf_data(tmpline));
 
     write_line_read_line(fp, tmpline, "helo goodtest");
     write_line_read_line(fp, tmpline, "mail from: <xxx@163.com>");

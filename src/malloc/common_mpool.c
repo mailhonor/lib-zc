@@ -326,7 +326,7 @@ zmpool_t *zmpool_create_common_pool(int *register_list)
     register_one = register_list;
     for (; register_one && *register_one; register_one++) {
         element_size = *register_one;
-        if ((unsigned long)element_size < sizeof(unsigned short int)) {
+        if ((size_t)element_size < sizeof(unsigned short int)) {
             zfatal("zmem_common_pool_create: element_size must > %d ", (int)(sizeof(unsigned short int)));
         }
         register_count++;

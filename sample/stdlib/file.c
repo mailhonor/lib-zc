@@ -11,7 +11,7 @@
 
 void usage(void)
 {
-    printf("USAGE: %s config_pathname\n", zvar_progname);
+    zprintf("USAGE: %s config_pathname\n", zvar_progname);
     exit(0);
 }
 

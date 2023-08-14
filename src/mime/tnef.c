@@ -160,7 +160,7 @@ void ___ztnef_init_parser(ztnef_t *parser, const char *tnef_data, int tnef_data_
     }
     if (parser->codepage > 0) {
         char buf[128];
-        sprintf(buf, "CP%d", parser->codepage);
+        zsprintf(buf, "CP%d", parser->codepage);
         parser->charset = zstrdup(buf);
     }
 }
@@ -235,13 +235,13 @@ void ztnef_debug_show(ztnef_t *parser)
         i++;
         zdebug_show("");
         char buf[128];
-        sprintf(buf, "Mime (%d)", i);
+        zsprintf(buf, "Mime (%d)", i);
         zdebug_show(fmt, buf, ztnef_mime_get_type(m));
         zdebug_show(fmt, "Content-Type", ztnef_mime_get_type(m));
         zdebug_show(fmt, "filename_utf8", ztnef_mime_get_filename_utf8(m));
         zdebug_show(fmt, "Content-ID", ztnef_mime_get_content_id(m));
         zdebug_show(fmt, "charset", ztnef_mime_get_charset(m));
-        sprintf(buf, "%d", ztnef_mime_get_body_len(m));
+        zsprintf(buf, "%d", ztnef_mime_get_body_len(m));
         zdebug_show(fmt, "body_len", buf);
     } ZVECTOR_WALK_END;
 }

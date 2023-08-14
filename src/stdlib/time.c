@@ -16,19 +16,20 @@
 #include <timezoneapi.h>
 #endif // _WIN32
 
-long long zmillisecond(void)
+ssize_t zmillisecond(void)
 {
-    long long r;
+    ssize_t r;
     struct timeval tv;
     gettimeofday(&tv, 0);
-    r = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+    r = tv.tv_sec;
+    r = r * 1000 + tv.tv_usec / 1000;
     return r;
 }
 
 void zsleep_millisecond(int delay)
 {
     int left = delay;
-    long long end = zmillisecond() + left + 1;
+    ssize_t end = zmillisecond() + left + 1;
     while (left > 0)
     {
 #ifdef __linux__
@@ -41,26 +42,27 @@ void zsleep_millisecond(int delay)
     }
 }
 
-long long ztimeout_set_millisecond(long long timeout)
+ssize_t ztimeout_set_millisecond(ssize_t timeout)
 {
     if (timeout < 0)
     {
         timeout = zvar_max_timeout_millisecond;
     }
-    long long r;
+    ssize_t r;
     struct timeval tv;
     gettimeofday(&tv, 0);
-    r = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+    r = tv.tv_sec;
+    r = r * 1000 + tv.tv_usec / 1000;
     return (r + timeout);
 }
 
-long long ztimeout_left_millisecond(long long stamp)
+ssize_t ztimeout_left_millisecond(ssize_t stamp)
 {
-    long long r;
+    ssize_t r;
     struct timeval tv;
     gettimeofday(&tv, 0);
-    r = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-    long long timeout = stamp - r + 1;
+    r = ((ssize_t)tv.tv_sec) * 1000 + tv.tv_usec / 1000;
+    ssize_t timeout = stamp - r + 1;
     if (timeout > zvar_max_timeout_millisecond)
     {
         timeout = zvar_max_timeout_millisecond;
@@ -68,15 +70,15 @@ long long ztimeout_left_millisecond(long long stamp)
     return timeout;
 }
 
-long long zsecond(void)
+ssize_t zsecond(void)
 {
-    return (long)time(0);
+    return (ssize_t)time(0);
 }
 
 void zsleep(int delay)
 {
     int left = delay * 1000;
-    long long end = zmillisecond() + left + 1;
+    ssize_t end = zmillisecond() + left + 1;
     while (left > 0)
     {
 #ifdef __linux__
@@ -89,7 +91,7 @@ void zsleep(int delay)
     }
 }
 
-long long ztimeout_set(int timeout)
+ssize_t ztimeout_set(int timeout)
 {
     if (timeout < 0)
     {
@@ -98,9 +100,9 @@ long long ztimeout_set(int timeout)
     return (time(0) + timeout);
 }
 
-int ztimeout_left(long long stamp)
+int ztimeout_left(ssize_t stamp)
 {
-    long long timeout = stamp - zsecond() + 1;
+    ssize_t timeout = stamp - zsecond() + 1;
     if (timeout > zvar_max_timeout)
     {
         timeout = zvar_max_timeout;

@@ -42,7 +42,7 @@ int zget_mac_address(zargv_t *mac_list)
         }
         unsigned char *ar = (unsigned char *)(buf[ii].ifr_hwaddr.sa_data);
         char mbuf[32];
-        sprintf(mbuf, "%02X:%02X:%02X:%02X:%02X:%02X", ar[0], ar[1], ar[2], ar[3], ar[4], ar[5]);
+        zsprintf(mbuf, "%02X:%02X:%02X:%02X:%02X:%02X", ar[0], ar[1], ar[2], ar[3], ar[4], ar[5]);
         zargv_add(mac_list, mbuf);
         ret_num++;
     }
@@ -99,7 +99,7 @@ int zget_mac_address(zargv_t *mac_list)
                 }
                 unsigned char *ar = (unsigned char *)(pIpAdapterInfo->Address);
                 char mbuf[32];
-                sprintf(mbuf, "%02X:%02X:%02X:%02X:%02X:%02X", ar[0], ar[1], ar[2], ar[3], ar[4], ar[5]);
+                zsprintf(mbuf, "%02X:%02X:%02X:%02X:%02X:%02X", ar[0], ar[1], ar[2], ar[3], ar[4], ar[5]);
                 if (zmap_find(mac_dict, mbuf, 0))
                 {
                     continue;

@@ -11,7 +11,7 @@
 static char *server_address=0;
 static void ___usage()
 {
-    printf("USAGE: %s -server address\n", zvar_progname);
+    zprintf("USAGE: %s -server address\n", zvar_progname);
     exit(1);
 }
 

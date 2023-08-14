@@ -31,15 +31,15 @@ static int save_att(ztnef_t * parser, ztnef_mime_t * mime, int i)
 
     sname = ztnef_mime_get_show_name(mime);
     if (zempty(sname)) {
-        sprintf(tmpname, "atts/unknown_%d.dat", i);
+        zsprintf(tmpname, "atts/unknown_%d.dat", i);
     } else {
-        snprintf(tmpname, 255, "atts/%s", sname);
+        zsnprintf(tmpname, 255, "atts/%s", sname);
         name_char_validate(tmpname+5);
     }
 
-    printf("save attachment %s\n", tmpname);
+    zprintf("save attachment %s\n", tmpname);
     if (!zfile_put_contents(tmpname, ztnef_mime_get_body_data(mime), ztnef_mime_get_body_len(mime))) {
-        printf("ERROR decode_mime_body: save %m\n");
+        zprintf("ERROR decode_mime_body: save\n");
     }
 
     return 0;
@@ -60,12 +60,12 @@ static void do_parse(char *eml_fn)
 {
     ztnef_t *parser = ztnef_create_parser_from_pathname(eml_fn, 0);
     if (parser == 0) {
-        printf("ERROR open %s (%m)\n", eml_fn);
+        zprintf("ERROR open %s\n", eml_fn);
         exit(1);
     }
 
-    printf("\n");
-    printf("fn: %s\n", eml_fn);
+    zprintf("\n");
+    zprintf("fn: %s\n", eml_fn);
     ztnef_debug_show(parser);
 
     if (enable_att) {
@@ -83,7 +83,7 @@ int main(int argc, char **argv)
 
     if (times < 1) {
         if (zvar_main_redundant_argc == 0) {
-            printf("USAGE: %s [--att] tnef_fn...\n", zvar_progname);
+            zprintf("USAGE: %s [--att] tnef_fn...\n", zvar_progname);
             exit(0);
         }
         for (int i = 0; i < zvar_main_redundant_argc; i++) {
@@ -95,16 +95,16 @@ int main(int argc, char **argv)
         const char *data = zbuf_data(data_buf);
         int len = zbuf_len(data_buf);
 
-        printf("eml     : %s\n", zvar_main_redundant_argv[0]);
-        printf("size    : %d(bytes)\n", len);
-        printf("loop    : %d\n", times);
-        long t = zmillisecond();
+        zprintf("eml     : %s\n", zvar_main_redundant_argv[0]);
+        zprintf("size    : %d(bytes)\n", len);
+        zprintf("loop    : %d\n", times);
+        ssize_t t = zmillisecond();
         for (int i = 0; i < times; i++) {
             ztnef_free(ztnef_create_parser_from_data(data, len, 0));
         }
         t = zmillisecond() - t;
-        printf("elapse  : %ld.%03ld(second)\n", t / 1000, t % 1000);
-        printf("%%second : %lf(bytes)\n", ((long)len * times) / (((1.0 * t) / 1000) * 1024 * 1024));
+        zprintf("elapse  : %zd.%03zd(second)\n", t / 1000, t % 1000);
+        zprintf("%%second : %lf(bytes)\n", ((ssize_t)len * times) / (((1.0 * t) / 1000) * 1024 * 1024));
         zbuf_free(data_buf);
     }
 

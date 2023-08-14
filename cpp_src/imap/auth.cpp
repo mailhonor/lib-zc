@@ -51,7 +51,7 @@ bool imap_client::auth()
 
     if (!linebuf.compare(0, 17, "L OK [CAPABILITY "))
     {
-        capability_ = linebuf.substr(17);
+        capability_ = linebuf.substr(16);
         capability_clear_flag_ = false;
         auth_capability_ = true;
     }

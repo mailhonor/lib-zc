@@ -34,7 +34,7 @@ typedef void (*cmd_fn_t)(zhttpd_t *httpd);
 
 static void usage()
 {
-    printf("USAGE: %s -listen 0:8899\n", zvar_progname);
+    zprintf("USAGE: %s -listen 0:8899\n", zvar_progname);
     exit(1);
 }
 
@@ -207,7 +207,7 @@ int main(int argc, char **argv)
     fd = zlisten(listen, &type, 5);
     if (fd < 0)
     {
-        printf("ERROR can not open %s(%m)\n", listen);
+        zprintf("ERROR can not open %s(%m)\n", listen);
         exit(1);
     }
     linfo.sockinfo.fd = fd;

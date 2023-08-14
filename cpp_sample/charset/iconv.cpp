@@ -11,7 +11,7 @@
 
 static void ___usage()
 {
-    printf("USAGE: %s -f from_charset -t to_charset [ --c ] [ --uconv ] < input \n", zvar_progname);
+    zprintf("USAGE: %s -f from_charset -t to_charset [ --c ] [ --uconv ] < input \n", zvar_progname);
     exit(1);
 }
 
@@ -41,14 +41,14 @@ int main(int argc, char **argv)
     if ((zcc::charset_convert(from_charset, zbuf_data(content), zbuf_len(content),
                     to_charset , result, &converted_len 
                     ,ignore_bytes, 0)) < 0) {
-        printf("ERROR can not convert\n");
+        zprintf("ERROR can not convert\n");
     } else if (converted_len < zbuf_len(content)) {
         if (ignore_bytes == 0) {
-            printf("ERROR illegal char at %d\n", converted_len+1);
+            zprintf("ERROR illegal char at %d\n", converted_len+1);
         } else if (ignore_bytes == -1) {
-            printf("ERROR unknown\n");
+            zprintf("ERROR unknown\n");
         } else {
-            printf("ERROR illegal char too much > %d\n", ignore_bytes);
+            zprintf("ERROR illegal char too much > %d\n", ignore_bytes);
         }
     } else {
         if (result.size()) {

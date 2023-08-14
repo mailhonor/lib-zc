@@ -54,9 +54,9 @@ int main(int argc, char **argv)
     for (i=0;i<co_count;i++) {
         zcoroutine_go(file_do, 0, 0);
     }
-    printf("exit after 100s\n");
-    printf("file io running in worker pthread\n");
-    printf("strace -p pthrad_id\n");
+    zprintf("exit after 100s\n");
+    zprintf("file io running in worker pthread\n");
+    zprintf("strace -p pthrad_id\n");
     zcoroutine_base_run();
     zcoroutine_base_fini();
     sleep(1);

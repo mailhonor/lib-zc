@@ -279,10 +279,10 @@ void *zmemmem(const void *l, size_t l_len, const void *s, size_t s_len)
     return NULL;
 }
 
-long long ztimegm(void *void_tm)
+ssize_t ztimegm(void *void_tm)
 {
     struct tm *tm = (struct tm *)void_tm;
-    long long t = mktime(tm);
+    ssize_t t = mktime(tm);
     TIME_ZONE_INFORMATION tzi;
     GetTimeZoneInformation(&tzi);
     t -= tzi.Bias;

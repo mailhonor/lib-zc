@@ -6,7 +6,6 @@
  * ================================
  */
 
-#include "zc.h"
 #include "sysuser.h"
 
 int main(int argc, char **argv)

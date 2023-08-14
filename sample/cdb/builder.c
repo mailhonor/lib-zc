@@ -55,7 +55,7 @@ const char *postifx_config_name_val[] = {
 int main(int argc, char **argv)
 {
     zcdb_builder_t *builder = zcdb_builder_create();
-    printf("USAGE: %s configfile db\n", argv[0]);
+    zprintf("USAGE: %s configfile db\n", argv[0]);
     if (argc == 3) {
         FILE *fp = fopen(argv[1], "rb");
         char buf[10240+1], *p, *q;
@@ -74,10 +74,10 @@ int main(int argc, char **argv)
         }
         fclose(fp);
         if (zcdb_builder_build(builder, argv[2]) < 1) {
-            printf("ERROR: can not build zcdb to %s\n", argv[2]);
+            zprintf("ERROR: can not build zcdb to %s\n", argv[2]);
             exit(1);
         }
-        printf("OK %s\n", argv[2]);
+        zprintf("OK %s\n", argv[2]);
     } else {
         for (const char **pp = postifx_config_name_val; *pp; pp++) {
             const char *key = *pp++;
@@ -87,10 +87,10 @@ int main(int argc, char **argv)
             zcdb_builder_update(builder, key, strlen(key), val, strlen(val));
         }
         if (zcdb_builder_build(builder, "./postfix_conf.zcdb") < 1) {
-            printf("ERROR: can not build zcdb to postfix_conf.zcdb\n");
+            zprintf("ERROR: can not build zcdb to postfix_conf.zcdb\n");
             exit(1);
         }
-        printf("OK postfix_conf.zcdb\n");
+        zprintf("OK postfix_conf.zcdb\n");
     }
     zcdb_builder_free(builder);
     return 0;

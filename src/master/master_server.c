@@ -113,9 +113,9 @@ static void log_save_content(char *logcontent)
     if (log_fd == -1) {
         char fpath[4096];
         if (log_timeunit == 1) {
-            snprintf(fpath, 4096, "%s%d%02d%02d%02d.log", log_path, tm.tm_year+1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour); 
+            zsnprintf(fpath, 4096, "%s%d%02d%02d%02d.log", log_path, tm.tm_year+1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour); 
         } else {
-            snprintf(fpath, 4096, "%s%d%02d%02d.log", log_path, tm.tm_year+1900, tm.tm_mon + 1, tm.tm_mday); 
+            zsnprintf(fpath, 4096, "%s%d%02d%02d.log", log_path, tm.tm_year+1900, tm.tm_mon + 1, tm.tm_mday); 
         }
         while (((log_fd = open(fpath, O_CREAT|O_APPEND|O_RDWR|O_CLOEXEC, 0666))==-1) && (errno == EINTR)) {
         }
@@ -447,7 +447,7 @@ static void child_strike(zaio_t *eio)
     }
     int fd = cs->fd;
     char intbuf[64];
-    sprintf(intbuf, "%d", fd);
+    zsprintf(intbuf, "%d", fd);
     zmap_delete(child_status_map, intbuf, 0);
     child_status_free(cs);
 }
@@ -500,7 +500,7 @@ static void start_one_child(server_info_t *server)
         ZMAP_WALK_BEGIN(server->listens, fdp, listen_pair_t *, lp) {
             zargv_add(cs->uri_argv, lp->uri);
         } ZMAP_WALK_END;
-        sprintf(buf, "%d", cs->fd);
+        zsprintf(buf, "%d", cs->fd);
         zmap_update(child_status_map, buf, cs, 0);
         cs->stamp = ztimeout_set_millisecond(0);
         return;
@@ -707,7 +707,7 @@ static void prepare_server_by_config(zconfig_t *cf)
         lp->service_name = zstrdup(service);
         lp->server = server;
         char intbuf[32];
-        sprintf(intbuf, "%d", lp->fd);
+        zsprintf(intbuf, "%d", lp->fd);
         zmap_update(server->listens, intbuf, lp, 0);
     } ZARGV_WALK_END;
     zargv_free(splitor);
@@ -800,7 +800,7 @@ static zbool_t master_lock_pfile(char *lock_file)
         zclose(lock_fd);
         return 0;
     } else {
-        sprintf(pid_buf, "%d          ", getpid());
+        zsprintf(pid_buf, "%d          ", getpid());
         if (write(lock_fd, pid_buf, 10) != 10) {
             zclose(lock_fd);
             return 0;
@@ -990,7 +990,7 @@ void zmaster_server_load_config_from_dirname(const char *config_path, zvector_t 
         }
 
         zconfig_t *cf = zconfig_create();
-        snprintf(pn, 4096, "%s/%s", config_path, fn);
+        zsnprintf(pn, 4096, "%s/%s", config_path, fn);
         zconfig_load_from_pathname(cf, pn);
         zconfig_update_string(cf, "___Z_20181216_fn", pn, -1);
         zvector_push(cfs, cf);

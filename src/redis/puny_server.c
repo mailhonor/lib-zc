@@ -294,7 +294,7 @@ static void main_node_get_value(main_node_t *node, zbuf_t *val)
         }
     } else if (node->type == node_type_integer) {
         char buf[128];
-        sprintf(buf, "%ld", node->val.num);
+        zsprintf(buf, "%ld", node->val.num);
         zbuf_strcat(val, buf);
     }
 }
@@ -358,7 +358,7 @@ static zbool_t get_check_long_integer(const char *str, long *r)
 {
     long l = atoll(str);
     char buf[128];
-    sprintf(buf, "%ld", l);
+    zsprintf(buf, "%ld", l);
     if (r) {
         *r = l;
     }
@@ -1051,7 +1051,7 @@ static void hash_node_get_value(hash_node_t *node, zbuf_t *val)
         }
     } else if (node->type == node_type_integer) {
         char buf[128];
-        sprintf(buf, "%ld", node->val.num);
+        zsprintf(buf, "%ld", node->val.num);
         zbuf_strcat(val, buf);
     }
 }
@@ -1819,7 +1819,7 @@ static void ___before_service_prepare_load(char *fn)
     ctx.fp = zstream_open_file("/dev/null", "w");
     zstream_t *fp = zstream_open_file(fn, "r");
     if (!fp) {
-        zfatal("can not open %s(%m)", fn);
+        zfatal("can not open %s", fn);
     }
     zbuf_t *linebuf = zbuf_create(4096);
     zvector_t *cmds = zvector_create(-1);

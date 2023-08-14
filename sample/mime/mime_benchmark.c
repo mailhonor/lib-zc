@@ -11,7 +11,7 @@
 
 static void ___usage()
 {
-    printf("USAGE: %s [ -loop 1000 ] [--onlymime ] eml_filename\n", zvar_progname);
+    zprintf("USAGE: %s [ -loop 1000 ] [--onlymime ] eml_filename\n", zvar_progname);
     exit(1);
 }
 
@@ -23,7 +23,7 @@ static char *hunman_size2(long a)
     int tl = 0;
 
     hunman_buf[0] = 0;
-    sprintf(buf, "%ld", a);
+    zsprintf(buf, "%ld", a);
     len = strlen(buf);
     m = len % 3;
 
@@ -74,10 +74,10 @@ int main(int argc, char **argv)
     eml_data = zbuf_data(eml_data_buf);
     eml_size = zbuf_len(eml_data_buf);
 
-    printf("eml     : %s\n", eml_fn);
-    printf("size    : %d(bytes)\n", eml_size);
-    printf("loop    : %d\n", times);
-    printf("total   : %s(bytes)\n", hunman_size2((long)eml_size * times));
+    zprintf("eml     : %s\n", eml_fn);
+    zprintf("size    : %d(bytes)\n", eml_size);
+    zprintf("loop    : %d\n", times);
+    zprintf("total   : %s(bytes)\n", hunman_size2((long)eml_size * times));
 
     t = ztimeout_set_millisecond(0);
     for (i = 0; i < times; i++) {
@@ -111,8 +111,8 @@ int main(int argc, char **argv)
     }
     t = ztimeout_set_millisecond(0) - t;
 
-    printf("elapse  : %ld.%03ld(second)\n", t / 1000, t % 1000);
-    printf("%%second : %s(bytes)\n", hunman_size2((long)(((long)eml_size * times) / ((1.0 * t) / 1000))));
+    zprintf("elapse  : %ld.%03ld(second)\n", t / 1000, t % 1000);
+    zprintf("%%second : %s(bytes)\n", hunman_size2((long)(((long)eml_size * times) / ((1.0 * t) / 1000))));
 
     return 0;
 }

@@ -64,12 +64,12 @@ static void test_mystruct()
 
 
     ZLIST_WALK_BEGIN(list, mystruct *, ptr) {
-        printf("walk a: %d\n", ptr->a);
+        zprintf("walk a: %d\n", ptr->a);
     } ZLIST_WALK_END;
 
     while (zlist_len(list)) {
         if (zlist_pop(list, (void **)&ms)) {
-            printf("pop: %d\n", ms->a);
+            zprintf("pop: %d\n", ms->a);
         }
         free(ms);
     }

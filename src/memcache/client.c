@@ -41,7 +41,7 @@ static void zmemcache_client_close_inner(zmemcache_client_t *mc)
         return;
     }
     if (mc->fd != -1) {
-        zclose(mc->fd);
+        zclosesocket(mc->fd);
         mc->fd = -1;
     }
 }
@@ -205,35 +205,35 @@ over:
     return ret;
 }
 
-int zmemcache_client_add(zmemcache_client_t *mc, const char *key, int flag, long long timeout, const void *data, int len)
+int zmemcache_client_add(zmemcache_client_t *mc, const char *key, int flag, ssize_t timeout, const void *data, int len)
 {
     return zmemcache_client_asrpa(mc, "add", key, flag, timeout, data, len);
 }
 
-int zmemcache_client_set(zmemcache_client_t *mc, const char *key, int flag, long long timeout, const void *data, int len)
+int zmemcache_client_set(zmemcache_client_t *mc, const char *key, int flag, ssize_t timeout, const void *data, int len)
 {
     return zmemcache_client_asrpa(mc, "set", key, flag, timeout, data, len);
 }
 
 
-int zmemcache_client_replace(zmemcache_client_t *mc, const char *key, int flag, long long timeout, const void *data, int len)
+int zmemcache_client_replace(zmemcache_client_t *mc, const char *key, int flag, ssize_t timeout, const void *data, int len)
 {
     return zmemcache_client_asrpa(mc, "replace", key, flag, timeout, data, len);
 }
 
 
-int zmemcache_client_append(zmemcache_client_t *mc, const char *key, int flag, long long timeout, const void *data, int len)
+int zmemcache_client_append(zmemcache_client_t *mc, const char *key, int flag, ssize_t timeout, const void *data, int len)
 {
     return zmemcache_client_asrpa(mc, "append", key, flag, timeout, data, len);
 }
 
-int zmemcache_client_prepend(zmemcache_client_t *mc, const char *key, int flag, long long timeout, const void *data, int len)
+int zmemcache_client_prepend(zmemcache_client_t *mc, const char *key, int flag, ssize_t timeout, const void *data, int len)
 {
     return zmemcache_client_asrpa(mc, "prepend", key, flag, timeout, data, len);
 }
 
 
-static long long zmemcache_client_incr_decr(zmemcache_client_t *mc, const char *op, const char *key, size_t n)
+static ssize_t zmemcache_client_incr_decr(zmemcache_client_t *mc, const char *op, const char *key, size_t n)
 {
     ___check_status();
     ___check_key();
@@ -241,7 +241,7 @@ static long long zmemcache_client_incr_decr(zmemcache_client_t *mc, const char *
     zstream_t *fp = zstream_open_fd(mc->fd);
     zstream_set_read_wait_timeout(fp, mc->read_wait_timeout);
     zstream_set_write_wait_timeout(fp, mc->write_wait_timeout);
-    zstream_printf_1024(fp, "%s %s %ld\r\n", op, key, n);
+    zstream_printf_1024(fp, "%s %s %zd\r\n", op, key, n);
     int ret = zstream_gets(fp, str, 1024);
     zstream_close(fp, 0);
     if (ret < 1) {
@@ -256,12 +256,12 @@ static long long zmemcache_client_incr_decr(zmemcache_client_t *mc, const char *
     return -1;
 }
 
-long long zmemcache_client_incr(zmemcache_client_t *mc, const char *key, size_t n)
+ssize_t zmemcache_client_incr(zmemcache_client_t *mc, const char *key, size_t n)
 {
     return zmemcache_client_incr_decr(mc, "incr", key, n);
 }
 
-long long zmemcache_client_decr(zmemcache_client_t *mc, const char *key, size_t n)
+ssize_t zmemcache_client_decr(zmemcache_client_t *mc, const char *key, size_t n)
 {
     return zmemcache_client_incr_decr(mc, "decr", key, n);
 }
@@ -298,7 +298,7 @@ over:
 }
 
 
-int zmemcache_client_flush_all(zmemcache_client_t *mc, long long after_second)
+int zmemcache_client_flush_all(zmemcache_client_t *mc, ssize_t after_second)
 {
     int ret = -1;
     ___check_status();
@@ -307,7 +307,7 @@ int zmemcache_client_flush_all(zmemcache_client_t *mc, long long after_second)
     zstream_set_read_wait_timeout(fp, mc->read_wait_timeout);
     zstream_set_write_wait_timeout(fp, mc->write_wait_timeout);
     if (after_second > 0) {
-        zstream_printf_1024(fp, "flush_all %lld\r\n", after_second);
+        zstream_printf_1024(fp, "flush_all %zd\r\n", after_second);
     } else {
         zstream_puts(fp, "flush_all\r\n");
     }

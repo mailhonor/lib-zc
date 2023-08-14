@@ -35,7 +35,7 @@ void zmaster_load_global_config_from_dir_inner(zconfig_t *cf, const char *config
         if ((!p) || (strcasecmp(p + 1, "gcf"))) {
             continue;
         }
-        snprintf(pn, 4096, "%s/%s", config_path, fn);
+        zsnprintf(pn, 4096, "%s/%s", config_path, fn);
         zconfig_load_from_pathname(cf, pn);
     }
     closedir(dir);

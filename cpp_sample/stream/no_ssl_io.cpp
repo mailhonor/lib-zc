@@ -11,7 +11,7 @@
 static char *server = 0;
 static void ___usage()
 {
-    printf("%s -server smtp_server:port\n", zvar_progname);
+    zprintf("%s -server smtp_server:port\n", zvar_progname);
     exit(1);
 }
 
@@ -19,11 +19,11 @@ static void  write_line_read_line(zcc::iostream &fp, std::string &tmpline, const
 {
     fp.puts(query);
     fp.puts("\r\n");
-    printf("C: %s\r\n", query);
+    zprintf("C: %s\r\n", query);
 
     tmpline.clear();
     fp.gets(tmpline, 10240);
-    printf("S: %s", tmpline.c_str());
+    zprintf("S: %s", tmpline.c_str());
 }
 
 int main(int argc, char **argv)
@@ -34,17 +34,17 @@ int main(int argc, char **argv)
         ___usage();
     }
 
-    printf("\n##############################\n\n");
+    zprintf("\n##############################\n\n");
     zcc::iostream fp;
     if (!fp.connect(server, 0)) {
-        printf("ERROR open %s error, (%m)\n", server);
+        zprintf("ERROR open %s error, (%m)\n", server);
         exit(1);
     }
     std::string tmpline;
 
-    printf("connected\n");
+    zprintf("connected\n");
     fp.gets(tmpline, 10240);
-    printf("S: %s", tmpline.c_str());
+    zprintf("S: %s", tmpline.c_str());
 
     write_line_read_line(fp, tmpline, "helo goodtest");
     write_line_read_line(fp, tmpline, "mail from: <xxx@163.com>");

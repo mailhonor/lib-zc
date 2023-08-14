@@ -10,86 +10,86 @@
 
 static void test_string_one(zcc::json js)
 {
-    printf("str: %s\n", js.get_string_value("DEF").c_str());
+    zprintf("str: %s\n", js.get_string_value("DEF").c_str());
 }
 
 static void test_string()
 {
-    printf("\n### STRING \n");
+    zprintf("\n### STRING \n");
     test_string_one(zcc::json("abc"));
-    test_string_one(zcc::json(123LL));
+    test_string_one(zcc::json(123L));
     test_string_one(zcc::json(false));
     test_string_one(zcc::json(true));
     test_string_one(zcc::json(0.001));
     test_string_one(zcc::json(zcc::json_type_object));
-    printf("\n");
+    zprintf("\n");
 }
 
 static void test_bool_one(zcc::json js)
 {
-    printf("bool: %d\n", js.get_bool_value(false)?1:0);
+    zprintf("bool: %d\n", js.get_bool_value(false)?1:0);
 }
 
 static void test_bool()
 {
-    printf("\n### bool \n");
+    zprintf("\n### bool \n");
     test_bool_one(zcc::json("abc"));
     test_bool_one(zcc::json("True"));
-    test_bool_one(zcc::json(123LL));
-    test_bool_one(zcc::json(0LL));
+    test_bool_one(zcc::json(123L));
+    test_bool_one(zcc::json(0L));
     test_bool_one(zcc::json(false));
     test_bool_one(zcc::json(true));
     test_bool_one(zcc::json(0.001));
     test_bool_one(zcc::json(zcc::json_type_object));
-    printf("\n");
+    zprintf("\n");
 }
 
 static void test_long_one(zcc::json js)
 {
-    printf("long: %lld\n", js.get_long_value(111));
+    zprintf("long: %zd\n", js.get_long_value(111));
 }
 
 static void test_long()
 {
-    printf("\n### long \n");
+    zprintf("\n### long \n");
     test_long_one(zcc::json("abc"));
     test_long_one(zcc::json("True"));
-    test_long_one(zcc::json(123LL));
-    test_long_one(zcc::json(0LL));
+    test_long_one(zcc::json(123L));
+    test_long_one(zcc::json(0L));
     test_long_one(zcc::json(false));
     test_long_one(zcc::json(true));
     test_long_one(zcc::json(0.001));
     test_long_one(zcc::json(zcc::json_type_object));
-    printf("\n");
+    zprintf("\n");
 }
 
 static void test_double_one(zcc::json js)
 {
-    printf("double: %lf\n", js.get_double_value(111));
+    zprintf("double: %lf\n", js.get_double_value(111));
 }
 
 static void test_double()
 {
-    printf("\n### double \n");
+    zprintf("\n### double \n");
     test_double_one(zcc::json("abc"));
     test_double_one(zcc::json("True"));
-    test_double_one(zcc::json(123LL));
-    test_double_one(zcc::json(0LL));
+    test_double_one(zcc::json(123L));
+    test_double_one(zcc::json(0L));
     test_double_one(zcc::json(false));
     test_double_one(zcc::json(true));
     test_double_one(zcc::json(0.001));
     test_double_one(zcc::json(zcc::json_type_object));
-    printf("\n");
+    zprintf("\n");
 }
 
 static void test_object()
 {
-    printf("\n### object \n");
+    zprintf("\n### object \n");
     zcc::json js;
-    printf("object/str: %s\n", js.object_get_string_value("one", "111").c_str());
-    js["one"] = 123LL;
-    printf("object/str: %s\n", js.object_get_string_value("one", "111").c_str());
-    printf("object/bool: %d\n", js.object_get_bool_value("one", true));
+    zprintf("object/str: %s\n", js.object_get_string_value("one", "111").c_str());
+    js["one"] = 123L;
+    zprintf("object/str: %s\n", js.object_get_string_value("one", "111").c_str());
+    zprintf("object/bool: %d\n", js.object_get_bool_value("one", true));
 }
 
 int main(int argc, char **argv)

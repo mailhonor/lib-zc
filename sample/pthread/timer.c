@@ -13,14 +13,14 @@
 
 static void usage(void)
 {
-    printf("USAGE: %s min_pthread_count max_pthread_count idle_timeout\n", zvar_progname);
+    zprintf("USAGE: %s min_pthread_count max_pthread_count idle_timeout\n", zvar_progname);
     exit(1);
 }
 
 static void timer1(void *ctx)
 {
-    int i = (int)(long)ctx;
-    printf("timer1, %d\n", i);
+    int i = (int)(ssize_t)ctx;
+    zprintf("timer1, %d\n", i);
     sleep(3);
 }
 
@@ -41,7 +41,7 @@ int main(int argc, char **argv)
     zpthread_pool_start(ptp);
 
     for (int i = 0; i < 100; i++) {
-        zpthread_pool_timer(ptp, timer1, (void *)(long)i, i/10 + 1);
+        zpthread_pool_timer(ptp, timer1, (void *)(ssize_t)i, i/10 + 1);
     }
 
     sleep(1000);

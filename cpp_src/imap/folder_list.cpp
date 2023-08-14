@@ -44,7 +44,8 @@ void imap_client::folder_result::reset()
 void imap_client::folder_result::debug_show()
 {
     std::string tmpbuf;
-    zcc::sprintf_1024(tmpbuf, "文件夹: %s, 属性: (Noinferiors: %d, Noselect: %d, Subscribed: %d; Drafts: %d, Junk: %d, Trash: %d, Sent: %d)", name_.c_str(), noinferiors_, noselect_, subscribed_, drafts_, junk_, trash_, sent_);
+    std::string utf8_name = imap_utf7_to_utf8(name_);
+    zcc::sprintf_1024(tmpbuf, "文件夹: %s => %s, 属性: (Noinferiors: %d, Noselect: %d, Subscribed: %d; Drafts: %d, Junk: %d, Trash: %d, Sent: %d)", name_.c_str(), utf8_name.c_str(), noinferiors_, noselect_, subscribed_, drafts_, junk_, trash_, sent_);
     if (status_)
     {
         zcc::sprintf_1024(tmpbuf, ", STATUS(RECENT: %d, UIDNEXT: %d, UIDVALIDITY: %d, UNSEEN: %d)", status_->recent_, status_->uidnext_, status_->uidvalidity_, status_->unseen_);

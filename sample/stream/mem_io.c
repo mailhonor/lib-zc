@@ -13,7 +13,7 @@ static int ssl_mode = 0;
 static int tls_mode = 0;
 static void ___usage()
 {
-    printf("%s -server smtp_server:port [--ssl ] [ --tls]\n", zvar_progname);
+    zprintf("%s -server smtp_server:port [--ssl ] [ --tls]\n", zvar_progname);
     exit(1);
 }
 
@@ -21,13 +21,13 @@ static void  write_line_read_line(zstream_t *fp, char *tmpline, const char *quer
 {
     zstream_puts(fp, query);
     zstream_puts(fp, "\r\n");
-    printf("C: %s\r\n", query);
+    zprintf("C: %s\r\n", query);
 
     while(1) {
         tmpline[0] = 0;
         zstream_gets_to_mem(fp, tmpline, 10240);
         char *p = tmpline;
-        printf("S: %s", p);
+        zprintf("S: %s", p);
         if (strlen(tmpline)< 3) {
             break;
         }
@@ -57,10 +57,10 @@ int main(int argc, char **argv)
         ssl_ctx = zopenssl_SSL_CTX_create_client();
     }
 
-    printf("\n##############################\n\n");
+    zprintf("\n##############################\n\n");
     fd = zconnect(server, 10);
     if (fd < 0) {
-        printf("ERROR open %s error, (%m)\n", server);
+        zprintf("ERROR open %s error\n", server);
         exit(1);
     }
     znonblocking(fd, 1);
@@ -71,24 +71,24 @@ int main(int argc, char **argv)
             unsigned long ecode;
             char buf[1024];
             zopenssl_get_error(&ecode, buf, 1024);
-            printf("ERROR ssl initialization error:%s\n", buf);
+            zprintf("ERROR ssl initialization error:%s\n", buf);
             goto over;
         }
         fp = zstream_open_ssl(ssl);
     } else {
         fp = zstream_open_fd(fd);
     }
-    printf("connected\n");
+    zprintf("connected\n");
     tmpline = (char *)malloc(1024*1024);
     tmpline[0] = 0;
     zstream_gets_to_mem(fp, tmpline, 10240);
-    printf("S: %s", tmpline);
+    zprintf("S: %s", tmpline);
 
     write_line_read_line(fp, tmpline, "ehlo xxx1");
     if (tls_mode && !ssl_mode) {
         write_line_read_line(fp, tmpline, "STARTTLS");
         if (zstream_tls_connect(fp, ssl_ctx) < 0) {
-            printf("ERROR STARTTLS error (%m)\n");
+            zprintf("ERROR STARTTLS error\n");
             goto over;
         }
     }

@@ -33,7 +33,7 @@ static void *pthread_worker(void *arg)
                 break;
             }
             struct timespec ts;
-            ts.tv_sec = time(0) + 1;
+            ts.tv_sec = zsecond() + 1;
             ts.tv_nsec = 0;
             pthread_cond_timedwait(&cond, &locker, &ts);
         }

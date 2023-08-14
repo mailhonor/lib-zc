@@ -6,7 +6,6 @@
  * ================================
  */
 
-#include "zc.h"
 #include "sysuser.h"
 
 typedef struct myos_t myos_t;

@@ -361,6 +361,11 @@ static void _active_tls_accept(zaio_t *aio)
         _ready_go_and_return(aio, -1);
     }
 
+    if (zaio_get_read_cache_size(aio) > 0) {
+        // http://www.postfix.org/CVE-2011-0411.html
+        _ready_go_and_return(aio, -1);
+    }
+
     _clear_read_write_flag(aio);
 
     int ret = SSL_accept(aio->ssl);
@@ -1087,7 +1092,7 @@ void zaio_cache_printf_1024(zaio_t *aio, const char *fmt, ...)
     int len;
 
     va_start(ap, fmt);
-    len = vsnprintf(buf, 1024, fmt, ap);
+    len = zvsnprintf(buf, 1024, fmt, ap);
     va_end(ap);
 
     _zaio_cache_write_inner(aio, buf, len);

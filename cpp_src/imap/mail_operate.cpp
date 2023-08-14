@@ -6,6 +6,10 @@
  * ================================
  */
 
+#ifdef _WIN32
+#pragma GCC diagnostic ignored "-Wformat="
+#endif // _WIN32
+
 #include "./imap.h"
 #include <time.h>
 
@@ -240,7 +244,7 @@ bool imap_client::delete_mail(int uid)
     }
     std::string linebuf;
     char intbuf[32];
-    sprintf(intbuf, "%d", uid);
+    zsprintf(intbuf, "%d", uid);
 
     linebuf.clear();
     linebuf.append("S UID STORE ").append(intbuf).append(" +FLAGS.SILENT (\\Deleted)");
@@ -266,7 +270,7 @@ bool imap_client::cmd_move(uidplus_result &result, int from_uid, const char *to_
     bool dealed_uidplus = false;
     std::string linebuf;
     char intbuf[32];
-    sprintf(intbuf, "%d", from_uid);
+    zsprintf(intbuf, "%d", from_uid);
 
     linebuf.clear();
     linebuf.append("M UID MOVE ").append(intbuf).append(" ").append(escape_string(to_folder_name_imap));
@@ -280,7 +284,7 @@ bool imap_client::cmd_move(uidplus_result &result, int from_uid, const char *to_
         {
             if (!dealed_uidplus)
             {
-                if (!parse_move_or_copy_result(result, response_tokens))
+                if (parse_move_or_copy_result(result, response_tokens))
                 {
                     dealed_uidplus = true;
                 }
@@ -298,7 +302,7 @@ bool imap_client::cmd_move(uidplus_result &result, int from_uid, const char *to_
         }
         if (!dealed_uidplus)
         {
-            if (!parse_move_or_copy_result(result, response_tokens))
+            if (parse_move_or_copy_result(result, response_tokens))
             {
                 dealed_uidplus = true;
             }
@@ -315,7 +319,7 @@ bool imap_client::cmd_copy(uidplus_result &result, int from_uid, const char *to_
     bool dealed_uidplus = false;
     std::string linebuf;
     char intbuf[32];
-    sprintf(intbuf, "%d", from_uid);
+    zsprintf(intbuf, "%d", from_uid);
 
     linebuf.clear();
     linebuf.append("C UID COPY ").append(intbuf).append(" ").append(escape_string(to_folder_name_imap));
@@ -329,7 +333,7 @@ bool imap_client::cmd_copy(uidplus_result &result, int from_uid, const char *to_
         {
             if (!dealed_uidplus)
             {
-                if (!parse_move_or_copy_result(result, response_tokens))
+                if (parse_move_or_copy_result(result, response_tokens))
                 {
                     dealed_uidplus = true;
                 }
@@ -347,7 +351,7 @@ bool imap_client::cmd_copy(uidplus_result &result, int from_uid, const char *to_
         }
         if (!dealed_uidplus)
         {
-            if (!parse_move_or_copy_result(result, response_tokens))
+            if (parse_move_or_copy_result(result, response_tokens))
             {
                 dealed_uidplus = true;
             }
@@ -449,19 +453,19 @@ bool imap_client::append_file(uidplus_result &result, append_session &append, co
     bool r = false;
     FILE *fp = 0;
     char buf[4096 + 1];
-    long size, left;
-    long len;
+    ssize_t size, left;
+    ssize_t len;
 
     fp = fopen(filename, "rb");
     if (!fp)
     {
-        zcc_imap_client_info("ERROR open %s(%m)", filename);
+        zcc_imap_client_info("ERROR open %s", filename);
         goto over;
     }
     size = zfile_get_size(filename);
     if (size < 0)
     {
-        zcc_imap_client_info("ERROR open %s(%m)", filename);
+        zcc_imap_client_info("ERROR open %s", filename);
         goto over;
     }
     append.mail_size_ = size;
@@ -481,13 +485,13 @@ bool imap_client::append_file(uidplus_result &result, append_session &append, co
         len = fread(buf, 1, len, fp);
         if (len < 1)
         {
-            zcc_imap_client_info("ERROR read %s(%m)", filename);
+            zcc_imap_client_info("ERROR read %s", filename);
             need_close_connection_ = true;
             goto over;
         }
         if (fp_.write(buf, (int)len) < 0)
         {
-            zcc_imap_client_info("ERROR write(%m)");
+            zcc_imap_client_info("ERROR write");
             need_close_connection_ = true;
             goto over;
         }
@@ -518,7 +522,7 @@ bool imap_client::append_data(uidplus_result &result, append_session &append, co
 
     if (fp_.write(data, (int)dlen) < 0)
     {
-        zcc_imap_client_info("ERROR write(%m)");
+        zcc_imap_client_info("ERROR write");
         need_close_connection_ = true;
         connection_error_ = true;
         goto over;

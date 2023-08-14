@@ -27,13 +27,13 @@ static void zvprintf_default(const char *source_fn, size_t line_number, const ch
     char fmt_buf[1024 + 1];
     if (line_number)
     {
-        snprintf(fmt_buf, 1024, "%s [%s:%lu]\n", fmt, source_fn, line_number);
+        zsnprintf(fmt_buf, 1024, "%s [%s:%zu]\n", fmt, source_fn, line_number);
     }
     else
     {
-        snprintf(fmt_buf, 1024, "%s\n", fmt);
+        zsnprintf(fmt_buf, 1024, "%s\n", fmt);
     }
-    vfprintf(stderr, fmt_buf, ap);
+    zvfprintf(stderr, fmt_buf, ap);
 }
 void (*zlog_vprintf)(const char *source_fn, size_t line_number, const char *fmt, va_list ap) = zvprintf_default;
 
@@ -78,8 +78,8 @@ void zvlog_fatal(const char *source_fn, size_t line_number, const char *fmt, va_
             va_end(ap2);
         }
 
-        vfprintf(stderr, fmt, ap);
-        fprintf(stderr, "\n");
+        zvfprintf(stderr, fmt, ap);
+        zfprintf(stderr, "\n");
     }
 
     if (zvar_log_fatal_catch)
@@ -96,13 +96,13 @@ static void zvprintf_stdout(const char *source_fn, size_t line_number, const cha
     char fmt_buf[1024 + 1];
     if (line_number)
     {
-        snprintf(fmt_buf, 1024, "%s [%s:%lu]\n", fmt, source_fn, line_number);
+        zsnprintf(fmt_buf, 1024, "%s [%s:%zu]\n", fmt, source_fn, line_number);
     }
     else
     {
-        snprintf(fmt_buf, 1024, "%s\n", fmt);
+        zsnprintf(fmt_buf, 1024, "%s\n", fmt);
     }
-    vfprintf(stdout, fmt_buf, ap);
+    zvfprintf(stdout, fmt_buf, ap);
 }
 
 void zlog_use_stdout()
@@ -120,7 +120,7 @@ void zlog_use_default()
 static void zvprintf_syslog(const char *source_fn, size_t line_number, const char *fmt, va_list ap)
 {
     char buf[10240 + 10];
-    vsnprintf(buf, 10240, fmt, ap);
+    zvsnprintf(buf, 10240, fmt, ap);
     if (line_number)
     {
         syslog(LOG_INFO, "%s [%s:%ld]", buf, source_fn, (long)line_number);
@@ -198,7 +198,7 @@ static void vprintf_masterlog(const char *source_fn, size_t line_number, const c
 
     if (left > 1)
     {
-        vsnprintf(buf + len, left, fmt, ap);
+        zvsnprintf(buf + len, left, fmt, ap);
         tmplen = strlen(buf + len);
         len += tmplen;
         left -= tmplen;
@@ -207,7 +207,7 @@ static void vprintf_masterlog(const char *source_fn, size_t line_number, const c
     {
         if (line_number)
         {
-            snprintf(buf + len, left, " [%s:%ld]", source_fn, (long)line_number);
+            zsnprintf(buf + len, left, " [%s:%ld]", source_fn, (long)line_number);
         }
         else
         {
@@ -250,7 +250,7 @@ void zlog_use_masterlog(const char *identity, const char *dest)
 {
     zlog_vprintf = vprintf_masterlog;
     char buf[256];
-    snprintf(buf, 255, "%s,%d,", identity, getpid());
+    zsnprintf(buf, 255, "%s,%d,", identity, getpid());
     zvar_master_log_prefix = zstrdup(buf);
     zvar_master_log_prefix_len = strlen(buf);
 

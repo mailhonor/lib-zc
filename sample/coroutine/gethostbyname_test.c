@@ -39,19 +39,19 @@ static void *foo(void *arg)
         if (test_type == 0) {
             struct hostent *hp = gethostbyname(name);
             if (hp) {
-                printf("%s: %s\n", name, hp->h_name);
+                zprintf("%s: %s\n", name, hp->h_name);
             } else {
-                printf("%s: not found\n", name);
+                zprintf("%s: not found\n", name);
             }
         }
         if (test_type == 1) {
             int ret = res_query(name, C_IN, T_A, (unsigned char *)answer, 1024);
-            printf("res_query %s: %d\n", name, ret);
+            zprintf("res_query %s: %d\n", name, ret);
         }
 #ifdef res_nquery
         if (test_type == 2) {
             int ret = __res_nquery(&state, name, C_IN, T_A, (unsigned char *)answer, 1024);
-            printf("res_nquery %s: %d\n", name, ret);
+            zprintf("res_nquery %s: %d\n", name, ret);
         }
 #endif
     }
@@ -76,56 +76,56 @@ static void *foo2(void *arg)
 
 static int _init(int argc, char **argv)
 {
-    printf("USAGE: \n%s domain1 domain2 [ test_type ] [ disable_udp]\n", argv[0]);
-    printf("  test_type:\n");
-    printf("    0\t\t # gethostbyname(default)\n");
-    printf("    1\t\t # res_query\n");
+    zprintf("USAGE: \n%s domain1 domain2 [ test_type ] [ disable_udp]\n", argv[0]);
+    zprintf("  test_type:\n");
+    zprintf("    0\t\t # gethostbyname(default)\n");
+    zprintf("    1\t\t # res_query\n");
 #ifdef res_nquery
-    printf("    2\t\t # res_nquery\n");
+    zprintf("    2\t\t # res_nquery\n");
 #else
-    printf("    2\t\t # res_nquery, unsupported\n");
+    zprintf("    2\t\t # res_nquery, unsupported\n");
 #endif
-    printf("  disable_udp:\n");
-    printf("    udp\t\t # disable all udp coroutine swap\n");
-    printf("    53\t\t # disable udp(53) coroutine swap\n");
+    zprintf("  disable_udp:\n");
+    zprintf("    udp\t\t # disable all udp coroutine swap\n");
+    zprintf("    53\t\t # disable udp(53) coroutine swap\n");
 
     if (argc < 3) {
         return 0;
     }
 
-    printf("\n");
+    zprintf("\n");
     int type_show = 0;
     for (int i = 3; i < argc; i++) {
         const char *s = argv[i];
         if (!strcmp(s, "0")) {
-            printf("######## test gethostbyname\n");
+            zprintf("######## test gethostbyname\n");
             type_show = 1;
             test_type = 0;
         } else if (!strcmp(s, "1")) {
-            printf("######## test req_query\n");
+            zprintf("######## test req_query\n");
             type_show = 1;
             test_type = 1;
         } else if (!strcmp(s, "2")) {
-            printf("######## test req_nquery\n");
+            zprintf("######## test req_nquery\n");
             type_show = 1;
             test_type = 2;
         } else if (!strcmp(s, "udp")) {
             zvar_coroutine_disable_udp = 1;
-            printf("######## disable all udp\n");
+            zprintf("######## disable all udp\n");
         } else if (!strcmp(s, "53")) {
             zvar_coroutine_disable_udp_53 = 1;
-            printf("######## disable udp(53)\n");
+            zprintf("######## disable udp(53)\n");
         } else {
-            printf("######## unknown %s\n", s);
+            zprintf("######## unknown %s\n", s);
         }
     }
     if (type_show == 0) {
-        printf("######## test gethostbyname, default\n");
+        zprintf("######## test gethostbyname, default\n");
     }
 #ifndef res_nquery
-    printf("######## res_nquery unsupported in your system\n");
+    zprintf("######## res_nquery unsupported in your system\n");
 #endif
-    printf("\n");
+    zprintf("\n");
     return 1;
 }
 

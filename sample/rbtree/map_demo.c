@@ -41,7 +41,7 @@ int main(int argc, char **argv)
     }
 
     ZMAP_WALK_BEGIN(map, key, mystruct *, ms6) {
-        printf("key=%s, a=%d\n", key, ms6->a);
+        zprintf("key=%s, a=%d\n", key, ms6->a);
         free(ms6);
     } ZMAP_WALK_END;
 

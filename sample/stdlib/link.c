@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 
     int value;
     if (demo_shift(demo, &value)) {
-        printf("shift value:%d\n", value);
+        zprintf("shift value:%d\n", value);
     }
     demo_shift(demo, 0);
     demo_shift(demo, 0);

@@ -28,7 +28,7 @@ static void show_2()
         cb[0] = i;
         for (j = 0X80; j < 0XC0; j ++) {
             cb[1] = j;
-            printf("0X%02X%02X %s\n", i, j, cb);
+            zprintf("0X%02X%02X %s\n", i, j, cb);
         }
     }
 }
@@ -45,7 +45,7 @@ static void show_3()
             cb[1] = j;
             for (k = 0X80; k < 0XC0; k ++) {
                 cb[2] = k;
-                printf("0X%02X%02X%02X %s\n", i, j, k, cb);
+                zprintf("0X%02X%02X%02X %s\n", i, j, k, cb);
             }
         }
     }
@@ -65,7 +65,7 @@ static void show_4()
                 cb[2] = k;
                 for (l = 0X80; l < 0XC0; l ++) {
                     cb[3] = l;
-                    printf("0X%02X%02X%02X%02X %s\n", i, j, k, l, cb);
+                    zprintf("0X%02X%02X%02X%02X %s\n", i, j, k, l, cb);
                 }
             }
         }

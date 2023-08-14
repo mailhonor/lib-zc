@@ -6,10 +6,14 @@
  * ================================
  */
 
+#ifdef _WIN32
+#pragma GCC diagnostic ignored "-Wformat="
+#endif // _WIN32
+
 #include "zc.h"
 #include <time.h>
 
-char *zbuild_rfc1123_date_string(long long t, char *buf)
+char *zbuild_rfc1123_date_string(ssize_t t, char *buf)
 {
     struct tm tmbuf;
     gmtime_r((time_t *)(&t), &tmbuf);
@@ -17,7 +21,7 @@ char *zbuild_rfc1123_date_string(long long t, char *buf)
     return buf;
 }
 
-char *zbuild_rfc822_date_string(long long t, char *buf)
+char *zbuild_rfc822_date_string(ssize_t t, char *buf)
 {
     struct tm tmbuf;
     localtime_r((time_t *)&t, &tmbuf);

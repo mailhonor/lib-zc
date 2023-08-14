@@ -100,6 +100,10 @@ int ssl_iostream::tls_accept(SSL_CTX *ctx)
     if (ssl_) {
         return -1;
     }
+    if (get_read_cache_len() > 0) {
+        // http://www.postfix.org/CVE-2011-0411.html
+        return -1;
+    }
 
     SSL *_ssl = zopenssl_SSL_create(ctx, fd_);
     if (!_ssl) {

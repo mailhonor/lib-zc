@@ -6,20 +6,18 @@
  * ================================
  */
 
-#ifdef _LIB_ZC_SQLITE3_
-
 #include "zc.h"
 
+#ifdef _LIB_ZC_SQLITE3_
 int main(int argc, char **argv)
 {
     return zsqlite3_proxy_server_main(argc, argv);
 }
 
 #else
-#include <stdio.h>
 int main(int argc, char **argv)
 {
-    printf("unsupported; cmake ../ -DENABLE_SQLITE=yes\n");
+    zprintf("unsupported; cmake ../ -DENABLE_SQLITE=yes\n");
     return 0;
 }
 #endif

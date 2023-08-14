@@ -21,14 +21,14 @@ static void show_decoded_line_utf8(zbuf_t *line)
 {
     zbuf_reset(result);
     zvector_t *vec = zmime_header_line_get_address_vector_utf8(default_charset, zbuf_data(line), zbuf_len(line));
-    printf("##########\n");
+    zprintf("##########\n");
     if (!vec) {
-        printf("    none\n");
+        zprintf("    none\n");
         return;
     }
     ZVECTOR_WALK_BEGIN(vec, zmime_address_t *, addr) {
         fwrite(zbuf_data(result), 1, zbuf_len(result), stdout);
-        printf("    %s <%s>\n", addr->name_utf8, addr->address);
+        zprintf("    %s <%s>\n", addr->name_utf8, addr->address);
     } ZVECTOR_WALK_END;
 }
 

@@ -89,15 +89,15 @@ void zcint_data_escape_int(zbuf_t * zb, int i)
 {
 	char buf[32];
 	int len;
-	len = sprintf(buf, "%d", i);
+	len = zsprintf(buf, "%d", i);
 	zcint_data_escape(zb, buf, len);
 }
 
-void zcint_data_escape_long(zbuf_t * zb, long long i)
+void zcint_data_escape_long(zbuf_t * zb, ssize_t i)
 {
 	char buf[64];
 	int len;
-	len = sprintf(buf, "%lld", i);
+	len = zsprintf(buf, "%zd", i);
 	zcint_data_escape(zb, buf, len);
 }
 

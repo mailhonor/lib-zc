@@ -6,6 +6,8 @@
  * ================================
  */
 
+#ifdef __linux__
+
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 // SHA1_Init
 
@@ -385,7 +387,7 @@ int zwebsocketd_send_binary_printf_1024(zwebsocketd_t *ws, const char *format, .
     int len;
 
     va_start(ap, format);
-    len = vsnprintf(buf, 1024, format, ap);
+    len = zvsnprintf(buf, 1024, format, ap);
     len = ((len < 1024) ? len : (1024 - 1));
     va_end(ap);
 
@@ -399,9 +401,12 @@ int zwebsocketd_send_text_printf_1024(zwebsocketd_t *ws, const char *format, ...
     int len;
 
     va_start(ap, format);
-    len = vsnprintf(buf, 1024, format, ap);
+    len = zvsnprintf(buf, 1024, format, ap);
     len = ((len < 1024) ? len : (1024 - 1));
     va_end(ap);
 
     return zwebsocketd_send_data_with_opcode(ws, buf, len, zvar_websocketd_type_text);
 }
+
+#endif
+

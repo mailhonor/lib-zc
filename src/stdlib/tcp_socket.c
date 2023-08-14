@@ -227,7 +227,7 @@ int zinet_listen(const char *sip, int port, int backlog)
 
 err:
     errno2 = zget_errno();
-    zclose(sock);
+    zclosesocket(sock);
     errno == errno2;
 
     return -1;
@@ -522,7 +522,7 @@ int zinet_connect(const char *dip, int port, int timeout)
         if (connect_and_wait_ok(sock, (struct sockaddr *)&addr, sizeof(addr), timeout) < 0)
         {
             errno2 = errno;
-            zclose(sock);
+            zclosesocket(sock);
             errno = errno2;
             return (-1);
         }
@@ -533,7 +533,7 @@ int zinet_connect(const char *dip, int port, int timeout)
         if (sane_connect(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
         {
             errno2 = errno;
-            zclose(sock);
+            zclosesocket(sock);
             errno = errno2;
             return (-1);
         }

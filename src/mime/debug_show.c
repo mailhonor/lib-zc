@@ -34,9 +34,9 @@ static void _debug_show_addr_vector(zmail_t *parser, const char *h, const zvecto
     
     ZVECTOR_WALK_BEGIN(address_vec, zmime_address_t *, addr) {
         if (i == 0) {
-            sprintf(nh, "%s (1)", h);
+            zsprintf(nh, "%s (1)", h);
         } else {
-            sprintf(nh, "(%d)", i+1);
+            zsprintf(nh, "(%d)", i+1);
         }
         i ++;
         zdebug_show(fmt, nh, addr->address);
@@ -53,7 +53,7 @@ void zmail_debug_show(zmail_t *parser)
     zbuf_t *tmpstr = zmail_zbuf_cache_require(parser, 128); 
 
     zdebug_show(fmt, "Date", zmail_get_date(parser));
-    zdebug_show("%15s: %lld","", zmail_get_date_unix(parser));
+    zdebug_show("%15s: %zd","", zmail_get_date_unix(parser));
     zdebug_show("");
     zdebug_show(fmt, "Subject", zmail_get_subject(parser));
     zdebug_show(fmt, "Subject_utf8", zmail_get_subject_utf8(parser));
@@ -97,7 +97,7 @@ void zmail_debug_show(zmail_t *parser)
     ZVECTOR_WALK_BEGIN(allm, zmime_t *, m) {
         zdebug_show("");
         char buf[128];
-        sprintf(buf, "Mime (%d)", i+1);
+        zsprintf(buf, "Mime (%d)", i+1);
         zdebug_show(fmt, buf, zmime_get_type(m));
         zmime_get_raw_header_line(m, "Content-Type", tmpstr, 0);
         zdebug_show(fmt, "Content-Type", zbuf_data(tmpstr));
@@ -115,7 +115,7 @@ void zmail_debug_show(zmail_t *parser)
         zdebug_show(fmt, "encoding", zmime_get_encoding(m));
         zdebug_show(fmt, "boundary", zmime_get_boundary(m));
         zdebug_show(fmt, "section", zmime_get_imap_section(m));
-        sprintf(buf, "%d,%d,%d,%d", zmime_get_header_offset(m), zmime_get_header_len(m), zmime_get_body_offset(m), zmime_get_body_len(m));
+        zsprintf(buf, "%d,%d,%d,%d", zmime_get_header_offset(m), zmime_get_header_len(m), zmime_get_body_offset(m), zmime_get_body_len(m));
         zdebug_show(fmt, "", buf);
         i++;
     } ZVECTOR_WALK_END;

@@ -168,7 +168,7 @@ void aio::cache_printf_1024(const char *fmt, ...)
     int len;
 
     va_start(ap, fmt);
-    len = vsnprintf(buf, 1024, fmt, ap);
+    len = zvsnprintf(buf, 1024, fmt, ap);
     len = ((len<1024)?len:(1024-1));
     va_end(ap);
     cache_write(buf, len);

@@ -18,7 +18,7 @@ const char *folder = "";
 const char *eml = "";
 static void ___usage()
 {
-    printf("%s -server imap_server:port -user xxx@a.com -pass 123456 -folder abc -eml 1.eml [--ssl ] [ --tls]\n", zvar_progname);
+    zprintf("%s -server imap_server:port -user xxx@a.com -pass 123456 -folder abc -eml 1.eml [--ssl ] [ --tls]\n", zvar_progname);
     exit(1);
 }
 
@@ -75,9 +75,9 @@ int main(int argc, char **argv)
         goto over;
     }
 
-    printf("NEW uidvalidity: %d, uid: %d\n", uidplus_result.uidvalidity_, uidplus_result.uid_);
+    zprintf("NEW uidvalidity: %d, uid: %d\n", uidplus_result.uidvalidity_, uidplus_result.uid_);
 
-    printf("\n##############################\n\n");
+    zprintf("\n##############################\n\n");
 
 over:
     if (tls_mode || ssl_mode)

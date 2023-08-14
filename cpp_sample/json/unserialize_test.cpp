@@ -11,19 +11,19 @@
 int main(int argc, char **argv)
 {
     if (argc < 2) {
-        printf("USAGE: %s json_file\n", argv[0]);
+        zprintf("USAGE: %s json_file\n", argv[0]);
         return 1;
     }
     std::string con;
     zcc::json js;
 
     if (!js.load_from_pathname(argv[1])) {
-        printf("ERR load json from %s(%m)\n", argv[1]);
+        zprintf("ERR load json from %s(%m)\n", argv[1]);
         return 1;
     }
 
     js.serialize(con, 0);
-    printf("JSON:\n%s\n", con.c_str());
+    zprintf("JSON:\n%s\n", con.c_str());
     return 0;
 }
 

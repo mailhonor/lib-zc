@@ -26,7 +26,7 @@
 #define Z_MAX_PATH 1024
 #endif // Z_MAX_PATH
 
-long long zfile_get_size(const char *pathname)
+ssize_t zfile_get_size(const char *pathname)
 {
     struct stat st;
     if (stat(pathname, &st) == -1)
@@ -126,14 +126,14 @@ int zfile_put_contents(const char *pathname, const void *data, int len)
     return 1;
 }
 
-long long zfile_get_contents(const char *pathname, zbuf_t *bf)
+ssize_t zfile_get_contents(const char *pathname, zbuf_t *bf)
 {
 #ifdef __linux__
     int fd;
     int errno2;
     int ret;
     char buf[4096 + 1];
-    long long rlen = 0;
+    ssize_t rlen = 0;
 
     while (((fd = open(pathname, O_RDONLY)) == -1) && (errno == EINTR))
     {
@@ -180,15 +180,15 @@ long long zfile_get_contents(const char *pathname, zbuf_t *bf)
 #endif // __linux__
 #ifdef _WIN32
     int ret, ch;
-    long long rlen = 0;
-    long long fsize = zfile_get_size(pathname);
+    ssize_t rlen = 0;
+    ssize_t fsize = zfile_get_size(pathname);
     if (fsize < 0)
     {
         return -1;
     }
     if (fsize > 256LL * 256 * 256 * 126)
     {
-        zfatal("zfile_get_contents size too big: :%ldd", fsize);
+        zfatal("zfile_get_contents size too big: :%zd", fsize);
     }
     zbuf_reset(bf);
     zbuf_need_space(bf, (int)fsize);
@@ -223,7 +223,7 @@ int zfile_get_contents_sample(const char *pathname, zbuf_t *bf)
     int ret = zfile_get_contents(pathname, bf);
     if (ret < 0)
     {
-        zinfo("ERROR load from %s (%m)", pathname);
+        zinfo("ERROR load from %s", pathname);
         exit(1);
     }
     return ret;
@@ -430,11 +430,11 @@ zargv_t *zfind_file_sample(zargv_t *file_argv, const char **pathnames, int pathn
         }
         if (zempty(pathname_match))
         {
-            sprintf(buf, "find \"%s\" -type f", pathname);
+            zsprintf(buf, "find \"%s\" -type f", pathname);
         }
         else
         {
-            sprintf(buf, "find \"%s\" -type f -name \"%s\"", pathname, pathname_match);
+            zsprintf(buf, "find \"%s\" -type f -name \"%s\"", pathname, pathname_match);
         }
         FILE *fp = popen(buf, "r");
         if (!fp)
@@ -645,7 +645,7 @@ int zlink_force(const char *oldpath, const char *newpath, const char *tmpdir)
     char tmppath[Z_MAX_PATH + 1];
     char unique_id[zvar_unique_id_size + 1];
     zbuild_unique_id(unique_id);
-    snprintf(tmppath, Z_MAX_PATH, "%s/%s", tmpdir, unique_id);
+    zsnprintf(tmppath, Z_MAX_PATH, "%s/%s", tmpdir, unique_id);
     ret = zlink(oldpath, tmppath);
     if (ret < 0)
     {
@@ -679,6 +679,7 @@ int zsymlink(const char *oldpath, const char *newpath)
     {
         return -1;
     }
+    WINBASEAPI BOOLEAN APIENTRY CreateSymbolicLinkW (LPCWSTR lpSymlinkFileName, LPCWSTR lpTargetFileName, DWORD dwFlags);
     res = CreateSymbolicLinkW(oldpathw, oldpathw, (attr & FILE_ATTRIBUTE_DIRECTORY ? 1 : 0));
     if (!res)
     {
@@ -703,7 +704,7 @@ int zsymlink_force(const char *oldpath, const char *newpath, const char *tmpdir)
     char tmppath[Z_MAX_PATH + 1];
     char unique_id[zvar_unique_id_size + 1];
     zbuild_unique_id(unique_id);
-    snprintf(tmppath, Z_MAX_PATH, "%s/%s", tmpdir, unique_id);
+    zsnprintf(tmppath, Z_MAX_PATH, "%s/%s", tmpdir, unique_id);
     ret = zsymlink(oldpath, tmppath);
     if (ret < 0)
     {
@@ -753,7 +754,7 @@ ssize_t zwrite(int fd, const void *buf, size_t count)
     ssize_t ret;
     int ec, is_closed = 0;
     const char *ptr = (const char *)buf;
-    long left = count;
+    ssize_t left = count;
     for (; left > 0;)
     {
         ret = write(fd, ptr, left);

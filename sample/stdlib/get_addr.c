@@ -15,13 +15,13 @@ static void get_host_addr(char *host)
 
     count = zget_hostaddr(host, addr_list);
     if (count == 0) {
-        printf("%s'addr none\n", host);
+        zprintf("%s'addr none\n", host);
     } else if (count < 0) {
-        printf("%s'addr error\n", host);
+        zprintf("%s'addr error\n", host);
     } else {
-        printf("%s'addr list(%d):\n", host, count);
+        zprintf("%s'addr list(%d):\n", host, count);
         ZARGV_WALK_BEGIN(addr_list, ip) {
-            printf("    %s\n", ip);
+            zprintf("    %s\n", ip);
         } ZARGV_WALK_END;
     }
     zargv_free(addr_list);
@@ -30,7 +30,7 @@ static void get_host_addr(char *host)
 int main(int argc, char **argv)
 {
     if (argc < 2) {
-        printf("USAGE: %s host_or_domain\n", argv[0]);
+        zprintf("USAGE: %s host_or_domain\n", argv[0]);
         return 0;
     }
     get_host_addr(argv[1]);

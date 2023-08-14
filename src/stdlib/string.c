@@ -429,12 +429,12 @@ zbool_t zstr_to_bool(const char *s, int def)
     return def;
 }
 
-long long zstr_to_second(const char *s, long long def)
+ssize_t zstr_to_second(const char *s, ssize_t def)
 {
     char unit, junk;
-    long long intval;
+    ssize_t intval;
 
-    switch (sscanf(s, "%lld%c%c", &intval, &unit, &junk))
+    switch (sscanf(s, "%zd%c%c", &intval, &unit, &junk))
     {
     case 1:
         unit = 's';
@@ -458,12 +458,12 @@ long long zstr_to_second(const char *s, long long def)
     return def;
 }
 
-long long zstr_to_size(const char *s, long long def)
+ssize_t zstr_to_size(const char *s, ssize_t def)
 {
     char unit, junk;
-    long long intval;
+    ssize_t intval;
 
-    switch (sscanf(s, "%lld%c%c", &intval, &unit, &junk))
+    switch (sscanf(s, "%zd%c%c", &intval, &unit, &junk))
     {
     case 1:
         unit = 'b';

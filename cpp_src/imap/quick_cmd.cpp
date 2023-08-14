@@ -22,9 +22,8 @@ bool imap_client::do_quick_cmd(const std::string &cmd, bool check_result_is_ok)
     }
     response_tokens response_tokens;
     int first_ch = cmd[0];
-    std::string linebuf;
     fp_append(cmd).fp_append("\r\n");
-    zcc_imap_client_debug_write_line(linebuf);
+    zcc_imap_client_debug_write_line(cmd);
 
     while (1)
     {
@@ -46,6 +45,7 @@ bool imap_client::do_quick_cmd(const std::string &cmd, bool check_result_is_ok)
             }
             return true;
         }
+        return true;
     }
     return true;
 }

@@ -10,7 +10,7 @@
 
 static void usage()
 {
-    printf("USAGE: %s keyword_list_file/keyword_db_file file_for_search\n", zvar_progname);
+    zprintf("USAGE: %s keyword_list_file/keyword_db_file file_for_search\n", zvar_progname);
     exit(0);
 }
 
@@ -27,7 +27,7 @@ int main(int argc, char **argv)
     char buf[9];
     FILE *fp = fopen(listfn, "rb");
     if (!fp) {
-        printf("ERROR open %s(%m)\n", listfn);
+        zprintf("ERROR open %s\n", listfn);
         exit(1);
     }
     if (fread(buf, 1, 8, fp) != 8) {
@@ -37,13 +37,13 @@ int main(int argc, char **argv)
     if (!memcmp(buf, "ZMSH", 4)) {
         ms = zmsearch_create_from_pathname(listfn);
         if (!ms) {
-            printf("ERROR open %s\n", listfn);
+            zprintf("ERROR open %s\n", listfn);
             exit(1);
         }
     } else {
         ms = zmsearch_create();
         if (zmsearch_add_token_from_pathname(ms, listfn) < 1) {
-            printf("ERROR open %s\n", listfn);
+            zprintf("ERROR open %s\n", listfn);
             exit(1);
         }
         zmsearch_add_over(ms);
@@ -56,11 +56,11 @@ int main(int argc, char **argv)
     const char *result;
     int len = zmsearch_match(ms, zbuf_data(con), zbuf_len(con), &result, &offset);
     if (len < 1) {
-        printf("NOT FOUND\n");
+        zprintf("NOT FOUND\n");
     } else {
-        printf("FOUND:\n");
+        zprintf("FOUND:\n");
         fwrite(result, 1, offset, stdout);
-        printf("\n");
+        zprintf("\n");
     }
 
     zbuf_free(con);

@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     int sock, type;
     sock = zlisten(listen, &type, 5);
     if (sock < 0) {
-        printf("ERROR can not open %s(%m)\n", listen);
+        zprintf("ERROR can not open %s(%m)\n", listen);
         exit(1);
     }
 
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
         do_httpd(linfo.ptr);
     }
 
-    zclose(sock);
+    zclosesocket(sock);
     explore_data_fini();
 
     return 0;

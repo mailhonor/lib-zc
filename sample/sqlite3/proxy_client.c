@@ -6,13 +6,12 @@
  * ================================
  */
 
-#ifdef _LIB_ZC_SQLITE3_
-
 #include "zc.h"
 
+#ifdef _LIB_ZC_SQLITE3_
 static void usage()
 {
-    printf("ERROR USAGE %s -server server -query/exec/log sql_sentense\n", zvar_progname);
+    zprintf("ERROR USAGE %s -server server -query/exec/log sql_sentense\n", zvar_progname);
     exit(1);
 }
 
@@ -36,14 +35,14 @@ int main(int argc, char **argv)
 
     zsqlite3_proxy_client_t *pr = zsqlite3_proxy_client_connect(server);
     if (pr == 0) {
-        printf("ERROR can not open %s(%m)\n", server);
+        zprintf("ERROR can not open %s(%m)\n", server);
         exit(1);
     }
     zsqlite3_proxy_client_set_auto_reconnect(pr, 1);
     if (op == 'q') {
         ret = zsqlite3_proxy_client_query(pr, sentense, strlen(sentense));
         if (ret < 1) {
-            printf("ERROR %s\n", zsqlite3_proxy_client_get_error_msg(pr));
+            zprintf("ERROR %s\n", zsqlite3_proxy_client_get_error_msg(pr));
             exit(1);
         }
 
@@ -52,39 +51,38 @@ int main(int argc, char **argv)
         while (1) {
             int r = zsqlite3_proxy_client_get_row(pr, &row);
             if (r < 0) {
-                printf("ERROR %s\n", zsqlite3_proxy_client_get_error_msg(pr));
+                zprintf("ERROR %s\n", zsqlite3_proxy_client_get_error_msg(pr));
                 exit(1);
             }
             if (r == 0) {
                 break;
             }
             for (int idx = 0; idx < column; idx++) {
-                printf("%s ",  zbuf_data(row[idx]));
+                zprintf("%s ",  zbuf_data(row[idx]));
             }
-            printf("\n");
+            zprintf("\n");
         }
     } else if (op == 'e') {
         ret = zsqlite3_proxy_client_exec(pr, sentense, strlen(sentense));
         if (ret < 1) {
-            printf("ERROR %s\n", zsqlite3_proxy_client_get_error_msg(pr));
+            zprintf("ERROR %s\n", zsqlite3_proxy_client_get_error_msg(pr));
             exit(1);
         }
-        printf("ok\n");
+        zprintf("ok\n");
     } else if (op == 'l') {
         ret = zsqlite3_proxy_client_log(pr, sentense, strlen(sentense));
         if (ret < 1) {
-            printf("ERROR %s\n", zsqlite3_proxy_client_get_error_msg(pr));
+            zprintf("ERROR %s\n", zsqlite3_proxy_client_get_error_msg(pr));
             exit(1);
         }
-        printf("ok\n");
+        zprintf("ok\n");
     }
     zsqlite3_proxy_client_close(pr);
 }
 #else
-#include <stdio.h>
 int main(int argc, char **argv)
 {
-    printf("unsupported; cmake ../ -DENABLE_SQLITE=yes\n");
+    zprintf("unsupported; cmake ../ -DENABLE_SQLITE=yes\n");
     return 0;
 }
 #endif

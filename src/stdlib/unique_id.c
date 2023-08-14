@@ -18,12 +18,12 @@ static pthread_spinlock_t build_unique_id_lock = PTHREAD_SPINLOCK_INITIALIZER;
 static pthread_mutex_t build_unique_id_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
-static long build_unique_id_plus = 0;
+static ssize_t build_unique_id_plus = 0;
 static pid_t build_unique_id_tid = 0;
 
 char *zbuild_unique_id(char *buf)
 {
-    unsigned long plus;
+    size_t plus;
 #if defined(PTHREAD_SPINLOCK_INITIALIZER)
     pthread_spin_lock(&build_unique_id_lock);
 #else
@@ -44,16 +44,16 @@ char *zbuild_unique_id(char *buf)
     unsigned int plus2 = plus&0XFFF;
     unsigned char dec2hex[18] = "0123456789abcdef";
 
-    sprintf(buf, "%05x%c%lx%c%05x%c", (unsigned int)tv.tv_usec, dec2hex[(plus2>>8)],
-            (long)tv.tv_sec, dec2hex[((plus2>>4)&0XF)], 
+    zsprintf(buf, "%05x%c%zx%c%05x%c", (unsigned int)tv.tv_usec, dec2hex[(plus2>>8)],
+            (size_t)tv.tv_sec, dec2hex[((plus2>>4)&0XF)], 
             ((unsigned int)build_unique_id_tid)&0XFFFFF, dec2hex[(plus2&0XF)]);
 
     return buf;
 }
 
-long long zget_time_from_unique_id(const char *buf)
+ssize_t zget_time_from_unique_id(const char *buf)
 {
-    long long r = 0;
+    ssize_t r = 0;
     for (int i = 6; i < 14; i++) {
         r = (r<<4) + buf[i] - '0';
     }

@@ -14,7 +14,7 @@ int main(int argc, char **argv)
 
     do {
         /* 准备 js */
-        js.array_add(1LL)->array_add(false)->array_add("333")->array_push(555LL);
+        js.array_add(1L)->array_add(false)->array_add("333")->array_push(555L);
         /* 得到 [ 1, false, "333", 555 ] */
         js.debug_show();
     } while (0);

@@ -39,7 +39,7 @@ struct _response_mix_t {
 static zbool_t _zhttpd_response_mix(zhttpd_t *httpd, _response_mix_t *ctx, int mix_type)
 {
     int ret = 1, fd = -1, do_ragne = 0, max_age = ctx->max_age;
-    long long rlen_sum, rlen, offset1, offset2;
+    ssize_t rlen_sum, rlen, offset1, offset2;
     struct stat st;
     char *rwdata = 0, *old_etag, *new_etag, *rwline, *range, *p;
 
@@ -74,7 +74,7 @@ static zbool_t _zhttpd_response_mix(zhttpd_t *httpd, _response_mix_t *ctx, int m
     rwdata = (char *)zmalloc(4096+1);
     if (mix_type == 'f') {
         new_etag = rwdata + 3000;
-        sprintf(new_etag, "\"%lx_%lx\"", st.st_size, (long)st.st_mtime);
+        zsprintf(new_etag, "\"%lx_%zx\"", st.st_size, (size_t)st.st_mtime);
     } else /* if (mix_type == 'm') */ {
         new_etag = (char *)(ctx->new_etag);
     }
@@ -133,10 +133,10 @@ static zbool_t _zhttpd_response_mix(zhttpd_t *httpd, _response_mix_t *ctx, int m
     }
     
     if (do_ragne) {
-        zhttpd_show_log(httpd, "206 %lld/%lld", offset1, offset2-offset1+1);
+        zhttpd_show_log(httpd, "206 %zd/%zd", offset1, offset2-offset1+1);
         zhttpd_response_header_initialization(httpd, 0, "206 Partial Content");
     } else {
-        zhttpd_show_log(httpd, "200 %lld", offset2+1);
+        zhttpd_show_log(httpd, "200 %zd", offset2+1);
     }
     zhttpd_response_header_content_type(httpd, ctx->content_type, 0);
     zhttpd_response_header_content_length(httpd, offset2-offset1+1);
@@ -151,7 +151,7 @@ static zbool_t _zhttpd_response_mix(zhttpd_t *httpd, _response_mix_t *ctx, int m
             max_age = 3600 * 24 * 10;
         }
         if (max_age > 0) {
-            sprintf(rwdata, "max-age=%d", max_age);
+            zsprintf(rwdata, "max-age=%d", max_age);
             zhttpd_response_header(httpd, "Cache-Control", rwdata);
             zhttpd_response_header_date(httpd, "Expires", max_age + 1 + time(0));
         } else if (max_age == 0) {
@@ -164,7 +164,7 @@ static zbool_t _zhttpd_response_mix(zhttpd_t *httpd, _response_mix_t *ctx, int m
     }
 
     if (do_ragne) {
-        sprintf(rwdata, "bytes %lld-%lld/%ld", offset1, offset2, ctx->size);
+        zsprintf(rwdata, "bytes %zd-%zd/%zd", offset1, offset2, ctx->size);
         zhttpd_response_header(httpd, "Content-Range", rwdata);
     }
 
@@ -223,7 +223,7 @@ static zbool_t _zhttpd_response_mix(zhttpd_t *httpd, _response_mix_t *ctx, int m
 
 over:
     if (fd !=-1) {
-        zclose(fd);
+        zclosesocket(fd);
     }
     zfree(rwdata);
     return ret;
@@ -290,7 +290,7 @@ int zhttpd_response_file_with_gzip(zhttpd_t *httpd, const char *gzip_pathname, c
     return zhttpd_response_file_try_gzip(httpd, 0, gzip_pathname, content_type, max_age);
 }
 
-int zhttpd_response_file_data(zhttpd_t *httpd, const void *data, size_t size, const char *content_type, int max_age, long long mtime, const char *etag, zbool_t is_gzip)
+int zhttpd_response_file_data(zhttpd_t *httpd, const void *data, size_t size, const char *content_type, int max_age, ssize_t mtime, const char *etag, zbool_t is_gzip)
 {
     _response_mix_t ctx;
     memset(&ctx, 0, sizeof(_response_mix_t));

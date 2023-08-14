@@ -6,6 +6,8 @@
  * ================================
  */
 
+#include "zc.h"
+
 typedef struct zsdata_t  zsdata_t;
 struct zsdata_t
 {
@@ -26,9 +28,9 @@ struct sysuser_t {
 };
 
 sysuser_t *sysuser_list;
-int sysuser_count;
+static int sysuser_count;
 
-int sysuser_parseline(char *linebuf, zsdata_t * list)
+static int sysuser_parseline(char *linebuf, zsdata_t * list)
 {
     char *ps, *p;
     int i;
@@ -54,9 +56,9 @@ int sysuser_parseline(char *linebuf, zsdata_t * list)
     return i + 1;
 }
 
-void sysuser_load(void)
+static void sysuser_load(void)
 {
-    FILE *fp;
+    FILE *fp = 0;
     char linebuf[102404];
     zsdata_t sdlist[7];
     int i;
@@ -86,7 +88,7 @@ void sysuser_load(void)
     sysuser_list = (sysuser_t *) zmemdup(ulist, count * sizeof(sysuser_t));
 }
 
-void sysuser_unload(void)
+static void sysuser_unload(void)
 {
     int i;
 

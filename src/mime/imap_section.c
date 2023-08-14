@@ -88,7 +88,7 @@ void zmail_set_imap_section(zmail_t *parser)
         cm = rnode->child_head_mime;
         nsection = rnode->nsection;
         if (!strcmp(section, "")) {
-            sprintf(intbuf, "%d", rnode->i + 1);
+            zsprintf(intbuf, "%d", rnode->i + 1);
             zbuf_strcpy(nsection, intbuf);
         } else if ((zargv_len(argv)> 1) && (strncasecmp(fm->type, "multipart/", 11))) {
             zbuf_reset(nsection);
@@ -96,7 +96,7 @@ void zmail_set_imap_section(zmail_t *parser)
                 zbuf_puts(nsection, argv->argv[k-1]);
                 ZBUF_PUT(nsection, '.');
             }
-            sprintf(intbuf, "%d", rnode->i + 1);
+            zsprintf(intbuf, "%d", rnode->i + 1);
             zbuf_strcat(nsection, intbuf);
         } else {
             if (!strcmp(argv->argv[zargv_len(argv) - 1], "0")) {
@@ -105,7 +105,7 @@ void zmail_set_imap_section(zmail_t *parser)
                     zbuf_puts(nsection,argv->argv[k-1]);
                     ZBUF_PUT(nsection, '.');
                 }
-                sprintf(intbuf, "%d", rnode->i + 1);
+                zsprintf(intbuf, "%d", rnode->i + 1);
                 zbuf_strcat(nsection, intbuf);
             } else {
                 zbuf_strcpy(nsection, section);

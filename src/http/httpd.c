@@ -376,7 +376,7 @@ zbool_t zhttpd_request_is_deflate(zhttpd_t *httpd)
     return ((httpd->request_deflate == 1) ? 1 : 0);
 }
 
-long long zhttpd_request_get_content_length(zhttpd_t *httpd)
+ssize_t zhttpd_request_get_content_length(zhttpd_t *httpd)
 {
     return httpd->request_content_length;
 }
@@ -517,7 +517,7 @@ zbool_t zhttpd_response_501(zhttpd_t *httpd)
 void zhttpd_response_header_initialization(zhttpd_t *httpd, const char *version, const char *status)
 {
     char initialization[128 + 1];
-    snprintf(initialization, 128, "%s %s", version ? version : httpd->version, status);
+    zsnprintf(initialization, 128, "%s %s", version ? version : httpd->version, status);
     zstream_puts(httpd->fp, initialization);
     zstream_puts_const(httpd->fp, "\r\n");
     httpd->response_initialization = 1;
@@ -542,7 +542,7 @@ void zhttpd_response_header(zhttpd_t *httpd, const char *name, const char *value
     }
 }
 
-void zhttpd_response_header_date(zhttpd_t *httpd, const char *name, long long value)
+void zhttpd_response_header_date(zhttpd_t *httpd, const char *name, ssize_t value)
 {
     char buf[zvar_rfc1123_date_string_size];
     zbuild_rfc1123_date_string(value, buf);
@@ -566,7 +566,7 @@ void zhttpd_response_header_content_type(zhttpd_t *httpd, const char *value, con
 void zhttpd_response_header_content_length(zhttpd_t *httpd, size_t length)
 {
     char val[32];
-    sprintf(val, "%ld", length);
+    zsprintf(val, "%zd", length);
     zhttpd_response_header(httpd, "Content-Length", val);
 }
 
@@ -618,7 +618,7 @@ int zhttpd_response_printf_1024(zhttpd_t *httpd, const char *format, ...)
         format = "";
     }
     va_start(ap, format);
-    len = vsnprintf(buf, 1024, format, ap);
+    len = zvsnprintf(buf, 1024, format, ap);
     len = ((len < 1024) ? len : (1024 - 1));
     va_end(ap);
     return zstream_write(httpd->fp, buf, len);

@@ -28,7 +28,7 @@ static void pthread_safe_locking_fn(int mode, int n, const char *file, int line)
   }
 }
 
-static unsigned long pthread_safe_id_fn(void)
+static unsigned  pthread_safe_id_fn(void)
 {
   return ((unsigned long)pthread_self());
 }

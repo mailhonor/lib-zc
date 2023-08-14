@@ -16,7 +16,7 @@ int main(int argc, char **argv)
         /* 准备 js */
         js.object_update("str", "string2");
         js.object_update("str", "string");
-        js.object_update("int", 2LL);
+        js.object_update("int", 2L);
         js.object_update("bool", false);
         /* 得到 {"bool":false,"int":2,"str":"string"} */
         js.debug_show();
@@ -31,7 +31,7 @@ int main(int argc, char **argv)
 
     do {
         /* 更改 "int" 的值为 3 */
-        js.object_update("int", (long long)3);
+        js.object_update("int", 3L);
         /* 得到 {"bool":ture,"int":3,"str":"string"} */
         js.debug_show();
     } while (0);
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 
     do {
         /* 增加 "array" => [ 1, false ] */
-        js.object_update("array", new zcc::json(), true)->array_push(1LL)->array_push(false);
+        js.object_update("array", new zcc::json(), true)->array_push(1L)->array_push(false);
         /* 得到 {"array":[1,false],"bool":true,"int":3,"str":{}} */
         js.debug_show();
     } while (0);
