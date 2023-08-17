@@ -11,7 +11,7 @@
 
 void usage(void)
 {
-    zprintf("USAGE: %s config_pathname\n", zvar_progname);
+    zprintf("USAGE: %s config_pathname [ first_filename ] [ second_filename ]\n", zvar_progname);
     exit(0);
 }
 
@@ -22,8 +22,16 @@ int main(int argc, char **argv)
     zbuf_t *tmpbf = zbuf_create(1024);
 
     zmain_argument_run(argc, argv);
+    if (zvar_main_redundant_argc > 0)
+    {
+        fn = zvar_main_redundant_argv[0];
+    }
+    if (zvar_main_redundant_argc > 1)
+    {
+        fn2 = zvar_main_redundant_argv[1];
+    }
 
-    zinfo("file exists 123.txt ? ");
+    zinfo("\nfile exists %s ?", fn);
     if (zfile_exists(fn) < 0)
     {
         zinfo("    error: %d", errno);
@@ -32,30 +40,74 @@ int main(int argc, char **argv)
     {
         zinfo("    none");
     }
+    if (zfile_exists(fn) == 1)
+    {
+        zinfo("    exists");
+    }
 
-    zinfo("create file 123.txt");
+    zinfo("\ncreate file %s", fn);
     if (zfile_put_contents(fn, "abc", 3) < 0)
     {
         zinfo("    error: %d", errno);
     }
+    else
+    {
+        zinfo("    success");
+    }
 
-    zinfo("read file 123.txt");
+    zinfo("\nread file %s", fn);
     if (zfile_get_contents(fn, tmpbf) < 0)
     {
         zinfo("    error: %d", errno);
     }
-    zinfo("123.txt content: %s", zbuf_data(tmpbf));
+    else
+    {
+        zinfo("    content: %s", zbuf_data(tmpbf));
+    }
 
-    zinfo("link 123.txt 456.txt");
+    zinfo("\nfile exists %s ?", fn2);
+    if (zfile_exists(fn2) == 1)
+    {
+        zinfo("    exists");
+        zinfo("\nunlink %s", fn2);
+        if (zunlink(fn2) < 1)
+        {
+            zinfo("    error: %d", errno);
+        }
+        else
+        {
+            zinfo("    success");
+        }
+    }
+
+    zinfo("\nfirst link %s => %s", fn, fn2);
     if (zlink(fn, fn2) < 0)
     {
         zinfo("    error: %d", errno);
     }
+    else
+    {
+        zinfo("    success");
+    }
 
-    zinfo("link 123.txt 456.txt, force");
+    zinfo("\nsecond link %s => %s", fn, fn2);
+    if (zlink(fn, fn2) < 0)
+    {
+        zinfo("    error: %d", errno);
+    }
+    else
+    {
+        zinfo("    success");
+    }
+
+    zinfo("\nthird force link %s => %s", fn, fn2);
     if (zlink_force(fn, fn2, "./") < 0)
     {
         zinfo("    error: %d", errno);
+    }
+    else
+    {
+        zinfo("    success");
     }
 
     return 0;

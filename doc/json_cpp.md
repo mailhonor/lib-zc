@@ -43,6 +43,7 @@ zcc::json *tmpj;
 
 ```
 js->object_update("description", "this is json demo, describe json'apis.");
+// (*js)["description"] = "this is json demo, describe json'apis.";
 
 ```
 
@@ -197,25 +198,59 @@ delete js;
 
 ## 方法: json 的值
 
-### bool &get_bool_value();
+### bool &get_bool_value(bool def = false);
 
 * 获取 bool 值
-* 如果不是 bool 类型, 则首先转换为值为 false 的 bool 类型
+* 如果不是 bool 类型, 则首先转换为值为 bool 类型, 其值:
+  * 原来是 null, 则为 def
+  * 原来是 string, 则:
+    * "t*" => true
+    * "T*" => true
+    * "y*" => true
+    * "Y*" => true
+    * "f*" => false
+    * "F*" => false
+    * "n*" => false
+    * "N*" => false
+    * "1" => true
+    * "0" => false
+    * 其他 => def
+  * 原来是 long/double, 则: 0 为 false, 否则 true
+  * 原来是 array, 则为 def
+  * 原来是 object, 则为 def
 
-### long &get_long_value();
+### ssize_t &get_long_value(ssize_t def = 0);
 
 * 获取 long 值
-* 如果不是 long 类型, 则首先转换为值为 0 的long 类型
+* 如果不是 long 类型, 则首先转换为 long 类型, 其值:
+  * 原来是 null, 则为 def
+  * 原来是 string, 则为 atol(val)
+  * 原来是 bool, 则为 0 或  1
+  * 原来是 double, 则为 long(val)
+  * 原来是 array, 则为 def
+  * 原来是 object, 则为 def
 
-### double &get_double_value();
+### double &get_double_value(double def = 0.0);
 
 * 获取 double 值
-* 如果不是 double 类型, 则首先转换为值为 0 的 double 类型
+* 如果不是 double 类型, 则首先转换为值为 double 类型, 其值:
+  * 原来是 null, 则为 def
+  * 原来是 string, 则为 atof(val)
+  * 原来是 bool, 则为 0.0 或  1.0
+  * 原来是 long, 则为 打印结果
+  * 原来是 array, 则为 def
+  * 原来是 object, 则为 def
 
-### std::string &get_string_value();
+### std::string &get_string_value(const char *def = "");
 
 * 获取 string 值
-* 如果不是 string 类型, 则首先转换为值为 "" 的 string 类型
+* 如果不是 string 类型, 则首先转换为 string 类型, 其值:
+  * 原来是 null, 则为 def
+  * 原来是 bool, 则为 "0" 或  "1"
+  * 原来是 long, 则为 打印结果
+  * 原来是 double, 则为 打印结果
+  * 原来是 array, 则为 def
+  * 原来是 object, 则为 def
 
 ### const std::vector&lt;json *&gt; &get_array_value();
 
@@ -252,6 +287,11 @@ delete js;
 
 * 移除键 key 及对应的 json
 * 如果存在则其值赋值给 *old_element, 如果 old_element为了 0 则销毁
+
+### std::string object_get_string_value(const std::string &key, const char *def = ""); <BR />ssize_t object_get_long_value(const std::string &key, ssize_t def = 0); <BR />bool object_get_bool_value(const std::string &key, bool def = false);
+* 扩展
+* 如果不是 object 类型, 则先转为 object 类型
+* 获取子对象的值, 见 上面的 get_string_value 等
 
 ## 方法: 数组操作
 
@@ -321,6 +361,24 @@ delete js;
 * 执行: json.get_by_path_vec(json, "group", "linux", "2", "me", 0);
 * 返回: {age:18, sex:"male"}
 
+## 操作符重载
+
+举例子:
+
+```
+// 对象
+zcc::json js;
+js["abc"] = "xxx1";
+js["def"] = false;
+// 数组
+zcc::json js;
+js[12] = new json();
+js[1] = "xxx2";
+// 自身
+zcc::json js = "abc";
+js = 123;
+```
+
 ## 方法: 反序列化/序列化/深度复制
 
 ### bool unserialize(const char *jstr, int jlen);
@@ -335,9 +393,13 @@ const char *s =  "{\"errcode\": \"-801\", \"errmsg\": \"Domain Not Exist\"}\r\n"
 js.unserialize(s, -1);
 ```
 
-### json *serialize(std::string &result, bool strict_flag = false);
+### json *serialize(std::string &result, int flag = 0);
 
 * 对 j 做序列化, 结果存储(追加)到 result
+* flag 支持 json_serialize_strict | json_serialize_pretty
+* json_serialize_strict: 严谨, 尽量满足规范
+* json_serialize_pretty: 格式化文本
+
 
 ### json *deep_copy();
 

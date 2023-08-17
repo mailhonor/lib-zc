@@ -186,27 +186,79 @@ int zwin32_code_to_errno(unsigned long w32Err)
     return EINVAL;
 }
 
-int zMultiByteToWideChar_any(const char *in, int in_len, void * /* wchar_t * */ result)
+// UTF-16 (wide character)
+// 返回结果是字符数
+// result_size 是 结果(result_ptr)buffer 的字符数
+// in_len 是 输入(in) 的字节数
+// https://learn.microsoft.com/zh-cn/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar
+int zMultiByteToWideChar_any(const char *in, int in_len, wchar_t *result_ptr, int result_size)
 {
-    wchar_t *result_buf = (wchar_t *)result;
+    int codepage = AreFileApisANSI() ? CP_ACP : CP_OEMCP;
+    wchar_t *result_buf = (wchar_t *)result_ptr;
     result_buf[0] = L'\0';
-    if (in_len < 1)
-    {
-        in_len = strlen(in);
-    }
-    int tmp_len = in_len + 1;
-    int ret_len = MultiByteToWideChar(CP_ACP, 0, in, tmp_len, NULL, 0);
-    if (!ret_len)
+    int ret_len = MultiByteToWideChar(codepage, 0, in, in_len, NULL, 0);
+    if (ret_len < 1)
     {
         return -1;
     }
-    tmp_len = MultiByteToWideChar(CP_ACP, 0, in, tmp_len, result_buf, ret_len);
-    if (tmp_len == 0)
+    ret_len = MultiByteToWideChar(codepage, 0, in, in_len, result_buf, result_size);
+    if (ret_len < 1)
     {
         return -1;
     }
-    result_buf[ret_len - 1] = L'\0';
-    return ret_len - 1;
+    if (in_len < 0)
+    {
+        result_buf[ret_len - 1] = L'\0';
+        return ret_len - 1;
+    }
+    else
+    {
+        result_buf[ret_len] = L'\0';
+        return ret_len;
+    }
+}
+
+// 返回结果是字节数
+// in_size 是输入(in)的字符数
+// result_size 是结果(result_ptr)buffer的字节数
+// https://learn.microsoft.com/zh-cn/windows/win32/api/stringapiset/nf-stringapiset-widechartomultibyte
+int zWideCharToUTF8(const wchar_t *in, int in_size, char *result_ptr, int result_size)
+{
+    char *result_buf = (char *)result_ptr;
+    result_buf[0] = 0;
+    int ret_len = WideCharToMultiByte(CP_UTF8, 0, in, in_size, 0, 0, 0, 0);
+    if (ret_len < 1)
+    {
+        return -1;
+    }
+    ret_len = WideCharToMultiByte(CP_UTF8, 0, in, in_size, result_buf, ret_len, 0, 0);
+    if (ret_len < 1)
+    {
+        return -1;
+    }
+    if (in_size < 0)
+    {
+        result_buf[ret_len - 1] = 0;
+        return ret_len - 1;
+    }
+    else
+    {
+        result_buf[ret_len] = 0;
+        return ret_len;
+    }
+}
+
+int zMultiByteToUTF8_any(const char *in, int in_len, char *result_ptr, int result_size)
+{
+    wchar_t *unicode_ptr = zmalloc(sizeof(wchar_t) * result_size + 16);
+    int unicode_len = zMultiByteToWideChar_any(in, in_len, unicode_ptr, result_size);
+    if (unicode_len < 1) {
+        zfree(unicode_ptr);
+        return -1;
+    }
+    int ret = zWideCharToUTF8(unicode_ptr, unicode_len, result_ptr, result_size);
+    zfree(unicode_ptr);
+    return ret;
 }
 
 ssize_t zgetdelim(char **lineptr, size_t *n, int delim, FILE *stream)

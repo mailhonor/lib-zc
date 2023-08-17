@@ -23,7 +23,7 @@
 #endif // _WIN32
 
 #ifndef Z_MAX_PATH
-#define Z_MAX_PATH 1024
+#define Z_MAX_PATH 4096
 #endif // Z_MAX_PATH
 
 ssize_t zfile_get_size(const char *pathname)
@@ -572,12 +572,18 @@ int zrename(const char *oldpath, const char *newpath)
 #ifdef _WIN32
     wchar_t oldpathw[Z_MAX_PATH + 1];
     wchar_t newpathw[Z_MAX_PATH + 1];
-    if ((zMultiByteToWideChar_any(oldpath, -1, oldpathw) < 1) || (zMultiByteToWideChar_any(newpath, -1, newpathw) < 1))
+    if ((zMultiByteToWideChar_any(oldpath, -1, oldpathw, Z_MAX_PATH) < 1) || (zMultiByteToWideChar_any(newpath, -1, newpathw, Z_MAX_PATH) < 1))
     {
+#ifdef _WIN32
+        errno = zget_errno();
+#endif // _WIN32
         return -1;
     }
     if (!MoveFileExW(oldpathw, newpathw, MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED))
     {
+#ifdef _WIN32
+        errno = zget_errno();
+#endif // _WIN32
         return -1;
     }
     return 0;
@@ -591,7 +597,7 @@ int zunlink(const char *pathname)
 #endif // __linux__
 #ifdef _WIN32
     wchar_t pathnamew[Z_MAX_PATH + 1];
-    if (zMultiByteToWideChar_any(pathname, -1, pathnamew) < 1)
+    if (zMultiByteToWideChar_any(pathname, -1, pathnamew, Z_MAX_PATH) < 1)
     {
         return -1;
     }
@@ -618,12 +624,18 @@ int zlink(const char *oldpath, const char *newpath)
 #ifdef _WIN32
     wchar_t oldpathw[Z_MAX_PATH + 1];
     wchar_t newpathw[Z_MAX_PATH + 1];
-    if ((zMultiByteToWideChar_any(oldpath, -1, oldpathw) < 1) || (zMultiByteToWideChar_any(newpath, -1, newpathw) < 1))
+    if ((zMultiByteToWideChar_any(oldpath, -1, oldpathw, Z_MAX_PATH) < 1) || (zMultiByteToWideChar_any(newpath, -1, newpathw, Z_MAX_PATH) < 1))
     {
+#ifdef _WIN32
+        errno = zget_errno();
+#endif // _WIN32
         return -1;
     }
     if (!CreateHardLinkW(newpathw, oldpathw, NULL))
     {
+#ifdef _WIN32
+        errno = zget_errno();
+#endif // _WIN32
         return -1;
     }
     return 0;
@@ -671,18 +683,24 @@ int zsymlink(const char *oldpath, const char *newpath)
     BOOLEAN res;
     wchar_t oldpathw[Z_MAX_PATH + 1];
     wchar_t newpathw[Z_MAX_PATH + 1];
-    if ((zMultiByteToWideChar_any(oldpath, -1, oldpathw) < 1) || (zMultiByteToWideChar_any(newpath, -1, newpathw) < 1))
+    if ((zMultiByteToWideChar_any(oldpath, -1, oldpathw, Z_MAX_PATH) < 1) || (zMultiByteToWideChar_any(newpath, -1, newpathw, Z_MAX_PATH) < 1))
     {
         return -1;
     }
     if ((attr = GetFileAttributesW(oldpathw)) == INVALID_FILE_ATTRIBUTES)
     {
+#ifdef _WIN32
+        errno = zget_errno();
+#endif // _WIN32
         return -1;
     }
     WINBASEAPI BOOLEAN APIENTRY CreateSymbolicLinkW (LPCWSTR lpSymlinkFileName, LPCWSTR lpTargetFileName, DWORD dwFlags);
     res = CreateSymbolicLinkW(oldpathw, oldpathw, (attr & FILE_ATTRIBUTE_DIRECTORY ? 1 : 0));
     if (!res)
     {
+#ifdef _WIN32
+        errno = zget_errno();
+#endif // _WIN32
         return -1;
     }
     return 0;

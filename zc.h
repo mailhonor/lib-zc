@@ -284,6 +284,9 @@ zinline ssize_t zgetline(char **lineptr, size_t *n, FILE *stream)
 void *zmemmem(const void *l, size_t l_len, const void *s, size_t s_len);
 ssize_t ztimegm(/* struct tm * */ void *void_tm);
 int zclosesocket(int sock);
+int zMultiByteToWideChar_any(const char *in, int in_len, wchar_t *result_ptr, int result_size);
+int zWideCharToUTF8(const wchar_t *in, int in_size, char *result_ptr, int result_size);
+int zMultiByteToUTF8_any(const char *in, int in_len, char *result_ptr, int result_size);
 #else // _WIN32
 #define zprintf printf
 #define zsprintf sprintf
@@ -2124,8 +2127,6 @@ zbool_t zset_core_file_size(int megabyte);
 zbool_t zset_cgroup_name(const char *name);
 
 /* file, src/stdlib/file.c ########################################## */
-int zMultiByteToWideChar_any(const char *in, int in_len, void * /* wchar_t * */ result);
-
 /* -1: 错, 0: 不存在, 1: 存在 */
 int zfile_exists(const char *pathname);
 
