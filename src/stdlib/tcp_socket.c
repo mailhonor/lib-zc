@@ -11,16 +11,15 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <errno.h>
-#ifdef __linux__
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#endif // __linux__
 #ifdef _WIN32
 #include <Winsock2.h>
 #include <ws2tcpip.h>
 #include <pthread.h>
+#else // _WIN32
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #endif // _WIN32
 
 /* accept */
@@ -28,19 +27,6 @@ static int sane_accept(int sock, struct sockaddr *sa, socklen_t *len)
 {
     zWSAStartup();
     static int accept_ok_errors[] = {
-#ifdef __linux__
-        EAGAIN,
-        ECONNREFUSED,
-        ECONNRESET,
-        EHOSTDOWN,
-        EHOSTUNREACH,
-        ENETDOWN,
-        ENETUNREACH,
-        ENOTCONN,
-        EWOULDBLOCK,
-        ENOBUFS, /* HPUX11 */
-        ECONNABORTED,
-#endif // __linux__
 #ifdef _WIN32
         WSAECONNREFUSED,
         WSAECONNRESET,
@@ -52,6 +38,18 @@ static int sane_accept(int sock, struct sockaddr *sa, socklen_t *len)
         WSAEWOULDBLOCK,
         WSAENOBUFS, /* HPUX11 */
         WSAECONNABORTED,
+#else // _WIN32
+        EAGAIN,
+        ECONNREFUSED,
+        ECONNRESET,
+        EHOSTDOWN,
+        EHOSTUNREACH,
+        ENETDOWN,
+        ENETUNREACH,
+        ENOTCONN,
+        EWOULDBLOCK,
+        ENOBUFS, /* HPUX11 */
+        ECONNABORTED,
 #endif // _WIN32
         0,
     };

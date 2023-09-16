@@ -19,6 +19,13 @@ static void ___usage()
     exit(1);
 }
 
+static void debug_protocol_fn(int rw, const void *mem, int len)
+{
+    std::string s;
+    s.append((const char *)mem, len);
+    zprintf("debug_protocol_fn, %c: %s\n", rw, s.c_str());
+}
+
 int main(int argc, char **argv)
 {
     SSL_CTX *ssl_ctx = 0;
@@ -45,6 +52,7 @@ int main(int argc, char **argv)
     zcc::imap_client ic;
     ic.set_debug_mode();
     ic.set_verbose_mode();
+    ic.set_debug_protocol_fn(debug_protocol_fn);
     ic.set_timeout(10);
     ic.set_destination(server);
     ic.set_user_password(user, pass);

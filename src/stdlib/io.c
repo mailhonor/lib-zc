@@ -9,67 +9,16 @@
 #include "zc.h"
 #include <errno.h>
 #include <sys/file.h>
-#ifdef __linux__
+#ifdef _WIN32
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+#include <Winsock2.h>
+#include <fcntl.h>
+#include <handleapi.h>
+#else // _WIN32
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#endif // __linux__
-#ifdef _WIN32
-#include <Winsock2.h>
-#include <fcntl.h>
-#endif // WIN32
-
-#ifdef __linux__
-static int zrwable_true_do(int fd, int read_flag, int write_flag)
-{
-    struct pollfd pollfd;
-    int flags = 0, revs;
-
-    if (read_flag)
-    {
-        flags |= POLLIN;
-    }
-    if (write_flag)
-    {
-        flags |= POLLOUT;
-    }
-
-    pollfd.fd = fd;
-    pollfd.events = flags;
-    for (;;)
-    {
-        switch (poll(&pollfd, 1, 0))
-        {
-        case -1:
-            if (errno != EINTR)
-            {
-                return -1;
-            }
-            continue;
-        case 0:
-            return 0;
-        default:
-            revs = pollfd.revents;
-            if (revs & POLLNVAL)
-            {
-                return -1;
-            }
-            return 1;
-            if (revs & (POLLIN | POLLOUT))
-            {
-                return 1;
-            }
-            return -1;
-            if (revs & (POLLERR | POLLHUP | POLLRDHUP))
-            {
-                return -1;
-            }
-        }
-    }
-
-    return 0;
-}
-#endif // __linux__
+#endif // _WIN32
 
 #ifdef _WIN32
 static int zrwable_true_do(int fd, int read_flag, int write_flag)
@@ -120,6 +69,60 @@ static int zrwable_true_do(int fd, int read_flag, int write_flag)
 
     return 0;
 }
+#else // _WIN32
+static int zrwable_true_do(int fd, int read_flag, int write_flag)
+{
+    struct pollfd pollfd;
+    int flags = 0, revs;
+
+    if (read_flag)
+    {
+        flags |= POLLIN;
+    }
+    if (write_flag)
+    {
+        flags |= POLLOUT;
+    }
+
+    pollfd.fd = fd;
+    pollfd.events = flags;
+    for (;;)
+    {
+        switch (poll(&pollfd, 1, 0))
+        {
+        case -1:
+            if (errno != EINTR)
+            {
+                return -1;
+            }
+            continue;
+        case 0:
+            return 0;
+        default:
+            revs = pollfd.revents;
+            if (revs & POLLNVAL)
+            {
+                return -1;
+            }
+            return 1;
+            if (revs & (POLLIN | POLLOUT))
+            {
+                return 1;
+            }
+            return -1;
+            if (revs & (POLLERR | POLLHUP
+#ifdef __linux__
+				    | POLLRDHUP
+#endif
+				    ))
+            {
+                return -1;
+            }
+        }
+    }
+
+    return 0;
+}
 #endif // _WIN32
 
 int zrwable(int fd)
@@ -139,7 +142,15 @@ int zwriteable(int fd)
 
 int znonblocking(int fd, int no)
 {
-#ifdef __linux__
+#ifdef _WIN32
+    u_long flags = (no ? 1 : 0);
+    if (ioctlsocket(fd, FIONBIO, &flags) == SOCKET_ERROR)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+    return flags;
+#else // _WIN32
     int flags;
     if ((flags = fcntl(fd, F_GETFL, 0)) < 0)
     {
@@ -150,23 +161,19 @@ int znonblocking(int fd, int no)
         return -1;
     }
     return ((flags & O_NONBLOCK) ? 1 : 0);
-#endif // __linux__
-
-#ifdef _WIN32
-    u_long flags = (no ? 1 : 0);
-    if (ioctlsocket(fd, FIONBIO, &flags) == SOCKET_ERROR)
-    {
-        errno = EINVAL;
-        return -1;
-    }
-    return flags;
 #endif // _WIN32
     return -1;
 }
 
 int zclose_on_exec(int fd, int on)
 {
-#ifdef __linux__
+#ifdef _WIN32
+    if (!SetHandleInformation((HANDLE)fd, HANDLE_FLAG_INHERIT, 0))
+    {
+        return -1;
+    }
+    return 1;
+#else // _WIN32
     int flags;
     if ((flags = fcntl(fd, F_GETFD, 0)) < 0)
     {
@@ -177,9 +184,6 @@ int zclose_on_exec(int fd, int on)
         return -1;
     }
     return ((flags & FD_CLOEXEC) ? 1 : 0);
-#endif // __linux__
-#ifdef _WIN32
-    return on;
 #endif // _WIN32
     return -1;
 }

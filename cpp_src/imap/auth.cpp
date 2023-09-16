@@ -43,7 +43,7 @@ bool imap_client::auth()
     }
 
     password_error_ = false;
-    if (ok_no_bad_ == result_onb::bad)
+    if (ok_no_bad_ == result_onb::no)
     {
         password_error_ = true;
         zcc_imap_client_info("imap 登录(LOGIN)失败");

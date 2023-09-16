@@ -119,3 +119,11 @@ int zget_mac_address(zargv_t *mac_list)
     return 0;
 }
 #endif // WIN32
+
+#ifdef __APPLE__
+int zget_mac_address(zargv_t *mac_list)
+{
+    return -1;
+}
+#endif // __APPLE__
+

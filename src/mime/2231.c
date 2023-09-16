@@ -51,30 +51,30 @@ void zmime_header_line_get_utf8_2231(const char *src_charset_def, const char *in
         charset = zbuf_data(charset_buf);
         start = p;
         start_len = pend - p;
-    } else {
-        charset = (char *)(void *)src_charset_def;
-        start = (char *)(void *)in_line;
-        start_len = in_len;
-    }
-
-    zbuf_t *tmps = zbuf_create(in_len);
-    zbuf_reset(tmps);
-    for(i=0;i<start_len;i++) {
-        ch = start[i];
-        if (ch!='%') {
+        
+        // decode
+        zbuf_t *tmps = zbuf_create(in_len);
+        zbuf_reset(tmps);
+        for(i=0;i<start_len;i++) {
+            ch = start[i];
+            if (ch!='%') {
+                ZBUF_PUT(tmps, ch);
+                continue;
+            }
+            if (i+1 > start_len) {
+                break;
+            }
+            ch = (zchar_xdigitval_vector[(int)(start[i+1])]<<4) | (zchar_xdigitval_vector[(int)(start[i+2])]);
             ZBUF_PUT(tmps, ch);
-            continue;
+            i += 2;
         }
-        if (i+1 > start_len) {
-            break;
-        }
-        ch = (zchar_xdigitval_vector[(int)(start[i+1])]<<4) | (zchar_xdigitval_vector[(int)(start[i+2])]);
-        ZBUF_PUT(tmps, ch);
-        i += 2;
+        zmime_iconv(charset, zbuf_data(tmps), zbuf_len(tmps), result);
+        zbuf_free(tmps);
+        return;
+    } else {
+        zmime_header_line_get_utf8(src_charset_def, in_line, in_len, result);
+        return;
     }
-    zmime_iconv(charset, zbuf_data(tmps), zbuf_len(tmps), result);
-    zbuf_free(tmps);
-    return;
 err:
     zbuf_memcpy(result, in_src, in_len);
 }

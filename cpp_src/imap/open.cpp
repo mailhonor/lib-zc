@@ -17,6 +17,19 @@ void imap_client::set_ssl_tls(bool ssl_mode, bool tls_mode, SSL_CTX *ssl_ctx)
     ssl_ctx_ = ssl_ctx;
 }
 
+void imap_client::set_ssl_mode(SSL_CTX *ssl_ctx, bool tf)
+{
+    ssl_ctx_ = ssl_ctx;
+    ssl_mode_ = tf;
+}
+
+void imap_client::set_tls_mode(SSL_CTX *ssl_ctx, bool tf, bool try_mode)
+{
+    ssl_ctx_ = ssl_ctx;
+    tls_mode_ = tf;
+    tls_try_mode_ = try_mode;
+}
+
 void imap_client::set_destination(const char *destination)
 {
     destination_ = destination;
@@ -24,6 +37,28 @@ void imap_client::set_destination(const char *destination)
 void imap_client::set_timeout(int timeout)
 {
     timeout_ = timeout;
+}
+
+bool imap_client::do_startTLS()
+{
+    if (ssl_flag_)
+    {
+        return true;
+    }
+    if (!do_quick_cmd("S STARTTLS", true))
+    {
+        return false;
+    }
+
+    if (fp_.tls_connect(ssl_ctx_) < 0)
+    {
+        connection_error_ = true;
+        zcc_imap_client_error("建立SSL(%s)", destination_.c_str());
+        return false;
+    }
+    ssl_flag_ = true;
+
+    return true;
 }
 
 bool imap_client::connect(int times)
@@ -125,6 +160,17 @@ bool imap_client::open()
     if (ok_no_bad_ != result_onb::ok)
     {
         return true;
+    }
+
+    if (tls_mode_)
+    {
+        if (!do_startTLS())
+        {
+            if (!tls_try_mode_)
+            {
+                return false;
+            }
+        }
     }
 
     if ((!auth()) || (!result_is_ok()))

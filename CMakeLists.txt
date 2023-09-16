@@ -15,9 +15,11 @@ IF(CMAKE_SYSTEM_NAME MATCHES "Windows")
 	set(platform_lib_dirs C:/_dev/vcpkg-master/installed/x64-mingw-static/lib C:/_dev/mingw64/x86_64-w64-mingw32/lib)
 	set(platform_libs Winmm Ws2_32 Crypt32 Iphlpapi)
 ENDIF()
+
 IF(EXISTS "${PROJECT_SOURCE_DIR}/dev/platform.cmake")
     include("${PROJECT_SOURCE_DIR}/dev/platform.cmake")
 ENDIF()
+
 
 set(build_target_auto_int_pname_idx 10)
 set(build_target_auto_int_name_idx 10)
@@ -90,8 +92,10 @@ set_target_properties(zc PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DI
 IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
     ADD_LIBRARY(zc_coroutine STATIC ${COROUTINE_SOURCES})
     target_compile_options(zc_coroutine PRIVATE ${my_compile_definitions})
-    zcc_problem_FILE_macro(zc_croutinue)
+    zcc_problem_FILE_macro(zc_coroutine)
     set_target_properties(zc_coroutine PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/)
+ELSE()
+    ADD_LIBRARY(zc_coroutine STATIC src/stdlib/log.c)
 ENDIF(CMAKE_SYSTEM_NAME MATCHES "Linux")
 
 file(GLOB SAMPLE_SOURCES "sample/*/CMakeLists.txt" "cpp_sample/*/CMakeLists.txt")

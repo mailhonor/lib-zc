@@ -2147,11 +2147,11 @@ int zstdin_get_contents(zbuf_t *bf);
 /* mmap reader */
 struct zmmap_reader_t
 {
-#ifdef __linux__
-    int fd;
-#else           // __linux__
+#ifdef _WIN32
     zbuf_t *file_buf;
-#endif          // __linux__
+#else           // _WIN32
+    int fd;
+#endif          // _WIN32
     int len;    /* 映射后, 长度 */
     char *data; /* 映射后, 指针 */
 };
@@ -4671,21 +4671,30 @@ public:
     inline bool result_is_bad() { return (ok_no_bad_ == result_onb::bad); }
     inline bool error_is_connection() { return connection_error_; }
     inline bool error_is_password() { return password_error_; }
-    void set_debug_mode(bool tf = true) { debug_mode_ = tf; }
-    void set_verbose_mode(bool tf = true) { verbose_mode_ = tf; }
+    inline void set_debug_mode(bool tf = true) { debug_mode_ = tf; }
+    inline void set_verbose_mode(bool tf = true) { verbose_mode_ = tf; }
+    inline void set_debug_protocol_fn(void (*fn)(int /* 'S', 'C' */ server_or_client, const void *data_ptr, int data_len))
+    {
+        debug_protocol_fn_ = fn;
+    }
+
     void set_simple_line_length_limit(int limit);
     void set_user_password(const char *user, const char *password);
     void set_destination(const char *destination);
     void set_timeout(int timeout);
-    void set_ssl_tls(bool ssl_mode, bool tls_mode, SSL_CTX *ssl_ctx);
+    void set_ssl_tls(bool ssl_mode, bool tls_mode, SSL_CTX *ssl_ctx); // 随时会作废
+    void set_ssl_mode(SSL_CTX *ssl_ctx, bool tf = true);
+    void set_tls_mode(SSL_CTX *ssl_ctx, bool tf = true, bool try_mode = false);
     void set_id(const char *id);
-    inline void set_id(const std::string &id) {
+    inline void set_id(const std::string &id)
+    {
         set_id(id.c_str());
     }
     ssl_iostream &get_iostream() { return fp_; }
     bool open();
     void close();
     bool do_quick_cmd(const std::string &cmd, bool check_result_is_ok = false);
+    bool do_startTLS();
     bool cmd_capability(bool force = false);
     bool cmd_id(const char *id = "");
     inline bool cmd_id(const std::string &id)
@@ -4781,11 +4790,14 @@ protected:
     SSL_CTX *ssl_ctx_{NULL};
     bool ssl_mode_{false};
     bool tls_mode_{false};
+    bool tls_try_mode_{false};
     std::string destination_;
     std::string capability_;
     std::string id_;
     std::string last_selected_;
     int simple_line_length_limit_{102400};
+    void (*debug_protocol_fn_)(int /* 'S', 'C' */ server_or_client, const void *data_ptr, int data_len){0};
+    std::vector<std::string> *record_protocol_vector_{0};
 
 private:
     result_onb ok_no_bad_{ok};

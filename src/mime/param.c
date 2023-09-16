@@ -261,14 +261,25 @@ void zmime_header_line_decode_content_disposition_inner(zmail_t *parser, const c
                 filename2231_tmpbf = zmail_zbuf_cache_require(parser, 1024);
             }
             zbuf_memcat(filename2231_tmpbf, value, value_len);
-            if (!flag_2231) {
+            if (!flag_2231)
+            {
                 flag_2231 = 1;
-                if (key[9] != '0') {
-                    charset_2231 = 1;
-                } else if (key_len > 9) {
-                    if (key[10] =='*') {
-                        charset_2231 = 1;
+                if (key_len == 9) {
+                    int count = 0;
+                    for (int i = 0; i < value_len; i++) {
+                        if (((unsigned char *)value)[i] == '\'') {
+                            count++;
+                        }
                     }
+                    if (count > 1) {
+                        charset_2231 = 1;
+                    } else {
+                        charset_2231 = 0;
+                    }
+                } else if (key_len == 10) {
+                    charset_2231 = 0;
+                } else if (key_len == 11) {
+                    charset_2231 = 1;
                 }
             }
         }

@@ -10,12 +10,7 @@
 #ifndef ___ZC_ZCC_MODE___
 #include "zc.h"
 #include <iconv.h>
-#ifdef __linux__
 #include <errno.h>
-#endif // __linux__
-#ifdef _WIN32
-#include <Winsock2.h>
-#endif // _WIN32
 int zvar_charset_debug = 0;
 int zvar_charset_uconv_mode = 0;
 #else
@@ -23,9 +18,9 @@ int zvar_charset_uconv_mode = 0;
 
 #define mydebug(fmt, args...) \
     if (zvar_charset_debug)   \
-    {                         \
-        zinfo(fmt, ##args);   \
-    }
+{                         \
+    zinfo(fmt, ##args);   \
+}
 
 #define ZCHARSET_ICONV_ERROR_OPEN (-2016)
 
@@ -180,187 +175,155 @@ static inline int charset_iconv_base(charset_iconv_t *ic, char *_in_str, int _in
             out_converted_len += t_olen;
             break;
         }
-#ifdef __linux__
-        errno2 = errno;
+        errno2 = zget_errno();
         if (errno2 == E2BIG)
         {
             break;
         }
         else if (errno2 == EILSEQ || errno2 == EINVAL)
         {
-#endif // __linux__
-#ifdef _WIN32
-            errno2 = GetLastError();
-            if (errno2 == WSAEINVAL)
-            {
-#endif // _WIN32
-                in_str++;
-                in_len--;
-                ic->omit_invalid_bytes_count++;
-                if (ic->omit_invalid_bytes_count > ic->omit_invalid_bytes)
-                {
-                    break;
-                }
-                in_converted_len += 1;
-                continue;
-            }
-            else
+            in_str++;
+            in_len--;
+            ic->omit_invalid_bytes_count++;
+            if (ic->omit_invalid_bytes_count > ic->omit_invalid_bytes)
             {
                 break;
             }
-        }
-
-        ic->in_converted_len = in_converted_len;
-
-        return out_converted_len;
-    }
-
-#ifndef ___ZC_ZCC_MODE___
-    int zcharset_iconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
-#else
-int charset_iconv(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
-#endif
-    {
-        if (zvar_charset_uconv_mode)
-        {
-#ifndef ___ZC_ZCC_MODE___
-            zfatal("run zcharset_convert_use_uconv first");
-#else
-        zfatal("run zcc::charset_convert_use_uconv instead of zcharset_convert_use_uconv first");
-#endif
-        }
-        charset_iconv_t ic_buf, *ic = &ic_buf;
-        char buf[4910];
-        int len;
-        char *in_str;
-        int in_len;
-        int out_converted_len = 0;
-        char *str_running;
-        int len_running;
-        zbuf_reset_cpp(dest);
-
-        memset(ic, 0, sizeof(charset_iconv_t));
-        ic->from_charset = (char *)(from_charset);
-        ic->to_charset = (char *)(to_charset);
-        if (omit_invalid_bytes_limit < 0)
-        {
-            ic->omit_invalid_bytes = (256 * 256 * 256 * 127 - 1);
+            in_converted_len += 1;
+            continue;
         }
         else
         {
-            ic->omit_invalid_bytes = omit_invalid_bytes_limit;
+            break;
         }
-
-        in_str = (char *)(src);
-        in_len = src_len;
-        if (in_len < 0)
-        {
-            in_len = strlen(src);
-        }
-
-        while (in_len > 0)
-        {
-            str_running = buf;
-            len_running = 4096;
-            len = charset_iconv_base(ic, in_str, in_len, str_running, len_running);
-            if (len < 0)
-            {
-                out_converted_len = -1;
-                break;
-            }
-            in_str += ic->in_converted_len;
-            in_len -= ic->in_converted_len;
-
-            if (len == 0)
-            {
-                break;
-            }
-            out_converted_len += len;
-            zbuf_memcat_cpp(dest, buf, len);
-        }
-
-        if ((ic->ic) && (ic->ic != (iconv_t)-1))
-        {
-            iconv_close(ic->ic);
-        }
-
-        if (src_converted_len)
-        {
-            *src_converted_len = in_str - (char *)(src);
-        }
-        if (omit_invalid_bytes_count)
-        {
-            *omit_invalid_bytes_count = ic->omit_invalid_bytes_count;
-        }
-
-        return out_converted_len;
     }
-    /*
-     * iconv static lib, missing libiconv and GCONV_PATH mismatched.
-     * 1, download latest libiconv;
-     * 2, ./configure --enable-static=PKGS
-     * 3, make
-     * 4, ls lib/.libs/iconv.o lib/.libs/localcharset.o lib/.libs/relocatable.o
-     */
+
+    ic->in_converted_len = in_converted_len;
+
+    return out_converted_len;
+}
 
 #ifndef ___ZC_ZCC_MODE___
-    int (*zcharset_convert)(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *result, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count) = zcharset_iconv;
+int zcharset_iconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
+#else
+int charset_iconv(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
+#endif
+{
+    if (zvar_charset_uconv_mode)
+    {
+#ifndef ___ZC_ZCC_MODE___
+        zfatal("run zcharset_convert_use_uconv first");
+#else
+        zfatal("run zcc::charset_convert_use_uconv instead of zcharset_convert_use_uconv first");
+#endif
+    }
+    charset_iconv_t ic_buf, *ic = &ic_buf;
+    char buf[4910];
+    int len;
+    char *in_str;
+    int in_len;
+    int out_converted_len = 0;
+    char *str_running;
+    int len_running;
+    zbuf_reset_cpp(dest);
+
+    memset(ic, 0, sizeof(charset_iconv_t));
+    ic->from_charset = (char *)(from_charset);
+    ic->to_charset = (char *)(to_charset);
+    if (omit_invalid_bytes_limit < 0)
+    {
+        ic->omit_invalid_bytes = (256 * 256 * 256 * 127 - 1);
+    }
+    else
+    {
+        ic->omit_invalid_bytes = omit_invalid_bytes_limit;
+    }
+
+    in_str = (char *)(src);
+    in_len = src_len;
+    if (in_len < 0)
+    {
+        in_len = strlen(src);
+    }
+
+    while (in_len > 0)
+    {
+        str_running = buf;
+        len_running = 4096;
+        len = charset_iconv_base(ic, in_str, in_len, str_running, len_running);
+        if (len < 0)
+        {
+            out_converted_len = -1;
+            break;
+        }
+        in_str += ic->in_converted_len;
+        in_len -= ic->in_converted_len;
+
+        if (len == 0)
+        {
+            break;
+        }
+        out_converted_len += len;
+        zbuf_memcat_cpp(dest, buf, len);
+    }
+
+    if ((ic->ic) && (ic->ic != (iconv_t)-1))
+    {
+        iconv_close(ic->ic);
+    }
+
+    if (src_converted_len)
+    {
+        *src_converted_len = in_str - (char *)(src);
+    }
+    if (omit_invalid_bytes_count)
+    {
+        *omit_invalid_bytes_count = ic->omit_invalid_bytes_count;
+    }
+
+    return out_converted_len;
+}
+/*
+ * iconv static lib, missing libiconv and GCONV_PATH mismatched.
+ * 1, download latest libiconv;
+ * 2, ./configure --enable-static=PKGS
+ * 3, make
+ * 4, ls lib/.libs/iconv.o lib/.libs/localcharset.o lib/.libs/relocatable.o
+ */
+
+#ifndef ___ZC_ZCC_MODE___
+int (*zcharset_convert)(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *result, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count) = zcharset_iconv;
 #else
 int (*charset_convert)(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &result, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count) = charset_iconv;
 #endif
 
 #ifndef ___ZC_ZCC_MODE___
-    void zcharset_convert_to_utf8(const char *from_charset, const char *data, int size, zbuf_t *result)
+void zcharset_convert_to_utf8(const char *from_charset, const char *data, int size, zbuf_t *result)
 #else
 void charset_convert_to_utf8(const char *from_charset, const char *data, int size, std::string &result)
 #endif
+{
+    char f_charset_buf[zvar_charset_name_max_size + 1];
+    const char *f_charset = from_charset;
+    int detected = 0;
+
+    zbuf_reset_cpp(result);
+
+    if (size < 1)
     {
-        char f_charset_buf[zvar_charset_name_max_size + 1];
-        const char *f_charset = from_charset;
-        int detected = 0;
+        goto over;
+    }
 
-        zbuf_reset_cpp(result);
-
-        if (size < 1)
-        {
-            goto over;
-        }
-
-        if ((!detected) && ZEMPTY(f_charset))
-        {
-            detected = 1;
-        }
-        if ((!detected) && ZSTR_CASE_EQ(from_charset, "cp1252"))
-        {
-            detected = 1;
-        }
-        if (detected)
-        {
-            if (zcharset_detect_cjk(data, size, f_charset_buf))
-            {
-                f_charset = f_charset_buf;
-            }
-            else
-            {
-                f_charset = "GB18030";
-            }
-        }
-        else
-        {
-            f_charset = zcharset_correct_charset(f_charset);
-        }
-
-        if (zcharset_convert_cpp(f_charset, data, size, "UTF-8", result, 0, -1, 0) > 0)
-        {
-            goto over;
-        }
-
-        if (detected)
-        {
-            zcharset_convert_cpp("UTF-8", data, size, "UTF-8", result, 0, -1, 0);
-            goto over;
-        }
-
+    if ((!detected) && ZEMPTY(f_charset))
+    {
+        detected = 1;
+    }
+    if ((!detected) && ZSTR_CASE_EQ(from_charset, "cp1252"))
+    {
+        detected = 1;
+    }
+    if (detected)
+    {
         if (zcharset_detect_cjk(data, size, f_charset_buf))
         {
             f_charset = f_charset_buf;
@@ -369,14 +332,39 @@ void charset_convert_to_utf8(const char *from_charset, const char *data, int siz
         {
             f_charset = "GB18030";
         }
-        zbuf_reset_cpp(result);
-        if (zcharset_convert_cpp(f_charset, data, size, "UTF-8", result, 0, -1, 0) > 0)
-        {
-            goto over;
-        }
-
-        zcharset_convert_cpp("UTF-8", data, size, "UTF-8", result, 0, -1, 0);
-
-    over:
-        return;
     }
+    else
+    {
+        f_charset = zcharset_correct_charset(f_charset);
+    }
+
+    if (zcharset_convert_cpp(f_charset, data, size, "UTF-8", result, 0, -1, 0) > 0)
+    {
+        goto over;
+    }
+
+    if (detected)
+    {
+        zcharset_convert_cpp("UTF-8", data, size, "UTF-8", result, 0, -1, 0);
+        goto over;
+    }
+
+    if (zcharset_detect_cjk(data, size, f_charset_buf))
+    {
+        f_charset = f_charset_buf;
+    }
+    else
+    {
+        f_charset = "GB18030";
+    }
+    zbuf_reset_cpp(result);
+    if (zcharset_convert_cpp(f_charset, data, size, "UTF-8", result, 0, -1, 0) > 0)
+    {
+        goto over;
+    }
+
+    zcharset_convert_cpp("UTF-8", data, size, "UTF-8", result, 0, -1, 0);
+
+over:
+    return;
+}

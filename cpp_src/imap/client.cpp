@@ -22,7 +22,8 @@ imap_client::~imap_client()
 
 void imap_client::set_simple_line_length_limit(int limit)
 {
-    if (limit < 1024) {
+    if (limit < 1024)
+    {
         limit = 1024;
     }
     simple_line_length_limit_ = limit;
@@ -31,12 +32,20 @@ void imap_client::set_simple_line_length_limit(int limit)
 imap_client &imap_client::fp_append(const char *s, int slen)
 {
     fp_.append(s, slen);
+    if (debug_protocol_fn_)
+    {
+        debug_protocol_fn_('C', s, slen);
+    }
     return *this;
 }
 
 imap_client &imap_client::fp_append(const std::string &s)
 {
     fp_.append(s);
+    if (debug_protocol_fn_)
+    {
+        debug_protocol_fn_('C', s.c_str(), (int)s.size());
+    }
     return *this;
 }
 
@@ -47,6 +56,14 @@ int imap_client::fp_readn(void *mem, int strict_len)
     {
         connection_error_ = true;
         need_close_connection_ = true;
+    }
+
+    if (r > 0)
+    {
+        if (debug_protocol_fn_)
+        {
+            debug_protocol_fn_('S', mem, r);
+        }
     }
     return r;
 }
@@ -59,6 +76,13 @@ int imap_client::fp_readn(std::string &str, int strict_len)
         connection_error_ = true;
         need_close_connection_ = true;
     }
+    if (r > 0)
+    {
+        if (debug_protocol_fn_)
+        {
+            debug_protocol_fn_('S', str.c_str(), str.size());
+        }
+    }
     return r;
 }
 
@@ -70,6 +94,13 @@ int imap_client::fp_read_delimiter(void *mem, int delimiter, int max_len)
         connection_error_ = true;
         need_close_connection_ = true;
     }
+    if (r > 0)
+    {
+        if (debug_protocol_fn_)
+        {
+            debug_protocol_fn_('S', mem, r);
+        }
+    }
     return r;
 }
 int imap_client::fp_read_delimiter(std::string &str, int delimiter, int max_len)
@@ -79,6 +110,13 @@ int imap_client::fp_read_delimiter(std::string &str, int delimiter, int max_len)
     {
         connection_error_ = true;
         need_close_connection_ = true;
+    }
+    if (r > 0)
+    {
+        if (debug_protocol_fn_)
+        {
+            debug_protocol_fn_('S', str.c_str(), str.size());
+        }
     }
     return r;
 }

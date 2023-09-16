@@ -7,19 +7,50 @@
  */
 
 #include "zc.h"
-#ifdef __linux__
+#ifdef _WIN32
+#include <Winsock2.h>
+#include <ws2tcpip.h>
+#else // _WIN32
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <netdb.h>
 #include <errno.h>
-#endif // __linux__
-#ifdef _WIN32
-#include <Winsock2.h>
-#include <ws2tcpip.h>
-#endif // WIN32
+#endif // _WIN32
 #include <sys/types.h>
 
-#ifdef __linux__
+#if (defined _WIN32) || (defined __APPLE__)
+int zget_hostaddr(const char *host, zargv_t *addrs)
+{
+    zWSAStartup();
+    struct in_addr **addr_list_tmp;
+    struct hostent *htr = 0;
+    char *ips;
+    int ret_count = 0;
+
+    if (INADDR_NONE != inet_addr(host))
+    {
+        zargv_add(addrs, host);
+        return 1;
+    }
+
+    htr = gethostbyname(host);
+    if (htr)
+    {
+        addr_list_tmp = (struct in_addr **)htr->h_addr_list;
+        for (int i = 0; addr_list_tmp[i] != 0; i++)
+        {
+            ips = inet_ntoa(*(addr_list_tmp[i]));
+            if (!ips)
+            {
+                continue;
+            }
+            zargv_add(addrs, ips);
+            ret_count++;
+        }
+    }
+    return ret_count;
+}
+#else  // _WIN32
 int zget_localaddr(zargv_t *addrs)
 {
     struct ifaddrs *ifaddr, *ifa;
@@ -52,9 +83,7 @@ int zget_localaddr(zargv_t *addrs)
 
     return ret_count;
 }
-#endif // __linux__
 
-#ifdef __linux__
 int zget_hostaddr(const char *host, zargv_t *addrs)
 {
     struct in_addr **addr_list_tmp;
@@ -100,46 +129,7 @@ int zget_hostaddr(const char *host, zargv_t *addrs)
     zfree(tmpbuf);
     return ret_count;
 }
-#else // __linux__
-#ifdef _WIN32
-int zget_hostaddr(const char *host, zargv_t *addrs)
-{
-    zWSAStartup();
-    struct in_addr **addr_list_tmp;
-    struct hostent *htr = 0;
-    char *ips;
-    int ret_count = 0;
-
-    if (INADDR_NONE != inet_addr(host))
-    {
-        zargv_add(addrs, host);
-        return 1;
-    }
-
-    htr = gethostbyname(host);
-    if (htr)
-    {
-        addr_list_tmp = (struct in_addr **)htr->h_addr_list;
-        for (int i = 0; addr_list_tmp[i] != 0; i++)
-        {
-            ips = inet_ntoa(*(addr_list_tmp[i]));
-            if (!ips)
-            {
-                continue;
-            }
-            zargv_add(addrs, ips);
-            ret_count++;
-        }
-    }
-    return ret_count;
-}
-#else  // _WIN32
-int zget_hostaddr(const char *host, zargv_t *addrs)
-{
-    return -1;
-}
 #endif // _WIN32
-#endif // __linux__
 
 int zis_ip(const char *ip)
 {

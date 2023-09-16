@@ -16,5 +16,10 @@ IF(CMAKE_SYSTEM_NAME MATCHES "Windows")
 	set(simple_httpd_my_libs ssl crypto)
 ENDIF()
 
+IF(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+	set(sample_my_libs iconv pthread)
+	set(simple_httpd_my_libs ssl crypto)
+ENDIF()
+
 include(../../dev/sample.cmake)
 

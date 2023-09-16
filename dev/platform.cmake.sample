@@ -9,3 +9,8 @@ IF(CMAKE_SYSTEM_NAME MATCHES "Windows")
 	set(platform_libs Winmm Ws2_32 Crypt32 Iphlpapi)
 ENDIF()
 
+
+IF(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+	set(platform_include_dirs /usr/local/Cellar/openssl@1.1/1.1.1v/include/)
+	set(platform_lib_dirs /usr/local/Cellar/openssl@1.1/1.1.1v/lib/)
+ENDIF()
