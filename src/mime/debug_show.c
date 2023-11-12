@@ -7,8 +7,7 @@
  * ================================
  */
 
-#include "zc.h"
-#include "mime.h"
+#include "./mime.h"
 
 static void _debug_show_addr(zmail_t *parser, const char *h, const zmime_address_t *addr)
 {
@@ -125,7 +124,7 @@ void zmail_debug_show(zmail_t *parser)
     ZVECTOR_WALK_BEGIN(textm, zmime_t *, m) {
         zdebug_show("");
         zmime_get_decoded_content_utf8(m, tmpstr);
-        zdebug_show(fmt, zmime_get_type(m),  zbuf_data(tmpstr));
+        zdebug_show(fmt, zmime_get_type(m), zbuf_data(tmpstr));
     } ZVECTOR_WALK_END;
 
     zmail_zbuf_cache_release(parser, tmpstr);

@@ -331,9 +331,9 @@ delete js;
 #### 举例说明:
 
 * 假设 json: [1, {}, "ss" "aaa"]
-* 如果执行: array_update(json, 6, element, 0)<BR />则, 新json: [1, {}, "ss", "aaa", null, null, 6]
-* 如果执行: array_update_element(json, 2, element, &amp;old_element)<BR />则, 新json: [1, {}, element, "aaa"], 且: old_element赋值为 "ss"
-* 如果执行: array_update_element(json, 2, element, 0)<BR />则, 新json: [1, {}, element, "aaa"], 且: 销毁 "ss" 
+* 如果执行: array_update(6, element)<BR />则, 新json: [1, {}, "ss", "aaa", null, null, element]
+* 如果执行: array_update(2, element, &amp;old_element)<BR />则, 新json: [1, {}, element, "aaa"], 且: old_element赋值为 "ss"
+
 ### json *array_insert(int idx, json *element);
 
 * 把 element 插入 idx 前
@@ -350,7 +350,7 @@ delete js;
 #### 例子
 
 * 假设 json: {group:{linux:[{}, {}, {me: {age:18, sex:"male"}}}}
-* 执行: json.get_by_path(group/linux/2/me");
+* 执行: json.get_by_path("group/linux/2/me");
 * 返回: {age:18, sex:"male"}
 
 ### json *get_by_path_vec(json *j, const char *path0, .../* , 0 */);

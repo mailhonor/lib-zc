@@ -6,293 +6,318 @@
  * ================================
  */
 
-#include "zc.h"
-#include "mime.h"
+#include "./mime.h"
 
-static inline __attribute__((always_inline)) char *ignore_chs(char *p, int plen, const char *chs_raw, int len, int flag)
+static zinline char *ignore_chs(char *p, int plen, const char *ignore, int ignore_len)
 {
-    char *chs = (char *)(void *)chs_raw;
-    int i = 0, j;
-    if (plen < 1) {
-        return (NULL);
-    }
-    if (flag < 0) {
-        p += plen - 1;
-    }
-    for (i = 0; i < plen; i++) {
-        for (j = 0; j < len; j++) {
-            if (*(p) == chs[j])
+    char *chs = (char *)(void *)ignore;
+    int i, j;
+    for (i = 0; i < plen; i++)
+    {
+        for (j = 0; j < ignore_len; j++)
+        {
+            if (p[i] == chs[j])
+            {
                 break;
+            }
         }
-        if (j == len) {
-            return (p);
+        if (j == ignore_len)
+        {
+            return (p + i);
         }
-        p += flag;
     }
-    return (NULL);
+    return p + plen;
 }
 
-static inline __attribute__((always_inline)) char *find_delim(char *p, int plen, const char *chs_raw, int len)
+static zinline char *find_delim(char *p, int plen, const char *delim, int delim_len)
 {
-    char *chs = (char *)(void *)chs_raw;
+    char *chs = (char *)(void *)delim;
     int i, j;
-    for (i = 0; i < plen; i++) {
-        for (j = 0; j < len; j++) {
-            if (p[i] == chs[j]) {
+    for (i = 0; i < plen; i++)
+    {
+        for (j = 0; j < delim_len; j++)
+        {
+            if (p[i] == chs[j])
+            {
                 return (p + i);
             }
         }
     }
-    return (NULL);
-}
-
-/* ################################################################## */
-static int find_next_kv(char *buf, int len, char **key, int *key_len, char **value, int *value_len, char **nbuf, int *nlen)
-{
-    char *p = buf, *p1, *p2, *pe, *pn = 0;
-    int find;
-
-    p = ignore_chs(p, len, ";\t \r\n", 4, 1);
-    if (!p) {
-        return -1;
-    }
-    *nbuf = 0;
-    *key = p;
-
-    pe = (char *)memchr(p, '=', len - (p - buf));
-    if (!pe) {
-        return -1;
-    }
-    *pe = 0;
-
-    p1 = find_delim(p, pe - p, "\t \r\n", 4);
-    if (p1) {
-        *key_len = strlen(p);
-    } else {
-        *key_len = pe -p;
-    }
-
-    p = pe + 1;
-    p = ignore_chs(p, len - (p - buf), "\t \r\n", 4, 1);
-    if (!p) {
-        return -1;
-    }
-    find = 0;
-    if (*p == '"') {
-        p++;
-        find = 1;
-    }
-    *value = p;
-    if (find) {
-        p2 = find_delim(p, len - (p - buf), "\"\r\n", 3);
-    } else {
-        p2 = find_delim(p, len - (p - buf), "\t ;\r\n", 5);
-    }
-    if (p2) {
-        *value_len = p2 - p;
-        pn = p2 + 1;
-    } else {
-#if 0
-        *value_len = strlen(p);
-#endif
-        *value_len = len - (p - buf);
-    }
-
-    if (pn) {
-        *nbuf = pn;
-        *nlen = len - (pn - buf);
-    }
-
     return 0;
 }
 
-static int find_value(char *buf, int len, char **value, int *value_len, char **nbuf, int *nlen)
+static int find_value(char *buf, int len, zbuf_t *value, char **nbuf, int is_filename)
 {
-    char *p = buf, *p1;
+    zbuf_reset(value);
+    char *ps = buf, *pend = ps + len, *p;
+    int ch;
 
-    p = ignore_chs(p, len, "\t \"", 3, 1);
-    if (!p) {
+    ps = ignore_chs(ps, pend - ps, " \t", 2);
+    if (ps == pend)
+    {
         return -1;
     }
-    *nbuf = 0;
-    *value = p;
-    p1 = find_delim(p, len - (p - buf), ";\t \"\r\n", 6);
-    if (p1) {
-        *value_len = p1 - p;
-        *nbuf = p1 + 1;
-        *nlen = len - (p1 + 1 - buf);
-    } else {
-        *value_len = len - (p - buf);
+    if (*ps == '"')
+    {
+        ps++;
+        while (ps < pend)
+        {
+            ch = *ps++;
+            if (ch == '"')
+            {
+                break;
+            }
+            else if (ch == '\\')
+            {
+                if (ps == pend)
+                {
+                    break;
+                }
+                int ch2 = *ps++;
+                if ((ch2 != '*') && (ch2 != '\\'))
+                {
+                    // 兼容 Foxmail 较早的版本
+                    zbuf_put(value, ch);
+                }
+                zbuf_put(value, ch2);
+            }
+            else
+            {
+                zbuf_put(value, ch);
+            }
+        }
+    }
+    else
+    {
+        p = find_delim(ps, pend - ps, " \t;", 3);
+        if (!p)
+        {
+            zbuf_memcat(value, ps, pend - ps);
+            ps = pend;
+        }
+        else
+        {
+            zbuf_memcat(value, ps, p - ps);
+            ps = p + 1;
+        }
     }
 
+    *nbuf = ps;
+    return 0;
+}
+
+static int find_next_kv(char *buf, int len, zbuf_t *key, zbuf_t *value, char **nbuf)
+{
+    zbuf_reset(key);
+    zbuf_reset(value);
+    int is_filename = 0;
+
+    char *ps = buf, *pend = ps + len, *p;
+    int ch;
+
+    ps = ignore_chs(ps, pend - ps, " \t;", 3);
+    if (ps == pend)
+    {
+        return -1;
+    }
+
+    p = find_delim(ps, pend - ps, "= \t", 3);
+    if (!p)
+    {
+        zbuf_memcat(key, ps, pend - ps);
+        *nbuf = pend;
+        return 0;
+    }
+    zbuf_memcat(key, ps, p - ps);
+    if (*p == '=')
+    {
+        ps = p + 1; // begin value
+    }
+    else
+    {
+        ps = ignore_chs(p, pend - p, " \t", 2);
+        if (ps == pend)
+        {
+            *nbuf = pend;
+            return 0;
+        }
+        if (*ps != '=')
+        {
+            *nbuf = ps;
+            return 0;
+        }
+        ps = ps + 1;
+    }
+
+    if (!strcasecmp(zbuf_data(key), "filename"))
+    {
+        is_filename = 1;
+    }
+    if (find_value(ps, pend - ps, value, &ps, is_filename))
+    {
+        *nbuf = pend;
+        return 0;
+    }
+
+    *nbuf = ps;
     return 0;
 }
 
 void zmime_header_line_get_params(const char *in_line, int in_len, zbuf_t *val, zdict_t *params)
 {
-    char *value, *nbuf;
-    int value_len, nlen;
-    
-    zbuf_reset(val);
-    if (find_value((char *)(void *)in_line, in_len, &value, &value_len, &nbuf, &nlen)) {
-        return;
-    }
-    if (value_len) {
-        zbuf_memcpy(val, value, value_len);
-    }
-
-    if (nbuf == 0) {
+    char *ps = (char *)(void *)in_line, *pend = ps + in_len;
+    if (find_value(ps, pend - ps, val, &ps, 0))
+    {
         return;
     }
 
-    char *start, *key;
-    int start_len, key_len;
-    zbuf_t *kbuf = zbuf_create(64);
+    zbuf_t *param_key = zbuf_create(64);
+    zbuf_t *param_value = zbuf_create(128);
 
-    start = nbuf;
-    start_len = nlen;
-
-    while (1) {
-        if (start_len < 2) {
+    while (ps < pend)
+    {
+        if (find_next_kv(ps, pend - ps, param_key, param_value, &ps))
+        {
             break;
         }
-        if (find_next_kv(start, start_len, &key, &key_len, &value, &value_len, &nbuf, &nlen) ) {
-            break;
-        }
-        if (key_len < 1) {
-            continue;
-        }
-        zbuf_memcpy(kbuf, key, key_len);
-        zdict_update_string(params, zbuf_data(kbuf), value, value_len);
-
-        if (nbuf == 0) {
-            break;
-        }
-        start = nbuf;
-        start_len = nlen;
+        zdict_update(params, zbuf_data(param_key), param_value);
     }
 
-    zbuf_free(kbuf);
+    zbuf_free(param_key);
+    zbuf_free(param_value);
 }
 
 /* */
 void zmime_header_line_decode_content_type_inner(zmail_t *parser, const char *data, int len, char **_value, char **boundary, int *boundary_len, char **charset, char **name)
 {
-    char *value, *nbuf;
-    int value_len, nlen;
+    zbuf_t *param_key = zbuf_create(64);
+    zbuf_t *param_value = zbuf_create(128);
 
-    if (find_value((char *)data, (int)len, &value, &value_len, &nbuf, &nlen)) {
+    char *ps = (char *)(void *)data, *pend = ps + len;
+    if (find_value(ps, pend - ps, param_value, &ps, 0))
+    {
+        zbuf_free(param_key);
+        zbuf_free(param_value);
         return;
     }
-    if (value_len) {
-        *_value = zmpool_memdupnull(parser->mpool, value, value_len);
-    }
+    zfree(*_value);
+    *_value = zmemdupnull(zbuf_data(param_value), zbuf_len(param_value));
 
-    if (nbuf == 0) {
-        return;
-    }
-
-    char *start, *key;
-    int start_len, key_len;
-
-    start = nbuf;
-    start_len = nlen;
-
-    while (1) {
-        if (start_len < 2) {
+    while (ps < pend)
+    {
+        if (find_next_kv(ps, pend - ps, param_key, param_value, &ps))
+        {
             break;
         }
-        if (find_next_kv(start, start_len, &key, &key_len, &value, &value_len, &nbuf, &nlen) ) {
-            break;
+        char *key = zbuf_data(param_key);
+        int key_len = zbuf_len(param_key);
+
+        if (key_len == 8 && ZSTR_N_CASE_EQ(key, "boundary", key_len))
+        {
+            zfree(*boundary);
+            *boundary = zmemdupnull(zbuf_data(param_value), zbuf_len(param_value));
+            *boundary_len = zbuf_len(param_value);
         }
-        if (key_len==8 && ZSTR_N_CASE_EQ(key, "boundary", key_len)) {
-            *boundary = zmpool_memdupnull(parser->mpool, value, value_len);
-            *boundary_len = value_len;
-        } else if (key_len == 7 && ZSTR_N_CASE_EQ(key, "charset", key_len)) {
-            *charset = zmpool_memdupnull(parser->mpool, value, value_len);
-        } else if (key_len == 4 && ZSTR_N_CASE_EQ(key, "name", key_len)) {
-            *name = zmpool_memdupnull(parser->mpool, value, value_len);
+        else if (key_len == 7 && ZSTR_N_CASE_EQ(key, "charset", key_len))
+        {
+            zfree(*charset);
+            *charset = zmemdupnull(zbuf_data(param_value), zbuf_len(param_value));
         }
-        if (nbuf == 0) {
-            break;
+        else if (key_len == 4 && ZSTR_N_CASE_EQ(key, "name", key_len))
+        {
+            zfree(*name);
+            *name = zmemdupnull(zbuf_data(param_value), zbuf_len(param_value));
         }
-        start = nbuf;
-        start_len = nlen;
     }
+
+    zbuf_free(param_key);
+    zbuf_free(param_value);
 }
 
 /* inner use */
 void zmime_header_line_decode_content_disposition_inner(zmail_t *parser, const char *data, int len, char **_value, char **filename, char **filename_2231, int *filename_2231_with_charset_flag)
 {
-    char *value, *nbuf;
-    int value_len, nlen;
+    zbuf_t *param_key = zbuf_create(64);
+    zbuf_t *param_value = zbuf_create(128);
 
-    if (find_value((char *)(void *)data, len, &value, &value_len, &nbuf, &nlen)) {
+    char *ps = (char *)(void *)data, *pend = ps + len;
+    if (find_value(ps, pend - ps, param_value, &ps, 0))
+    {
+        zbuf_free(param_key);
+        zbuf_free(param_value);
         return;
     }
-    if (value_len) {
-        *_value = zmpool_memdupnull(parser->mpool, value, value_len);
-    }
-
-    if (nbuf == 0) {
-        return;
-    }
+    zfree(*_value);
+    *_value = zmemdupnull(zbuf_data(param_value), zbuf_len(param_value));
 
     zbuf_t *filename2231_tmpbf = 0;
-    char *start, *key;
-    int start_len, key_len;
     int flag_2231 = 0;
     int charset_2231 = 0;
-
-    start = nbuf;
-    start_len = nlen;
-
-    while (1) {
-        if (start_len < 2) {
+    while (ps < pend)
+    {
+        if (find_next_kv(ps, pend - ps, param_key, param_value, &ps))
+        {
             break;
         }
-        if (find_next_kv(start, start_len, &key, &key_len, &value, &value_len, &nbuf, &nlen) ) {
-            break;
+        char *key = zbuf_data(param_key);
+        int key_len = zbuf_len(param_key);
+
+        if (key_len == 8 && ZSTR_N_CASE_EQ(key, "filename", key_len))
+        {
+            zfree(*filename);
+            *filename = zmemdupnull(zbuf_data(param_value), zbuf_len(param_value));
         }
-        if (key_len== 8 && ZSTR_N_CASE_EQ(key, "filename", key_len)) {
-            *filename = zmpool_memdupnull(parser->mpool, value, value_len);
-        } else if ((key_len > 8) && (ZSTR_N_CASE_EQ(key, "filename*", 9))) {
-            if (filename2231_tmpbf == 0) {
+        else if ((key_len > 8) && (ZSTR_N_CASE_EQ(key, "filename*", 9)))
+        {
+            if (filename2231_tmpbf == 0)
+            {
                 filename2231_tmpbf = zmail_zbuf_cache_require(parser, 1024);
             }
+            char *value = zbuf_data(param_value);
+            int value_len = zbuf_len(param_value);
             zbuf_memcat(filename2231_tmpbf, value, value_len);
             if (!flag_2231)
             {
                 flag_2231 = 1;
-                if (key_len == 9) {
+                if (key_len == 9)
+                {
                     int count = 0;
-                    for (int i = 0; i < value_len; i++) {
-                        if (((unsigned char *)value)[i] == '\'') {
+                    for (int i = 0; i < value_len; i++)
+                    {
+                        if (((unsigned char *)value)[i] == '\'')
+                        {
                             count++;
                         }
                     }
-                    if (count > 1) {
+                    if (count > 1)
+                    {
                         charset_2231 = 1;
-                    } else {
+                    }
+                    else
+                    {
                         charset_2231 = 0;
                     }
-                } else if (key_len == 10) {
+                }
+                else if (key_len == 10)
+                {
                     charset_2231 = 0;
-                } else if (key_len == 11) {
+                }
+                else if (key_len == 11)
+                {
                     charset_2231 = 1;
                 }
             }
         }
-
-        if (nbuf == 0) {
-            break;
-        }
-        start = nbuf;
-        start_len = nlen;
     }
+
+    zbuf_free(param_key);
+    zbuf_free(param_value);
+
     *filename_2231_with_charset_flag = charset_2231;
-    if (filename2231_tmpbf) {
-        *filename_2231 = zmpool_memdupnull(parser->mpool, zbuf_data(filename2231_tmpbf), zbuf_len(filename2231_tmpbf));
+    if (filename2231_tmpbf)
+    {
+        zfree(*filename_2231);
+        *filename_2231 = zmemdupnull(zbuf_data(filename2231_tmpbf), zbuf_len(filename2231_tmpbf));
         zmail_zbuf_cache_release(parser, filename2231_tmpbf);
     }
 }
@@ -300,13 +325,15 @@ void zmime_header_line_decode_content_disposition_inner(zmail_t *parser, const c
 /* inner use */
 void zmime_header_line_decode_content_transfer_encoding_inner(zmail_t *parser, const char *data, int len, char **_value)
 {
-    char *value, *nbuf;
-    int value_len, nlen;
+    zbuf_t *param_value = zbuf_create(128);
 
-    if (find_value((char *)data, (int)len, &value, &value_len, &nbuf, &nlen)) {
+    char *ps = (char *)(void *)data, *pend = ps + len;
+    if (find_value(ps, pend - ps, param_value, &ps, 0))
+    {
+        zbuf_free(param_value);
         return;
     }
-    if (value_len) {
-        *_value = zmpool_memdupnull(parser->mpool, value, value_len);
-    }
+    zfree(*_value);
+    *_value = zmemdupnull(zbuf_data(param_value), zbuf_len(param_value));
+    zbuf_free(param_value);
 }

@@ -6,8 +6,7 @@
  * ================================
  */
 
-#include "zc.h"
-#include "mime.h"
+#include "./mime.h"
 
 #if 1
 #define _DEV_DEUBG 1
@@ -185,10 +184,10 @@ static zbool_t zmail_decode_mime_read_header_line(zmail_t *parser, mail_parser_c
         safe_llen = zvar_mime_header_line_max_length - 2;
     }
     if (1) {
-        zsize_data_t *sd = (zsize_data_t *)zmpool_malloc(parser->mpool, sizeof(zsize_data_t));
+        zsize_data_t *sd = (zsize_data_t *)zmalloc(sizeof(zsize_data_t));
         sd->size = llen;
         sd->data = line;
-        zvector_push(&(cmime->raw_header_lines), sd);
+        zvector_push(cmime->raw_header_lines, sd);
     }
 
     if (!(cmime->type_flag)) {
@@ -339,7 +338,8 @@ int zmail_decode_mime_inner(zmail_t * parser)
         cmime->header_offset = cnode->mail_data - parser->mail_data;
         while (zmail_decode_mime_read_header_line(parser, ctx));
         if (cmime->type_flag == 0) {
-            cmime->type = zmpool_strdup(parser->mpool, "text/plain");
+            zfree(cmime->type);
+            cmime->type = zstrdup("text/plain");
             cmime->type_flag = 1;
         }
         /* body */

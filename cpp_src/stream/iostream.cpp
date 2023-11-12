@@ -55,6 +55,11 @@ int iostream::close(bool close_fd_or_release_ssl)
     return ret;
 }
 
+bool iostream::is_closed()
+{
+    return (fd_ < 0);
+}
+
 iostream &iostream::set_read_wait_timeout(int read_wait_timeout)
 {
     read_wait_timeout_ = read_wait_timeout;

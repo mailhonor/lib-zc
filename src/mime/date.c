@@ -6,8 +6,8 @@
  * ================================
  */
 
-#include "zc.h"
 #include <time.h>
+#include "./mime.h"
 
 ssize_t zmime_header_line_decode_date(const char *str)
 {

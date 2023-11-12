@@ -8,8 +8,7 @@
 
 /* rfc 2231 */
 
-#include "zc.h"
-#include "mime.h"
+#include "./mime.h"
 
 void zmime_header_line_get_utf8_2231(const char *src_charset_def, const char *in_line, int in_len, zbuf_t *result, int with_charset_flag)
 {

@@ -6,33 +6,44 @@
  * ================================
  */
 
-void zvector_init_mpool(zvector_t *v, int size, zmpool_t *mpool);
-void zargv_init_mpool(zargv_t *argvp, int size, zmpool_t *mpool);
+#pragma once
+
+#ifndef ZC_LIB_MIME_INCLUDE___
+#define ZC_LIB_MIME_INCLUDE___
+
+#include "../../zc.h"
+
+#pragma pack(push, 4)
+
+#ifdef __cplusplus
+zcc_namespace_c_begin;
+#endif
 
 typedef struct zbuf_node_t zbuf_node_t;
-struct zbuf_node_t {
+struct zbuf_node_t
+{
     zbuf_node_t *prev;
     zbuf_node_t *next;
     zbuf_t buf;
 };
 
-
-struct zmime_t {
-    unsigned int type_flag:1;
-    unsigned int encoding_flag:1;
-    unsigned int disposition_flag:1;
-    unsigned int show_name_flag:1;
-    unsigned int name_flag:1;
-    unsigned int name_utf8_flag:1;
-    unsigned int filename_flag:1;
-    unsigned int filename2231_flag:1;
-    unsigned int filename_utf8_flag:1;
-    unsigned int content_id_flag:1;
-    unsigned int filename2231_with_charset:1;
-    unsigned int is_tnef:1;
-    unsigned int is_multipart:1; /* inner */
-    unsigned int mime_type:3; /* inner */
-    unsigned int parser_stage_inner:4; /* inner */
+struct zmime_t
+{
+    unsigned int type_flag : 1;
+    unsigned int encoding_flag : 1;
+    unsigned int disposition_flag : 1;
+    unsigned int show_name_flag : 1;
+    unsigned int name_flag : 1;
+    unsigned int name_utf8_flag : 1;
+    unsigned int filename_flag : 1;
+    unsigned int filename2231_flag : 1;
+    unsigned int filename_utf8_flag : 1;
+    unsigned int content_id_flag : 1;
+    unsigned int filename2231_with_charset : 1;
+    unsigned int is_tnef : 1;
+    unsigned int is_multipart : 1;       /* inner */
+    unsigned int mime_type : 3;          /* inner */
+    unsigned int parser_stage_inner : 4; /* inner */
 
     short int boundary_len;
 
@@ -54,8 +65,7 @@ struct zmime_t {
     int body_len;
 
     /* mime original header-logic-line */
-    zvector_t raw_header_lines; /* size_data_t * */
-    void * raw_header_lines_mpool_ptr;
+    zvector_t *raw_header_lines; /* size_data_t * */
 
     /* relationship */
     zmime_t *parent;
@@ -65,29 +75,30 @@ struct zmime_t {
     zmime_t *prev;
 
     /* */
-    zmail_t * parser;
+    zmail_t *parser;
 
     /* mime proto, for imapd */
     char *imap_section;
 };
 
-struct zmail_t {
-    unsigned short int subject_flag:1;
-    unsigned short int subject_utf8_flag:1;
-    unsigned short int date_flag:1;
-    unsigned short int date_unix_flag:1;
-    unsigned short int message_id_flag:1;
-    unsigned short int in_reply_to_flag:1;
-    unsigned short int from_flag:2;
-    unsigned short int sender_flag:2;
-    unsigned short int reply_to_flag:2;
-    unsigned short int to_flag:2;
-    unsigned short int cc_flag:2;
-    unsigned short int bcc_flag:2;
-    unsigned short int receipt_flag:2;
-    unsigned short int references_flag:2;
-    unsigned short int classify_flag:2;
-    unsigned short int section_flag:2;
+struct zmail_t
+{
+    unsigned short int subject_flag : 1;
+    unsigned short int subject_utf8_flag : 1;
+    unsigned short int date_flag : 1;
+    unsigned short int date_unix_flag : 1;
+    unsigned short int message_id_flag : 1;
+    unsigned short int in_reply_to_flag : 1;
+    unsigned short int from_flag : 2;
+    unsigned short int sender_flag : 2;
+    unsigned short int reply_to_flag : 2;
+    unsigned short int to_flag : 2;
+    unsigned short int cc_flag : 2;
+    unsigned short int bcc_flag : 2;
+    unsigned short int receipt_flag : 2;
+    unsigned short int references_flag : 2;
+    unsigned short int classify_flag : 2;
+    unsigned short int section_flag : 2;
     char *subject;
     char *subject_utf8;
     char *date;
@@ -110,9 +121,9 @@ struct zmail_t {
     zvector_t *all_mimes; /* zmime_t * */
 
     /* text(plain,html) type mime-list except for attachment */
-    zvector_t *text_mimes; 
+    zvector_t *text_mimes;
 
-    /* similar to the above, 
+    /* similar to the above,
      * in addition to the case of alternative, html is preferred */
     zvector_t *show_mimes;
 
@@ -127,9 +138,6 @@ struct zmail_t {
     int mail_size;
     zmmap_reader_t *fmmap;
 
-    /* greedy mpool */
-    zmpool_t *mpool;
-
     /* cache */
     zbuf_node_t *zbuf_cache_head;
     zbuf_node_t *zbuf_cache_tail;
@@ -137,7 +145,7 @@ struct zmail_t {
 
 zmime_t *zmime_create(zmail_t *parser);
 void zmime_free(zmime_t *mime);
-int zmail_decode_mime_inner(zmail_t * parser);
+int zmail_decode_mime_inner(zmail_t *parser);
 
 char *zmail_clear_null_inner(const void *data, int size);
 
@@ -148,10 +156,19 @@ void zmail_zbuf_cache_release_all(zmail_t *parser);
 int zmime_raw_header_line_unescape_inner(zmail_t *parser, const char *data, int size, char *dest, int dest_size);
 
 int zmime_get_raw_header_line_ptr(zmime_t *mime, const char *header_name, char **result, int sn);
-int zmail_decode_mime_inner(zmail_t * parser);
-zvector_t *zmime_header_line_get_address_vector_inner(zmail_t *parser, const char *in_str, int in_len);
+int zmail_decode_mime_inner(zmail_t *parser);
 
-void zmime_header_line_get_utf8_inner(zmail_t *parser, const char *in_line, int in_len, zbuf_t *result);
 void zmime_header_line_decode_content_type_inner(zmail_t *parser, const char *data, int len, char **_value, char **boundary, int *boundary_len, char **charset, char **name);
 void zmime_header_line_decode_content_disposition_inner(zmail_t *parser, const char *data, int len, char **_value, char **filename, char **filename_2231, int *filename_2231_with_charset_flag);
 void zmime_header_line_decode_content_transfer_encoding_inner(zmail_t *parser, const char *data, int len, char **_value);
+
+int zmime_header_line_get_first_token_inner(const char *line_, int in_len, char **val);
+void zmime_header_line_get_utf8_engine(const char *src_charset_def, const char *in_line, int in_len, zbuf_t *result, zbuf_t *bq_join, zbuf_t *out_string);
+
+#ifdef __cplusplus
+zcc_namespace_c_end;
+#endif
+
+#pragma pack(pop)
+
+#endif // ZC_LIB_MIME_INCLUDE___

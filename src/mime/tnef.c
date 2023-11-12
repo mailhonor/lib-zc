@@ -10,8 +10,7 @@
  * 本文件核心代码修改自 https://github.com/verdammelt/tnef/
  */
 
-#include "zc.h"
-#include "mime.h"
+#include "./mime.h"
 
 /* {{{ 外壳 */
 struct ztnef_mime_t {

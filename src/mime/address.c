@@ -6,10 +6,8 @@
  * ================================
  */
 
-#include "zc.h"
-#include "mime.h"
+#include "./mime.h"
 
-void zvector_init_mpool(zvector_t *v, int size, zmpool_t *mpool);
 static zvector_t *zmime_header_line_get_address_vector_engine(const char *src_charset_def, const char *in_str, int in_len, int loop_mode);
 
 static int zmime_header_line_address_tok(char **str, int *len, char **rname, char **raddress, char *tmp_cache, int tmp_cache_size)
@@ -176,101 +174,61 @@ static int zmime_header_line_address_tok(char **str, int *len, char **rname, cha
     return 0;
 }
 
-static zmime_address_t *create_mime_address(zmail_t *parser, const char *src_charset_def, const char *n, const char *a, int loop_mode)
+static zmime_address_t *_create_mime_address_simple(const char *n, const char *a)
+{
+    zmime_address_t *addr = (zmime_address_t *)zcalloc(1, sizeof(zmime_address_t));
+    addr->name = zstrdup(n);
+    addr->name_utf8 = zstrdup("");
+    addr->address = zstrdup(a);
+    zstr_tolower(addr->address);
+    return addr;
+}
+
+static zmime_address_t *create_mime_address(const char *src_charset_def, const char *n, const char *a, int loop_mode)
 {
     zmime_address_t *addr;
     int alen = 0, i;
     zbuf_t *tmpbf = 0;
     zvector_t *vec = 0;
 
-    if (parser)
+    if (loop_mode || (n[0]) || (a[0] != '=') || (a[1] != '?'))
     {
-        src_charset_def = parser->src_charset_def;
-        addr = (zmime_address_t *)zmpool_calloc(parser->mpool, 1, sizeof(zmime_address_t));
+        return _create_mime_address_simple(n, a);
     }
-    else
-    {
-        addr = (zmime_address_t *)zcalloc(1, sizeof(zmime_address_t));
-    }
-
-    if (loop_mode)
-    {
-        goto over;
-    }
-
-    if ((n[0]) || (a[0] != '=') || (a[1] != '?'))
-    {
-        goto over;
-    }
+    
+    // =?utf-8?B?ImFiYyIgPHh4eEBhYWEuY29tPg==?=
+    // "abc" <xxx@aaa.com>
 
     alen = strlen(a);
     tmpbf = zbuf_create(2 * alen + 100);
-    zmime_header_line_get_utf8_inner(parser, a, alen, tmpbf);
+    zmime_header_line_get_utf8(src_charset_def, a, alen, tmpbf);
     vec = zmime_header_line_get_address_vector_engine(src_charset_def, zbuf_data(tmpbf), zbuf_len(tmpbf), 1);
     if ((!vec) || (!zvector_len(vec)))
     {
-        goto over;
+        zbuf_free(tmpbf);
+        return _create_mime_address_simple(n, a);
     }
     zbuf_reset(tmpbf);
     i = 0;
-    if (vec)
+    ZVECTOR_WALK_BEGIN(vec, zmime_address_t *, ma)
     {
-        ZVECTOR_WALK_BEGIN(vec, zmime_address_t *, ma)
+        if (i)
         {
-            if (i) {
-                zbuf_strcat(tmpbf, " ");
-            }
-            zbuf_strcat(tmpbf, ma->name);
-            i = 1;
+            zbuf_strcat(tmpbf, " ");
         }
-        ZVECTOR_WALK_END;
+        zbuf_strcat(tmpbf, ma->name);
+        i = 1;
     }
+    ZVECTOR_WALK_END;
 
-    if (parser)
-    {
-        addr->name = zmpool_strdup(parser->mpool, zbuf_data(tmpbf));
-        addr->name_utf8 = zmpool_strdup(parser->mpool, zbuf_data(tmpbf));
-        addr->address = zmpool_strdup(parser->mpool, ((zmime_address_t *)(vec->data[0]))->address);
-    }
-    else
-    {
-        addr->name = zstrdup(zbuf_data(tmpbf));
-        addr->name_utf8 = zstrdup(zbuf_data(tmpbf));
-        addr->address = zstrdup(((zmime_address_t *)(vec->data[0]))->address);
-    }
+    addr = (zmime_address_t *)zcalloc(1, sizeof(zmime_address_t));
+    addr->name = zstrdup(zbuf_data(tmpbf));
+    addr->name_utf8 = zstrdup(zbuf_data(tmpbf));
+    addr->address = zstrdup(((zmime_address_t *)(vec->data[0]))->address);
 
-over:
-    if (parser)
-    {
-        if (!addr->name) {
-            addr->name = zmpool_strdup(parser->mpool, n);
-        }
-        if (!addr->address) {
-            addr->address = zmpool_strdup(parser->mpool, a);
-        }
-        if (!addr->name_utf8)
-        {
-            addr->name_utf8 = zblank_buffer;
-        }
-    }
-    else
-    {
-        if (!addr->name) {
-            addr->name = zstrdup(n);
-        }
-        if (!addr->address) {
-            addr->address = zstrdup(a);
-        }
-        if (!addr->name_utf8)
-        {
-            addr->name_utf8 = zstrdup("");
-        }
-    }
-    if (addr->address[0]) {
-        zstr_tolower(addr->address);
-    }
     zbuf_free(tmpbf);
     zmime_header_line_address_vector_free(vec);
+
     return addr;
 }
 
@@ -282,7 +240,7 @@ static zvector_t *zmime_header_line_get_address_vector_engine(const char *src_ch
     }
     if (in_len < 1)
     {
-        return 0;
+        return zvector_create(1);
     }
     char *n, *a, *str, *cache;
     int len = (int)in_len, ret;
@@ -302,7 +260,7 @@ static zvector_t *zmime_header_line_get_address_vector_engine(const char *src_ch
         {
             continue;
         }
-        zmime_address_t *addr = create_mime_address(0, src_charset_def, n, a, loop_mode);
+        zmime_address_t *addr = create_mime_address(src_charset_def, n, a, 0);
         zvector_add(vec, addr);
     }
     zfree(cache);
@@ -315,62 +273,12 @@ zvector_t *zmime_header_line_get_address_vector(const char *src_charset_def, con
     return zmime_header_line_get_address_vector_engine(src_charset_def, in_str, in_len, 0);
 }
 
-zvector_t *zmime_header_line_get_address_vector_inner(zmail_t *parser, const char *in_str, int in_len)
-{
-    if (in_len == -1)
-    {
-        in_len = strlen(in_str);
-    }
-    zmpool_t *mpool = parser->mpool;
-    if (in_len < 1)
-    {
-        zvector_t *nvec = zmpool_malloc(mpool, sizeof(zvector_t) + sizeof(zmpool_t *));
-        zvector_init_mpool(nvec, 0, mpool);
-        return nvec;
-    }
-    char *n, *a, *str, *cache;
-    int len = (int)in_len, ret;
-
-    str = (char *)in_str;
-    cache = (char *)zmalloc(in_len + 1024);
-    zvector_t *vec = zvector_create(128);
-    while (1)
-    {
-        ret = zmime_header_line_address_tok(&str, &len, &n, &a, cache, in_len + 1000);
-        if (ret == -1)
-        {
-            break;
-        }
-        if (ret == -2)
-        {
-            continue;
-        }
-        zmime_address_t *addr = create_mime_address(parser, 0, n, a, 0);
-        zvector_add(vec, addr);
-    }
-    zfree(cache);
-    zvector_t *nvec = zmpool_malloc(mpool, sizeof(zvector_t) + sizeof(zmpool_t *));
-    zvector_init_mpool(nvec, zvector_len(vec), mpool);
-    ZVECTOR_WALK_BEGIN(vec, char *, p)
-    {
-        zvector_push(nvec, p);
-    }
-    ZVECTOR_WALK_END;
-
-    zvector_free(vec);
-
-    return nvec;
-}
-
 zvector_t *zmime_header_line_get_address_vector_utf8(const char *src_charset_def, const char *in_str, int in_len)
 {
     zvector_t *vec = zmime_header_line_get_address_vector(src_charset_def, in_str, in_len);
-    if (!vec)
-    {
-        return 0;
-    }
-
     zbuf_t *tmpbf = zbuf_create(128);
+    zbuf_t *bq_join = zbuf_create(-1);
+    zbuf_t *out_string = zbuf_create(-1);
 
     ZVECTOR_WALK_BEGIN(vec, zmime_address_t *, addr)
     {
@@ -378,15 +286,31 @@ zvector_t *zmime_header_line_get_address_vector_utf8(const char *src_charset_def
         {
             zfree(addr->name_utf8);
             zbuf_reset(tmpbf);
-            zmime_header_line_get_utf8(src_charset_def, addr->name, -1, tmpbf);
+            zbuf_reset(bq_join);
+            zbuf_reset(out_string);
+            zmime_header_line_get_utf8_engine(src_charset_def, addr->name, -1, tmpbf, bq_join, out_string);
             addr->name_utf8 = zstrdup(zbuf_data(tmpbf));
         }
     }
     ZVECTOR_WALK_END;
 
     zbuf_free(tmpbf);
+    zbuf_free(bq_join);
+    zbuf_free(out_string);
 
     return vec;
+}
+
+void zmime_address_free(zmime_address_t *addr)
+{
+    if (!addr)
+    {
+        return;
+    }
+    zfree(addr->name);
+    zfree(addr->address);
+    zfree(addr->name_utf8);
+    zfree(addr);
 }
 
 void zmime_header_line_address_vector_free(zvector_t *address_vector)
@@ -395,10 +319,7 @@ void zmime_header_line_address_vector_free(zvector_t *address_vector)
     {
         ZVECTOR_WALK_BEGIN(address_vector, zmime_address_t *, addr)
         {
-            zfree(addr->name);
-            zfree(addr->address);
-            zfree(addr->name_utf8);
-            zfree(addr);
+            zmime_address_free(addr);
         }
         ZVECTOR_WALK_END;
         zvector_free(address_vector);

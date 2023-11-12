@@ -26,7 +26,7 @@
 // 1 OK Move completed (0.010 + 0.000 + 0.009 secs).
 
 // 命令 APPEND
-// a append inbox {3}uidplus_result
+// a append inbox {3}
 // + OK
 // 123
 // a OK [APPENDUID 1683689637 36] Append completed (0.009 + 1.080 + 0.007 secs).

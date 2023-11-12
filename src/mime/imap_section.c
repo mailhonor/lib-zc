@@ -6,8 +6,7 @@
  * ================================
  */
 
-#include "zc.h"
-#include "mime.h"
+#include "./mime.h"
 
 static inline int ___child_head_count(zmime_t * m)
 {
@@ -56,7 +55,8 @@ void zmail_set_imap_section(zmail_t *parser)
         rnode = rtail;
         mime = rnode->mime;
         section = zbuf_data(rnode->section_bf);
-        mime->imap_section = zmpool_memdupnull(parser->mpool, section, zbuf_len(rnode->section_bf));
+        zfree(mime->imap_section);
+        mime->imap_section = zmemdupnull(section, zbuf_len(rnode->section_bf));
         child_head_count = ___child_head_count(mime);
         if (child_head_count == 0) {
             ZMLINK_DETACH(rhead, rtail, rnode, prev, next);

@@ -91,6 +91,7 @@ int ssl_iostream::tls_connect(SSL_CTX *ctx)
         return -1;
     }
     ssl_ = _ssl;
+    fd_ = zopenssl_SSL_get_fd(ssl_);
 
     return 1;
 }
@@ -115,6 +116,7 @@ int ssl_iostream::tls_accept(SSL_CTX *ctx)
         return -1;
     }
     ssl_ = _ssl;
+    fd_ = zopenssl_SSL_get_fd(ssl_);
 
     return 1;
 }

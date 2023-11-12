@@ -92,7 +92,11 @@ int main(int argc, char **argv)
     }
     write_line_read_line(fp, tmpline, "ehlo xxx2");
     write_line_read_line(fp, tmpline, "mail from: <xxx@163.com>");
+    zprintf("is_closed: %d\n", fp.is_closed());
     write_line_read_line(fp, tmpline, "quit");
+    zprintf("is_closed: %d\n", fp.is_closed());
+    fp.close();
+    zprintf("is_closed: %d\n", fp.is_closed());
 
 over:
     if (tls_mode || ssl_mode) {

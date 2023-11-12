@@ -6,8 +6,7 @@
  * ================================
  */
 
-#include "zc.h"
-#include "mime.h"
+#include "./mime.h"
 
 /* clear null characters */
 

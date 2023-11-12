@@ -21,6 +21,11 @@
     {
 #define zcc_namespace_end }
 
+#define general_namespace_begin(ns) \
+    namespace ns \
+    {
+#define general_namespace_end(ns) }
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -309,6 +314,8 @@ int zMultiByteToUTF8_any(const char *in, int in_len, char *result_ptr, int resul
 
 /* @brief 见 zlog_fatal */
 extern zbool_t zvar_log_fatal_catch;
+
+extern zbool_t zvar_log_output_disable;
 
 /* @brief 见 zdebug */
 extern zbool_t zvar_log_debug_enable;
@@ -629,10 +636,8 @@ ssize_t zstr_to_size(const char *s, ssize_t def);
 struct zargv_t
 {
     char **argv;
-    int argc : 31;
-    int unused : 1;
-    int size : 31;
-    int mpool_used : 1;
+    int argc;
+    int size;
 };
 
 /* 创建argv, 初始容量为size */
@@ -864,8 +869,7 @@ struct zvector_t
     char **data;
     int len;
     int size;
-    int offset : 31;
-    unsigned int mpool_used : 1;
+    int offset;
 };
 
 /* 创建vector, 初始容量为size */
@@ -2698,6 +2702,9 @@ struct zmime_address_t
     char *name_utf8; /* 原始名称转码为UTF-8 字符集 */
 };
 
+/* 邮件地址释放 */
+void zmime_address_free(zmime_address_t *addr);
+
 /* 分解邮件头行为多个邮件地址并返回, 这个时候不处理 name_utf8 */
 zvector_t *zmime_header_line_get_address_vector(const char *src_charset_def, const char *in_str, int in_len);
 
@@ -4292,6 +4299,7 @@ public:
     virtual int timed_read_wait(int read_wait_timeout);
     virtual int timed_write_wait(int write_wait_timeout);
     virtual int close(bool close_fd_or_release_ssl = true);
+    virtual bool is_closed();
 
 protected:
     virtual int engine_read(void *buf, int len);

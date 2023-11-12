@@ -10,12 +10,6 @@
 
 #define _VEC_LEFT_(v) (((v)->size - (v)->offset) - (v)->len)
 
-typedef struct zvector_mpool_t zvector_mpool_t;
-struct zvector_mpool_t {
-    zvector_t v;
-    zmpool_t *mpool;
-};
-
 void zvector_init(zvector_t *v, int size)
 {
     if (size < 0) {
@@ -28,35 +22,11 @@ void zvector_init(zvector_t *v, int size)
     v->size = size;
     v->len = 0;
     v->offset = 0;
-    v->mpool_used = 0;
-}
-
-void zvector_init_mpool(zvector_t *v, int size, zmpool_t *mpool)
-{
-    if (size < 0) {
-        size = 13;
-    } else if (size == 0) {
-        size = 1;
-    }
-    v->data = (char **)zmpool_malloc(mpool, (size + 1) * sizeof(char *));
-    v->data[0] = 0;
-    v->size = size;
-    v->len = 0;
-    v->offset = 0;
-
-    v->mpool_used = 1;
-    zvector_mpool_t *vmv = (zvector_mpool_t *)v;
-    vmv->mpool = mpool;
 }
 
 void zvector_fini(zvector_t *v)
 {
-    if (v->mpool_used) {
-        zvector_mpool_t *vmv = (zvector_mpool_t *)v;
-        zmpool_free(vmv->mpool, (v->data)-(v->offset));
-    } else {
-        zfree((v->data)-(v->offset));
-    }
+    zfree((v->data) - (v->offset));
     memset(v, 0, sizeof(zvector_t));
 }
 
@@ -69,6 +39,9 @@ zvector_t *zvector_create(int size)
 
 void zvector_free(zvector_t * v)
 {
+    if (!v) {
+        return;
+    }
     zvector_fini(v);
     zfree(v);
 }
@@ -76,17 +49,7 @@ void zvector_free(zvector_t * v)
 void zvector_push(zvector_t * v, const void *val)
 {
     if (_VEC_LEFT_(v) < 1) {
-        if (v->mpool_used) {
-            zvector_mpool_t *vmv = (zvector_mpool_t *)v;
-            char ** n = (char **)zmpool_malloc(vmv->mpool, ((v->size)*2+1)*sizeof(char *));
-            if (v->len > 0) {
-                memcpy(n+(v->offset), v->data, (v->len)*sizeof(char *));
-            }
-            zmpool_free(vmv->mpool, (v->data)-(v->offset));
-            v->data = n + (v->offset);
-        } else {
-            v->data = ((char **)zrealloc((v->data)-(v->offset), ((v->size)*2+1)*sizeof(char *)))+(v->offset);
-        }
+        v->data = ((char **)zrealloc((v->data) - (v->offset), ((v->size) * 2 + 1) * sizeof(char *))) + (v->offset);
         v->size *= 2;
     }
     v->data[v->len++] = ZCONVERT_CHAR_PTR(val);
@@ -107,21 +70,12 @@ void zvector_unshift(zvector_t *v, const void *val)
             v->data[0] = ZCONVERT_CHAR_PTR(val);
         } else {
             nsize = (v->size)*2 + 100;
-            zvector_mpool_t *vmv = (zvector_mpool_t *)v;
             char **n;
-            if (v->mpool_used) {
-                n = (char **)zmpool_malloc(vmv->mpool, (nsize+1)*sizeof(char *));
-            } else {
-                n = (char **)zmalloc((nsize+1)*sizeof(char *));
-            }
+            n = (char **)zmalloc((nsize + 1) * sizeof(char *));
             if (len > 0) {
                 memcpy(n + 100, v->data, len*sizeof(char *));
             }
-            if (v->mpool_used) {
-                zmpool_free(vmv->mpool, (v->data));
-            } else {
-                zfree(v->data);
-            }
+            zfree(v->data);
             v->data = n + 99;
             v->offset = 99;
             v->data[0] = ZCONVERT_CHAR_PTR(val);

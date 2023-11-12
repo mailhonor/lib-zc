@@ -111,6 +111,7 @@ static void zmain_argument_do_something(int argc, char **argv)
 
     zvar_log_debug_enable = zconfig_get_bool(zvar_default_config, "debug", zvar_log_debug_enable);
     zvar_log_fatal_catch = zconfig_get_bool(zvar_default_config, "fatal-catch", zvar_log_fatal_catch);
+    zvar_log_output_disable = zconfig_get_bool(zvar_default_config, "log-output-disable", zvar_log_output_disable);
 
     zatexit(_main_argument_fini, 0);
     zsignal_ignore(SIGPIPE);

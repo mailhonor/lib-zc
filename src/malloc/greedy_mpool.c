@@ -127,7 +127,7 @@ zmpool_t *zmpool_create_greedy_pool(int single_buf_size, int once_malloc_max_siz
     zmpool_t *mp;
     zmem_greedy_pool_t *worker;
 
-    mp = (zmpool_t *) zmalloc(sizeof(zmpool_t) + sizeof(zmem_greedy_pool_t));
+    mp = (zmpool_t *) zcalloc(1, sizeof(zmpool_t) + sizeof(zmem_greedy_pool_t));
     mp->method=&_method;
     worker = (zmem_greedy_pool_t *) ((char *)mp + sizeof(zmpool_t));
     memset(worker, 0, sizeof(zmem_greedy_pool_t));

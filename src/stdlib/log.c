@@ -19,6 +19,7 @@
 
 zbool_t zvar_log_fatal_catch = 0;
 zbool_t zvar_log_debug_enable = 0;
+zbool_t zvar_log_output_disable = 0;
 
 static void zvprintf_default(const char *source_fn, size_t line_number, const char *fmt, va_list ap);
 
@@ -40,7 +41,7 @@ void (*zlog_vprintf)(const char *source_fn, size_t line_number, const char *fmt,
 void zlog_info(const char *source_fn, size_t line_number, const char *fmt, ...)
 {
     va_list ap;
-    if (zlog_vprintf)
+    if (zlog_vprintf && (!zvar_log_output_disable))
     {
         va_start(ap, fmt);
         zlog_vprintf(source_fn, line_number, fmt, ap);
@@ -50,7 +51,7 @@ void zlog_info(const char *source_fn, size_t line_number, const char *fmt, ...)
 
 void zvlog_info(const char *source_fn, size_t line_number, const char *fmt, va_list ap)
 {
-    if (zlog_vprintf)
+    if (zlog_vprintf && (!zvar_log_output_disable))
     {
         zlog_vprintf(source_fn, line_number, fmt, ap);
     }
