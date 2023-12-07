@@ -98,7 +98,7 @@ int basic_stream::read(zbuf_t *bf, int max_len)
     if (left_len > have_len) {
         left_len = have_len;
     }
-    zbuf_memcat(bf, basic_worker_->read_buf, left_len);
+    zbuf_memcat(bf, basic_worker_->read_buf + basic_worker_->read_buf_p1, left_len);
     basic_worker_->read_buf_p1 += left_len;
     return zbuf_len(bf);
 }
@@ -131,7 +131,7 @@ int basic_stream::read(void *mem, int max_len)
         left_len = have_len;
     }
     ret_len += left_len;
-    memcpy(ps, basic_worker_->read_buf, left_len);
+    memcpy(ps, basic_worker_->read_buf + basic_worker_->read_buf_p1, left_len);
     basic_worker_->read_buf_p1 += left_len;
     return ret_len;
 }
@@ -164,7 +164,7 @@ int basic_stream::read(std::string &str, int max_len)
         left_len = have_len;
     }
     ret_len += left_len;
-    str.append((char *)(basic_worker_->read_buf), left_len);
+    str.append((char *)(basic_worker_->read_buf) + basic_worker_->read_buf_p1, left_len);
     basic_worker_->read_buf_p1 += left_len;
     return ret_len;
 }

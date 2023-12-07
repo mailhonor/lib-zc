@@ -121,7 +121,7 @@ int zstream_read(zstream_t *fp, zbuf_t *bf, int max_len)
     if (left_len > have_len) {
         left_len = have_len;
     }
-    zbuf_memcat(bf, fp->read_buf, left_len);
+    zbuf_memcat(bf, fp->read_buf + fp->read_buf_p1, left_len);
     fp->read_buf_p1 += left_len;
     return zbuf_len(bf);
 }
@@ -154,7 +154,7 @@ int zstream_read_to_mem(zstream_t *fp, void *mem, int max_len)
         left_len = have_len;
     }
     ret_len += left_len;
-    memcpy(ps, fp->read_buf, left_len);
+    memcpy(ps, fp->read_buf + fp->read_buf_p1, left_len);
     fp->read_buf_p1 += left_len;
     return ret_len;
 }

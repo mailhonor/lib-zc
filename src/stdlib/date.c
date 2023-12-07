@@ -25,6 +25,6 @@ char *zbuild_rfc822_date_string(ssize_t t, char *buf)
 {
     struct tm tmbuf;
     localtime_r((time_t *)&t, &tmbuf);
-    strftime(buf, zvar_rfc822_date_string_size, "%a, %d %b %y %T %z (%Z)", &tmbuf);
+    strftime(buf, zvar_rfc822_date_string_size, "%a, %d %b %Y:%T:%z (%Z)", &tmbuf);
     return buf;
 }
