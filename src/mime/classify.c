@@ -55,6 +55,14 @@ static int ___mime_identify_type(zmime_t *mime)
     {
         return _ZPMT_ATTACHMENT;
     }
+    if (ZSTR_N_EQ(type, "text", 4))
+    {
+        if (strstr(disposition, "attachment"))
+        {
+            return _ZPMT_ATTACHMENT;
+        }
+        return _ZPMT_PLAIN;
+    }
     if (ZSTR_N_EQ(type, "text/", 5))
     {
         if (!strcmp(type + 5, "html"))

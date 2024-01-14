@@ -25,10 +25,41 @@
 #define Z_MAX_PATH 4096
 #endif // Z_MAX_PATH
 
+#ifdef _WIN32
+int zstat(const char *pathname, void *statbuf)
+{
+    wchar_t pathnamew[Z_MAX_PATH + 1];
+    if (zUtf8ToWideChar(pathname, -1, pathnamew, Z_MAX_PATH) < 1)
+    {
+        return 0;
+    }
+    return _wstat(pathnamew, statbuf);
+}
+
+FILE *zfopen(const char *pathname, const char *mode)
+{
+    wchar_t pathnamew[Z_MAX_PATH + 1];
+    wchar_t modew[64 + 1];
+    int mlen = strlen(mode);
+    if (mlen > 10) {
+        return 0;
+    }
+    if (zUtf8ToWideChar(pathname, -1, pathnamew, Z_MAX_PATH) < 1)
+    {
+        return 0;
+    }
+    if (zUtf8ToWideChar(mode, mlen, modew, 64) < 1)
+    {
+        return 0;
+    }
+    return _wfopen(pathnamew, modew);
+}
+#endif // _Win32
+
 ssize_t zfile_get_size(const char *pathname)
 {
     struct stat st;
-    if (stat(pathname, &st) == -1)
+    if (zstat(pathname, &st) == -1)
     {
         int ec = zget_errno();
         if (ec == ENOENT)
@@ -46,7 +77,7 @@ ssize_t zfile_get_size(const char *pathname)
 int zfile_exists(const char *pathname)
 {
     struct stat st;
-    if (stat(pathname, &st) == -1)
+    if (zstat(pathname, &st) == -1)
     {
         int ec = zget_errno();
         if (ec == ENOENT)
@@ -68,7 +99,7 @@ int zfile_put_contents(const char *pathname, const void *data, int len)
 #if (defined _WIN32) || (defined __APPLE__)
     int ret;
     FILE *fp;
-    if (!(fp = fopen(pathname, "wb+")))
+    if (!(fp = zfopen(pathname, "wb+")))
     {
         errno = zget_errno();
         return -1;
@@ -126,18 +157,7 @@ ssize_t zfile_get_contents(const char *pathname, zbuf_t *bf)
 #ifdef _WIN32
     int ret, ch;
     ssize_t rlen = 0;
-    ssize_t fsize = zfile_get_size(pathname);
-    if (fsize < 0)
-    {
-        return -1;
-    }
-    if (fsize > 256LL * 256 * 256 * 126)
-    {
-        zfatal("zfile_get_contents size too big: :%zd", fsize);
-    }
-    zbuf_reset(bf);
-    zbuf_need_space(bf, (int)fsize);
-    FILE *fp = fopen(pathname, "rb");
+    FILE *fp = zfopen(pathname, "rb");
     if (!fp)
     {
         errno = zget_errno();
@@ -551,7 +571,7 @@ int zrename(const char *oldpath, const char *newpath)
 #ifdef _WIN32
     wchar_t oldpathw[Z_MAX_PATH + 1];
     wchar_t newpathw[Z_MAX_PATH + 1];
-    if ((zMultiByteToWideChar_any(oldpath, -1, oldpathw, Z_MAX_PATH) < 1) || (zMultiByteToWideChar_any(newpath, -1, newpathw, Z_MAX_PATH) < 1))
+    if ((zUtf8ToWideChar(oldpath, -1, oldpathw, Z_MAX_PATH) < 1) || (zUtf8ToWideChar(newpath, -1, newpathw, Z_MAX_PATH) < 1))
     {
         errno = zget_errno();
         return -1;
@@ -571,7 +591,7 @@ int zunlink(const char *pathname)
 {
 #ifdef _WIN32
     wchar_t pathnamew[Z_MAX_PATH + 1];
-    if (zMultiByteToWideChar_any(pathname, -1, pathnamew, Z_MAX_PATH) < 1)
+    if (zUtf8ToWideChar(pathname, -1, pathnamew, Z_MAX_PATH) < 1)
     {
         return -1;
     }
@@ -596,7 +616,7 @@ int zlink(const char *oldpath, const char *newpath)
 #ifdef _WIN32
     wchar_t oldpathw[Z_MAX_PATH + 1];
     wchar_t newpathw[Z_MAX_PATH + 1];
-    if ((zMultiByteToWideChar_any(oldpath, -1, oldpathw, Z_MAX_PATH) < 1) || (zMultiByteToWideChar_any(newpath, -1, newpathw, Z_MAX_PATH) < 1))
+    if ((zUtf8ToWideChar(oldpath, -1, oldpathw, Z_MAX_PATH) < 1) || (zUtf8ToWideChar(newpath, -1, newpathw, Z_MAX_PATH) < 1))
     {
         errno = zget_errno();
         return -1;
@@ -649,7 +669,7 @@ int zsymlink(const char *oldpath, const char *newpath)
     BOOLEAN res;
     wchar_t oldpathw[Z_MAX_PATH + 1];
     wchar_t newpathw[Z_MAX_PATH + 1];
-    if ((zMultiByteToWideChar_any(oldpath, -1, oldpathw, Z_MAX_PATH) < 1) || (zMultiByteToWideChar_any(newpath, -1, newpathw, Z_MAX_PATH) < 1))
+    if ((zUtf8ToWideChar(oldpath, -1, oldpathw, Z_MAX_PATH) < 1) || (zUtf8ToWideChar(newpath, -1, newpathw, Z_MAX_PATH) < 1))
     {
         return -1;
     }

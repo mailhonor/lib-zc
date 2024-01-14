@@ -14,6 +14,7 @@
 #include <pthread.h>
 #include <Winsock2.h>
 #include <windows.h>
+#include <sys/stat.h>
 
 int zWSAStartup()
 {
@@ -185,6 +186,33 @@ int zwin32_code_to_errno(unsigned long w32Err)
 
     return EINVAL;
 }
+
+int zUtf8ToWideChar(const char *in, int in_len, wchar_t *result_ptr, int result_size)
+{
+    wchar_t *result_buf = (wchar_t *)result_ptr;
+    result_buf[0] = L'\0';
+    int ret_len = MultiByteToWideChar(CP_UTF8, 0, in, in_len, NULL, 0);
+    if (ret_len < 1)
+    {
+        return -1;
+    }
+    ret_len = MultiByteToWideChar(CP_UTF8, 0, in, in_len, result_buf, result_size);
+    if (ret_len < 1)
+    {
+        return -1;
+    }
+    if (in_len < 0)
+    {
+        result_buf[ret_len - 1] = L'\0';
+        return ret_len - 1;
+    }
+    else
+    {
+        result_buf[ret_len] = L'\0';
+        return ret_len;
+    }
+}
+
 
 // UTF-16 (wide character)
 // 返回结果是字符数

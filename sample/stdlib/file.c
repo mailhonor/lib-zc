@@ -31,6 +31,15 @@ int main(int argc, char **argv)
         fn2 = zvar_main_redundant_argv[1];
     }
 
+#ifdef _WIN32
+    char fn_buf[10240 + 1];
+    char fn2_buf[10240 + 1];
+    zMultiByteToUTF8_any(fn, -1, fn_buf, 10240);
+    zMultiByteToUTF8_any(fn2, -1, fn2_buf, 10240);
+    fn = fn_buf;
+    fn2 = fn2_buf;
+#endif
+
     zinfo("\nfile exists %s ?", fn);
     if (zfile_exists(fn) < 0)
     {
@@ -70,7 +79,7 @@ int main(int argc, char **argv)
     {
         zinfo("    exists");
         zinfo("\nunlink %s", fn2);
-        if (zunlink(fn2) < 1)
+        if (zunlink(fn2) < 0)
         {
             zinfo("    error: %d", errno);
         }

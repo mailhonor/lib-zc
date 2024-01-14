@@ -281,6 +281,8 @@ int zWSAStartup();
 // if w32Err == 0, then w32Err = GetLastError()
 int zwin32_code_to_errno(unsigned long w32Err);
 #define zget_errno() zwin32_code_to_errno(0)
+int zstat(const char *pathname, void *statbuf);
+FILE *zfopen(const char *pathname, const char *mode);
 ssize_t zgetdelim(char **lineptr, size_t *n, int delim, FILE *stream);
 zinline ssize_t zgetline(char **lineptr, size_t *n, FILE *stream)
 {
@@ -289,6 +291,7 @@ zinline ssize_t zgetline(char **lineptr, size_t *n, FILE *stream)
 void *zmemmem(const void *l, size_t l_len, const void *s, size_t s_len);
 ssize_t ztimegm(/* struct tm * */ void *void_tm);
 int zclosesocket(int sock);
+int zUtf8ToWideChar(const char *in, int in_len, wchar_t *result_ptr, int result_size);
 int zMultiByteToWideChar_any(const char *in, int in_len, wchar_t *result_ptr, int result_size);
 int zWideCharToUTF8(const wchar_t *in, int in_size, char *result_ptr, int result_size);
 int zMultiByteToUTF8_any(const char *in, int in_len, char *result_ptr, int result_size);
@@ -303,6 +306,8 @@ int zMultiByteToUTF8_any(const char *in, int in_len, char *result_ptr, int resul
 #define zvfprintf vfprintf
 #define zWSAStartup()
 #define zget_errno() errno
+#define zstat(a, b) stat(a, b)
+#define zfopen(a, b) fopen(a, b)
 #define zgetdelim(a, b, c, d) getdelim(a, b, c, d)
 #define zgetline(a, b, c) getline(a, b, c)
 #define zmemmem(a, b, c, d) memmem(a, b, c, d)
