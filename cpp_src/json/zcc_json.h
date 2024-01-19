@@ -20,7 +20,7 @@
 #endif
 
 #define _namespace_begin \
-    namespace zcc           \
+    namespace zcc        \
     {
 #define _namespace_end }
 
@@ -58,9 +58,13 @@ public:
     json(const std::string &val);
     json(const char *val, int len = -1);
     json(ssize_t val);
+    json(size_t val);
 #ifdef _WIN32
     json(long val);
+    json(unsigned long val);
 #endif // _WIN32
+    json(int val);
+    json(unsigned int val);
     json(double val);
     json(bool val);
     json(const unsigned char type);
@@ -170,6 +174,7 @@ public:
         get_long_value() = val;
         return this;
     }
+
     zinline json *set_double_value(double val)
     {
         get_double_value() = val;
@@ -192,13 +197,33 @@ public:
         get_long_value() = val;
         return this;
     }
+    zinline json *set_value(size_t val)
+    {
+        get_long_value() = val;
+        return this;
+    }
 #ifdef _WIN32
     zinline json *set_value(long val)
     {
         get_long_value() = val;
         return this;
     }
+    zinline json *set_value(unsigned long val)
+    {
+        get_long_value() = val;
+        return this;
+    }
 #endif // _WIN32
+    zinline json *set_value(int val)
+    {
+        get_long_value() = val;
+        return this;
+    }
+    zinline json *set_value(unsigned int val)
+    {
+        get_long_value() = val;
+        return this;
+    }
     zinline json *set_value(double val)
     {
         get_double_value() = val;
@@ -350,9 +375,13 @@ public:
     ___zcc_json_update(const std::string &);
     ___zcc_json_update(const char *);
     ___zcc_json_update(ssize_t);
+    ___zcc_json_update(size_t);
 #ifdef _WIN32
     ___zcc_json_update(long);
+    ___zcc_json_update(unsigned long);
 #endif // _WIN32
+    ___zcc_json_update(int);
+    ___zcc_json_update(unsigned int);
     ___zcc_json_update(double);
     ___zcc_json_update(bool);
 #undef ___zcc_json_update
@@ -408,4 +437,3 @@ private:
 #pragma pack(pop)
 _namespace_end;
 #endif /*___ZC_LIB_INCLUDE_JSON___ */
-

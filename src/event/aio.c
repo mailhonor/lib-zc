@@ -1525,7 +1525,7 @@ zaio_base_t *zaio_base_get_current_pthread_aio_base()
 static void _zaio_base_event_notify_reader(zaio_t *aio)
 {
     uint64_t u;
-    read(aio->fd, &u, sizeof(uint64_t));
+    if(read(aio->fd, &u, sizeof(uint64_t)));
 }
 
 zaio_base_t *zaio_base_create()
@@ -1586,7 +1586,7 @@ void zaio_base_stop_notify(zaio_base_t *eb)
 void zaio_base_touch(zaio_base_t *eb)
 {
     uint64_t u = 1;
-    write(eb->eventfd_aio->fd, &u, sizeof(uint64_t));
+    if(write(eb->eventfd_aio->fd, &u, sizeof(uint64_t)));
 }
 
 static void _check_incoming(zaio_base_t *eb)

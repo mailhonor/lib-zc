@@ -51,4 +51,6 @@
     }                           \
     return ret;
 
+#define ZCC_JSON_FOPEN_FUNCTION zfopen
+
 #endif //___ZC_LIB_DEV_INCLUDE___

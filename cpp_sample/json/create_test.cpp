@@ -40,7 +40,7 @@ int main()
     json.object_update("thanks", new zcc::json(), true)
         ->array_add("you")
         ->array_add("he")
-        ->array_add(123L)
+        ->array_add(123)
         ->array_add(true)
         ->array_add(2.01)
         ->array_add(new zcc::json());
@@ -59,7 +59,7 @@ int main()
         ->object_update("object_update", "给对象添加一个子节点")
         ->get_parent()
         ->object_update("score", 0.98)
-        ->object_update("version", new zcc::json(12L))
+        ->object_update("version", new zcc::json(12))
         ->object_update("published", false)
         ->object_update("published2", false, true)
         ->set_string_value("sssss");
@@ -70,7 +70,7 @@ int main()
 
     result.clear();
     json.serialize(result, zcc::json_serialize_pretty);
-    zprintf("Json: %s\n", result.c_str());
+    printf("Json: %s\n", result.c_str());
 
     zcc::json *cp = json.deep_copy();
     cp->debug_show();
@@ -79,7 +79,7 @@ int main()
     json.object_delete("APIS", 0);
     result.clear();
     json.serialize(result, zcc::json_serialize_pretty);
-    zprintf("Json: %s\n", result.c_str());
+    printf("Json: %s\n", result.c_str());
 
     return 0;
 }

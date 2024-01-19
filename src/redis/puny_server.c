@@ -1882,7 +1882,7 @@ static void ___before_service()
     char *attr;
     attr = zconfig_get_str(zvar_default_config, "redis-server-prepare-cmd", "");
     if (!zempty(attr)) {
-        system(attr);
+        if(system(attr));
     }
 
     attr = zconfig_get_str(zvar_default_config, "redis-server-prepare-load", "");

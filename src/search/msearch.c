@@ -450,7 +450,7 @@ int zmsearch_match(zmsearch_t *ms, const char *str, int len, const char **matche
 int zmsearch_add_token_from_pathname(zmsearch_t *ms, const char *pathname)
 {
     char buf[4096+1];
-    FILE *fp = fopen(pathname, "rb");
+    FILE *fp = zfopen(pathname, "rb");
     if (!fp) {
         return -1;
     }

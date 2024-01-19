@@ -281,7 +281,6 @@ int zWSAStartup();
 // if w32Err == 0, then w32Err = GetLastError()
 int zwin32_code_to_errno(unsigned long w32Err);
 #define zget_errno() zwin32_code_to_errno(0)
-int zstat(const char *pathname, void *statbuf);
 FILE *zfopen(const char *pathname, const char *mode);
 ssize_t zgetdelim(char **lineptr, size_t *n, int delim, FILE *stream);
 zinline ssize_t zgetline(char **lineptr, size_t *n, FILE *stream)
@@ -292,9 +291,11 @@ void *zmemmem(const void *l, size_t l_len, const void *s, size_t s_len);
 ssize_t ztimegm(/* struct tm * */ void *void_tm);
 int zclosesocket(int sock);
 int zUtf8ToWideChar(const char *in, int in_len, wchar_t *result_ptr, int result_size);
-int zMultiByteToWideChar_any(const char *in, int in_len, wchar_t *result_ptr, int result_size);
+int zMultiByteToWideChar(const char *in, int in_len, wchar_t *result_ptr, int result_size);
 int zWideCharToUTF8(const wchar_t *in, int in_size, char *result_ptr, int result_size);
-int zMultiByteToUTF8_any(const char *in, int in_len, char *result_ptr, int result_size);
+int zMultiByteToUTF8(const char *in, int in_len, char *result_ptr, int result_size);
+int zWideCharToMultiByte(const wchar_t *in, int in_len, char *result_ptr, int result_size);
+int zUTF8ToMultiByte(const char *in, int in_len, char *result_ptr, int result_size);
 #else // _WIN32
 #define zprintf printf
 #define zsprintf sprintf
@@ -306,7 +307,6 @@ int zMultiByteToUTF8_any(const char *in, int in_len, char *result_ptr, int resul
 #define zvfprintf vfprintf
 #define zWSAStartup()
 #define zget_errno() errno
-#define zstat(a, b) stat(a, b)
 #define zfopen(a, b) fopen(a, b)
 #define zgetdelim(a, b, c, d) getdelim(a, b, c, d)
 #define zgetline(a, b, c) getline(a, b, c)
@@ -1739,6 +1739,7 @@ int zget_readable_count(int fd);
 
 /* 下面这些, 忽略信号EINTR的封装 */
 int zopen(const char *pathname, int flags, mode_t mode);
+int zsys_open(const char *pathname, int flags, mode_t mode);
 ssize_t zread(int fd, void *buf, size_t count);
 ssize_t zwrite(int fd, const void *buf, size_t count);
 int zclose(int fd);
@@ -2023,7 +2024,11 @@ int zstream_write_cint_and_pp(zstream_t *fp, const char **pp, int size);
 int zstream_flush(zstream_t *fp);
 
 /* time, src/stdlib/time.c ########################################## */
+#ifdef _WIN32
 #define zvar_max_timeout_millisecond (3600LL * 24 * 365 * 10 * 1000)
+#else // _WIN32
+#define zvar_max_timeout_millisecond (3600L * 24 * 365 * 10 * 1000)
+#endif // _WIN32
 
 /* 返回当前毫秒精度的时间 */
 ssize_t zmillisecond(void);
@@ -2136,19 +2141,25 @@ zbool_t zset_core_file_size(int megabyte);
 zbool_t zset_cgroup_name(const char *name);
 
 /* file, src/stdlib/file.c ########################################## */
+int zstat(const char *pathname, void *statbuf);
 /* -1: 错, 0: 不存在, 1: 存在 */
 int zfile_exists(const char *pathname);
+int zsys_file_exists(const char *pathname);
 
 /* -1: 错, >=0: 文件大小 */
 ssize_t zfile_get_size(const char *pathname);
+ssize_t zsys_file_get_size(const char *pathname);
 
 /* 保存data 到文件pathname, 覆盖pathname -1: 错, 1: 成功 */
 int zfile_put_contents(const char *pathname, const void *data, int len);
+int zsys_file_put_contents(const char *pathname, const void *data, int len);
 
 /* 从文件pathname获取文件内容, 存储到(覆盖)result, -1:错, >= 文件长度 */
 ssize_t zfile_get_contents(const char *pathname, zbuf_t *result);
+ssize_t zsys_file_get_contents(const char *pathname, zbuf_t *bf);
 /* 同上, 出错exit */
 int zfile_get_contents_sample(const char *pathname, zbuf_t *result);
+int zsys_file_get_contents_sample(const char *pathname, zbuf_t *result);
 
 /* 从标准输入读取内容到(覆盖)bf */
 int zstdin_get_contents(zbuf_t *bf);
@@ -2168,9 +2179,11 @@ struct zmmap_reader_t
 /* mmap 只读方式映射一个文件, -1: 错, 1: 成功  */
 int zmmap_reader_init(zmmap_reader_t *reader, const char *pathname);
 int zmmap_reader_fini(zmmap_reader_t *reader);
+int zsys_mmap_reader_init(zmmap_reader_t *reader, const char *pathname);
 
 /* touch */
 int ztouch(const char *pathname);
+int zsys_touch(const char *pathname);
 
 /* 通过find命令查抄文件, 找到的文件放到 file_argv, 出错exit, file_argv为0则创建 */
 zargv_t *zfind_file_sample(zargv_t *file_argv, const char **pathnames, int pathnames_count, const char *pathname_match);
@@ -2182,6 +2195,7 @@ zargv_t *zfind_file_sample(zargv_t *file_argv, const char **pathnames, int pathn
 @return -1 失败; 1 成功
 */
 int zmkdirs(int perms, const char *path1, ...);
+int zsys_mkdirs(int perms, const char *path1, ...);
 
 /*
 @brief 创建目录
@@ -2189,23 +2203,30 @@ int zmkdirs(int perms, const char *path1, ...);
 @return -1 失败; 1 成功
 */
 int zmkdir(const char *path, int perms);
+int zsys_mkdir(const char *path, int perms);
 
 /* 获取mac地址; 返回个数, -1: 错; src/stdlib/mac_address.c */
 int zget_mac_address(zargv_t *mac_list);
 
 //
 int zrename(const char *oldpath, const char *newpath);
+int zsys_rename(const char *oldpath, const char *newpath);
 
 //
 int zunlink(const char *pathname);
+int zsys_unlink(const char *pathname);
 
 //
 int zlink(const char *oldpath, const char *newpath);
+int zsys_link(const char *oldpath, const char *newpath);
 int zlink_force(const char *oldpath, const char *newpath, const char *tmpdir);
+int zsys_link_force(const char *oldpath, const char *newpath, const char *tmpdir);
 
 //
 int zsymlink(const char *oldpath, const char *newpath);
+int zsys_symlink(const char *oldpath, const char *newpath);
 int zsymlink_force(const char *oldpath, const char *newpath, const char *tmpdir);
+int zsys_symlink_force(const char *oldpath, const char *newpath, const char *tmpdir);
 
 /* signal */
 typedef void (*zsighandler_t)(int);
@@ -2213,6 +2234,9 @@ zsighandler_t zsignal(int signum, zsighandler_t handler);
 zsighandler_t zsignal_ignore(int signum);
 
 /* main_parameter, src/stdlib/main_argument.c ########################### */
+
+extern int zvar_path_splitor;
+
 extern char *zvar_progname;
 
 extern int zvar_main_argc;
@@ -3821,9 +3845,13 @@ public:
     json(const std::string &val);
     json(const char *val, int len = -1);
     json(ssize_t val);
+    json(size_t val);
 #ifdef _WIN32
     json(long val);
+    json(unsigned long val);
 #endif // _WIN32
+    json(int val);
+    json(unsigned int val);
     json(double val);
     json(bool val);
     json(const unsigned char type);
@@ -3933,6 +3961,7 @@ public:
         get_long_value() = val;
         return this;
     }
+
     zinline json *set_double_value(double val)
     {
         get_double_value() = val;
@@ -3955,13 +3984,33 @@ public:
         get_long_value() = val;
         return this;
     }
+    zinline json *set_value(size_t val)
+    {
+        get_long_value() = val;
+        return this;
+    }
 #ifdef _WIN32
     zinline json *set_value(long val)
     {
         get_long_value() = val;
         return this;
     }
+    zinline json *set_value(unsigned long val)
+    {
+        get_long_value() = val;
+        return this;
+    }
 #endif // _WIN32
+    zinline json *set_value(int val)
+    {
+        get_long_value() = val;
+        return this;
+    }
+    zinline json *set_value(unsigned int val)
+    {
+        get_long_value() = val;
+        return this;
+    }
     zinline json *set_value(double val)
     {
         get_double_value() = val;
@@ -4113,9 +4162,13 @@ public:
     ___zcc_json_update(const std::string &);
     ___zcc_json_update(const char *);
     ___zcc_json_update(ssize_t);
+    ___zcc_json_update(size_t);
 #ifdef _WIN32
     ___zcc_json_update(long);
+    ___zcc_json_update(unsigned long);
 #endif // _WIN32
+    ___zcc_json_update(int);
+    ___zcc_json_update(unsigned int);
     ___zcc_json_update(double);
     ___zcc_json_update(bool);
 #undef ___zcc_json_update

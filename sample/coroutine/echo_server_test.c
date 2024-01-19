@@ -76,8 +76,9 @@ static void *echo_service(void *context)
     while((ret = read(fd, buf, 10240)) > 0) {
         buf[ret] = 0;
         zprintf("your input: %s", buf);
-        write(fd, buf, ret);
-        if ((!strncasecmp(buf, "exit", 4)) || (!strncasecmp(buf, "quit", 4))) {
+        if(write(fd, buf, ret));
+        if ((!strncasecmp(buf, "exit", 4)) || (!strncasecmp(buf, "quit", 4)))
+        {
             break;
         }
     }

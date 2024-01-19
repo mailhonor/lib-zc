@@ -124,7 +124,7 @@ int ztimed_read_write_wait_millisecond(int fd, ssize_t read_write_wait_timeout, 
 
     return 0;
 }
-#else // _WIN32
+#else  // _WIN32
 /* read */
 /* readable means: 1, have readable data.
  *                 2, peer closed.
@@ -199,7 +199,7 @@ int ztimed_read_write_wait_millisecond(int fd, ssize_t read_write_wait_timeout, 
             {
                 return -1;
             }
-            if (pollfd.revents & POLLIN)
+            if (pollfd.revents & (POLLIN | POLLHUP | POLLERR | POLLRDNORM | POLLWRNORM))
             {
                 if (readable)
                 {
@@ -259,7 +259,7 @@ int ztimed_read(int fd, void *buf, int size, int read_wait_timeout)
             ret = -1;
 #ifdef _WIN32
             ret = recv(fd, buf, size, 0);
-#else // _WIN32
+#else  // _WIN32
             ret = read(fd, buf, size);
 #endif // _WIN32
             if (ret < 0)
@@ -286,7 +286,7 @@ int ztimed_read(int fd, void *buf, int size, int read_wait_timeout)
         ret = -1;
 #ifdef _WIN32
         ret = recv(fd, buf, size, 0);
-#else // _WIN32
+#else  // _WIN32
         ret = read(fd, buf, size);
 #endif // _WIN32
         if (ret < 0)
@@ -343,7 +343,7 @@ int ztimed_write(int fd, const void *buf, int size, int write_wait_timeout)
             ret = -1;
 #ifdef _WIN32
             ret = send(fd, buf, size, 0);
-#else // _WIN32
+#else  // _WIN32
             ret = write(fd, buf, size);
 #endif // _WIN32
             if (ret < 0)
@@ -368,7 +368,7 @@ int ztimed_write(int fd, const void *buf, int size, int write_wait_timeout)
         }
 #ifdef _WIN32
         ret = send(fd, buf, size, 0);
-#else // _WIN32
+#else  // _WIN32
         ret = write(fd, buf, size);
 #endif // _WIN32
         if (ret < 0)
