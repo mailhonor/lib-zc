@@ -49,9 +49,7 @@ void imap_client::status_result::reset()
     unseen_ = -1;
 }
 
-
-// FIXME, 有的文件夹不能 SELECT
-bool imap_client::cmd_select(select_result &ser, const char *folder_name_imap)
+int imap_client::cmd_select(select_result &ser, const char *folder_name_imap)
 {
     // 1016-1668607103 select inbox
     // * OK [CLOSED] Previous mailbox closed.
@@ -66,7 +64,7 @@ bool imap_client::cmd_select(select_result &ser, const char *folder_name_imap)
     last_selected_ = "";
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
     ser.reset();
     std::string linebuf;
@@ -117,46 +115,44 @@ bool imap_client::cmd_select(select_result &ser, const char *folder_name_imap)
         }
         else
         {
-            if (!parse_imap_result('S', response_tokens))
+            int r;
+            if ((r = parse_imap_result('S', response_tokens)) < 1)
             {
-                return false;
+                return r;
             }
-            if (ok_no_bad_ == result_onb::ok)
-            {
-                last_selected_ = folder_name_imap;
-            }
-            return true;
+            last_selected_ = folder_name_imap;
+            return r;
         }
     }
 
-    return false;
+    return -1;
 }
 
-bool imap_client::cmd_select(const char *folder_name_imap)
+int imap_client::cmd_select(const char *folder_name_imap)
 {
     select_result ser;
     if (last_selected_ == folder_name_imap)
     {
-        return true;
+        return 1;
     }
     return cmd_select(ser, folder_name_imap);
 }
 
-bool imap_client::cmd_select_forced(const char *folder_name_imap)
+int imap_client::cmd_select_forced(const char *folder_name_imap)
 {
     select_result ser;
     last_selected_ = "";
     return cmd_select(ser, folder_name_imap);
 }
 
-bool imap_client::cmd_status(status_result &ser, const char *folder_name_imap)
+int imap_client::cmd_status(status_result &ser, const char *folder_name_imap)
 {
     // S status abc (MESSAGES RECENT UIDNEXT UIDVALIDITY UNSEEN)
     // * STATUS abc (MESSAGES 0 RECENT 0 UIDNEXT 1 UIDVALIDITY 1663559079 UNSEEN 0)
     // S OK Status completed (0.001 + 0.000 secs).
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
     ser.reset();
     std::string linebuf;
@@ -219,7 +215,7 @@ bool imap_client::cmd_status(status_result &ser, const char *folder_name_imap)
             return parse_imap_result('S', response_tokens);
         }
     }
-    return false;
+    return -1;
 }
 
 zcc_namespace_end;

@@ -48,7 +48,7 @@ void imap_client::uidplus_result::reset()
     uid_ = -1;
 }
 
-bool imap_client::parse_move_or_copy_result(uidplus_result &result, const response_tokens &response_tokens)
+static bool _parse_move_or_copy_result(imap_client::uidplus_result &result, const imap_client::response_tokens &response_tokens)
 {
     result.reset();
     auto &token_vector = response_tokens.token_vector_;
@@ -95,7 +95,7 @@ bool imap_client::parse_move_or_copy_result(uidplus_result &result, const respon
     return false;
 }
 
-bool imap_client::parse_append_result(uidplus_result &result, const response_tokens &response_tokens)
+static bool _parse_append_result(imap_client::uidplus_result &result, const imap_client::response_tokens &response_tokens)
 {
     result.reset();
     auto &token_vector = response_tokens.token_vector_;
@@ -136,135 +136,115 @@ bool imap_client::parse_append_result(uidplus_result &result, const response_tok
     return false;
 }
 
-bool imap_client::cmd_store(const char *uids, bool plus_or_minus, const char *flags)
+int imap_client::cmd_store(const char *uids, bool plus_or_minus, const char *flags)
 {
     if (zempty(uids) || strchr(uids, '\n'))
     {
-        return true;
+        return 1;
     }
     if (zempty(flags) || strchr(flags, '\n'))
     {
-        return true;
+        return 1;
     }
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
     std::string linebuf;
     linebuf.clear();
     linebuf.append("S UID STORE ").append(uids).append(" ");
     linebuf.append(plus_or_minus ? "+" : "-").append("FLAGS.SILENT (").append(flags).append(")");
-    if (!do_quick_cmd(linebuf, true))
-    {
-        return false;
-    }
-    return true;
+    return do_quick_cmd_simple_line_mode(linebuf);
 }
 
-bool imap_client::cmd_store(const char *uids, bool plus_or_minus, mail_flags &flags)
+int imap_client::cmd_store(const char *uids, bool plus_or_minus, mail_flags &flags)
 {
     if (zempty(uids) || strchr(uids, '\n'))
     {
-        return true;
+        return 1;
     }
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
     std::string flags_str = flags.to_string();
     if (flags_str.empty())
     {
-        return true;
+        return 1;
     }
     std::string linebuf;
     linebuf.clear();
     linebuf.append("S UID STORE ").append(uids).append(" ");
     linebuf.append(plus_or_minus ? "+" : "-").append("FLAGS.SILENT (").append(flags_str).append(")");
-    if (!do_quick_cmd(linebuf, true))
-    {
-        return false;
-    }
-    return true;
+    return do_quick_cmd_simple_line_mode(linebuf);
 }
 
-bool imap_client::cmd_store(int uid, bool plus_or_minus, mail_flags &flags)
+int imap_client::cmd_store(int uid, bool plus_or_minus, mail_flags &flags)
 {
     std::string uids = std::to_string(uid);
     return cmd_store(uids.c_str(), plus_or_minus, flags);
 }
 
-bool imap_client::cmd_store_deleted_flag(const char *uids, bool plus_or_minus)
+int imap_client::cmd_store_deleted_flag(const char *uids, bool plus_or_minus)
 {
     if (strchr(uids, '\n'))
     {
-        return false;
+        return 0;
     }
     if (need_close_connection_)
     {
-        return false;
+        return 0;
     }
     std::string linebuf;
     linebuf.clear();
     linebuf.append("S UID STORE ").append(uids).append(" ");
     linebuf.append(plus_or_minus ? "+" : "-").append("FLAGS.SILENT (\\Deleted)");
-    if (!do_quick_cmd(linebuf, true))
-    {
-        return false;
-    }
-    return true;
+    return do_quick_cmd_simple_line_mode(linebuf);
 }
 
-bool imap_client::cmd_store_deleted_flag(int uid, bool plus_or_minus)
+int imap_client::cmd_store_deleted_flag(int uid, bool plus_or_minus)
 {
     std::string uids = std::to_string(uid);
     return cmd_store_deleted_flag(uids.c_str(), plus_or_minus);
 }
 
-bool imap_client::cmd_expunge()
+int imap_client::cmd_expunge()
 {
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
     std::string linebuf;
     linebuf.append("E EXPUNGE");
-    if (!do_quick_cmd(linebuf, true))
-    {
-        return false;
-    }
-
-    return true;
+    return do_quick_cmd_simple_line_mode(linebuf);
 }
 
-bool imap_client::delete_mail(int uid)
+int imap_client::delete_mail(int uid)
 {
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
+    int r;
     std::string linebuf;
     char intbuf[32];
     zsprintf(intbuf, "%d", uid);
 
     linebuf.clear();
     linebuf.append("S UID STORE ").append(intbuf).append(" +FLAGS.SILENT (\\Deleted)");
-    if (!do_quick_cmd(linebuf, true))
+    if ((r = do_quick_cmd_simple_line_mode(linebuf)) < 1)
     {
-        return false;
+        return r;
     }
 
     linebuf.clear();
     linebuf.append("E EXPUNGE");
-    if (!do_quick_cmd(linebuf, true))
-    {
-        return false;
-    }
-
-    return true;
+    return do_quick_cmd_simple_line_mode(linebuf);
 }
 
-bool imap_client::cmd_move(uidplus_result &result, int from_uid, const char *to_folder_name_imap)
+int imap_client::cmd_move(uidplus_result &result, int from_uid, const char *to_folder_name_imap)
 {
+    int r = 0;
     result.reset();
     response_tokens response_tokens;
     bool dealed_uidplus = false;
@@ -284,7 +264,7 @@ bool imap_client::cmd_move(uidplus_result &result, int from_uid, const char *to_
         {
             if (!dealed_uidplus)
             {
-                if (parse_move_or_copy_result(result, response_tokens))
+                if (_parse_move_or_copy_result(result, response_tokens))
                 {
                     dealed_uidplus = true;
                 }
@@ -292,29 +272,26 @@ bool imap_client::cmd_move(uidplus_result &result, int from_uid, const char *to_
             continue;
         }
 
-        if (!parse_imap_result('M', response_tokens))
+        if ((r = parse_imap_result('M', response_tokens)) < 1)
         {
-            return false;
-        }
-        if (!result_is_ok())
-        {
-            return false;
+            return r;
         }
         if (!dealed_uidplus)
         {
-            if (parse_move_or_copy_result(result, response_tokens))
+            if (_parse_move_or_copy_result(result, response_tokens))
             {
                 dealed_uidplus = true;
             }
         }
-        return true;
+        return 1;
     }
-    return false;
+    return -1;
 }
 
-bool imap_client::cmd_copy(uidplus_result &result, int from_uid, const char *to_folder_name_imap)
+int imap_client::cmd_copy(uidplus_result &result, int from_uid, const char *to_folder_name_imap)
 {
     result.reset();
+    int r;
     response_tokens response_tokens;
     bool dealed_uidplus = false;
     std::string linebuf;
@@ -333,7 +310,7 @@ bool imap_client::cmd_copy(uidplus_result &result, int from_uid, const char *to_
         {
             if (!dealed_uidplus)
             {
-                if (parse_move_or_copy_result(result, response_tokens))
+                if (_parse_move_or_copy_result(result, response_tokens))
                 {
                     dealed_uidplus = true;
                 }
@@ -341,24 +318,20 @@ bool imap_client::cmd_copy(uidplus_result &result, int from_uid, const char *to_
             continue;
         }
 
-        if (!parse_imap_result('C', response_tokens))
+        if ((r = parse_imap_result('C', response_tokens)) < 1)
         {
-            return false;
-        }
-        if (!result_is_ok())
-        {
-            return false;
+            return r;
         }
         if (!dealed_uidplus)
         {
-            if (parse_move_or_copy_result(result, response_tokens))
+            if (_parse_move_or_copy_result(result, response_tokens))
             {
                 dealed_uidplus = true;
             }
         }
-        return true;
+        return 1;
     }
-    return false;
+    return -1;
 }
 
 imap_client::append_session::append_session()
@@ -377,7 +350,7 @@ void imap_client::append_session::reset()
     to_folder_ = "";
 }
 
-bool imap_client::cmd_append_prepare_protocol(append_session &append)
+int imap_client::cmd_append_prepare_protocol(append_session &append)
 {
     std::string linebuf;
     std::string flags_str = append.flags_.to_string();
@@ -403,20 +376,21 @@ bool imap_client::cmd_append_prepare_protocol(append_session &append)
     if ((fp_gets(linebuf, 10240) < 0) || linebuf.empty())
     {
         zcc_imap_client_info("ERROR READ");
-        return false;
+        return -1;
     }
     zcc_imap_client_debug_read_line(linebuf);
     if (linebuf[0] != '+')
     {
         zcc_imap_client_info("ERROR want '+ ...' instead of (%s)", linebuf.c_str());
-        return false;
+        return 0;
     }
-    return true;
+    return 1;
 }
 
-bool imap_client::cmd_append_over(uidplus_result &result)
+int imap_client::cmd_append_over(uidplus_result &result)
 {
     result.reset();
+    int r;
     fp_append("\r\n");
     bool dealed_uidplus = false;
     response_tokens response_tokens;
@@ -428,29 +402,25 @@ bool imap_client::cmd_append_over(uidplus_result &result)
             continue;
         }
 
-        if (!parse_imap_result('A', response_tokens))
+        if ((r = parse_imap_result('A', response_tokens)) < 1)
         {
-            return false;
-        }
-        if (!result_is_ok())
-        {
-            return false;
+            return r;
         }
         if (!dealed_uidplus)
         {
-            if (!parse_append_result(result, response_tokens))
+            if (!_parse_append_result(result, response_tokens))
             {
                 dealed_uidplus = true;
             }
         }
-        return true;
+        return 1;
     }
-    return false;
+    return 0;
 }
 
-bool imap_client::append_file(uidplus_result &result, append_session &append, const char *filename)
+int imap_client::append_file(uidplus_result &result, append_session &append, const char *filename)
 {
-    bool r = false;
+    int r = -1;
     FILE *fp = 0;
     char buf[4096 + 1];
     ssize_t size, left;
@@ -469,7 +439,7 @@ bool imap_client::append_file(uidplus_result &result, append_session &append, co
         goto over;
     }
     append.mail_size_ = size;
-    if (!cmd_append_prepare_protocol(append))
+    if ((r = cmd_append_prepare_protocol(append)) < 1)
     {
         goto over;
     }
@@ -497,12 +467,13 @@ bool imap_client::append_file(uidplus_result &result, append_session &append, co
         }
         left -= len;
     }
-    if (!cmd_append_over(result))
+    if ((r = cmd_append_over(result)) < 1)
     {
+        r = -1;
         goto over;
     }
 
-    r = true;
+    r = 1;
 over:
     if (fp)
     {
@@ -511,9 +482,9 @@ over:
     return r;
 }
 
-bool imap_client::append_data(uidplus_result &result, append_session &append, const void *data, size_t dlen)
+int imap_client::append_data(uidplus_result &result, append_session &append, const void *data, size_t dlen)
 {
-    bool r = false;
+    int r = -1;
     append.mail_size_ = dlen;
     if (!cmd_append_prepare_protocol(append))
     {
@@ -524,15 +495,15 @@ bool imap_client::append_data(uidplus_result &result, append_session &append, co
     {
         zcc_imap_client_info("ERROR write");
         need_close_connection_ = true;
-        connection_error_ = true;
         goto over;
     }
-    if (!cmd_append_over(result))
+    if ((r = cmd_append_over(result)) < 1)
     {
+        r = -1;
         goto over;
     }
 
-    r = true;
+    r = 1;
 over:
     return r;
 }

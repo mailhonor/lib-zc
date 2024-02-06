@@ -11,14 +11,34 @@
 
 ssize_t zmime_header_line_decode_date(const char *str)
 {
-#define ___IGNORE_BLANK(p)	{while((*p) && (*p== ' ' )) p++;}
-#define ___FIND_BLANK(p)	{while((*p) && (*p!= ' ' )) p++;}
-#define ___FIND_COLON(p)	{while((*p) && (*p!= ':' )) p++;}
-#define ___FIND_DIGIT(p)	{while((*p) && ((*p<'0')||(*p>'9'))) p++;}
-#define ___ERR()		{if(!*p) goto err;}
+#define ___IGNORE_BLANK(p)          \
+    {                               \
+        while ((*p) && (*p == ' ')) \
+            p++;                    \
+    }
+#define ___FIND_BLANK(p)            \
+    {                               \
+        while ((*p) && (*p != ' ')) \
+            p++;                    \
+    }
+#define ___FIND_COLON(p)            \
+    {                               \
+        while ((*p) && (*p != ':')) \
+            p++;                    \
+    }
+#define ___FIND_DIGIT(p)                           \
+    {                                              \
+        while ((*p) && ((*p < '0') || (*p > '9'))) \
+            p++;                                   \
+    }
+#define ___ERR()      \
+    {                 \
+        if (!*p)      \
+            goto err; \
+    }
 
     char str_copy[128];
-    char *ps, *p, *p2, *p3;
+    char *ps, *p;
     int v, sign, offset, last_offset = 0;
     struct tm tm;
     ssize_t result = -1;
@@ -27,8 +47,10 @@ ssize_t zmime_header_line_decode_date(const char *str)
     strncpy(str_copy, str, 127);
     str_copy[127] = 0;
     zstr_tolower(str_copy);
-    for (p = str_copy;*p;p++) {
-        if (*p == '-') {
+    for (p = str_copy; *p; p++)
+    {
+        if (*p == '-')
+        {
             last_offset = (int)(p - str_copy);
             *p = ' ';
         }
@@ -49,18 +71,21 @@ ssize_t zmime_header_line_decode_date(const char *str)
     ps = p;
     ___FIND_BLANK(p);
     ___ERR();
-    if (p - ps != 3) {
+    if (p - ps != 3)
+    {
         goto err;
     }
     *(p++) = 0;
     v = -1;
-    p2 = p + 1;
-    p3 = p + 2;
-    switch (*ps) {
+    switch (*ps)
+    {
     case 'a':
-        if (*p2 == 'p') {
+        if (p[1] == 'p')
+        {
             v = 3;
-        } else {
+        }
+        else
+        {
             v = 7;
         }
         break;
@@ -71,18 +96,26 @@ ssize_t zmime_header_line_decode_date(const char *str)
         v = 1;
         break;
     case 'j':
-        if (*p2 == 'a') {
+        if (ps[1] == 'a')
+        {
             v = 0;
-        } else if (*p3 == 'n') {
+        }
+        else if (ps[2] == 'n')
+        {
             v = 5;
-        } else {
+        }
+        else
+        {
             v = 6;
         }
         break;
     case 'm':
-        if (*p3 == 'r') {
+        if (ps[2] == 'r')
+        {
             v = 2;
-        } else {
+        }
+        else
+        {
             v = 4;
         }
         break;
@@ -96,7 +129,8 @@ ssize_t zmime_header_line_decode_date(const char *str)
         v = 8;
         break;
     }
-    if (v == -1) {
+    if (v == -1)
+    {
         goto err;
     }
     tm.tm_mon = v;
@@ -106,7 +140,8 @@ ssize_t zmime_header_line_decode_date(const char *str)
     ps = p;
     ___FIND_BLANK(p);
     ___ERR();
-    if (p - ps != 4) {
+    if (p - ps != 4)
+    {
         goto err;
     }
     *(p++) = 0;
@@ -134,14 +169,16 @@ ssize_t zmime_header_line_decode_date(const char *str)
 
     ___IGNORE_BLANK(p);
     ___ERR();
-    if ((int)(p - str_copy) == last_offset + 1) {
+    if ((int)(p - str_copy) == last_offset + 1)
+    {
         p[-1] = '-';
-        p --;
+        p--;
     }
     ps = p;
     offset = 0;
     sign = 0;
-    if (strlen((char *)ps) < 5) {
+    if (strlen((char *)ps) < 5)
+    {
         goto break_offset;
     }
     sign = (ps[0] == '-') ? -1 : 1;
@@ -153,7 +190,8 @@ ssize_t zmime_header_line_decode_date(const char *str)
 break_offset:
 
     result = ztimegm(&tm);
-    if (result == -1) {
+    if (result == -1)
+    {
         goto err;
     }
     result = result - sign * offset;
@@ -164,6 +202,6 @@ break_offset:
 #undef ___FIND_DIGIT
 #undef ___ERR
 
-  err:
+err:
     return result;
 }

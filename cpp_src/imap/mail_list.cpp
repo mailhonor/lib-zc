@@ -10,13 +10,13 @@
 
 zcc_namespace_begin;
 
-bool imap_client::_cmd_search_flag(std::vector<int> &uid_vector, const char *flag_token)
+int imap_client::_cmd_search_flag(std::vector<int> &uid_vector, const char *flag_token)
 {
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
-    bool ok = false;
+    int r = -1;
     std::string linebuf, intbuf;
 
     linebuf.clear();
@@ -44,7 +44,6 @@ bool imap_client::_cmd_search_flag(std::vector<int> &uid_vector, const char *fla
         if (len < 6)
         {
             need_close_connection_ = true;
-            logic_error_ = true;
             goto over;
         }
         if ((linebuf[0] == '*') && (linebuf[1] == ' '))
@@ -52,14 +51,12 @@ bool imap_client::_cmd_search_flag(std::vector<int> &uid_vector, const char *fla
             if (uid_vector.size() > 1024 * 1024 * 10)
             {
                 need_close_connection_ = true;
-                logic_error_ = true;
                 zcc_imap_client_error("imap  返回结果太多 > %zd", uid_vector.size());
                 goto over;
             }
             if (linebuf[len - 1] != '\n')
             {
                 need_close_connection_ = true;
-                logic_error_ = true;
                 if (len > 1024 * 1024 * 100 - 1)
                 {
                     zcc_imap_client_error("imap 搜索结果返回太长 > %d", len);
@@ -70,7 +67,7 @@ bool imap_client::_cmd_search_flag(std::vector<int> &uid_vector, const char *fla
                 }
                 goto over;
             }
-            trim_rn(linebuf);
+            trim_line_end_rn(linebuf);
             const char *ps = linebuf.c_str() + 9, *end = ps + linebuf.size();
             while (ps < end)
             {
@@ -95,12 +92,11 @@ bool imap_client::_cmd_search_flag(std::vector<int> &uid_vector, const char *fla
         }
         else /* if (linebuf == "S ") */
         {
-            if (!parse_imap_result(linebuf.c_str() + 2))
+            if ((r = parse_imap_result(linebuf.c_str() + 2) < 1))
             {
-                goto over;
+                break;
             }
-            ok = true;
-            break;
+            goto over;
         }
     }
 
@@ -118,40 +114,40 @@ over:
             zcc_imap_client_debug("搜索结果: %d", *it);
         }
     }
-    return ok;
+    return r;
 }
 
-bool imap_client::cmd_search_all(std::vector<int> &uid_vector)
+int imap_client::cmd_search_all(std::vector<int> &uid_vector)
 {
     return _cmd_search_flag(uid_vector, "ALL");
 }
 
-bool imap_client::cmd_search_unseen(std::vector<int> &uid_vector)
+int imap_client::cmd_search_unseen(std::vector<int> &uid_vector)
 {
     return _cmd_search_flag(uid_vector, "UNSEEN");
 }
 
-bool imap_client::cmd_search_answered(std::vector<int> &uid_vector)
+int imap_client::cmd_search_answered(std::vector<int> &uid_vector)
 {
     return _cmd_search_flag(uid_vector, "ANSWERED");
 }
 
-bool imap_client::cmd_search_deleted(std::vector<int> &uid_vector)
+int imap_client::cmd_search_deleted(std::vector<int> &uid_vector)
 {
     return _cmd_search_flag(uid_vector, "DELETED");
 }
 
-bool imap_client::cmd_search_draft(std::vector<int> &uid_vector)
+int imap_client::cmd_search_draft(std::vector<int> &uid_vector)
 {
     return _cmd_search_flag(uid_vector, "DRAFT");
 }
 
-bool imap_client::cmd_search_flagged(std::vector<int> &uid_vector)
+int imap_client::cmd_search_flagged(std::vector<int> &uid_vector)
 {
     return _cmd_search_flag(uid_vector, "FLAGGED");
 }
 
-bool imap_client::get_mail_list(mail_list_result &mail_list)
+int imap_client::get_mail_list(mail_list_result &mail_list)
 {
     // * 1 FETCH (UID 1405 FLAGS (\Seen))
     // * 2 FETCH (UID 1407 FLAGS (\Flagged \Seen))
@@ -159,8 +155,9 @@ bool imap_client::get_mail_list(mail_list_result &mail_list)
 
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
+    int r = -1;
     std::string linebuf, name;
     response_tokens response_tokens;
     auto &token_vector = response_tokens.token_vector_;
@@ -179,19 +176,18 @@ bool imap_client::get_mail_list(mail_list_result &mail_list)
         {
             if ((token_vector.size() < 6) || (token_vector[3] != "(UID"))
             {
-                logic_error_ = true;
                 need_close_connection_ = true;
                 break;
             }
 
             mail_flags flags;
-            parse_mail_flags(flags, response_tokens, 6);
+            _imap_client_parse_mail_flags(flags, response_tokens, 6);
             int uid = atoi(token_vector[4].c_str());
             mail_list[uid] = flags;
         }
         else
         {
-            if (!parse_imap_result('F', response_tokens))
+            if ((r = parse_imap_result('F', response_tokens)) < 1)
             {
                 break;
             }
@@ -201,7 +197,7 @@ bool imap_client::get_mail_list(mail_list_result &mail_list)
 
     tmp_verbose_mode_ = false;
     tmp_verbose_line_ = 0;
-    return false;
+    return r;
 
 debug:
     if (debug_mode_)
@@ -217,7 +213,7 @@ debug:
             zcc_imap_client_debug("邮件列表结果: UID: % 6d, a: %d, s: %d, d: %d, f: %d, D: %d, R: %d", it->first, it->second.answered_, it->second.seen_, it->second.draft_, it->second.flagged_, it->second.deleted_, it->second.recent_);
         }
     }
-    return true;
+    return r;
 }
 
 zcc_namespace_end;

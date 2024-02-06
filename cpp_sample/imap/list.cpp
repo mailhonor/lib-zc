@@ -54,17 +54,21 @@ int main(int argc, char **argv)
     ic.set_verbose_mode();
     ic.set_debug_protocol_fn(debug_protocol_fn);
     ic.set_timeout(10);
-    ic.set_destination(server);
-    ic.set_user_password(user, pass);
-    ic.set_ssl_tls(ssl_mode, tls_mode, ssl_ctx);
-    ic.set_id("(\"name\" \"zcc\")");
+    ic.set_ssl_tls(ssl_ctx, ssl_mode, tls_mode);
 
-    if (!ic.open())
+    if (ic.open(server) < 1)
     {
         goto over;
     }
+    if (ic.do_auth(user, pass) < 1)
+    {
+        goto over;
+    }
+    if (ic.cmd_id() < 1) {
+        goto over;
+    }
 
-    if (!ic.get_all_folder_info(folder_list_result))
+    if (ic.get_all_folder_info(folder_list_result) < 1)
     {
         goto over;
     }
@@ -73,10 +77,12 @@ int main(int argc, char **argv)
         it->second.debug_show();
     }
 
-    if (!ic.cmd_select(select_result, "inbox"))
+    if (ic.cmd_select(select_result, "inbox") < 1)
     {
         goto over;
     }
+
+    ic.close();
 
     zprintf("\n##############################\n\n");
 

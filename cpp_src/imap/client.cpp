@@ -31,6 +31,10 @@ void imap_client::set_simple_line_length_limit(int limit)
 
 imap_client &imap_client::fp_append(const char *s, int slen)
 {
+    if (slen < 0)
+    {
+        slen = strlen(s);
+    }
     fp_.append(s, slen);
     if (debug_protocol_fn_)
     {
@@ -54,7 +58,6 @@ int imap_client::fp_readn(void *mem, int strict_len)
     int r = fp_.readn(mem, strict_len);
     if (r < strict_len)
     {
-        connection_error_ = true;
         need_close_connection_ = true;
     }
 
@@ -73,7 +76,6 @@ int imap_client::fp_readn(std::string &str, int strict_len)
     int r = fp_.readn(str, strict_len);
     if (r < strict_len)
     {
-        connection_error_ = true;
         need_close_connection_ = true;
     }
     if (r > 0)
@@ -91,7 +93,6 @@ int imap_client::fp_read_delimiter(void *mem, int delimiter, int max_len)
     int r = fp_.read_delimiter(mem, delimiter, max_len);
     if (r < 0)
     {
-        connection_error_ = true;
         need_close_connection_ = true;
     }
     if (r > 0)
@@ -108,7 +109,6 @@ int imap_client::fp_read_delimiter(std::string &str, int delimiter, int max_len)
     int r = fp_.read_delimiter(str, delimiter, max_len);
     if (r < 0)
     {
-        connection_error_ = true;
         need_close_connection_ = true;
     }
     if (r > 0)
@@ -119,15 +119,6 @@ int imap_client::fp_read_delimiter(std::string &str, int delimiter, int max_len)
         }
     }
     return r;
-}
-
-bool imap_client::check_is_need_close()
-{
-    if (error_ || connection_error_ || need_close_connection_ || logic_error_)
-    {
-        return true;
-    }
-    return false;
 }
 
 zcc_namespace_end;

@@ -25,15 +25,15 @@ void imap_client::response_tokens::reset()
     first_line_.clear();
 }
 
-bool imap_client::read_response_tokens_oneline(response_tokens &response_tokens, int &extra_length)
+int imap_client::read_response_tokens_oneline(response_tokens &response_tokens, int &extra_length)
 {
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
     auto &token_vector = response_tokens.token_vector_;
     extra_length = -1;
-    bool ok = false;
+    int r = -1;
     bool last_quoted = false;
     std::string linebuf, tmp_token;
     bool tmp_token_begin;
@@ -42,10 +42,10 @@ bool imap_client::read_response_tokens_oneline(response_tokens &response_tokens,
 
     if (fp_gets(linebuf, simple_line_length_limit_) < 0)
     {
-        return false;
+        return -1;
     }
 
-    trim_rn(linebuf);
+    trim_line_end_rn(linebuf);
     if (tmp_verbose_mode_)
     {
         tmp_verbose_line_++;
@@ -96,7 +96,6 @@ bool imap_client::read_response_tokens_oneline(response_tokens &response_tokens,
                     if (ps == end)
                     {
                         need_close_connection_ = true;
-                        logic_error_ = true;
                         goto over;
                     }
                     ch = *ps++;
@@ -127,10 +126,9 @@ bool imap_client::read_response_tokens_oneline(response_tokens &response_tokens,
             token_vector.push_back(tmp_token);
         }
     }
-    ok_no_bad_ = result_onb::ok;
-    ok = true;
+    r = 1;
 over:
-    while (ok && (!last_quoted) && token_vector.size())
+    while ((r > 0) && (!last_quoted) && token_vector.size())
     {
         char testbuf[128];
         std::string &tmpstr = token_vector.back();
@@ -147,37 +145,35 @@ over:
         extra_length = next_len;
         break;
     }
-    return ok;
+    return r;
 }
 
-bool imap_client::read_response_tokens(response_tokens &response_tokens)
+int imap_client::read_response_tokens(response_tokens &response_tokens)
 {
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
     auto &token_vector = response_tokens.token_vector_;
-    bool ok = false;
+    int r = -1;
     int extra_length;
     std::string tmpstr;
     char testbuf[128];
     int next_len;
     while (1)
     {
-        if (!read_response_tokens_oneline(response_tokens, extra_length))
+        if ((r = read_response_tokens_oneline(response_tokens, extra_length)) < 0)
         {
             break;
         }
         if (extra_length < 0)
         {
-            ok_no_bad_ = result_onb::ok;
-            ok = true;
+            r = 1;
             break;
         }
         if (token_vector.empty())
         {
-            ok_no_bad_ = result_onb::ok;
-            ok = true;
+            r = 1;
             break;
         }
         std::string sizecon;
@@ -186,19 +182,20 @@ bool imap_client::read_response_tokens(response_tokens &response_tokens)
             sizecon.reserve(extra_length);
             if (fp_readn(sizecon, extra_length) < extra_length)
             {
+                r = -1;
                 break;
             }
         }
         token_vector.back() = sizecon;
     }
-    return ok;
+    return r;
 }
 
-bool imap_client::read_big_data(FILE *dest_fp, std::string &raw_content, int extra_length)
+int imap_client::read_big_data(FILE *dest_fp, std::string &raw_content, int extra_length)
 {
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
     if (extra_length < 0)
     {
@@ -206,8 +203,7 @@ bool imap_client::read_big_data(FILE *dest_fp, std::string &raw_content, int ext
         {
             fwrite(raw_content.c_str(), 1, raw_content.size(), dest_fp);
         }
-        ok_no_bad_ = result_onb::ok;
-        return true;
+        return 1;
     }
 
     int all_rlen = 0;
@@ -222,7 +218,7 @@ bool imap_client::read_big_data(FILE *dest_fp, std::string &raw_content, int ext
         buf.clear();
         if (fp_readn(buf, rlen) < rlen)
         {
-            return false;
+            return -1;
         }
         if (all_rlen < 1024 * 1024 * 1024)
         {
@@ -231,21 +227,20 @@ bool imap_client::read_big_data(FILE *dest_fp, std::string &raw_content, int ext
         all_rlen += rlen;
     }
 
-    ok_no_bad_ = result_onb::ok;
-    return true;
+    return 1;
 }
 
-bool imap_client::ignore_left_token(int extra_length)
+int imap_client::ignore_left_token(int extra_length)
 {
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
     if (extra_length > 0)
     {
         if (fp_readn(0, extra_length) < extra_length)
         {
-            return false;
+            return -1;
         }
     }
     response_tokens response_tokens;

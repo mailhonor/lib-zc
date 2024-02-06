@@ -35,6 +35,7 @@ void imap_client::folder_result::reset()
     junk_ = false;
     trash_ = false;
     sent_ = false;
+    attrs_.clear();
     if (status_)
     {
         status_->reset();
@@ -45,12 +46,22 @@ void imap_client::folder_result::debug_show()
 {
     std::string tmpbuf;
     std::string utf8_name = imap_utf7_to_utf8(name_);
-    zcc::sprintf_1024(tmpbuf, "文件夹: %s => %s, 属性: (Noinferiors: %d, Noselect: %d, Subscribed: %d; Drafts: %d, Junk: %d, Trash: %d, Sent: %d)", name_.c_str(), utf8_name.c_str(), noinferiors_, noselect_, subscribed_, drafts_, junk_, trash_, sent_);
+    zcc::sprintf_1024(tmpbuf, "\n文件夹: %s => %s", name_.c_str(), utf8_name.c_str());
+    zcc::sprintf_1024(tmpbuf, "\n        属性解析结果: Noinferiors: %d, Noselect: %d, Subscribed: %d; Drafts: %d, Junk: %d, Trash: %d, Sent: %d", noinferiors_, noselect_, subscribed_, drafts_, junk_, trash_, sent_);
+    tmpbuf.append("\n        原始属性字段: ");
+    for (auto it = attrs_.begin(); it != attrs_.end(); it++)
+    {
+        if (it != attrs_.begin())
+        {
+            tmpbuf.append(", ");
+        }
+        tmpbuf.append(*it);
+    }
     if (status_)
     {
-        zcc::sprintf_1024(tmpbuf, ", STATUS(RECENT: %d, UIDNEXT: %d, UIDVALIDITY: %d, UNSEEN: %d)", status_->recent_, status_->uidnext_, status_->uidvalidity_, status_->unseen_);
+        zcc::sprintf_1024(tmpbuf, "\n        STATUS 命令结果: RECENT: %d, UIDNEXT: %d, UIDVALIDITY: %d, UNSEEN: %d", status_->recent_, status_->uidnext_, status_->uidvalidity_, status_->unseen_);
     }
-    zinfo("%s", tmpbuf.c_str());
+    zinfo("%s\n", tmpbuf.c_str());
 }
 
 const char *imap_client::folder_result::get_special_use()
@@ -81,9 +92,13 @@ static void _parse_folder_list(imap_client::folder_result &folder, const imap_cl
     auto &token_vector = response_tokens.token_vector_;
     folder.reset();
     folder.name_ = token_vector.back();
+    if (token_vector.size() < 2)
+    {
+        return;
+    }
 
     bool stop = false;
-    for (auto it = token_vector.begin() + 1; (!stop) && (it != token_vector.end()); it++)
+    for (auto it = token_vector.begin() + 2; (!stop) && (it != token_vector.end()); it++)
     {
         std::string tmp = *it;
         if (tmp.empty())
@@ -93,6 +108,7 @@ static void _parse_folder_list(imap_client::folder_result &folder, const imap_cl
         if (tmp.back() == ')')
         {
             tmp.pop_back();
+            stop = true;
         }
         zcc::tolower(tmp);
         const char *s = tmp.c_str();
@@ -104,6 +120,11 @@ static void _parse_folder_list(imap_client::folder_result &folder, const imap_cl
         {
             s++;
         }
+        if (!*s)
+        {
+            continue;
+        }
+        folder.attrs_.insert(s);
         if (ZSTR_EQ(s, "noinferiors"))
         {
             folder.noinferiors_ = true;
@@ -131,7 +152,7 @@ static void _parse_folder_list(imap_client::folder_result &folder, const imap_cl
     }
 }
 
-bool imap_client::_cmd_list(folder_list_result &folder_list, bool list_or_lsub)
+int imap_client::_cmd_list(folder_list_result &folder_list, bool list_or_lsub)
 {
     // * LIST (\HasNoChildren) "/" "{123}"
     // * LIST (\HasNoChildren) "/" abc'
@@ -145,7 +166,7 @@ bool imap_client::_cmd_list(folder_list_result &folder_list, bool list_or_lsub)
 
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
     const char *cmd = list_or_lsub ? "LIST" : "LSUB";
     std::string linebuf, name;
@@ -171,43 +192,38 @@ bool imap_client::_cmd_list(folder_list_result &folder_list, bool list_or_lsub)
             return parse_imap_result('L', response_tokens);
         }
     }
-    return false;
+    return -1;
 }
 
-bool imap_client::cmd_list(folder_list_result &folder_list)
+int imap_client::cmd_list(folder_list_result &folder_list)
 {
     return _cmd_list(folder_list, true);
 }
 
-bool imap_client::cmd_lsub(folder_list_result &folder_list)
+int imap_client::cmd_lsub(folder_list_result &folder_list)
 {
     return _cmd_list(folder_list, false);
 }
 
-bool imap_client::get_all_folder_info(folder_list_result &folder_list)
+int imap_client::get_all_folder_info(folder_list_result &folder_list)
 {
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
+    int r;
     folder_list_result folder_lsub;
 
-    //文件夹列表 (LIST)
-    if (!cmd_list(folder_list))
+    // 文件夹列表 (LIST)
+    if ((r = cmd_list(folder_list)) < 1)
     {
-        return false;
-    }
-    if (ok_no_bad_ != result_onb::ok) {
-        return true;
+        return r;
     }
 
     // 文件夹列表 (LSUB)
-    if (!cmd_lsub(folder_lsub))
+    if ((r = cmd_lsub(folder_lsub)) < 0)
     {
-        return false;
-    }
-    if (ok_no_bad_ != result_onb::ok) {
-        return true;
+        return r;
     }
     for (auto it = folder_lsub.begin(); it != folder_lsub.end(); it++)
     {
@@ -222,21 +238,23 @@ bool imap_client::get_all_folder_info(folder_list_result &folder_list)
     for (auto it = folder_list.begin(); it != folder_list.end(); it++)
     {
         status_result *st = new status_result();
-        if (cmd_status(*st, it->first.c_str()))
+        if ((r = cmd_status(*st, it->first.c_str())) > 0)
         {
-            if (ok_no_bad_ == result_onb::ok)
-            {
-                it->second.status_ = st;
-                continue;
-            }
+            it->second.status_ = st;
+            continue;
+        }
+        else if (r < 0)
+        {
+            delete st;
+            return -1;
+        }
+        else if (r == 0)
+        {
             delete st;
             continue;
         }
-        delete st;
-        return false;
     }
-    ok_no_bad_ = result_onb::ok;
-    return true;
+    return 1;
 }
 
 zcc_namespace_end;

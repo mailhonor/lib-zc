@@ -10,42 +10,21 @@
 
 zcc_namespace_begin;
 
-void imap_client::set_id(const char *id)
-{
-    id_.clear();
-    if (!zempty(id))
-    {
-        id_ = id;
-    }
-}
-
-bool imap_client::cmd_id(const char *id)
+int imap_client::cmd_id(const char *id)
 {
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
-    if (zempty(id) && id_.empty())
+    if (zempty(id))
     {
-        return true;
+        id = "(\"name\" \"zcc\")";
     }
     std::string linebuf;
     linebuf = "I ID ";
-    if (!zempty(id))
-    {
-        linebuf.append(id);
-    }
-    else
-    {
-        linebuf.append(id_);
-    }
+    linebuf.append(id);
 
-    if (!do_quick_cmd(linebuf, false))
-    {
-        return false;
-    }
-
-    return true;
+    return do_quick_cmd_simple_line_mode(linebuf);
 }
 
 zcc_namespace_end;

@@ -64,6 +64,21 @@ std::string &trim_right(std::string &str, const char *delims)
     return str;
 }
 
+std::string &trim_line_end_rn(std::string &s)
+{
+    size_t size = s.size();
+    if (size && (s[size - 1] == '\n'))
+    {
+        s.resize(size - 1);
+        size--;
+        if (size && (s[size - 1] == '\r'))
+        {
+            s.resize(size - 1);
+        }
+    }
+    return s;
+}
+
 string &string::printf_1024(const char *format, ...)
 {
     va_list ap;

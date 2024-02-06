@@ -10,11 +10,11 @@
 
 zcc_namespace_begin;
 
-bool imap_client::cmd_create(const std::string &pathname_utf7)
+int imap_client::cmd_create(const std::string &pathname_utf7)
 {
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
     std::string linebuf;
     linebuf = "C create ";
@@ -27,7 +27,7 @@ bool imap_client::cmd_create(const std::string &pathname_utf7)
         linebuf.clear();
         if (fp_gets(linebuf, 10240) < 0)
         {
-            return false;
+            return -1;
         }
         zcc_imap_client_debug_read_line(linebuf);
         if (linebuf[0] == '*')
@@ -36,21 +36,17 @@ bool imap_client::cmd_create(const std::string &pathname_utf7)
         }
         else
         {
-            if (!parse_imap_result('C', linebuf.c_str()))
-            {
-                return false;
-            }
-            return true;
+            return parse_imap_result('C', linebuf.c_str());
         }
     }
-    return true;
+    return -1;
 }
 
-bool imap_client::cmd_rename(const std::string &from_pathname_utf7, const std::string &to_pathname_utf7)
+int imap_client::cmd_rename(const std::string &from_pathname_utf7, const std::string &to_pathname_utf7)
 {
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
     std::string linebuf;
     linebuf = "R rename";
@@ -64,7 +60,7 @@ bool imap_client::cmd_rename(const std::string &from_pathname_utf7, const std::s
         linebuf.clear();
         if (fp_gets(linebuf, 10240) < 0)
         {
-            return false;
+            return -1;
         }
         zcc_imap_client_debug_read_line(linebuf);
         if (linebuf[0] == '*')
@@ -73,24 +69,21 @@ bool imap_client::cmd_rename(const std::string &from_pathname_utf7, const std::s
         }
         else
         {
-            if (!parse_imap_result('R', linebuf.c_str()))
-            {
-                return false;
-            }
-            return true;
+            return parse_imap_result('R', linebuf.c_str());
         }
     }
-    return true;
+    return -1;
 }
-bool imap_client::cmd_subscribe(const std::string &pathname_utf7, bool tf)
+
+int imap_client::cmd_subscribe(const std::string &pathname_utf7, bool tf)
 {
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
     std::string linebuf;
     linebuf = "S ";
-    linebuf.append(tf?"subscribe ":"unsubscribe ").append(escape_string(pathname_utf7));
+    linebuf.append(tf ? "subscribe " : "unsubscribe ").append(escape_string(pathname_utf7));
     fp_append(linebuf).fp_append("\r\n");
     zcc_imap_client_debug_write_line(linebuf);
 
@@ -99,7 +92,7 @@ bool imap_client::cmd_subscribe(const std::string &pathname_utf7, bool tf)
         linebuf.clear();
         if (fp_gets(linebuf, 10240) < 0)
         {
-            return false;
+            return -1;
         }
         zcc_imap_client_debug_read_line(linebuf);
         if (linebuf[0] == '*')
@@ -108,21 +101,17 @@ bool imap_client::cmd_subscribe(const std::string &pathname_utf7, bool tf)
         }
         else
         {
-            if (!parse_imap_result('S', linebuf.c_str()))
-            {
-                return false;
-            }
-            return true;
+            return parse_imap_result('S', linebuf.c_str());
         }
     }
-    return true;
+    return -1;
 }
 
-bool imap_client::cmd_delete(const std::string &pathname_utf7)
+int imap_client::cmd_delete(const std::string &pathname_utf7)
 {
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
     std::string linebuf;
     linebuf = "D ";
@@ -135,7 +124,7 @@ bool imap_client::cmd_delete(const std::string &pathname_utf7)
         linebuf.clear();
         if (fp_gets(linebuf, 10240) < 0)
         {
-            return false;
+            return -1;
         }
         zcc_imap_client_debug_read_line(linebuf);
         if (linebuf[0] == '*')
@@ -144,14 +133,10 @@ bool imap_client::cmd_delete(const std::string &pathname_utf7)
         }
         else
         {
-            if (!parse_imap_result('D', linebuf.c_str()))
-            {
-                return false;
-            }
-            return true;
+            return parse_imap_result('D', linebuf.c_str());
         }
     }
-    return true;
+    return -1;
 }
 
 zcc_namespace_end;

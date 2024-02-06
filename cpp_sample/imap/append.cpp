@@ -54,16 +54,22 @@ int main(int argc, char **argv)
     ic.set_debug_mode();
     ic.set_verbose_mode();
     ic.set_timeout(10);
-    ic.set_destination(server);
-    ic.set_user_password(user, pass);
-    ic.set_ssl_tls(ssl_mode, tls_mode, ssl_ctx);
+    ic.set_ssl_tls(ssl_ctx, ssl_mode, tls_mode);
 
-    if (!ic.open())
+    if (ic.open(server) < 1)
+    {
+        goto over;
+    }
+    if (ic.do_auth(user, pass) < 1)
+    {
+        goto over;
+    }
+    if (ic.cmd_id() < 1)
     {
         goto over;
     }
 
-    if (!ic.cmd_select(select_result, folder))
+    if (ic.cmd_select(select_result, folder) < 1)
     {
         goto over;
     }
@@ -71,13 +77,16 @@ int main(int argc, char **argv)
     append.to_folder_ = folder;
     append.flags_.flagged_ = true;
     append.time_ = time(0) - 3600 * 24;
-    if (!ic.append_file(uidplus_result, append, eml)) {
+    if (ic.append_file(uidplus_result, append, eml) < 1)
+    {
         goto over;
     }
 
     zprintf("NEW uidvalidity: %d, uid: %d\n", uidplus_result.uidvalidity_, uidplus_result.uid_);
 
     zprintf("\n##############################\n\n");
+
+    ic.close();
 
 over:
     if (tls_mode || ssl_mode)

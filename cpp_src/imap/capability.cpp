@@ -10,18 +10,17 @@
 
 zcc_namespace_begin;
 
-bool imap_client::cmd_capability(bool force)
+int imap_client::cmd_capability(bool force)
 {
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
     if (!force)
     {
         if (auth_capability_)
         {
-            ok_no_bad_ = result_onb::ok;
-            return true;
+            return 1;
         }
     }
     std::string linebuf;
@@ -34,7 +33,7 @@ bool imap_client::cmd_capability(bool force)
         linebuf.clear();
         if (fp_gets(linebuf, 10240) < 0)
         {
-            return false;
+            return -1;
         }
         zcc_imap_client_debug_read_line(linebuf);
         if (linebuf[0] == '*')
@@ -47,29 +46,32 @@ bool imap_client::cmd_capability(bool force)
         }
         else
         {
-            if (!parse_imap_result('C', linebuf.c_str()))
-            {
-                return false;
-            }
-            return true;
+            return parse_imap_result('C', linebuf.c_str());
         }
     }
-    return true;
+    return 1;
 }
 
-bool imap_client::get_capability(const char *key)
+int imap_client::get_capability(const char *key)
 {
-    if (!cmd_capability()){
-        return false;
+    int r;
+    if ((r = cmd_capability()) < 1)
+    {
+        return r;
     }
-    if (!capability_clear_flag_) {
+    if (!capability_clear_flag_)
+    {
         capability_clear_flag_ = true;
         size_t len = capability_.size();
-        for (size_t i = 0; i < len; i++) {
+        for (size_t i = 0; i < len; i++)
+        {
             int ch = capability_[i];
-            if (isalpha(ch)) {
+            if (isalpha(ch))
+            {
                 ch = ztolower(ch);
-            } else if (!isdigit(ch)) {
+            }
+            else if (!isdigit(ch))
+            {
                 ch = ' ';
             }
             capability_[i] = ch;
@@ -77,16 +79,23 @@ bool imap_client::get_capability(const char *key)
     }
     char keybuf[64 + 1];
     zsnprintf(keybuf, 64, " %s ", key);
-    if (!strstr(capability_.c_str(), keybuf)) {
-        return false;
+    if (!strstr(capability_.c_str(), keybuf))
+    {
+        return 0;
     }
-    return true;
+    return 1;
 }
 
-bool imap_client::get_capability_cached(const char *key, char *cache)
+int imap_client::get_capability_cached(const char *key, char *cache)
 {
-    if (!*cache) {
-        *cache = (get_capability(key) ? '1' : '2');
+    if (!*cache)
+    {
+        int r = get_capability(key);
+        if (r < 0)
+        {
+            return -1;
+        }
+        *cache = (r ? '1' : '2');
     }
     return ((*cache) == '1');
 }

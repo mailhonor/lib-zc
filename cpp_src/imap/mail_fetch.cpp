@@ -61,7 +61,7 @@ std::string imap_client::mail_flags::to_string()
     return r;
 }
 
-void imap_client::parse_mail_flags(mail_flags &flags, const response_tokens &response_tokens, int offset)
+void _imap_client_parse_mail_flags(imap_client::mail_flags &flags, const imap_client::response_tokens &response_tokens, int offset)
 {
     // * 1 FETCH (UID 1405 FLAGS (\Answered \Flagged \Deleted \Seen \Draft) RFC822.SIZE 67404 BODY[]<0> {12}
     // * 1 FETCH (UID 1405 FLAGS (\Seen) RFC822.SIZE 67404 BODY[]<0> {12}
@@ -87,7 +87,8 @@ void imap_client::parse_mail_flags(mail_flags &flags, const response_tokens &res
         }
         zcc::tolower(tmp);
         const char *s = tmp.c_str();
-        while ((s[0] == '(') || (s[0] == '\\')) {
+        while ((s[0] == '(') || (s[0] == '\\'))
+        {
             s++;
         }
         if (ZSTR_EQ(s, "answered"))
@@ -113,7 +114,7 @@ void imap_client::parse_mail_flags(mail_flags &flags, const response_tokens &res
     }
 }
 
-bool imap_client::get_message(FILE *dest_fp, mail_flags &flags, int uid)
+int imap_client::get_message(FILE *dest_fp, mail_flags &flags, int uid)
 {
     // F FETCH 1 (UID FLAGS RFC822.SIZE BODY.PEEK[]<0.12>)
     // * 1 FETCH (UID 1405 FLAGS (\Seen) RFC822.SIZE 67404 BODY[]<0> {12}
@@ -122,14 +123,14 @@ bool imap_client::get_message(FILE *dest_fp, mail_flags &flags, int uid)
 
     if (need_close_connection_)
     {
-        return false;
+        return -1;
     }
-    
+
     flags.reset();
     int extra_length;
     std::string linebuf;
     response_tokens response_tokens;
-    bool ok = false;
+    int r = -1;
 
     linebuf.clear();
     zcc::sprintf_1024(linebuf, "F UID FETCH %d (FLAGS BODY.PEEK[])", uid);
@@ -139,27 +140,31 @@ bool imap_client::get_message(FILE *dest_fp, mail_flags &flags, int uid)
     while (1)
     {
         response_tokens.reset();
-        if (!read_response_tokens_oneline(response_tokens, extra_length))
+        if ((r = read_response_tokens_oneline(response_tokens, extra_length)) < 1)
         {
+            need_close_connection_ = true;
+            r = -1;
             break;
         }
         if (response_tokens.token_vector_.size() < 3)
         {
-            logic_error_ = true;
             need_close_connection_ = true;
+            r = -1;
             break;
         }
         if (response_tokens.token_vector_[0] == "*")
         {
-            parse_mail_flags(flags, response_tokens, 3);
+            _imap_client_parse_mail_flags(flags, response_tokens, 3);
 
-            if (!read_big_data(dest_fp, response_tokens.token_vector_.back(), extra_length))
+            if ((r = read_big_data(dest_fp, response_tokens.token_vector_.back(), extra_length)) < 1)
             {
+                r = -1;
                 break;
             }
             zcc_imap_client_debug("获取一封信件, (Answered:%d, Seen: %d, Draft:%d, Flagged: %d, Deleted: %d, Recent: %d)", flags.answered_, flags.seen_, flags.draft_, flags.flagged_, flags.deleted_, flags.recent_);
-            if (extra_length > -1) {
-                if (!ignore_left_token(-1))
+            if (extra_length > -1)
+            {
+                if ((r = ignore_left_token(-1)) < 1)
                 {
                     break;
                 }
@@ -167,20 +172,18 @@ bool imap_client::get_message(FILE *dest_fp, mail_flags &flags, int uid)
         }
         else
         {
-            if (extra_length > -1) {
-                if (!ignore_left_token(extra_length))
+            if (extra_length > -1)
+            {
+                if ((r = ignore_left_token(extra_length)) < 1)
                 {
                     break;
                 }
             }
-            if (!parse_imap_result('F', response_tokens)) {
-                break;
-            }
-            ok = true;
+            r = parse_imap_result('F', response_tokens);
             break;
         }
     }
-    return ok;
+    return r;
 }
 
 zcc_namespace_end;

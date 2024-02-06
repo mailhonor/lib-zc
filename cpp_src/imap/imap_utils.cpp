@@ -11,121 +11,111 @@
 zcc_namespace_begin;
 
 // utils
-bool imap_client::parse_imap_result(const char *key_line)
+int imap_client::parse_imap_result(const char *key_line)
 {
     if (zempty(key_line))
     {
-        logic_error_ = true;
         need_close_connection_ = true;
-        return false;
+        return -1;
     }
     else if (key_line[0] == 'B')
     {
         ok_no_bad_ = result_onb::bad;
-        return true;
+        return 0;
     }
     else if (key_line[0] == 'N')
     {
         ok_no_bad_ = result_onb::no;
-        return true;
+        return 0;
     }
     else if (key_line[0] == 'O')
     {
         ok_no_bad_ = result_onb::ok;
-        return true;
+        return 1;
     }
     else
     {
-        logic_error_ = true;
         need_close_connection_ = true;
-        return false;
+        return -1;
     }
 }
 
-bool imap_client::parse_imap_result(char tag, const char *line)
+int imap_client::parse_imap_result(char tag, const char *line)
 {
     if ((line[0] != tag) && (line[0] != '*'))
     {
-        logic_error_ = true;
         need_close_connection_ = true;
-        return false;
+        return -1;
     }
     if (line[1] != ' ')
     {
-        logic_error_ = true;
         need_close_connection_ = true;
-        return false;
+        return -1;
     }
     if (line[2] == 'B')
     {
         ok_no_bad_ = result_onb::bad;
-        return true;
+        return 0;
     }
     else if (line[2] == 'N')
     {
         ok_no_bad_ = result_onb::no;
-        return true;
+        return 0;
     }
     else if (line[2] == 'O')
     {
         ok_no_bad_ = result_onb::ok;
-        return true;
+        return 1;
     }
     else
     {
-        logic_error_ = true;
         need_close_connection_ = true;
-        return false;
+        return -1;
     }
 }
 
-bool imap_client::parse_imap_result(char tag, const response_tokens &response_tokens)
+int imap_client::parse_imap_result(char tag, const response_tokens &response_tokens)
 {
     auto &token_vector = response_tokens.token_vector_;
     if (token_vector.size() < 2)
     {
-        logic_error_ = true;
         need_close_connection_ = true;
-        return false;
+        return -1;
     }
     const std::string &tmp0 = token_vector[0];
     if ((tmp0.size() != 1))
     {
-        logic_error_ = true;
         need_close_connection_ = true;
-        return false;
+        return -1;
     }
     if ((tmp0[0] != '*') && (tmp0[0] != tag))
     {
-        logic_error_ = true;
         need_close_connection_ = true;
-        return false;
+        return -1;
     }
     const std::string &tmp1 = token_vector[1];
     if (tmp1.empty())
     {
-        logic_error_ = true;
         need_close_connection_ = true;
-        return false;
+        return -1;
     }
     else if (tmp1[0] == 'O')
     {
         ok_no_bad_ = result_onb::ok;
-        return true;
+        return 1;
     }
     else if (tmp1[0] == 'N')
     {
         ok_no_bad_ = result_onb::no;
-        return true;
+        return 0;
     }
     else if (tmp1[0] == 'B')
     {
         ok_no_bad_ = result_onb::bad;
-        return true;
+        return 0;
     }
-    logic_error_ = true;
     need_close_connection_ = true;
-    return false;
+    return -1;
 }
 
 std::string imap_client::escape_string(const char *s, int slen)
@@ -180,22 +170,6 @@ std::string imap_client::escape_string(const char *s, int slen)
         r.append(s, slen);
     }
     return r;
-}
-
-std::string &imap_client::trim_rn(std::string &s)
-{
-    size_t size;
-    size = s.size();
-    if (size && (s[size - 1] == '\n'))
-    {
-        s.resize(size - 1);
-        size--;
-        if (size && (s[size - 1] == '\r'))
-        {
-            s.resize(size - 1);
-        }
-    }
-    return s;
 }
 
 std::string imap_client::imap_utf7_to_utf8(const char *str, int slen)

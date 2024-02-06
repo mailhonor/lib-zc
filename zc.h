@@ -22,7 +22,7 @@
 #define zcc_namespace_end }
 
 #define general_namespace_begin(ns) \
-    namespace ns \
+    namespace ns                    \
     {
 #define general_namespace_end(ns) }
 
@@ -1607,11 +1607,14 @@ void zurl_hex_encode(const void *src, int src_size, zbuf_t *str, int strict_flag
 /* 返回写入 wchar 的长度 */
 int zncr_decode(int ins, char *wchar);
 
-/* crc, src/hash ################################################### */
+/* src/hash ######################################################## */
 /* crc16, crc32, crc64, init_value 默认应该为 0 */
 unsigned short int zcrc16(const void *data, int size, unsigned short int init_value);
 unsigned int zcrc32(const void *data, int size, unsigned int init_value);
 size_t zcrc64(const void *data, int size, size_t init_value);
+
+// wrap, openssl
+const char *zmd5(const void *data, unsigned len, char *result);
 
 /* config, src/stdlib/config.c ##################################### */
 /* 一个简单的通用配置文件风格
@@ -3695,6 +3698,7 @@ std::string __attribute__((format(gnu_printf, 2, 3))) & sprintf_1024(std::string
 std::string &tolower(std::string &str);
 std::string &toupper(std::string &str);
 std::string &trim_right(std::string &str, const char *delims = 0);
+std::string &trim_line_end_rn(std::string &str);
 std::vector<std::string> split(const char *s, const char *delims = 0);
 inline std::vector<std::string> split(const std::string &s, const char *delims = 0)
 {
@@ -4595,14 +4599,6 @@ public:
         bad
     };
 
-    enum error_type
-    {
-        error_type_ok = 0,
-        error_type_connection,
-        error_type_auth,
-        error_type_unknown,
-    };
-
     class response_tokens
     {
     public:
@@ -4647,6 +4643,7 @@ public:
 
     public:
         std::string name_;
+        std::set<std::string> attrs_;
         bool noinferiors_;
         bool noselect_;
         bool drafts_;
@@ -4723,20 +4720,12 @@ public:
     {
         return escape_string(s.c_str(), (int)(s.size()));
     }
-    static std::string &trim_rn(std::string &s);
-    static void parse_mail_flags(mail_flags &flags, const response_tokens &tokens, int offset);
-    bool parse_move_or_copy_result(uidplus_result &result, const response_tokens &response_tokens);
-    bool parse_append_result(uidplus_result &result, const response_tokens &response_tokens);
 
 public:
     imap_client();
     ~imap_client();
-    bool check_is_need_close();
-    inline bool result_is_ok() { return (ok_no_bad_ == result_onb::ok); }
-    inline bool result_is_no() { return (ok_no_bad_ == result_onb::no); }
-    inline bool result_is_bad() { return (ok_no_bad_ == result_onb::bad); }
-    inline bool error_is_connection() { return connection_error_; }
-    inline bool error_is_password() { return password_error_; }
+    inline bool is_no() { return (ok_no_bad_ == result_onb::no); }
+    inline bool is_bad() { return (ok_no_bad_ == result_onb::bad); }
     inline void set_debug_mode(bool tf = true) { debug_mode_ = tf; }
     inline void set_verbose_mode(bool tf = true) { verbose_mode_ = tf; }
     inline void set_debug_protocol_fn(void (*fn)(int /* 'S', 'C' */ server_or_client, const void *data_ptr, int data_len))
@@ -4745,83 +4734,69 @@ public:
     }
 
     void set_simple_line_length_limit(int limit);
-    void set_user_password(const char *user, const char *password);
-    void set_destination(const char *destination);
     void set_timeout(int timeout);
-    void set_ssl_tls(bool ssl_mode, bool tls_mode, SSL_CTX *ssl_ctx); // 随时会作废
-    void set_ssl_mode(SSL_CTX *ssl_ctx, bool tf = true);
-    void set_tls_mode(SSL_CTX *ssl_ctx, bool tf = true, bool try_mode = false);
-    void set_id(const char *id);
-    inline void set_id(const std::string &id)
-    {
-        set_id(id.c_str());
-    }
+    void set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bool tls_try_mode = false);
     ssl_iostream &get_iostream() { return fp_; }
-    bool open();
+    int open(const char *destination);
     void close();
-    bool do_quick_cmd(const std::string &cmd, bool check_result_is_ok = false);
-    bool do_startTLS();
-    bool cmd_capability(bool force = false);
-    bool cmd_id(const char *id = "");
-    inline bool cmd_id(const std::string &id)
-    {
-        return cmd_id(id.c_str());
-    };
-    bool cmd_list(folder_list_result &folder_list);
-    bool cmd_lsub(folder_list_result &folder_list);
-    bool cmd_select(select_result &ser, const char *folder_name_imap);
-    inline bool cmd_select(select_result &ser, const std::string folder_name_imap)
+    int do_auth(const char *user, const char *password);
+    int cmd_capability(bool force = false);
+    int cmd_id(const char *id = "");
+    int cmd_list(folder_list_result &folder_list);
+    int cmd_lsub(folder_list_result &folder_list);
+    int cmd_select(select_result &ser, const char *folder_name_imap);
+    inline int cmd_select(select_result &ser, const std::string folder_name_imap)
     {
         return cmd_select(ser, folder_name_imap.c_str());
     }
-    bool cmd_select(const char *folder_name_imap);
-    bool cmd_select_forced(const char *folder_name_imap);
-    inline bool cmd_select(const std::string &folder_name_imap) { return cmd_select(folder_name_imap.c_str()); }
-    inline bool cmd_select_forced(const std::string &folder_name_imap) { return cmd_select_forced(folder_name_imap.c_str()); }
-    bool cmd_status(status_result &ser, const char *folder_name_imap);
-    bool cmd_search_all(std::vector<int> &uid_vector);
-    bool cmd_search_unseen(std::vector<int> &uid_vector);
-    bool cmd_search_answered(std::vector<int> &uid_vector);
-    bool cmd_search_deleted(std::vector<int> &uid_vector);
-    bool cmd_search_draft(std::vector<int> &uid_vector);
-    bool cmd_search_flagged(std::vector<int> &uid_vector);
-    bool get_mail_list(mail_list_result &mail_list);
-    bool get_message(FILE *dest_fp, mail_flags &flags, int uid);
-    bool get_all_folder_info(folder_list_result &folder_list);
-    bool cmd_create(const std::string &pathname_utf7);
-    bool cmd_rename(const std::string &from_pathname_utf7, const std::string &to_pathname_utf7);
-    bool cmd_subscribe(const std::string &pathname_utf7, bool tf = true);
-    bool cmd_delete(const std::string &pathname_utf7);
-    inline bool cmd_unsubscribe(const std::string &pathname_utf7) { return cmd_subscribe(pathname_utf7, false); }
-    bool delete_mail(int uid);
-    bool cmd_move(uidplus_result &result, int from_uid, const char *to_folder_name_imap);
-    inline bool cmd_move(uidplus_result &result, int from_uid, const std::string &to_folder_name_imap)
+    int cmd_select(const char *folder_name_imap);
+    int cmd_select_forced(const char *folder_name_imap);
+    inline int cmd_select(const std::string &folder_name_imap) { return cmd_select(folder_name_imap.c_str()); }
+    inline int cmd_select_forced(const std::string &folder_name_imap) { return cmd_select_forced(folder_name_imap.c_str()); }
+    int cmd_status(status_result &ser, const char *folder_name_imap);
+    int cmd_search_all(std::vector<int> &uid_vector);
+    int cmd_search_unseen(std::vector<int> &uid_vector);
+    int cmd_search_answered(std::vector<int> &uid_vector);
+    int cmd_search_deleted(std::vector<int> &uid_vector);
+    int cmd_search_draft(std::vector<int> &uid_vector);
+    int cmd_search_flagged(std::vector<int> &uid_vector);
+    int get_mail_list(mail_list_result &mail_list);
+    int get_message(FILE *dest_fp, mail_flags &flags, int uid);
+    int get_all_folder_info(folder_list_result &folder_list);
+    int cmd_create(const std::string &pathname_utf7);
+    int cmd_rename(const std::string &from_pathname_utf7, const std::string &to_pathname_utf7);
+    int cmd_subscribe(const std::string &pathname_utf7, bool tf = true);
+    int cmd_delete(const std::string &pathname_utf7);
+    inline int cmd_unsubscribe(const std::string &pathname_utf7) { return cmd_subscribe(pathname_utf7, false); }
+    int delete_mail(int uid);
+    int cmd_move(uidplus_result &result, int from_uid, const char *to_folder_name_imap);
+    inline int cmd_move(uidplus_result &result, int from_uid, const std::string &to_folder_name_imap)
     {
         return cmd_move(result, from_uid, to_folder_name_imap.c_str());
     }
-    bool cmd_copy(uidplus_result &result, int from_uid, const char *to_folder_name_imap);
-    inline bool cmd_copy(uidplus_result &result, int from_uid, const std::string &to_folder_name_imap)
+    int cmd_copy(uidplus_result &result, int from_uid, const char *to_folder_name_imap);
+    inline int cmd_copy(uidplus_result &result, int from_uid, const std::string &to_folder_name_imap)
     {
         return cmd_copy(result, from_uid, to_folder_name_imap.c_str());
     }
-    bool cmd_store(const char *uids, bool plus_or_minus, mail_flags &flags);
-    bool cmd_store(int uid, bool plus_or_minus, mail_flags &flags);
-    bool cmd_store(const char *uids, bool plus_or_minus, const char *flags);
-    bool cmd_store_deleted_flag(const char *uids, bool plus_or_minus);
-    bool cmd_store_deleted_flag(int uid, bool plus_or_minus);
-    bool cmd_expunge();
-    bool cmd_append_prepare_protocol(append_session &append);
-    bool cmd_append_over(uidplus_result &result);
-    bool append_file(uidplus_result &result, append_session &append, const char *filename);
-    bool append_data(uidplus_result &result, append_session &append, const void *data, size_t dlen);
-    bool get_capability(const char *key_lowercase);
-    bool get_capability_cached(const char *key, char *cache);
-    inline bool get_capability_move() { return get_capability_cached("move", &capability_move_); }
-    inline bool get_capability_uidplus() { return get_capability_cached("uidplus", &capability_move_); }
+    int cmd_store(const char *uids, bool plus_or_minus, mail_flags &flags);
+    int cmd_store(int uid, bool plus_or_minus, mail_flags &flags);
+    int cmd_store(const char *uids, bool plus_or_minus, const char *flags);
+    int cmd_store_deleted_flag(const char *uids, bool plus_or_minus);
+    int cmd_store_deleted_flag(int uid, bool plus_or_minus);
+    int cmd_expunge();
+    int cmd_append_prepare_protocol(append_session &append);
+    int cmd_append_over(uidplus_result &result);
+    int append_file(uidplus_result &result, append_session &append, const char *filename);
+    int append_data(uidplus_result &result, append_session &append, const void *data, size_t dlen);
+    int get_capability(const char *key_lowercase);
+    int get_capability_cached(const char *key, char *cache);
+    inline int get_capability_move() { return get_capability_cached("move", &capability_move_); }
+    inline int get_capability_uidplus() { return get_capability_cached("uidplus", &capability_move_); }
     std::string &get_capability() { return capability_; }
 
 public:
-    imap_client &fp_append(const char *s, int slen);
+    imap_client &fp_append(const char *s, int slen = -1);
     imap_client &fp_append(const std::string &s);
     int fp_readn(std::string &str, int strict_len);
     int fp_readn(void *mem, int strict_len);
@@ -4829,41 +4804,39 @@ public:
     int fp_read_delimiter(std::string &str, int delimiter, int max_len);
     inline int fp_gets(std::string &str, int max_len) { return fp_read_delimiter(str, '\n', max_len); }
     inline int fp_gets(void *mem, int max_len) { return fp_read_delimiter(mem, '\n', max_len); }
-    bool parse_imap_result(const char *key_line);
-    bool parse_imap_result(char tag, const char *line);
+    int parse_imap_result(const char *key_line);
+    int parse_imap_result(char tag, const char *line);
     zinline bool parse_imap_result(char tag, const std::string &line) { return parse_imap_result(tag, line.c_str()); }
-    bool parse_imap_result(char tag, const response_tokens &tokens);
-    bool read_big_data(FILE *dest_fp, std::string &raw_content, int extra_length);
-    bool read_response_tokens_oneline(response_tokens &tokens, int &extra_length);
-    bool read_response_tokens(response_tokens &tokens);
-    bool ignore_left_token(int extra_length);
+    int parse_imap_result(char tag, const response_tokens &tokens);
+    int read_big_data(FILE *dest_fp, std::string &raw_content, int extra_length);
+    int read_response_tokens_oneline(response_tokens &tokens, int &extra_length);
+    int read_response_tokens(response_tokens &tokens);
+    int ignore_left_token(int extra_length);
 
 protected:
-    bool connect(int times);
+    int connect(const char *destination, int times);
     void disconnect();
-    bool auth();
+    int welcome();
+    int cmd_logout();
+    int do_quick_cmd(const std::string &cmd);
+    int do_quick_cmd_simple_line_mode(const std::string &cmd);
+    int do_startTLS();
 
 private:
-    bool welcome();
-    bool _cmd_list(folder_list_result &folder_list, bool list_or_lsub);
-    bool _cmd_search_flag(std::vector<int> &uid_vector, const char *flag_token);
+    int _cmd_list(folder_list_result &folder_list, bool list_or_lsub);
+    int _cmd_search_flag(std::vector<int> &uid_vector, const char *flag_token);
 
 protected:
-    std::string mail_;
-    std::string pass_;
     ssl_iostream fp_;
     int timeout_{10};
     SSL_CTX *ssl_ctx_{NULL};
     bool ssl_mode_{false};
     bool tls_mode_{false};
     bool tls_try_mode_{false};
-    std::string destination_;
     std::string capability_;
-    std::string id_;
     std::string last_selected_;
     int simple_line_length_limit_{102400};
     void (*debug_protocol_fn_)(int /* 'S', 'C' */ server_or_client, const void *data_ptr, int data_len){0};
-    std::vector<std::string> *record_protocol_vector_{0};
 
 private:
     result_onb ok_no_bad_{ok};
@@ -4871,18 +4844,99 @@ private:
     bool verbose_mode_{false};
     bool opened_{false};
     bool connected_{false};
+    bool logout_{false};
     bool ssl_flag_{false};
-    bool error_{false};
-    bool connection_error_{false};
     bool need_close_connection_{false};
-    bool password_error_{false};
-    bool logic_error_{false};
     bool tmp_verbose_mode_{false};
     int tmp_verbose_line_{0};
     bool auth_capability_{false};
     bool capability_clear_flag_{false};
     char capability_move_{0};
     char capability_uidplus_{0};
+};
+
+/* pop client ######################################################### */
+class pop_client
+{
+public:
+    pop_client();
+    ~pop_client();
+    inline void set_debug_mode(bool tf = true) { debug_mode_ = tf; }
+    inline void set_verbose_mode(bool tf = true) { verbose_mode_ = tf; }
+    inline void set_debug_protocol_fn(void (*fn)(int /* 'S', 'C' */ server_or_client, const void *data_ptr, int data_len))
+    {
+        debug_protocol_fn_ = fn;
+    }
+
+    void set_timeout(int timeout);
+    void set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bool tls_try_mode = false);
+    ssl_iostream &get_iostream() { return fp_; }
+    int open(const char *destination);
+    void close();
+    int auth_basic(const char *user, const char *password);
+    int auth_apop(const char *user, const char *password);
+    int auth_auto(const char *user, const char *password);
+    inline const std::string &get_banner_apop_id() { return banner_apop_id_; }
+    int cmd_capa(std::vector<std::string> &capability);
+    int cmd_capa();
+    int cmd_stat(size_t &count, size_t &size_sum);
+    int cmd_list(std::vector<std::pair<int, size_t>> &msg_number_sizes);
+    int cmd_list(std::vector<int> &msg_numbers);
+    int cmd_list(int msg_number, size_t &size);
+    int cmd_uidl(std::map<std::string, int> &result);
+    int cmd_uidl(int msg_number, std::string &unique_id);
+    int cmd_retr(int msg_number, std::string &data);
+    int cmd_retr(int msg_number, FILE *fp);
+    int cmd_top(int msg_number, std::string &data, int extra_line_count = 0);
+    int cmd_dele(int msg_number);
+    int cmd_rset();
+    int cmd_noop();
+    const std::string &get_capability(const char *key_lowercase);
+    const std::vector<std::string> &get_capability();
+
+public:
+    int simple_quick_cmd(const std::string &cmd);
+    int simple_quick_cmd(const std::string &cmd, std::string &response);
+    pop_client &fp_append(const char *s, int slen = -1);
+    pop_client &fp_append(const std::string &s);
+    int fp_readn(std::string &str, int strict_len);
+    int fp_readn(void *mem, int strict_len);
+    int fp_read_delimiter(void *mem, int delimiter, int max_len);
+    int fp_read_delimiter(std::string &str, int delimiter, int max_len);
+    inline int fp_gets(std::string &str, int max_len) { return fp_read_delimiter(str, '\n', max_len); }
+    inline int fp_gets(void *mem, int max_len) { return fp_read_delimiter(mem, '\n', max_len); }
+
+protected:
+    int connect(const char *destination, int times);
+    void disconnect();
+    int welcome();
+    int cmd_quit();
+    int do_STLS();
+
+protected:
+    std::string banner_apop_id_;
+    std::vector<std::string> capability_;
+    std::string blank_;
+    ssl_iostream fp_;
+    int timeout_{10};
+    SSL_CTX *ssl_ctx_{NULL};
+    bool ssl_mode_{false};
+    bool tls_mode_{false};
+    bool tls_try_mode_{false};
+    void (*debug_protocol_fn_)(int /* 'S', 'C' */ server_or_client, const void *data_ptr, int data_len){0};
+
+private:
+    int _get_msg_data(const std::string &cmd, FILE *fp, std::string *data);
+    bool debug_mode_{false};
+    bool verbose_mode_{false};
+    bool need_close_connection_{false};
+    bool connected_{false};
+    bool opened_{false};
+    bool quited_{false};
+    bool authed_{false};
+    bool ssl_flag_{false};
+    int capa_before_auth_{-1};
+    int capa_after_auth_{-1};
 };
 
 zcc_namespace_end;

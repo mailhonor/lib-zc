@@ -10,96 +10,78 @@
 
 zcc_namespace_begin;
 
-void imap_client::set_ssl_tls(bool ssl_mode, bool tls_mode, SSL_CTX *ssl_ctx)
+void imap_client::set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bool tls_try_mode)
 {
     ssl_mode_ = ssl_mode;
     tls_mode_ = tls_mode;
     ssl_ctx_ = ssl_ctx;
+    tls_try_mode_ = tls_try_mode;
 }
 
-void imap_client::set_ssl_mode(SSL_CTX *ssl_ctx, bool tf)
-{
-    ssl_ctx_ = ssl_ctx;
-    ssl_mode_ = tf;
-}
-
-void imap_client::set_tls_mode(SSL_CTX *ssl_ctx, bool tf, bool try_mode)
-{
-    ssl_ctx_ = ssl_ctx;
-    tls_mode_ = tf;
-    tls_try_mode_ = try_mode;
-}
-
-void imap_client::set_destination(const char *destination)
-{
-    destination_ = destination;
-}
 void imap_client::set_timeout(int timeout)
 {
     timeout_ = timeout;
 }
 
-bool imap_client::do_startTLS()
+int imap_client::do_startTLS()
 {
     if (ssl_flag_)
     {
-        return true;
+        return 1;
     }
-    if (!do_quick_cmd("S STARTTLS", true))
+    int r;
+    if ((r = do_quick_cmd_simple_line_mode("S STARTTLS")) < 1)
     {
-        return false;
+        return r;
     }
 
     if (fp_.tls_connect(ssl_ctx_) < 0)
     {
-        connection_error_ = true;
-        zcc_imap_client_error("建立SSL(%s)", destination_.c_str());
-        return false;
+        need_close_connection_ = true;
+        zcc_imap_client_error("建立SSL");
+        return -1;
     }
     ssl_flag_ = true;
 
-    return true;
+    return 1;
 }
 
-bool imap_client::connect(int times)
+int imap_client::connect(const char *destination, int times)
 {
+    int r;
     if (connected_)
     {
-        ok_no_bad_ = result_onb::ok;
-        return true;
+        return 1;
     }
     if (times > 0)
     {
         for (int i = 0; i < times; i++)
         {
-            if (connect(0))
+            if ((r = connect(destination, 0)) > 0)
             {
-                ok_no_bad_ = result_onb::ok;
-                return true;
+                return r;
             }
         }
-        return false;
+        return -1;
     }
-    connection_error_ = true;
-    if (!fp_.connect(destination_.c_str(), timeout_))
+    if ((r = fp_.connect(destination, timeout_)) < 1)
     {
-        connection_error_ = true;
-        zcc_imap_client_error("连接(%s)", destination_.c_str());
-        return false;
+        need_close_connection_ = true;
+        zcc_imap_client_error("连接(%s)", destination);
+        return r;
     }
     if (ssl_mode_)
     {
         if (fp_.tls_connect(ssl_ctx_) < 0)
         {
-            connection_error_ = true;
-            zcc_imap_client_error("建立SSL(%s)", destination_.c_str());
-            return false;
+            need_close_connection_ = true;
+            zcc_imap_client_error("建立SSL(%s)", destination);
+            return -1;
         }
         ssl_flag_ = true;
     }
     connected_ = true;
-    ok_no_bad_ = result_onb::ok;
-    return true;
+    return 1;
 }
 
 void imap_client::disconnect()
@@ -108,97 +90,85 @@ void imap_client::disconnect()
     opened_ = false;
     connected_ = false;
     ssl_flag_ = false;
-    error_ = false;
-    connection_error_ = false;
-    need_close_connection_ = false;
-    password_error_ = false;
-    logic_error_ = false;
+    logout_ = false;
 }
 
-bool imap_client::welcome()
+int imap_client::welcome()
 {
     std::string linebuf;
     if (fp_gets(linebuf, 10240) < 0)
     {
+        need_close_connection_ = true;
         zcc_imap_client_info("错误: imap 读取 welcome 失败");
-        return false;
+        return -1;
     }
-    trim_rn(linebuf);
+    trim_line_end_rn(linebuf);
     zcc_imap_client_debug("imap 读: %s", linebuf.c_str());
     if (ZSTR_N_EQ(linebuf.c_str(), "* OK ", 5))
     {
-        ok_no_bad_ = result_onb::ok;
+        return 1;
     }
     else
     {
-        ok_no_bad_ = result_onb::bad;
+        return 0;
     }
-    return true;
 }
 
-bool imap_client::open()
+int imap_client::open(const char *destination)
 {
+    int r;
     if (opened_)
     {
-        ok_no_bad_ = result_onb::ok;
-        return true;
+        return 1;
     }
 
-    if (!connect(3))
+    if ((r = connect(destination, 3)) < 1)
     {
-        return false;
-    }
-    if (ok_no_bad_ != result_onb::ok)
-    {
-        return true;
+        return r;
     }
 
-    if (!welcome())
+    if ((r = welcome()) < 1)
     {
-        return false;
-    }
-    if (ok_no_bad_ != result_onb::ok)
-    {
-        return true;
+        return r;
     }
 
     if (tls_mode_)
     {
-        if (!do_startTLS())
+        if ((r = do_startTLS()) < 1)
         {
+            if (r < 0)
+            {
+                return r;
+            }
             if (!tls_try_mode_)
             {
-                return false;
+                return -1;
             }
         }
     }
 
-    if ((!auth()) || (!result_is_ok()))
-    {
-        return false;
-    }
-    if (ok_no_bad_ != result_onb::ok)
-    {
-        return true;
-    }
+    return 1;
+}
 
-    if (get_capability("id"))
+int imap_client::cmd_logout()
+{
+    if (logout_)
     {
-        if (!cmd_id())
-        {
-            return false;
-        }
-        if (ok_no_bad_ != result_onb::ok)
-        {
-            return true;
-        }
+        return 1;
     }
-
-    return true;
+    if (need_close_connection_)
+    {
+        return 1;
+    }
+    do_quick_cmd_simple_line_mode("L LOGOUT");
+    logout_ = true;
+    need_close_connection_ = true;
+    return 1;
 }
 
 void imap_client::close()
 {
+    cmd_logout();
     disconnect();
 }
 
