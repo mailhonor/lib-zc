@@ -40,6 +40,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#endif // _WIN32
 
 #pragma pack(push, 4)
 
@@ -2171,11 +2174,12 @@ int zstdin_get_contents(zbuf_t *bf);
 struct zmmap_reader_t
 {
 #ifdef _WIN32
-    zbuf_t *file_buf;
+    HANDLE fd;
+    HANDLE fm;
 #else           // _WIN32
     int fd;
 #endif          // _WIN32
-    int len;    /* 映射后, 长度 */
+    ssize_t len;    /* 映射后, 长度 */
     char *data; /* 映射后, 指针 */
 };
 

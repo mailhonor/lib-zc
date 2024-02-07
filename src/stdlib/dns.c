@@ -8,7 +8,6 @@
 
 #include "zc.h"
 #ifdef _WIN32
-#include <Winsock2.h>
 #include <ws2tcpip.h>
 #else // _WIN32
 #include <arpa/inet.h>

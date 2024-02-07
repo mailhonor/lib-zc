@@ -9,7 +9,6 @@
 #include "zc.h"
 #include <errno.h>
 #ifdef _WIN32
-#include <Winsock2.h>
 #else // _WIN32
 #include <poll.h>
 #endif // _WIN32

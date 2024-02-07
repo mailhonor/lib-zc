@@ -12,7 +12,6 @@
 #include <errno.h>
 #endif // __linux__
 #ifdef _WIN32
-#include <Winsock2.h>
 #endif // _WIN32
 
 namespace zcc

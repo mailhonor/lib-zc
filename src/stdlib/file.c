@@ -16,7 +16,6 @@
 #include <utime.h>
 #include <stdarg.h>
 #ifdef _WIN32
-#include <winsock2.h>
 #include <winbase.h>
 #include <dirent.h>
 #include <wchar.h>
@@ -407,35 +406,76 @@ int zstdin_get_contents(zbuf_t *bf)
 static int _zmmap_reader_init_utf8_or_multibyte(zmmap_reader_t *reader, const char *pathname, int utf8_or_multibyte)
 {
 #ifdef _WIN32
-    reader->file_buf = 0;
+    HANDLE fd, fm;
+    ssize_t size;
+    void *data;
+    struct stat st;
+    int errno2;
+
+    reader->fd = INVALID_HANDLE_VALUE;
     reader->data = 0;
     reader->len = 0;
 
-    zbuf_t *buf = zbuf_create(-1);
-    int ret;
+    fd = CreateFile(pathname,
+                    GENERIC_READ,
+                    FILE_SHARE_READ,
+                    NULL,
+                    OPEN_EXISTING,
+                    FILE_ATTRIBUTE_NORMAL,
+                    NULL);
 
-    if (utf8_or_multibyte)
+    if (fd == INVALID_HANDLE_VALUE)
     {
-        ret = zfile_get_contents(pathname, buf);
-    }
-    else
-    {
-        ret = zsys_file_get_contents(pathname, buf);
-    }
-    if (ret < 0)
-    {
-        zbuf_free(buf);
+        errno = zget_errno();
         return -1;
     }
 
-    reader->file_buf = buf;
-    reader->len = zbuf_len(buf);
-    reader->data = zbuf_data(buf);
+    LARGE_INTEGER info;
+    memset(&info, 0, sizeof(info));
+    GetFileSizeEx(fd, &info);
+    size =  info.QuadPart;
+    if (size < 0) {
+        errno = zget_errno();
+        CloseHandle(fd);
+        return -1;
+    }
 
+    fm = CreateFileMapping(
+        fd,
+        NULL,
+        PAGE_READONLY,
+        0,
+        0,
+        NULL);
+
+    if (NULL == INVALID_HANDLE_VALUE)
+    {
+        errno = zget_errno();
+        CloseHandle(fd);
+        return -1;
+    }
+
+    data = MapViewOfFile(
+        fm,
+        FILE_MAP_READ,
+        0,
+        0,
+        0);
+
+    if (NULL == data)
+    {
+        CloseHandle(fm);
+        CloseHandle(fd);
+        return -1;
+    }
+    reader->fd = fd;
+    reader->fm = fm;
+    reader->data = data;
+    reader->len = size;
     return 1;
 #else  // _WIN32
     int fd;
-    int size;
+    ssize_t size;
     void *data;
     struct stat st;
     int errno2;
@@ -475,6 +515,7 @@ static int _zmmap_reader_init_utf8_or_multibyte(zmmap_reader_t *reader, const ch
 
     return 1;
 #endif // _WIN32
+    return 1;
 }
 
 int zmmap_reader_init(zmmap_reader_t *reader, const char *pathname)
@@ -490,13 +531,9 @@ int zsys_mmap_reader_init(zmmap_reader_t *reader, const char *pathname)
 int zmmap_reader_fini(zmmap_reader_t *reader)
 {
 #ifdef _WIN32
-    if (reader->file_buf)
-    {
-        zbuf_free(reader->file_buf);
-    }
-    reader->file_buf = 0;
-    reader->data = 0;
-    reader->len = 0;
+    UnmapViewOfFile(reader->data);
+    CloseHandle(reader->fm);
+    CloseHandle(reader->fd);
     return 1;
 #else  // _WIN32
     munmap(reader->data, reader->len + 1);

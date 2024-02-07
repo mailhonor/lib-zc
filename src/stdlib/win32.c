@@ -12,7 +12,6 @@
 #include <errno.h>
 #include <time.h>
 #include <pthread.h>
-#include <Winsock2.h>
 #include <windows.h>
 #include <sys/stat.h>
 

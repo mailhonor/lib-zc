@@ -12,7 +12,6 @@
 #include <sys/types.h>
 #include <errno.h>
 #ifdef _WIN32
-#include <Winsock2.h>
 #include <ws2tcpip.h>
 #include <pthread.h>
 #else // _WIN32

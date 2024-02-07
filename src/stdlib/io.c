@@ -11,7 +11,6 @@
 #include <sys/file.h>
 #ifdef _WIN32
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-#include <Winsock2.h>
 #include <fcntl.h>
 #include <handleapi.h>
 #else // _WIN32
