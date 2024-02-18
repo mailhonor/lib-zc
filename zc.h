@@ -284,7 +284,6 @@ int zWSAStartup();
 // if w32Err == 0, then w32Err = GetLastError()
 int zwin32_code_to_errno(unsigned long w32Err);
 #define zget_errno() zwin32_code_to_errno(0)
-FILE *zfopen(const char *pathname, const char *mode);
 ssize_t zgetdelim(char **lineptr, size_t *n, int delim, FILE *stream);
 zinline ssize_t zgetline(char **lineptr, size_t *n, FILE *stream)
 {
@@ -310,7 +309,6 @@ int zUTF8ToMultiByte(const char *in, int in_len, char *result_ptr, int result_si
 #define zvfprintf vfprintf
 #define zWSAStartup()
 #define zget_errno() errno
-#define zfopen(a, b) fopen(a, b)
 #define zgetdelim(a, b, c, d) getdelim(a, b, c, d)
 #define zgetline(a, b, c) getline(a, b, c)
 #define zmemmem(a, b, c, d) memmem(a, b, c, d)
@@ -2147,6 +2145,9 @@ zbool_t zset_core_file_size(int megabyte);
 zbool_t zset_cgroup_name(const char *name);
 
 /* file, src/stdlib/file.c ########################################## */
+FILE *zfopen(const char *pathname, const char *mode);
+FILE *zsys_fopen(const char *pathname, const char *mode);
+
 int zstat(const char *pathname, void *statbuf);
 /* -1: 错, 0: 不存在, 1: 存在 */
 int zfile_exists(const char *pathname);
@@ -2170,17 +2171,20 @@ int zsys_file_get_contents_sample(const char *pathname, zbuf_t *result);
 /* 从标准输入读取内容到(覆盖)bf */
 int zstdin_get_contents(zbuf_t *bf);
 
+/* 获取文件列表 */
+int zget_filenames_in_dir(const char *dirname, zargv_t *filenames);
+
 /* mmap reader */
 struct zmmap_reader_t
 {
 #ifdef _WIN32
     HANDLE fd;
     HANDLE fm;
-#else           // _WIN32
+#else            // _WIN32
     int fd;
-#endif          // _WIN32
-    ssize_t len;    /* 映射后, 长度 */
-    char *data; /* 映射后, 指针 */
+#endif           // _WIN32
+    ssize_t len; /* 映射后, 长度 */
+    char *data;  /* 映射后, 指针 */
 };
 
 /* mmap 只读方式映射一个文件, -1: 错, 1: 成功  */
@@ -3817,6 +3821,29 @@ private:
 };
 extern config var_default_config;
 
+/* unique_id ####################################################### */
+std::string build_unique_id();
+
+/* date ############################################################ */
+std::string build_rfc1123_date_string(ssize_t t);
+std::string build_rfc822_date_string(ssize_t t);
+
+/* win32 ########################################################### */
+#ifdef _WIN32
+int Utf8ToWideChar(const std::string &in, std::wstring &result);
+std::wstring Utf8ToWideChar(const std::string &in);
+int MultiByteToWideChar(const std::string &in, std::wstring &result);
+std::wstring MultiByteToWideChar(const std::string &in);
+int WideCharToUTF8(const std::wstring &in, std::string &result);
+std::string WideCharToUTF8(const std::wstring &in);
+int MultiByteToUTF8(const std::string &in, std::string &result);
+std::string MultiByteToUTF8(const std::string &in);
+int WideCharToMultiByte(const std::wstring &in, std::string &result);
+std::string WideCharToMultiByte(const std::wstring &in);
+int UTF8ToMultiByte(const std::string &in, std::string &result);
+std::string UTF8ToMultiByte(const std::string &in);
+#endif // _WIN32
+
 /* json ############################################################ */
 #ifndef ___ZC_LIB_INCLUDE_JSON___
 #define ___ZC_LIB_INCLUDE_JSON___
@@ -4410,12 +4437,13 @@ inline char *charset_detect_cjk(const char *data, int size, char *charset_result
 {
     return zcharset_detect_cjk(data, size, charset_result);
 }
-const char *charset_detect_cjk(const char *data, int size, std::string charset_result);
+const char *charset_detect_cjk(const char *data, int size, std::string &charset_result);
 extern int (*charset_convert)(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &result, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count);
 int charset_iconv(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &result, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count);
 void charset_convert_use_uconv();
 int charset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count);
 void charset_convert_to_utf8(const char *from_charset, const char *data, int size, std::string &result);
+std::string charset_convert_to_utf8(const char *from_charset, const char *data, int size);
 
 /* event, src/event/ ################################################### */
 /* 基于epoll的高并发io模型, 包括 事件, 异步io, 定时器, io映射. 例子见 cpp_sample/event/  */

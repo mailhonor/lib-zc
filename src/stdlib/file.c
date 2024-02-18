@@ -15,9 +15,9 @@
 #include <time.h>
 #include <utime.h>
 #include <stdarg.h>
+#include <dirent.h>
 #ifdef _WIN32
 #include <winbase.h>
-#include <dirent.h>
 #include <wchar.h>
 #else // _WIN32
 #include <sys/mman.h>
@@ -27,9 +27,9 @@
 #define Z_MAX_PATH 4096
 #endif // Z_MAX_PATH
 
-#ifdef _WIN32
 static int _zstat_utf8_or_multibyte(const char *pathname, void *statbuf, int utf8_or_multibyte)
 {
+#ifdef _WIN32
     if (utf8_or_multibyte)
     {
         wchar_t pathnamew[Z_MAX_PATH + 1];
@@ -43,48 +43,61 @@ static int _zstat_utf8_or_multibyte(const char *pathname, void *statbuf, int utf
     {
         return stat(pathname, statbuf);
     }
-}
-#endif // _WIN32
-
-int zstat(const char *pathname, void *statbuf)
-{
-#ifdef _WIN32
-    return _zstat_utf8_or_multibyte(pathname, statbuf, 1);
 #else  // _WIN32
     return stat(pathname, statbuf);
 #endif // _WIN32
+}
+
+int zstat(const char *pathname, void *statbuf)
+{
+    return _zstat_utf8_or_multibyte(pathname, statbuf, 1);
 }
 
 int zsys_stat(const char *pathname, void *statbuf)
 {
-#ifdef _WIN32
     return _zstat_utf8_or_multibyte(pathname, statbuf, 0);
-#else  // _WIN32
-    return stat(pathname, statbuf);
-#endif // _WIN32
 }
 
+static FILE *_zfopen_utf8_or_multibyte(const char *pathname, const char *mode, int utf8_or_multibyte)
+{
 #ifdef _WIN32
+    if (utf8_or_multibyte)
+    {
+        wchar_t pathnamew[Z_MAX_PATH + 1];
+        wchar_t modew[64 + 1];
+        int mlen = strlen(mode);
+        if (mlen > 10)
+        {
+            return 0;
+        }
+        if (zUtf8ToWideChar(pathname, -1, pathnamew, Z_MAX_PATH) < 1)
+        {
+            return 0;
+        }
+        if (zUtf8ToWideChar(mode, mlen, modew, 64) < 1)
+        {
+            return 0;
+        }
+        return _wfopen(pathnamew, modew);
+    }
+    else
+    {
+        return fopen(pathname, mode);
+    }
+#else  // _Win32
+    return fopen(pathname, mode);
+#endif // _Win32
+}
+
 FILE *zfopen(const char *pathname, const char *mode)
 {
-    wchar_t pathnamew[Z_MAX_PATH + 1];
-    wchar_t modew[64 + 1];
-    int mlen = strlen(mode);
-    if (mlen > 10)
-    {
-        return 0;
-    }
-    if (zUtf8ToWideChar(pathname, -1, pathnamew, Z_MAX_PATH) < 1)
-    {
-        return 0;
-    }
-    if (zUtf8ToWideChar(mode, mlen, modew, 64) < 1)
-    {
-        return 0;
-    }
-    return _wfopen(pathnamew, modew);
+    return _zfopen_utf8_or_multibyte(pathname, mode, 1);
 }
-#endif // _Win32
+
+FILE *zsys_fopen(const char *pathname, const char *mode)
+{
+    return _zfopen_utf8_or_multibyte(pathname, mode, 0);
+}
 
 ssize_t zfile_get_size(const char *pathname)
 {
@@ -416,14 +429,31 @@ static int _zmmap_reader_init_utf8_or_multibyte(zmmap_reader_t *reader, const ch
     reader->data = 0;
     reader->len = 0;
 
-    fd = CreateFile(pathname,
-                    GENERIC_READ,
-                    FILE_SHARE_READ,
-                    NULL,
-                    OPEN_EXISTING,
-                    FILE_ATTRIBUTE_NORMAL,
-                    NULL);
-
+    if (utf8_or_multibyte)
+    {
+        wchar_t pathnamew[Z_MAX_PATH + 1];
+        if (zUtf8ToWideChar(pathname, -1, pathnamew, Z_MAX_PATH) < 1)
+        {
+            return -1;
+        }
+        fd = CreateFileW(pathnamew,
+                         GENERIC_READ,
+                         FILE_SHARE_READ,
+                         NULL,
+                         OPEN_EXISTING,
+                         FILE_ATTRIBUTE_NORMAL,
+                         NULL);
+    }
+    else
+    {
+        fd = CreateFile(pathname,
+                        GENERIC_READ,
+                        FILE_SHARE_READ,
+                        NULL,
+                        OPEN_EXISTING,
+                        FILE_ATTRIBUTE_NORMAL,
+                        NULL);
+    }
     if (fd == INVALID_HANDLE_VALUE)
     {
         errno = zget_errno();
@@ -433,8 +463,9 @@ static int _zmmap_reader_init_utf8_or_multibyte(zmmap_reader_t *reader, const ch
     LARGE_INTEGER info;
     memset(&info, 0, sizeof(info));
     GetFileSizeEx(fd, &info);
-    size =  info.QuadPart;
-    if (size < 0) {
+    size = info.QuadPart;
+    if (size < 0)
+    {
         errno = zget_errno();
         CloseHandle(fd);
         return -1;
@@ -969,13 +1000,14 @@ int zlink_force(const char *oldpath, const char *newpath, const char *tmpdir)
         return -1;
     }
     ret = zrename(tmppath, newpath);
+    zunlink(tmppath);
     if (ret < 0)
     {
-        zunlink(tmppath);
         return -1;
     }
     return 0;
 }
+
 int zsys_link_force(const char *oldpath, const char *newpath, const char *tmpdir)
 {
     int ret = zsys_link(oldpath, newpath);
@@ -998,9 +1030,9 @@ int zsys_link_force(const char *oldpath, const char *newpath, const char *tmpdir
         return -1;
     }
     ret = zsys_rename(tmppath, newpath);
+    zsys_unlink(tmppath);
     if (ret < 0)
     {
-        zsys_unlink(tmppath);
         return -1;
     }
     return 0;
@@ -1122,6 +1154,95 @@ int zsys_symlink_force(const char *oldpath, const char *newpath, const char *tmp
         return -1;
     }
     return 0;
+}
+
+static int _zget_filenames_in_dir_default(const char *dirname, zargv_t *filenames)
+{
+    DIR *dir;
+    struct dirent *ent_list;
+
+    if (!(dir = opendir(dirname)))
+    {
+        if (errno == ENOENT)
+        {
+            return 0;
+        }
+        zerror("访问文件夹失败:%s(%m)", dirname);
+        return -1;
+    }
+
+    // modern linux, readdir is thread-safe
+    while ((ent_list = readdir(dir)))
+    {
+        const char *fn = ent_list->d_name;
+        if ((!strcmp(fn, ".")) || (!strcmp(fn, "..")))
+        {
+            continue;
+        }
+        zargv_add(filenames, fn);
+    }
+    closedir(dir);
+    return 1;
+}
+
+static int _zget_filenames_in_dir_utf8_or_multibyte(const char *dirname, zargv_t *filenames, int utf8_or_multibyte)
+{
+#ifdef _WIN32
+    if (utf8_or_multibyte)
+    {
+        _WDIR *dir;
+        struct _wdirent *ent_list;
+
+        wchar_t pathnamew[4096 + 1];
+        if (zUtf8ToWideChar(dirname, -1, pathnamew, 4096) < 1)
+        {
+            return -1;
+        }
+
+        if (!(dir = _wopendir(pathnamew)))
+        {
+            if (errno == ENOENT)
+            {
+                return 0;
+            }
+            zerror("访问文件夹失败:%s(%m)", dirname);
+            return -1;
+        }
+
+        while ((ent_list = _wreaddir(dir)))
+        {
+            char fn[4096 + 1];
+            int ret = zWideCharToUTF8(ent_list->d_name, -1, fn, 4096);
+            if (ret < 1)
+            {
+                continue;
+            }
+            if ((!strcmp(fn, ".")) || (!strcmp(fn, "..")))
+            {
+                continue;
+            }
+            zargv_add(filenames, fn);
+        }
+        _wclosedir(dir);
+        return 1;
+    }
+    else
+    {
+        return _zget_filenames_in_dir_default(dirname, filenames);
+    }
+#else  // _WIN32
+    return _zget_filenames_in_dir_default(dirname, filenames);
+#endif // _WIN32
+}
+
+int zget_filenames_in_dir(const char *dirname, zargv_t *filenames)
+{
+    return _zget_filenames_in_dir_utf8_or_multibyte(dirname, filenames, 1);
+}
+
+int zsys_get_filenames_in_dir(const char *dirname, zargv_t *filenames)
+{
+    return _zget_filenames_in_dir_utf8_or_multibyte(dirname, filenames, 0);
 }
 
 #ifdef _WIN32

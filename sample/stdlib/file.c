@@ -19,19 +19,10 @@ static void test_utf8()
     if (zvar_main_redundant_argc > 0)
     {
         fn = zvar_main_redundant_argv[0];
-#ifdef _WIN32
-        zMultiByteToUTF8(fn, -1, fn_buf, 10240);
-        fn = fn_buf;
-#endif
     }
     if (zvar_main_redundant_argc > 1)
     {
         fn2 = zvar_main_redundant_argv[1];
-#ifdef _WIN32
-        char fn2_buf[10240 + 1];
-        zMultiByteToUTF8(fn2, -1, fn2_buf, 10240);
-        fn2 = fn2_buf;
-#endif
     }
 
     zbuf_t *tmpbf = zbuf_create(1024);
@@ -122,24 +113,17 @@ static void test_sys()
     {
         fn = zvar_main_redundant_argv[0];
     }
-    else
-    {
-#ifdef _WIN32
-        zUTF8ToMultiByte(fn, -1, fn_buf, 10240);
-        fn = fn_buf;
-#endif
-    }
     if (zvar_main_redundant_argc > 1)
     {
         fn2 = zvar_main_redundant_argv[1];
     }
-    else
-    {
+
 #ifdef _WIN32
-        zUTF8ToMultiByte(fn2, -1, fn2_buf, 10240);
-        fn2 = fn2_buf;
+    zUTF8ToMultiByte(fn, -1, fn_buf, 10240);
+    fn = fn_buf;
+    zUTF8ToMultiByte(fn2, -1, fn2_buf, 10240);
+    fn2 = fn2_buf;
 #endif
-    }
 
     zbuf_t *tmpbf = zbuf_create(1024);
     zinfo("\nfile exists %s ?", fn);

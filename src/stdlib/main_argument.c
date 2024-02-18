@@ -121,6 +121,7 @@ static void zmain_argument_prepare_config(int argc, char **argv)
         /* abc */
         if ((optname[0] != '-') || (optname[1] == 0))
         {
+            optname = optval_charset_deal(optname);
             zvector_push(zvar_main_redundant_argument_vector, optname);
             continue;
         }

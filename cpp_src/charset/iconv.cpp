@@ -28,7 +28,7 @@ const char *charset_detect(const char **charset_list, const char *data, int size
     return charset_result.c_str();
 }
 
-const char *charset_detect_cjk(const char *data, int size, std::string charset_result)
+const char *charset_detect_cjk(const char *data, int size, std::string &charset_result)
 {
     char result[zvar_charset_name_max_size+1];
     charset_result.clear();
@@ -37,6 +37,13 @@ const char *charset_detect_cjk(const char *data, int size, std::string charset_r
     }
     charset_result.append(result);
     return charset_result.c_str();
+}
+
+std::string charset_convert_to_utf8(const char *from_charset, const char *data, int size)
+{
+    std::string r;
+    charset_convert_to_utf8(from_charset, data, size, r);
+    return r;
 }
 
 #include "../../src/charset/iconv.c"

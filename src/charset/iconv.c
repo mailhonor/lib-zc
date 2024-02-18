@@ -18,9 +18,9 @@ int zvar_charset_uconv_mode = 0;
 
 #define mydebug(fmt, args...) \
     if (zvar_charset_debug)   \
-{                         \
-    zinfo(fmt, ##args);   \
-}
+    {                         \
+        zinfo(fmt, ##args);   \
+    }
 
 #define ZCHARSET_ICONV_ERROR_OPEN (-2016)
 
@@ -298,39 +298,122 @@ int (*charset_convert)(const char *from_charset, const char *src, int src_len, c
 #endif
 
 #ifndef ___ZC_ZCC_MODE___
+static void _clear_null_inner(zbuf_t *bf)
+{
+    char *p = zbuf_data(bf);
+    int size = zbuf_len(bf), i;
+    for (i = 0; i < size; i++)
+    {
+        if (p[i] == '\0')
+        {
+            p[i] = ' ';
+        }
+    }
+}
+#else  // ___ZC_ZCC_MODE___
+static void _clear_null_inner(std::string &bf)
+{
+    const char *p = bf.c_str();
+    size_t size = bf.size(), i;
+    for (i = 0; i < size; i++)
+    {
+        if (p[i] == '\0')
+        {
+            bf[i] = ' ';
+        }
+    }
+}
+#endif // ___ZC_ZCC_MODE___
+
+#ifdef __cplusplus
+zcc_namespace_c_begin;
+#endif // __cplusplus
+extern char *zcharset_detect_1252(const char *data, int size, char *charset_result);
+#ifdef __cplusplus
+zcc_namespace_c_end;
+#endif // __cplusplus
+
+#ifndef ___ZC_ZCC_MODE___
+static int _mime_iconv_1252(const char *data, int size, zbuf_t *result)
+#else
+static int _mime_iconv_1252(const char *data, int size, std::string &result)
+#endif
+{
+    zbuf_reset_cpp(result);
+    int omit_invalid_bytes_count = 0;
+
+    const char *charset = "windows-1252";
+    char f_charset_buf[zvar_charset_name_max_size + 1];
+    charset = zcharset_detect_1252(data, size, f_charset_buf);
+    if (!charset)
+    {
+        charset = "windows-1252";
+    }
+
+    if (zcharset_convert_cpp(charset, data, size,
+                             "UTF-8", result, 0,
+                             10, &omit_invalid_bytes_count) < 0)
+    {
+        return 0;
+    }
+
+    if (omit_invalid_bytes_count > 0)
+    {
+        return 0;
+    }
+    return 1;
+}
+
+#ifndef ___ZC_ZCC_MODE___
 void zcharset_convert_to_utf8(const char *from_charset, const char *data, int size, zbuf_t *result)
 #else
 void charset_convert_to_utf8(const char *from_charset, const char *data, int size, std::string &result)
 #endif
 {
+    if (size < 0)
+    {
+        size = strlen(data);
+    }
+    if (size < 1)
+    {
+        return;
+    }
+
+    if (from_charset)
+    {
+        if ((!strcasecmp(from_charset, "iso-8859-1")) || (!strcasecmp(from_charset, "windows-1252")))
+        {
+            if (_mime_iconv_1252(data, size, result))
+            {
+                return;
+            }
+            from_charset = 0;
+        }
+    }
+
+    const char *default_charset = "WINDOWS-1252";
+    if (from_charset && (from_charset[0] == '?'))
+    {
+        default_charset = from_charset + 1;
+        from_charset = 0;
+    }
+
     char f_charset_buf[zvar_charset_name_max_size + 1];
-    const char *f_charset = from_charset;
+    const char *f_charset;
     int detected = 0;
 
     zbuf_reset_cpp(result);
-
-    if (size < 1)
-    {
-        goto over;
-    }
-
-    if ((!detected) && ZEMPTY(f_charset))
+    f_charset = from_charset;
+    if (ZEMPTY(f_charset))
     {
         detected = 1;
-    }
-    if ((!detected) && ZSTR_CASE_EQ(from_charset, "cp1252"))
-    {
-        detected = 1;
-    }
-    if (detected)
-    {
         if (zcharset_detect_cjk(data, size, f_charset_buf))
         {
             f_charset = f_charset_buf;
         }
         else
         {
-            f_charset = "GB18030";
+            f_charset = default_charset;
         }
     }
     else
@@ -338,15 +421,19 @@ void charset_convert_to_utf8(const char *from_charset, const char *data, int siz
         f_charset = zcharset_correct_charset(f_charset);
     }
 
-    if (zcharset_convert_cpp(f_charset, data, size, "UTF-8", result, 0, -1, 0) > 0)
+    if (zcharset_convert_cpp(f_charset, data, size,
+                             "UTF-8", result, 0,
+                             -1, 0) > 0)
     {
-        goto over;
+        _clear_null_inner(result);
+        return;
     }
 
     if (detected)
     {
-        zcharset_convert_cpp("UTF-8", data, size, "UTF-8", result, 0, -1, 0);
-        goto over;
+        zbuf_memcpy_cpp(result, data, size);
+        _clear_null_inner(result);
+        return;
     }
 
     if (zcharset_detect_cjk(data, size, f_charset_buf))
@@ -355,16 +442,18 @@ void charset_convert_to_utf8(const char *from_charset, const char *data, int siz
     }
     else
     {
-        f_charset = "GB18030";
+        f_charset = default_charset;
     }
     zbuf_reset_cpp(result);
-    if (zcharset_convert_cpp(f_charset, data, size, "UTF-8", result, 0, -1, 0) > 0)
+    if (zcharset_convert_cpp(f_charset, data, size,
+                             "UTF-8", result, 0,
+                             -1, 0) > 0)
     {
-        goto over;
+        _clear_null_inner(result);
+        return;
     }
 
-    zcharset_convert_cpp("UTF-8", data, size, "UTF-8", result, 0, -1, 0);
-
-over:
+    zbuf_memcpy_cpp(result, data, size);
+    _clear_null_inner(result);
     return;
 }
