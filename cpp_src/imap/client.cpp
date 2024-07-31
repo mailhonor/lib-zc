@@ -12,7 +12,6 @@ zcc_namespace_begin;
 
 imap_client::imap_client()
 {
-    timeout_ = 10;
     simple_line_length_limit_ = 102400;
 }
 
@@ -33,7 +32,7 @@ imap_client &imap_client::fp_append(const char *s, int slen)
 {
     if (slen < 0)
     {
-        slen = strlen(s);
+        slen = std::strlen(s);
     }
     fp_.append(s, slen);
     if (debug_protocol_fn_)
@@ -65,7 +64,7 @@ int imap_client::fp_readn(void *mem, int strict_len)
     {
         if (debug_protocol_fn_)
         {
-            debug_protocol_fn_('S', mem, r);
+            debug_protocol_fn_('S', (const char *)mem, r);
         }
     }
     return r;
@@ -99,7 +98,7 @@ int imap_client::fp_read_delimiter(void *mem, int delimiter, int max_len)
     {
         if (debug_protocol_fn_)
         {
-            debug_protocol_fn_('S', mem, r);
+            debug_protocol_fn_('S', (const char *)mem, r);
         }
     }
     return r;

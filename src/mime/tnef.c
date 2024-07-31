@@ -10,6 +10,10 @@
  * 本文件核心代码修改自 https://github.com/verdammelt/tnef/
  */
 
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wformat-zero-length"
+#endif // __GNUC__
+
 #include "./mime.h"
 
 /* {{{ 外壳 */

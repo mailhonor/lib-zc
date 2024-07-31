@@ -7,6 +7,10 @@
  * ================================
  */
 
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wformat-zero-length"
+#endif // __GNUC__
+
 #include "./mime.h"
 
 static void _debug_show_addr(zmail_t *parser, const char *h, const zmime_address_t *addr)
@@ -53,6 +57,13 @@ void zmail_debug_show(zmail_t *parser)
 
     zdebug_show(fmt, "Date", zmail_get_date(parser));
     zdebug_show("%15s: %zd","", zmail_get_date_unix(parser));
+    if (1) {
+        ssize_t t = zmail_get_date_unix_by_received(parser);
+        zdebug_show("%15s: %zd", "Received Date", t);
+        char buf[zvar_rfc1123_date_string_size + 1];
+        zbuild_rfc822_date_string(t, buf);
+        zdebug_show("%15s: %s", "Received Date", buf);
+    }
     zdebug_show("");
     zdebug_show(fmt, "Subject", zmail_get_subject(parser));
     zdebug_show(fmt, "Subject_utf8", zmail_get_subject_utf8(parser));

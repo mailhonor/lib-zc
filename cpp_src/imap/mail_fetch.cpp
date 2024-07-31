@@ -68,7 +68,7 @@ void _imap_client_parse_mail_flags(imap_client::mail_flags &flags, const imap_cl
     // 1 FETCH (UID 1405 FLAGS () RFC822.SIZE 67404 BODY[]<0> {12}
 
     auto &token_vector = response_tokens.token_vector_;
-    if (token_vector.size() < (size_t)offset + 1)
+    if (token_vector.size() < (uint64_t)offset + 1)
     {
         return;
     }
@@ -91,23 +91,23 @@ void _imap_client_parse_mail_flags(imap_client::mail_flags &flags, const imap_cl
         {
             s++;
         }
-        if (ZSTR_EQ(s, "answered"))
+        if (ZCC_STR_EQ(s, "answered"))
         {
             flags.answered_ = true;
         }
-        else if (ZSTR_EQ(s, "flagged"))
+        else if (ZCC_STR_EQ(s, "flagged"))
         {
             flags.flagged_ = true;
         }
-        else if (ZSTR_EQ(s, "deleted"))
+        else if (ZCC_STR_EQ(s, "deleted"))
         {
             flags.deleted_ = true;
         }
-        else if (ZSTR_EQ(s, "seen"))
+        else if (ZCC_STR_EQ(s, "seen"))
         {
             flags.seen_ = true;
         }
-        else if (ZSTR_EQ(s, "draft"))
+        else if (ZCC_STR_EQ(s, "draft"))
         {
             flags.draft_ = true;
         }

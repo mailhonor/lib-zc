@@ -6,6 +6,7 @@
  * ================================
  */
 
+#include <cstdarg>
 #include "./imap.h"
 
 zcc_namespace_begin;
@@ -28,7 +29,7 @@ int imap_client::_cmd_search_flag(std::vector<int> &uid_vector, const char *flag
     {
         linebuf.clear();
         int len = fp_gets(linebuf, 1024 * 1024 * 100);
-        if (len > 1024)
+        if (len < 1024)
         {
             zcc_imap_client_debug_read_line(linebuf);
         }
@@ -72,7 +73,7 @@ int imap_client::_cmd_search_flag(std::vector<int> &uid_vector, const char *flag
             while (ps < end)
             {
                 intbuf.clear();
-                const char *p = strchr(ps, ' ');
+                const char *p = std::strchr(ps, ' ');
                 if (p)
                 {
                     intbuf.append(ps, p - ps);
@@ -92,7 +93,7 @@ int imap_client::_cmd_search_flag(std::vector<int> &uid_vector, const char *flag
         }
         else /* if (linebuf == "S ") */
         {
-            if ((r = parse_imap_result(linebuf.c_str() + 2) < 1))
+            if ((r = parse_imap_result(linebuf.c_str() + 2)) < 1)
             {
                 break;
             }

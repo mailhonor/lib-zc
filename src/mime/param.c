@@ -249,6 +249,7 @@ void zmime_header_line_decode_content_disposition_inner(zmail_t *parser, const c
     }
     zfree(*_value);
     *_value = zmemdupnull(zbuf_data(param_value), zbuf_len(param_value));
+    zstr_tolower(*_value);
 
     zbuf_t *filename2231_tmpbf = 0;
     int flag_2231 = 0;

@@ -188,23 +188,23 @@ int imap_client::cmd_status(status_result &ser, const char *folder_name_imap)
                 }
                 int v = atoi(it->c_str());
                 zcc_imap_client_debug("得到 status: %s => %d", k, v);
-                if (ZSTR_EQ(k, "MESSAGES"))
+                if (ZCC_STR_EQ(k, "MESSAGES"))
                 {
                     ser.messages_ = v;
                 }
-                else if (ZSTR_EQ(k, "RECENT"))
+                else if (ZCC_STR_EQ(k, "RECENT"))
                 {
                     ser.recent_ = v;
                 }
-                else if (ZSTR_EQ(k, "UIDNEXT"))
+                else if (ZCC_STR_EQ(k, "UIDNEXT"))
                 {
                     ser.uidnext_ = v;
                 }
-                else if (ZSTR_EQ(k, "UIDVALIDITY"))
+                else if (ZCC_STR_EQ(k, "UIDVALIDITY"))
                 {
                     ser.uidvalidity_ = v;
                 }
-                else if (ZSTR_EQ(k, "UNSEEN"))
+                else if (ZCC_STR_EQ(k, "UNSEEN"))
                 {
                     ser.unseen_ = v;
                 }

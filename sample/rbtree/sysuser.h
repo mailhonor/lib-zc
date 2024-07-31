@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "zc.h"
+#include "../../zc.h"
 
 typedef struct zsdata_t  zsdata_t;
 struct zsdata_t

@@ -80,7 +80,7 @@ ssize_t zmime_header_line_decode_date(const char *str)
     switch (*ps)
     {
     case 'a':
-        if (p[1] == 'p')
+        if (ps[1] == 'p')
         {
             v = 3;
         }

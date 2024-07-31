@@ -1,0 +1,5 @@
+server-command = ./aio_worker_server
+server-service = 0:8899, time://0:8898
+server-proc-count = 1
+server-stop-on-softstop-after = 10
+

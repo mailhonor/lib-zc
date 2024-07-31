@@ -316,7 +316,7 @@ int zmemcache_client_flush_all(zmemcache_client_t *mc, ssize_t after_second)
         goto over;
     }
     char *ps = zbuf_data(str);
-    if (!strncmp(ps, "OK", 3)) {
+    if (!strncmp(ps, "OK", 2)) {
         ret = 1;
         goto over;
     } else {

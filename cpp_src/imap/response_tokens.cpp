@@ -38,7 +38,7 @@ int imap_client::read_response_tokens_oneline(response_tokens &response_tokens, 
     std::string linebuf, tmp_token;
     bool tmp_token_begin;
     int ch;
-    const char *ps, *end, *p;
+    const char *ps, *end;
 
     if (fp_gets(linebuf, simple_line_length_limit_) < 0)
     {
@@ -46,6 +46,9 @@ int imap_client::read_response_tokens_oneline(response_tokens &response_tokens, 
     }
 
     trim_line_end_rn(linebuf);
+    if (response_tokens.first_line_.empty()) {
+        response_tokens.first_line_ = linebuf;
+    }
     if (tmp_verbose_mode_)
     {
         tmp_verbose_line_++;
@@ -137,7 +140,7 @@ over:
             break;
         }
         int next_len = atoi(tmpstr.c_str() + 1);
-        zsprintf(testbuf, "{%d}", next_len);
+        std::sprintf(testbuf, "{%d}", next_len);
         if (tmpstr != testbuf)
         {
             break;
@@ -158,8 +161,6 @@ int imap_client::read_response_tokens(response_tokens &response_tokens)
     int r = -1;
     int extra_length;
     std::string tmpstr;
-    char testbuf[128];
-    int next_len;
     while (1)
     {
         if ((r = read_response_tokens_oneline(response_tokens, extra_length)) < 0)

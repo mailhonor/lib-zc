@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "zc.h"
+#include "../../zc.h"
 
 
 static void mime_header_line_walk_test(const char *filename, void (*walk_fn)(zbuf_t *line))

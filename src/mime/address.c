@@ -195,7 +195,7 @@ static zmime_address_t *create_mime_address(const char *src_charset_def, const c
     {
         return _create_mime_address_simple(n, a);
     }
-    
+
     // =?utf-8?B?ImFiYyIgPHh4eEBhYWEuY29tPg==?=
     // "abc" <xxx@aaa.com>
 
@@ -223,7 +223,7 @@ static zmime_address_t *create_mime_address(const char *src_charset_def, const c
 
     addr = (zmime_address_t *)zcalloc(1, sizeof(zmime_address_t));
     addr->name = zstrdup(zbuf_data(tmpbf));
-    addr->name_utf8 = zstrdup(zbuf_data(tmpbf));
+    addr->name_utf8 = zstrdup(zblank_buffer);
     addr->address = zstrdup(((zmime_address_t *)(vec->data[0]))->address);
 
     zbuf_free(tmpbf);

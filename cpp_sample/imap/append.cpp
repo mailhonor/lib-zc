@@ -6,20 +6,20 @@
  * ================================
  */
 
-#include "zc.h"
 #include <time.h>
+#include "zcc/zcc_imap.h"
 
-static char *server = 0;
+static const char *server = 0;
 static int ssl_mode = 0;
 static int tls_mode = 0;
-const char *user = "";
-const char *pass = "";
-const char *folder = "";
-const char *eml = "";
+static const char *user = "";
+static const char *pass = "";
+static const char *folder = "";
+static const char *eml = "";
+
 static void ___usage()
 {
-    zprintf("%s -server imap_server:port -user xxx@a.com -pass 123456 -folder abc -eml 1.eml [--ssl ] [ --tls]\n", zvar_progname);
-    exit(1);
+    zcc_fatal("%s -server imap_server:port -user xxx@a.com -pass 123456 -folder abc -eml 1.eml [--ssl ] [ --tls] [ -timeout 10]", zcc::progname);
 }
 
 int main(int argc, char **argv)
@@ -30,33 +30,33 @@ int main(int argc, char **argv)
     zcc::imap_client::append_session append;
     zcc::imap_client::uidplus_result uidplus_result;
 
-    zmain_argument_run(argc, argv);
-    server = zconfig_get_str(zvar_default_config, "server", 0);
-    ssl_mode = zconfig_get_bool(zvar_default_config, "ssl", 0);
-    tls_mode = zconfig_get_bool(zvar_default_config, "tls", 0);
-    user = zconfig_get_str(zvar_default_config, "user", "");
-    pass = zconfig_get_str(zvar_default_config, "pass", "");
-    folder = zconfig_get_str(zvar_default_config, "folder", "");
-    eml = zconfig_get_str(zvar_default_config, "eml", "");
+    zcc::main_argument::run(argc, argv);
+    server = zcc::var_main_config.get_cstring("server", 0);
+    ssl_mode = zcc::var_main_config.get_bool("ssl", false);
+    tls_mode = zcc::var_main_config.get_bool("tls", false);
+    user = zcc::var_main_config.get_cstring("user", "");
+    pass = zcc::var_main_config.get_cstring("pass", "");
+    folder = zcc::var_main_config.get_cstring("folder", "");
+    eml = zcc::var_main_config.get_cstring("eml", "");
 
-    if (zempty(server) || zempty(user) || zempty(pass) || zempty(folder) || zempty(eml))
+    if (zcc::empty(server) || zcc::empty(user) || zcc::empty(pass) || zcc::empty(folder) || zcc::empty(eml))
     {
         ___usage();
     }
 
     if (tls_mode || ssl_mode)
     {
-        zopenssl_init();
-        ssl_ctx = zopenssl_SSL_CTX_create_client();
+        zcc::openssl::env_init();
+        ssl_ctx = zcc::openssl::SSL_CTX_create_client();
     }
 
     zcc::imap_client ic;
     ic.set_debug_mode();
     ic.set_verbose_mode();
-    ic.set_timeout(10);
+    ic.set_timeout(zcc::var_main_config.get_second("timeout", 10));
     ic.set_ssl_tls(ssl_ctx, ssl_mode, tls_mode);
 
-    if (ic.open(server) < 1)
+    if (ic.connect(server) < 1)
     {
         goto over;
     }
@@ -82,17 +82,18 @@ int main(int argc, char **argv)
         goto over;
     }
 
-    zprintf("NEW uidvalidity: %d, uid: %d\n", uidplus_result.uidvalidity_, uidplus_result.uid_);
+    zcc_info("NEW uidvalidity: %d, uid: %d", uidplus_result.uidvalidity_, uidplus_result.uid_);
 
-    zprintf("\n##############################\n\n");
+    zcc_info("\n##############################\n\n");
 
-    ic.close();
+    ic.cmd_logout();
+    ic.disconnect();
 
 over:
     if (tls_mode || ssl_mode)
     {
-        zopenssl_SSL_CTX_free(ssl_ctx);
-        zopenssl_fini();
+        zcc::openssl::SSL_CTX_free(ssl_ctx);
+        zcc::openssl::env_fini();
     }
 
     return 0;

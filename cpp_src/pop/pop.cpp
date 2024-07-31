@@ -28,14 +28,14 @@ void pop_client::set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, boo
 
 void pop_client::set_timeout(int timeout)
 {
-    timeout_ = timeout;
+    fp_.set_timeout(timeout);
 }
 
 pop_client &pop_client::fp_append(const char *s, int slen)
 {
     if (slen < 0)
     {
-        slen = strlen(s);
+        slen = std::strlen(s);
     }
     fp_.append(s, slen);
     if (debug_protocol_fn_)
@@ -68,7 +68,7 @@ int pop_client::fp_readn(void *mem, int strict_len)
     {
         if (debug_protocol_fn_)
         {
-            debug_protocol_fn_('S', mem, r);
+            debug_protocol_fn_('S', (const char *)mem, r);
         }
     }
     return r;
@@ -104,7 +104,7 @@ int pop_client::fp_read_delimiter(void *mem, int delimiter, int max_len)
     {
         if (debug_protocol_fn_)
         {
-            debug_protocol_fn_('S', mem, r);
+            debug_protocol_fn_('S', (const char *)mem, r);
         }
     }
     return r;
@@ -179,7 +179,7 @@ int pop_client::do_STLS()
     return 1;
 }
 
-int pop_client::connect(const char *destination, int times)
+int pop_client::fp_connect(const char *destination, int times)
 {
     if (need_close_connection_)
     {
@@ -193,14 +193,14 @@ int pop_client::connect(const char *destination, int times)
     {
         for (int i = 0; i < times; i++)
         {
-            if (connect(destination, 0) > 0)
+            if (fp_connect(destination, 0) > 0)
             {
                 return 1;
             }
         }
         return -1;
     }
-    if (!fp_.connect(destination, timeout_))
+    if (!fp_.connect(destination))
     {
         zcc_pop_client_error("连接(%s)", destination);
         need_close_connection_ = true;
@@ -210,13 +210,14 @@ int pop_client::connect(const char *destination, int times)
     {
         if (fp_.tls_connect(ssl_ctx_) < 0)
         {
-            fp_.close();
-            zcc_pop_client_error("建立SSL(%s)", destination);
+            disconnect();
             need_close_connection_ = true;
+            zcc_pop_client_error("建立SSL(%s)", destination);
             return -1;
         }
         ssl_flag_ = true;
     }
+    need_close_connection_ = false;
     connected_ = true;
     return 1;
 }
@@ -260,15 +261,19 @@ int pop_client::welcome()
     return 1;
 }
 
-int pop_client::open(const char *destination)
+int pop_client::connect(const char *destination, int times)
 {
     int r = -1;
     if (opened_)
     {
         return 1;
     }
+    if (times < 1)
+    {
+        times = 1;
+    }
 
-    if ((r = connect(destination, 3)) < 1)
+    if ((r = fp_connect(destination, 3)) < 1)
     {
         return r;
     }
@@ -296,12 +301,6 @@ int pop_client::open(const char *destination)
     return 1;
 }
 
-void pop_client::close()
-{
-    cmd_quit();
-    disconnect();
-}
-
 int pop_client::cmd_quit()
 {
     if (quited_)
@@ -326,7 +325,7 @@ int pop_client::auth_basic(const char *user, const char *password)
         return -1;
     }
 
-    if (zempty(user))
+    if (empty(user))
     {
         return 1;
     }
@@ -359,7 +358,7 @@ int pop_client::auth_apop(const char *user, const char *password)
         return -1;
     }
 
-    if (zempty(user))
+    if (empty(user))
     {
         return 1;
     }
@@ -371,11 +370,10 @@ int pop_client::auth_apop(const char *user, const char *password)
 
     cmd = banner_apop_id_;
     cmd.append(password);
-    char md5_buf[32 + 1];
-    zmd5(cmd.c_str(), cmd.size(), md5_buf);
 
     cmd.clear();
-    cmd.append("APOP ").append(user).append(" ").append(md5_buf);
+    cmd.append("APOP ").append(user).append(" ");
+    cmd.append(md5(cmd));
     if ((r = simple_quick_cmd(cmd)) < 1)
     {
         return r;
@@ -477,7 +475,7 @@ const std::vector<std::string> &pop_client::get_capability()
     return capability_;
 }
 
-int pop_client::cmd_stat(size_t &count, size_t &size_sum)
+int pop_client::cmd_stat(uint64_t &count, uint64_t &size_sum)
 {
     if (need_close_connection_)
     {
@@ -489,13 +487,13 @@ int pop_client::cmd_stat(size_t &count, size_t &size_sum)
     {
         return r;
     }
-    const char *ps = strchr(response.c_str(), ' ');
+    const char *ps = std::strchr(response.c_str(), ' ');
     if (!ps)
     {
         return 0;
     }
     count = atoi(ps + 1);
-    ps = strchr(ps + 1, ' ');
+    ps = std::strchr(ps + 1, ' ');
     if (!ps)
     {
         return 0;
@@ -504,7 +502,7 @@ int pop_client::cmd_stat(size_t &count, size_t &size_sum)
     return 1;
 }
 
-int pop_client::cmd_list(std::vector<std::pair<int, size_t>> &msg_number_sizes)
+int pop_client::cmd_list(std::vector<std::pair<int, uint64_t>> &msg_number_sizes)
 {
     if (need_close_connection_)
     {
@@ -513,7 +511,7 @@ int pop_client::cmd_list(std::vector<std::pair<int, size_t>> &msg_number_sizes)
     std::string line;
     int r = simple_quick_cmd("LIST");
     int mn;
-    size_t size;
+    uint64_t size;
 
     while (r > 0)
     {
@@ -531,7 +529,7 @@ int pop_client::cmd_list(std::vector<std::pair<int, size_t>> &msg_number_sizes)
         }
         const char *ps = line.c_str();
         mn = atoi(ps);
-        ps = strchr(ps, ' ');
+        ps = std::strchr(ps, ' ');
         if (!ps)
         {
             size = atol(ps + 1);
@@ -571,7 +569,7 @@ int pop_client::cmd_list(std::vector<int> &msg_numbers)
     return r;
 }
 
-int pop_client::cmd_list(int msg_number, size_t &size)
+int pop_client::cmd_list(int msg_number, uint64_t &size)
 {
     if (need_close_connection_)
     {
@@ -604,7 +602,7 @@ int pop_client::cmd_uidl(std::map<std::string, int> &result)
     std::string line;
     int r = simple_quick_cmd("UIDL");
     int mn;
-    size_t size;
+    uint64_t size;
 
     while (r > 0)
     {
@@ -615,16 +613,17 @@ int pop_client::cmd_uidl(std::map<std::string, int> &result)
             r = -1;
             break;
         }
-        if ((line == ".\r\n") || (line == ".\n"))
+        trim_line_end_rn(line);
+        if (line == ".")
         {
             break;
         }
-        const char *ps = strchr(line.c_str(), ' ');
+        const char *ps = std::strchr(line.c_str(), ' ');
         if (!ps)
         {
             continue;
         }
-        result[ps] = atoi(line.c_str());
+        result[ps + 1] = atoi(line.c_str());
     }
     return r;
 }

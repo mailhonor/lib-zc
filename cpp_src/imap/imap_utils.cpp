@@ -6,14 +6,14 @@
  * ================================
  */
 
-#include "zc.h"
+#include "./imap.h"
 
 zcc_namespace_begin;
 
 // utils
 int imap_client::parse_imap_result(const char *key_line)
 {
-    if (zempty(key_line))
+    if (zcc::empty(key_line))
     {
         need_close_connection_ = true;
         return -1;
@@ -125,7 +125,7 @@ std::string imap_client::escape_string(const char *s, int slen)
     int ch, i;
     if (slen < 0)
     {
-        slen = strlen(s);
+        slen = std::strlen(s);
     }
     r.push_back('"');
     for (i = 0; i < slen; i++)
@@ -156,7 +156,7 @@ std::string imap_client::escape_string(const char *s, int slen)
         r.clear();
         if (slen < 0)
         {
-            slen = strlen(s);
+            slen = std::strlen(s);
         }
         zcc::sprintf_1024(r, "{%d}\r\n", slen);
         r.append(s, slen);
@@ -177,7 +177,7 @@ std::string imap_client::imap_utf7_to_utf8(const char *str, int slen)
     std::string r, tmpr, tmps;
     if (slen < 0)
     {
-        slen = strlen(str);
+        slen = std::strlen(str);
     }
     const unsigned char *ps = (const unsigned char *)str, *end = ps + slen;
     const unsigned char *p;
@@ -232,7 +232,7 @@ std::string imap_client::imap_utf7_to_utf8(const char *str, int slen)
             ps = end;
         }
         tmpr.clear();
-        zcc::charset_convert("UTF-7", tmps.c_str(), tmps.size(), "UTF-8", tmpr, 0, -1, 0);
+        charset::convert("UTF-7", tmps.c_str(), tmps.size(), "UTF-8", tmpr, 0, -1, 0);
         r.append(tmpr);
     }
     return r;
@@ -243,10 +243,9 @@ std::string imap_client::utf8_to_imap_utf7(const char *str, int slen)
     std::string r, tmpr, tmps;
     if (slen < 0)
     {
-        slen = strlen(str);
+        slen = std::strlen(str);
     }
     const unsigned char *ps = (const unsigned char *)str, *end = ps + slen;
-    const unsigned char *p;
 
     while (ps < end)
     {
@@ -275,7 +274,7 @@ std::string imap_client::utf8_to_imap_utf7(const char *str, int slen)
             continue;
         }
         tmpr.clear();
-        zcc::charset_convert("UTF-8", tmps.c_str(), tmps.size(), "UTF-7", tmpr, 0, -1, 0);
+        charset::convert("UTF-8", tmps.c_str(), tmps.size(), "UTF-7", tmpr, 0, -1, 0);
         if (tmpr.size() > 0) {
             r.push_back('&');
             r.append(tmpr.c_str() + 1);

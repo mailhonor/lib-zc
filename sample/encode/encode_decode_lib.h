@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "zc.h"
+#include "../../zc.h"
 
 static void usage(void)
 {

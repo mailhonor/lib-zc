@@ -19,6 +19,7 @@
 #ifdef _WIN32
 #include <winbase.h>
 #include <wchar.h>
+#include <direct.h>
 #else // _WIN32
 #include <sys/mman.h>
 #endif // _WIN32
@@ -26,6 +27,90 @@
 #ifndef Z_MAX_PATH
 #define Z_MAX_PATH 4096
 #endif // Z_MAX_PATH
+
+#define ZC_ROBUST_DO(exp)      \
+    int ret = -1;              \
+    while (1)                  \
+    {                          \
+        ret = exp;             \
+        if (ret > -1)          \
+        {                      \
+            return ret;        \
+        }                      \
+        int ec = zget_errno(); \
+        if (ec == EINTR)       \
+        {                      \
+            continue;          \
+        }                      \
+        errno = ec;            \
+        return ret;            \
+    }                          \
+    return ret;
+
+#define ZC_ROBUST_DO_ONE_MORE(exp, E) \
+    int ret = -1;                     \
+    while (1)                         \
+    {                                 \
+        ret = exp;                    \
+        if (ret > -1)                 \
+        {                             \
+            return ret;               \
+        }                             \
+        int ec = zget_errno();        \
+        if (ec == EINTR)              \
+        {                             \
+            continue;                 \
+        }                             \
+        if (ec == E)                  \
+        {                             \
+            return 0;                 \
+        }                             \
+        errno = ec;                   \
+        return ret;                   \
+    }                                 \
+    return ret;
+
+#define ZC_ROBUST_DO_WIN32(exp) \
+    int ret = -1;               \
+    while (1)                   \
+    {                           \
+        ret = exp;              \
+        if (ret > -1)           \
+        {                       \
+            return ret;         \
+        }                       \
+        int ec = zget_errno();  \
+        if (ec == EINTR)        \
+        {                       \
+            continue;           \
+        }                       \
+        errno = ec;             \
+        return ret;             \
+    }                           \
+    return ret;
+
+#define ZC_ROBUST_DO_WIN32_ONE_MORE(exp, E) \
+    int ret = -1;                           \
+    while (1)                               \
+    {                                       \
+        ret = exp;                          \
+        if (ret > -1)                       \
+        {                                   \
+            return ret;                     \
+        }                                   \
+        int ec = zget_errno();              \
+        if (ec == EINTR)                    \
+        {                                   \
+            continue;                       \
+        }                                   \
+        if (ec == E)                        \
+        {                                   \
+            return 0;                       \
+        }                                   \
+        errno = ec;                         \
+        return ret;                         \
+    }                                       \
+    return ret;
 
 static int _zstat_utf8_or_multibyte(const char *pathname, void *statbuf, int utf8_or_multibyte)
 {
@@ -41,7 +126,7 @@ static int _zstat_utf8_or_multibyte(const char *pathname, void *statbuf, int utf
     }
     else
     {
-        return stat(pathname, statbuf);
+        return _stat(pathname, statbuf);
     }
 #else  // _WIN32
     return stat(pathname, statbuf);
@@ -796,7 +881,7 @@ static int _v_zmkdirs_utf8_or_multibyte(int utf8_or_multibyte, int mode, const c
         }
         else
         {
-            ret = mkdir(path);
+            ret = _mkdir(path);
         }
 #else  // _WIN32
         ret = mkdir(path, mode);
@@ -846,15 +931,26 @@ int zsys_mkdir(const char *path, int mode)
     return zsys_mkdirs(mode, path, 0);
 }
 
-int zrename(const char *oldpath, const char *newpath)
+static int _zrename_utf8_or_multibyte(const char *oldpath, const char *newpath, int utf8_or_multibyte)
 {
 #ifdef _WIN32
     wchar_t oldpathw[Z_MAX_PATH + 1];
     wchar_t newpathw[Z_MAX_PATH + 1];
-    if ((zUtf8ToWideChar(oldpath, -1, oldpathw, Z_MAX_PATH) < 1) || (zUtf8ToWideChar(newpath, -1, newpathw, Z_MAX_PATH) < 1))
+    if (utf8_or_multibyte)
     {
-        errno = zget_errno();
-        return -1;
+        if ((zUtf8ToWideChar(oldpath, -1, oldpathw, Z_MAX_PATH) < 1) || (zUtf8ToWideChar(newpath, -1, newpathw, Z_MAX_PATH) < 1))
+        {
+            errno = zget_errno();
+            return -1;
+        }
+    }
+    else
+    {
+        if ((zMultiByteToWideChar(oldpath, -1, oldpathw, Z_MAX_PATH) < 1) || (zMultiByteToWideChar(newpath, -1, newpathw, Z_MAX_PATH) < 1))
+        {
+            errno = zget_errno();
+            return -1;
+        }
     }
     if (!MoveFileExW(oldpathw, newpathw, MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED))
     {
@@ -867,25 +963,14 @@ int zrename(const char *oldpath, const char *newpath)
 #endif // _WIN32
 }
 
+int zrename(const char *oldpath, const char *newpath)
+{
+    return _zrename_utf8_or_multibyte(oldpath, newpath, 1);
+}
+
 int zsys_rename(const char *oldpath, const char *newpath)
 {
-#ifdef _WIN32
-    wchar_t oldpathw[Z_MAX_PATH + 1];
-    wchar_t newpathw[Z_MAX_PATH + 1];
-    if ((zMultiByteToWideChar(oldpath, -1, oldpathw, Z_MAX_PATH) < 1) || (zMultiByteToWideChar(newpath, -1, newpathw, Z_MAX_PATH) < 1))
-    {
-        errno = zget_errno();
-        return -1;
-    }
-    if (!MoveFileExW(oldpathw, newpathw, MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED))
-    {
-        errno = zget_errno();
-        return -1;
-    }
-    return 0;
-#else  // _WIN32
-    ZC_ROBUST_DO(rename(oldpath, newpath));
-#endif // _WIN32
+    return _zrename_utf8_or_multibyte(oldpath, newpath, 0);
 }
 
 int zunlink(const char *pathname)
@@ -908,31 +993,16 @@ int zunlink(const char *pathname)
     }
     return 0;
 #else  // _WIN32
-    ZC_ROBUST_DO(unlink(pathname));
+    ZC_ROBUST_DO_ONE_MORE(unlink(pathname), ENOENT);
 #endif // _WIN32
 }
 
 int zsys_unlink(const char *pathname)
 {
 #ifdef _WIN32
-    wchar_t pathnamew[Z_MAX_PATH + 1];
-    if (zMultiByteToWideChar(pathname, -1, pathnamew, Z_MAX_PATH) < 1)
-    {
-        return -1;
-    }
-    if (!DeleteFileW(pathnamew))
-    {
-        int ec = zget_errno();
-        if (ec == ENOENT)
-        {
-            return 0;
-        }
-        errno = ec;
-        return -1;
-    }
-    return 0;
+    ZC_ROBUST_DO_WIN32_ONE_MORE(_unlink(pathname), ENOENT);
 #else  // _WIN32
-    ZC_ROBUST_DO(unlink(pathname));
+    ZC_ROBUST_DO_ONE_MORE(unlink(pathname), ENOENT);
 #endif // _WIN32
 }
 
@@ -1154,6 +1224,109 @@ int zsys_symlink_force(const char *oldpath, const char *newpath, const char *tmp
         return -1;
     }
     return 0;
+}
+
+int zrmdir(const char *pathname)
+{
+#ifdef _WIN32
+    wchar_t pathnamew[Z_MAX_PATH + 1];
+    if (zUtf8ToWideChar(pathname, -1, pathnamew, Z_MAX_PATH) < 1)
+    {
+        return -1;
+    }
+    if (_wrmdir(pathnamew) < 0)
+    {
+        int ec = zget_errno();
+        if (ec == ENOENT)
+        {
+            return 0;
+        }
+        errno = ec;
+        return -1;
+    }
+    return 0;
+#else  // _WIN32
+    ZC_ROBUST_DO_ONE_MORE(rmdir(pathname), ENOENT);
+#endif // _WIN32
+}
+
+int zsys_rmdir(const char *pathname)
+{
+#ifdef _WIN32
+    ZC_ROBUST_DO_WIN32_ONE_MORE(_rmdir(pathname), ENOENT);
+#else  // _WIN32
+    ZC_ROBUST_DO_ONE_MORE(rmdir(pathname), ENOENT);
+#endif // _WIN32
+}
+
+static int _zrmdir_recurse_sys(const char *pathname, int sys)
+{
+    zbuf_t *filename = zbuf_create(128);
+    zargv_t *filenames = zargv_create(-1);
+    struct stat st;
+    int ret = 0;
+    if (sys)
+    {
+        if ((ret = zsys_get_filenames_in_dir(pathname, filenames)) < 0)
+        {
+            goto over;
+        }
+    }
+    else
+    {
+        if ((ret = zget_filenames_in_dir(pathname, filenames)) < 0)
+        {
+            goto over;
+        }
+    }
+
+    ret = 0;
+    ZARGV_WALK_BEGIN(filenames, fn)
+    {
+        zbuf_reset(filename);
+        zbuf_strcat(filename, pathname);
+        zbuf_strcat(filename, "/");
+        zbuf_strcat(filename, fn);
+        if ((ret = zstat(zbuf_data(filename), &st)) < 0)
+        {
+            goto over;
+        }
+        if (st.st_mode & S_IFDIR)
+        {
+            if ((ret = _zrmdir_recurse_sys(zbuf_data(filename), 0)) < 0)
+            {
+                goto over;
+            }
+        }
+        else
+        {
+            if ((ret = zunlink(zbuf_data(filename))) < 0)
+            {
+                goto over;
+            }
+        }
+    }
+    ZARGV_WALK_END;
+
+    if ((ret = zrmdir(pathname)) < 0)
+    {
+        goto over;
+    }
+
+over:
+    zargv_free(filenames);
+    zbuf_free(filename);
+    return ret;
+}
+
+int zrmdir_recurse(const char *pathname)
+{
+    return _zrmdir_recurse_sys(pathname, 0);
+}
+
+int zsys_rmdir_recurse(const char *pathname)
+{
+    return _zrmdir_recurse_sys(pathname, 1);
 }
 
 static int _zget_filenames_in_dir_default(const char *dirname, zargv_t *filenames)

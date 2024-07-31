@@ -20,7 +20,7 @@ void imap_client::set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bo
 
 void imap_client::set_timeout(int timeout)
 {
-    timeout_ = timeout;
+    fp_.set_timeout(timeout);
 }
 
 int imap_client::do_startTLS()
@@ -30,7 +30,7 @@ int imap_client::do_startTLS()
         return 1;
     }
     int r;
-    if ((r = do_quick_cmd_simple_line_mode("S STARTTLS")) < 1)
+    if ((r = do_quick_cmd("S STARTTLS")) < 1)
     {
         return r;
     }
@@ -46,7 +46,7 @@ int imap_client::do_startTLS()
     return 1;
 }
 
-int imap_client::connect(const char *destination, int times)
+int imap_client::fp_connect(const char *destination, int times)
 {
     int r;
     if (connected_)
@@ -57,23 +57,24 @@ int imap_client::connect(const char *destination, int times)
     {
         for (int i = 0; i < times; i++)
         {
-            if ((r = connect(destination, 0)) > 0)
+            if ((r = fp_connect(destination, 0)) > 0)
             {
                 return r;
             }
         }
         return -1;
     }
-    if ((r = fp_.connect(destination, timeout_)) < 1)
+    if (!fp_.connect(destination))
     {
         need_close_connection_ = true;
         zcc_imap_client_error("连接(%s)", destination);
-        return r;
+        return -1;
     }
     if (ssl_mode_)
     {
         if (fp_.tls_connect(ssl_ctx_) < 0)
         {
+            disconnect();
             need_close_connection_ = true;
             zcc_imap_client_error("建立SSL(%s)", destination);
             return -1;
@@ -81,6 +82,7 @@ int imap_client::connect(const char *destination, int times)
         ssl_flag_ = true;
     }
     connected_ = true;
+    need_close_connection_ = false;
     return 1;
 }
 
@@ -104,7 +106,7 @@ int imap_client::welcome()
     }
     trim_line_end_rn(linebuf);
     zcc_imap_client_debug("imap 读: %s", linebuf.c_str());
-    if (ZSTR_N_EQ(linebuf.c_str(), "* OK ", 5))
+    if (ZCC_STR_N_EQ(linebuf.c_str(), "* OK ", 5))
     {
         return 1;
     }
@@ -114,15 +116,19 @@ int imap_client::welcome()
     }
 }
 
-int imap_client::open(const char *destination)
+int imap_client::connect(const char *destination, int times)
 {
     int r;
     if (opened_)
     {
         return 1;
     }
+    if (times < 1)
+    {
+        times = 1;
+    }
 
-    if ((r = connect(destination, 3)) < 1)
+    if ((r = fp_connect(destination, times)) < 1)
     {
         return r;
     }
@@ -160,16 +166,10 @@ int imap_client::cmd_logout()
     {
         return 1;
     }
-    do_quick_cmd_simple_line_mode("L LOGOUT");
+    do_quick_cmd("L LOGOUT");
     logout_ = true;
     need_close_connection_ = true;
     return 1;
-}
-
-void imap_client::close()
-{
-    cmd_logout();
-    disconnect();
 }
 
 zcc_namespace_end;

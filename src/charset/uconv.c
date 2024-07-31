@@ -6,38 +6,29 @@
  * ================================
  */
 
-#ifndef ___ZC_ZCC_MODE___
 #include "zc.h"
-#ifdef _LIB_ZC_UCONV_
+#ifdef ZCC_USE_UCONV__
 #include <ctype.h>
 #include <unicode/utypes.h>
 #include <unicode/ucnv.h>
 #endif
-#endif /* ___ZC_ZCC_MODE___ */
 
-#ifdef _LIB_ZC_UCONV_
+#ifdef ZCC_USE_UCONV__
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
-extern zbool_t zvar_charset_debug;
-#ifdef  __cplusplus
-}
-#endif
+#define mydebug(fmt, args...) \
+    if (zvar_charset_debug)   \
+    {                         \
+        zinfo(fmt, ##args);   \
+    }
 
-#define mydebug(fmt, args...)   if (zvar_charset_debug) { zinfo(fmt, ##args); }
-
-#ifndef ___ZC_ZCC_MODE___
 int zcharset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
-#else /* ___ZC_ZCC_MODE___ */
-int charset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
-#endif /* ___ZC_ZCC_MODE___ */
 {
     int ret = -1;
 
-    zbuf_reset_cpp(dest);
+    zbuf_reset(dest);
     int omit_invalid_bytes_count_tmp = 0;
-    if (omit_invalid_bytes_count) {
+    if (omit_invalid_bytes_count)
+    {
         *omit_invalid_bytes_count = 0;
     }
 
@@ -49,149 +40,147 @@ int charset_uconv(const char *from_charset, const char *src, int src_len, const 
     UConverter *to_conv = 0;
     UErrorCode err = U_ZERO_ERROR;
 
-
     char *from_p, *from_end;
     char *to_p, *to_end, *to_last;
 
-    zbuf_t *uni_bf = zbuf_create(src_len*4 + 16);
+    zbuf_t *uni_bf = zbuf_create(src_len * 4 + 16);
 
     int dest_size = src_len * 4 + 16;
-    char *dest_buf = (char *)zmalloc(dest_size+16);
+    char *dest_buf = (char *)zmalloc(dest_size + 16);
 
     from_p = (char *)src;
     from_end = (char *)src + src_len;
 
     err = U_ZERO_ERROR;
     from_conv = ucnv_open(from_charset, &err);
-    if (U_FAILURE(err)) {
+    if (U_FAILURE(err))
+    {
         mydebug("cantOpenFromCodeset");
         goto over;
     }
     err = U_ZERO_ERROR;
     ucnv_setToUCallBack(from_conv, to_callback, dest_buf, 0, 0, &err);
-    if (U_FAILURE(err)) {
+    if (U_FAILURE(err))
+    {
         mydebug("cantSetCallback");
         goto over;
     }
 
-    while (from_p < from_end) {
+    while (from_p < from_end)
+    {
         to_p = to_last = dest_buf;
         to_end = dest_buf + dest_size;
         err = U_ZERO_ERROR;
         ucnv_toUnicode(from_conv, (UChar **)&to_p, (UChar *)to_end, (const char **)&from_p, from_end, 0, 1, &err);
-        if (to_p - to_last > 0) {
+        if (to_p - to_last > 0)
+        {
             zbuf_memcat(uni_bf, to_last, to_p - to_last);
         }
 
-        if (!U_FAILURE(err)) {
+        if (!U_FAILURE(err))
+        {
             break;
         }
         char errorBytes[32];
         int8_t errorLength = (int8_t)sizeof(errorBytes);
         UErrorCode localError = U_ZERO_ERROR;
         ucnv_getInvalidChars(from_conv, errorBytes, &errorLength, &localError);
-        if (U_FAILURE(localError) || errorLength == 0) {
+        if (U_FAILURE(localError) || errorLength == 0)
+        {
             errorLength = 1;
         }
         omit_invalid_bytes_count_tmp += errorLength;
-        if (omit_invalid_bytes_limit == 0) {
+        if (omit_invalid_bytes_limit == 0)
+        {
             break;
         }
-        if (omit_invalid_bytes_limit > 0) {
-            if (omit_invalid_bytes_count_tmp > omit_invalid_bytes_limit) {
+        if (omit_invalid_bytes_limit > 0)
+        {
+            if (omit_invalid_bytes_count_tmp > omit_invalid_bytes_limit)
+            {
                 break;
             }
         }
     }
-    if (src_converted_len) {
+    if (src_converted_len)
+    {
         *src_converted_len = from_p - src;
     }
 
-
     from_p = zbuf_data(uni_bf);
     from_end = zbuf_data(uni_bf) + zbuf_len(uni_bf);
-    if (dest_size < zbuf_len(uni_bf) * 4) {
+    if (dest_size < zbuf_len(uni_bf) * 4)
+    {
         dest_size = zbuf_len(uni_bf) * 4 + 16;
         zfree(dest_buf);
-        dest_buf = (char *)zmalloc(dest_size+16);
+        dest_buf = (char *)zmalloc(dest_size + 16);
     }
 
     err = U_ZERO_ERROR;
     to_conv = ucnv_open(to_charset, &err);
-    if (U_FAILURE(err)) {
+    if (U_FAILURE(err))
+    {
         mydebug("cantOpenToCodeset");
         goto over;
     }
     err = U_ZERO_ERROR;
     ucnv_setFromUCallBack(to_conv, from_callback, from_p, 0, 0, &err);
-    if (U_FAILURE(err)) {
+    if (U_FAILURE(err))
+    {
         mydebug("cantSetCallback");
         goto over;
     }
 
-    while (from_p < from_end) {
+    while (from_p < from_end)
+    {
         to_p = to_last = dest_buf;
         to_end = dest_buf + dest_size;
         err = U_ZERO_ERROR;
         ucnv_fromUnicode(to_conv, &to_p, to_end, (const UChar **)&from_p, (const UChar *)from_end, 0, 1, &err);
-        if (to_p - to_last > 0) {
-            zbuf_memcat_cpp(dest, to_last, to_p - to_last);
+        if (to_p - to_last > 0)
+        {
+            zbuf_memcat(dest, to_last, to_p - to_last);
         }
     }
-    ret = zbuf_len_cpp(dest);
+    ret = zbuf_len(dest);
 
 over:
     zbuf_free(uni_bf);
     zfree(dest_buf);
-    if (from_conv) {
+    if (from_conv)
+    {
         ucnv_close(from_conv);
     }
-    if (to_conv) {
+    if (to_conv)
+    {
         ucnv_close(to_conv);
     }
-    if (omit_invalid_bytes_count) {
+    if (omit_invalid_bytes_count)
+    {
         *omit_invalid_bytes_count = omit_invalid_bytes_count_tmp;
     }
     return ret;
 }
 
-#ifndef ___ZC_ZCC_MODE___
 void zcharset_convert_use_uconv()
 {
     zvar_charset_uconv_mode = 1;
     zcharset_convert = zcharset_uconv;
 }
-#else /* ___ZC_ZCC_MODE___ */
-void charset_convert_use_uconv()
-{
-    zvar_charset_uconv_mode = 1;
-    charset_convert = charset_uconv;
-    zcharset_convert = zcharset_uconv;
-}
-#endif /* ___ZC_ZCC_MODE___ */
 
-#else /* ___ZC_ZCC_MODE___ */
+#else /* ZCC_USE_UCONV__ */
 #include "zc.h"
 static void ___fatal_uconv()
 {
     zfatal("unsupported; cmake ../ -DENABLE_ICU_UCONV=yes");
 }
-#ifndef ___ZC_ZCC_MODE___
 int zcharset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
-#else
-int charset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
-#endif
 {
     ___fatal_uconv();
     return -1;
 }
-#ifndef ___ZC_ZCC_MODE___
 void zcharset_convert_use_uconv()
-#else
-void charset_convert_use_uconv()
-#endif
 {
     ___fatal_uconv();
 }
-#endif /* _LIB_ZC_UCONV_ */
-
+#endif /* ZCC_USE_UCONV__ */

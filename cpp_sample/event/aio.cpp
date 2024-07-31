@@ -6,48 +6,40 @@
  * ================================
  */
 
-#include "zc.h"
+#include "zcc/zcc_aio.h"
 
 static int current_client = 0;
 static int all_client = 0;
-static zcc::aio *tm;
-static zcc::aio *listen_aio;
 
-static int read_wait_timeout = -1;
-static int write_wait_timeout = -1;
+static int wait_timeout = -1;
+static const char *server;
 
 static void after_read(zcc::aio *aio);
 
-static void connect_quit(zcc::aio *aio, const char *msg)
+static void connection_quit(zcc::aio *aio, const char *msg)
 {
-    if (msg) {
-        zinfo("%s", msg);
+    if (msg)
+    {
+        zcc_info("%s", msg);
     }
     delete aio;
     current_client--;
 }
 
-static void timer_cb(zcc::aio *tm)
+static int timer_count = 0;
+static void timer_cb(zcc::aio_timer *tm)
 {
-    if (zvar_sigint_flag == 1) {
-        /* 这段代码是为了检查内存泄露 */
-        fprintf(stderr, "\r                          \n");
-        zinfo("signal SIGINT, then EXIT");
-        tm->get_aio_base()->stop_notify();
-        delete tm;
-        delete listen_aio;
-        return;
-    }
     const char title[] = "LIB-ZC";
     static int s = 0;
-    zinfo("%c all:%d, current:%d", title[s++%(sizeof(title)-1)], all_client, current_client);
-    tm->sleep(std::bind(timer_cb, tm), 1);
+    zcc_info("%c all:%d, current:%d", title[s++ % (sizeof(title) - 1)], all_client, current_client);
+    tm->after(std::bind(timer_cb, tm), 1);
 }
 
 static void after_write(zcc::aio *aio)
 {
-    if (aio->get_result() < 1) {
-        connect_quit(aio, "write error");
+    if (aio->get_result() < 1)
+    {
+        connection_quit(aio, "write error");
         return;
     }
     aio->gets(10240, std::bind(after_read, aio));
@@ -55,19 +47,30 @@ static void after_write(zcc::aio *aio)
 
 static void after_write_and_exit(zcc::aio *aio)
 {
-    if (aio->get_result() < 1) {
-        connect_quit(aio, "write error");
-    } else {
-        connect_quit(aio, 0);
+    if (aio->get_result() < 1)
+    {
+        connection_quit(aio, "write error");
     }
+    else
+    {
+        connection_quit(aio, 0);
+    }
+}
+
+static void after_write_and_EXIT(zcc::aio *aio)
+{
+    auto eb = aio->get_aio_base();
+    connection_quit(aio, 0);
+    eb->stop_notify();
 }
 
 static void after_read(zcc::aio *a)
 {
     std::string bf;
     int ret = a->get_result();
-    if (ret < 1) {
-        connect_quit(a, "read error");
+    if (ret < 1)
+    {
+        connection_quit(a, "read error");
         return;
     }
     a->get_read_cache(bf, ret);
@@ -76,8 +79,14 @@ static void after_read(zcc::aio *a)
 
     a->cache_write(bf);
     a->cache_write("\n", 1);
-    if (bf == "exit") {
+    if (bf == "exit")
+    {
         a->cache_flush(std::bind(after_write_and_exit, a));
+        return;
+    }
+    if (bf == "EXIT")
+    {
+        a->cache_flush(std::bind(after_write_and_EXIT, a));
         return;
     }
     a->cache_flush(std::bind(after_write, a));
@@ -86,18 +95,19 @@ static void after_read(zcc::aio *a)
 static void before_accept(zcc::aio *aio)
 {
     int sock = aio->get_fd();
-    int fd = zinet_accept(sock);
-    if (fd < -1) {
+    int fd = zcc::inet_accept(sock);
+    if (fd < -1)
+    {
         return;
     }
 
     current_client++;
     all_client++;
 
-    znonblocking(fd, 1);
+    zcc::nonblocking(fd);
     zcc::aio *naio = new zcc::aio(fd, aio->get_aio_base());
-    naio->set_read_wait_timeout(read_wait_timeout);
-    naio->set_write_wait_timeout(write_wait_timeout);
+    naio->set_timeout(wait_timeout);
+    naio->set_timeout(wait_timeout);
 
     naio->cache_puts("echo server, support command: exit\n");
     naio->cache_flush(std::bind(after_write, naio));
@@ -105,32 +115,36 @@ static void before_accept(zcc::aio *aio)
 
 int main(int argc, char **argv)
 {
-    zmain_argument_run(argc, argv);
-    zinfo("USAGE %s -listen 0:8899 [ -read_wait_timeout 1d ] [ -write_wait_timeout 1d ]", zvar_progname);
-    
-    read_wait_timeout = zconfig_get_second(zvar_default_config, "read_wait_timeout", 3600*24);
-    write_wait_timeout = zconfig_get_second(zvar_default_config, "write_wait_timeout", 3600*24);
+    zcc::main_argument::run(argc, argv);
+    zcc_info("USAGE %s -listen 0:8899 [ -wait_timeout 1d ] [ -wait_timeout 1d ]", zcc::progname);
 
-    const char *listen = zconfig_get_str(zvar_default_config, "listen", "0:8899");
+    wait_timeout = zcc::var_main_config.get_second("wait_timeout", 3600 * 24);
+    wait_timeout = zcc::var_main_config.get_second("wait_timeout", 3600 * 24);
 
-    int sock = zlisten(listen, 0, 5);
-    if (sock < 0) {
-        zinfo("ERROR listen on %s(%m)", listen);
+    server = zcc::var_main_config.get_cstring("server", "0:8899");
+
+    int sock = zcc::netpath_listen(server, 5);
+    if (sock < 0)
+    {
+        zcc_info("ERROR listen on %s(%m)", server);
         return 1;
     }
-    znonblocking(sock, 1);
+    zcc::nonblocking(sock);
 
-    zinfo("### echo server start");
+    zcc_info("### echo server start");
 
     zcc::aio_base ab;
 
-    listen_aio = new zcc::aio(sock, &ab);
+    zcc::aio *listen_aio = new zcc::aio(sock, &ab);
     listen_aio->readable(std::bind(before_accept, listen_aio));
 
-    tm = new zcc::aio(-1, &ab);
-    tm->sleep(std::bind(timer_cb, tm), 1);
+    zcc::aio_timer *tm = new zcc::aio_timer(&ab);
+    tm->after(std::bind(timer_cb, tm), 1);
 
     ab.run();
+
+    delete listen_aio;
+    delete tm;
 
     return 0;
 }

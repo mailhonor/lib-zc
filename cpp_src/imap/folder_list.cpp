@@ -61,11 +61,24 @@ void imap_client::folder_result::debug_show()
     {
         zcc::sprintf_1024(tmpbuf, "\n        STATUS 命令结果: RECENT: %d, UIDNEXT: %d, UIDVALIDITY: %d, UNSEEN: %d", status_->recent_, status_->uidnext_, status_->uidvalidity_, status_->unseen_);
     }
-    zinfo("%s\n", tmpbuf.c_str());
+    zcc_info("%s\n", tmpbuf.c_str());
 }
 
 const char *imap_client::folder_result::get_special_use()
 {
+    if (name_.size() == 5)
+    {
+        if ((name_[0] == 'i') || (name_[0] == 'I'))
+        {
+            char buf[5 + 6];
+            std::strcpy(buf, name_.c_str());
+            tolower(buf);
+            if (!std::strcmp(buf, "inbox"))
+            {
+                return "inbox";
+            }
+        }
+    }
     const char *r = "";
     if (sent_)
     {
@@ -125,27 +138,27 @@ static void _parse_folder_list(imap_client::folder_result &folder, const imap_cl
             continue;
         }
         folder.attrs_.insert(s);
-        if (ZSTR_EQ(s, "noinferiors"))
+        if (ZCC_STR_EQ(s, "noinferiors"))
         {
             folder.noinferiors_ = true;
         }
-        else if (ZSTR_EQ(s, "noselect"))
+        else if (ZCC_STR_EQ(s, "noselect"))
         {
             folder.noselect_ = true;
         }
-        else if (ZSTR_EQ(s, "junk"))
+        else if (ZCC_STR_EQ(s, "junk"))
         {
             folder.junk_ = true;
         }
-        else if (ZSTR_EQ(s, "trash"))
+        else if (ZCC_STR_EQ(s, "trash"))
         {
             folder.trash_ = true;
         }
-        else if (ZSTR_EQ(s, "sent"))
+        else if (ZCC_STR_EQ(s, "sent"))
         {
             folder.sent_ = true;
         }
-        else if (ZSTR_EQ(s, "drafts"))
+        else if (ZCC_STR_EQ(s, "drafts"))
         {
             folder.drafts_ = true;
         }

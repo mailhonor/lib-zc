@@ -6,18 +6,12 @@
  * ================================
  */
 
-#ifndef ___ZC_ZCC_MODE___
 #include "zc.h"
 #include <ctype.h>
-#endif
 
 static const char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
-#ifndef ___ZC_ZCC_MODE___
 void zqp_encode_2045(const void *src, int src_size, zbuf_t *result, zbool_t mime_flag)
-#else
-void qp_encode_2045(const void *src, int src_size, std::string &result, bool mime_flag)
-#endif
 {
     int col_count = 0, i, byte;
     const char *ptr = (const char *)src;
@@ -27,32 +21,24 @@ void qp_encode_2045(const void *src, int src_size, std::string &result, bool mim
     for (i = 0; i < src_size; ++i) {
         byte = ptr[i];
         if ((byte == ' ') || ((byte >= 33) && (byte <= 126)  && (byte != '='))) {
-            zbuf_put_cpp(result, byte);
+            zbuf_put(result, byte);
             col_count++;
         } else {
-            zbuf_put_cpp(result, '=');
-            zbuf_put_cpp(result, hex[((byte >> 4) & 0x0F)]);
-            zbuf_put_cpp(result, hex[(byte & 0x0F)]);
+            zbuf_put(result, '=');
+            zbuf_put(result, hex[((byte >> 4) & 0x0F)]);
+            zbuf_put(result, hex[(byte & 0x0F)]);
             col_count += 3;
         }
         if (col_count > 76) {
             if (mime_flag) {
-#ifndef ___ZC_ZCC_MODE___
                 zbuf_strcat(result, "=\r\n");
-#else
-                result.append("=\r\n");
-#endif
             }
             col_count = 0;
         }
     }
 }
 
-#ifndef ___ZC_ZCC_MODE___
 void zqp_encode_2047(const void *src, int src_size, zbuf_t *result)
-#else
-void qp_encode_2047(const void *src, int src_size, std::string &result)
-#endif
 {
     const char *ptr = (const char *)src;
     int i, byte;
@@ -62,14 +48,14 @@ void qp_encode_2047(const void *src, int src_size, std::string &result)
     for (i = 0; i < src_size; ++i) {
         byte = ptr[i];
         if (byte == ' ') {
-            zbuf_put_cpp(result, byte);
-            zbuf_put_cpp(result, '_');
+            zbuf_put(result, byte);
+            zbuf_put(result, '_');
         } else if (((byte >= 33) && (byte <= 126)  && (byte != '='))) {
-            zbuf_put_cpp(result, byte);
+            zbuf_put(result, byte);
         } else {
-            zbuf_put_cpp(result, '=');
-            zbuf_put_cpp(result, hex[((byte >> 4) & 0x0F)]);
-            zbuf_put_cpp(result, hex[(byte & 0x0F)]);
+            zbuf_put(result, '=');
+            zbuf_put(result, hex[((byte >> 4) & 0x0F)]);
+            zbuf_put(result, hex[(byte & 0x0F)]);
         }
     }
 }
@@ -83,11 +69,7 @@ void qp_encode_2047(const void *src, int src_size, std::string &result)
     break; \
 }
 
-#ifndef ___ZC_ZCC_MODE___
 void zqp_decode_2045(const void *src, int src_size, zbuf_t *str)
-#else
-void qp_decode_2045(const void *src, int src_size, std::string &str)
-#endif
 {
     unsigned char *src_c = (unsigned char *)src;
     int src_pos = 0;
@@ -117,18 +99,14 @@ void qp_decode_2045(const void *src, int src_size, std::string &str)
         ___hex_val(c2);
         addch = ((c1 << 4) | c2);
 append:
-        zbuf_put_cpp(str, addch);
+        zbuf_put(str, addch);
     }
 
 over:
-    zbuf_terminate_cpp(str);
+    zbuf_terminate(str);
 }
 
-#ifndef ___ZC_ZCC_MODE___
 void zqp_decode_2047(const void *src, int src_size, zbuf_t *str)
-#else
-void qp_decode_2047(const void *src, int src_size, std::string &str)
-#endif
 {
     unsigned char *src_c = (unsigned char *)src;
     int src_pos = 0;
@@ -152,15 +130,14 @@ void qp_decode_2047(const void *src, int src_size, std::string &str)
             ___hex_val(c2);
             addch = (c1 << 4 | c2);
         }
-        zbuf_put_cpp(str, addch);
+        zbuf_put(str, addch);
     }
 
 over:
-    zbuf_terminate_cpp(str);
+    zbuf_terminate(str);
 }
 #undef ___get_next_ch
 
-#ifndef ___ZC_ZCC_MODE___
 int zqp_decode_get_valid_len(const void *src, int src_size)
 {
     unsigned char *src_c = (unsigned char *)src;
@@ -180,4 +157,3 @@ int zqp_decode_get_valid_len(const void *src, int src_size)
 
     return src_size;
 }
-#endif

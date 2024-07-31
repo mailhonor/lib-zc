@@ -1,111 +1,166 @@
+cmake_minimum_required(VERSION 3.10)
+
 project(lib-zc)
+
+SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # 通用工具
 include(./dev/cmake_general_utils.cmake)
 
-# 跨操作系统平台相关
-set(platform_include_dirs)
-set(platform_lib_dirs)
-set(platform_libs)
-
-IF(CMAKE_SYSTEM_NAME MATCHES "Windows")
-	set(platform_include_dirs C:/_dev/vcpkg-master/installed/x64-mingw-static/include C:/_dev/mingw64/x86_64-w64-mingw32/include)
-	set(platform_lib_dirs C:/_dev/vcpkg-master/installed/x64-mingw-static/lib C:/_dev/mingw64/x86_64-w64-mingw32/lib)
-	set(platform_libs Winmm Ws2_32 Crypt32 Iphlpapi)
+IF(EXISTS "${PROJECT_SOURCE_DIR}/dev/general.cmake")
+    include("${PROJECT_SOURCE_DIR}/dev/general.cmake")
 ENDIF()
 
-IF(EXISTS "${PROJECT_SOURCE_DIR}/dev/platform.cmake")
-    include("${PROJECT_SOURCE_DIR}/dev/platform.cmake")
+find_path(sqlite3_include_dir NAME sqlite3.h
+    HINTS ${general_include_dirs}
+    PATH_SUFFIXES /include/
+)
+
+IF(sqlite3_include_dir)
+    option(ENABLE_SQLITE "sqlite3 proxy server" ON)
+    message("found sqlite3")
 ENDIF()
 
+find_path(uconv_include_dir NAME unicode/ucnv.h
+    HINTS ${general_include_dirs}
+    PATH_SUFFIXES /include/
+)
 
-set(build_target_auto_int_pname_idx 10)
-set(build_target_auto_int_name_idx 10)
-set(target_auto_int_name "1010")
+IF(uconv_include_dir)
+    option(ENABLE_ICU_UCONV "icu charset convert" ON)
+    message("found libicu")
+ENDIF()
 
-function(build_target_auto_int_name)
-    math(EXPR build_target_auto_int_name_idx "${build_target_auto_int_name_idx} + 1")
-    set(build_target_auto_int_name_idx ${build_target_auto_int_name_idx} PARENT_SCOPE)
-    set(target_auto_int_name ${build_target_auto_int_pname_idx}${build_target_auto_int_name_idx} PARENT_SCOPE)
-endfunction()
-
-build_target_auto_int_name()
-
-# option(ENABLE_ICU_UCONV "icu charset convert" OFF)
-# option(ENABLE_SQLITE "sqlite3 proxy server" OFF)
 # 其他个性化设置
 IF(EXISTS "${PROJECT_SOURCE_DIR}/dev/extra.cmake")
     include("${PROJECT_SOURCE_DIR}/dev/extra.cmake")
 ENDIF()
 
-set(my_compile_definitions
-    "-D___ZC_DEV_MODE___"
-    "-D_GNU_SOURCE"
-    "-D_POSIX"
-    "-g" "-ggdb"
-    "-O2"
-    "-Wall"
-    "-Winline"
-    "-Wcast-align"
-    "-Wno-long-long"
-    "-Wno-format-zero-length"
-    "-Wpointer-arith"
-    "-D_REENTRANT"
-    "-D_POSIX_PTHREAD_SEMANTICS"
-    "-D_USE_FAST_MACRO"
-    "-Wno-unused"
-    "-DLINUX2"
-)
+add_definitions(-DZC_DEV_MODE___)
+add_definitions(-DZCC_DEV_MODE___)
 
-if(ENABLE_ICU_UCONV)
-    list(APPEND my_compile_definitions "-D_LIB_ZC_UCONV_")
-endif()
+IF(ENABLE_ICU_UCONV)
+    add_definitions(-DZCC_USE_UCONV__)
+    set(general_libs icuuc icudata icui18n ${general_libs})
+ENDIF()
 
-if(ENABLE_SQLITE)
-    list(APPEND my_compile_definitions "-D_LIB_ZC_SQLITE3_")
-endif()
+IF(ENABLE_SQLITE)
+    add_definitions(-D_LIB_ZC_SQLITE3_)
+    set(general_libs sqlite3 ${general_libs})
+ENDIF()
 
-set(CMAKE_C_FLAGS "-std=gnu99 ")
-set(CMAKE_CXX_FLAGS "-std=gnu++11 -D___ZC_ZCC_MODE___")
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_CXX_STANDARD 11)
 
 FILE(GLOB COROUTINE_SOURCES "src/coroutine/*.c")
-FILE(GLOB ALL_SOURCES "src/*/*.c" "cpp_src/*/*.cpp")
-list(REMOVE_ITEM ALL_SOURCES ${COROUTINE_SOURCES})
+FILE(GLOB ALL_C_SOURCES "src/*/*.c")
+list(REMOVE_ITEM ALL_C_SOURCES ${COROUTINE_SOURCES})
+FILE(GLOB ALL_CPP_SOURCES "cpp_src/*/*.cpp")
 
-INCLUDE_DIRECTORIES(
-    ./
-    ${platform_include_dirs}
-)
+IF(ZCC_LINUX)
+ELSE()
+    FILE(GLOB TMP_SOURCES "cpp_sample/event/*.cpp cpp_sample/server/*.cpp")
+    list(REMOVE_ITEM ALL_CPP_SOURCES ${TMP_SOURCES})
+ENDIF()
 
-IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
+IF(ZCC_LINUX)
     set(CMAKE_EXE_LINKER_FLAGS -rdynamic)
 ENDIF()
 
-ADD_LIBRARY(zc STATIC ${ALL_SOURCES})
-target_compile_options(zc PRIVATE ${my_compile_definitions})
+INCLUDE_DIRECTORIES(
+    ./
+    ./include/
+    ${general_include_dirs}
+)
 
-zcc_problem_FILE_macro(zc)
-set_target_properties(zc PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/)
+LINK_DIRECTORIES(
+    ./
+    ${general_lib_dirs}
+)
 
-IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
+IF(ZCC_LINUX)
+    ADD_LIBRARY(zc STATIC ${ALL_C_SOURCES})
+    zcc_problem_FILE_macro(zc)
+    set_target_properties(zc PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/)
+
     ADD_LIBRARY(zc_coroutine STATIC ${COROUTINE_SOURCES})
-    target_compile_options(zc_coroutine PRIVATE ${my_compile_definitions})
     zcc_problem_FILE_macro(zc_coroutine)
     set_target_properties(zc_coroutine PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/)
-ELSE()
-    ADD_LIBRARY(zc_coroutine STATIC src/stdlib/log.c)
-ENDIF(CMAKE_SYSTEM_NAME MATCHES "Linux")
+ENDIF(ZCC_LINUX)
 
-file(GLOB SAMPLE_SOURCES "sample/*/CMakeLists.txt" "cpp_sample/*/CMakeLists.txt")
+ADD_LIBRARY(zcc STATIC ${ALL_CPP_SOURCES})
+zcc_problem_FILE_macro(zcc)
+set_target_properties(zcc PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/)
 
-IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
+IF(MSVC)
+    file(GLOB SAMPLE_SOURCES "cpp_sample/*/*.cpp")
+ELSEIF(ZCC_LINUX)
+    file(GLOB SAMPLE_SOURCES "coroutine_sample/*.c" "sample/*/*.c" "cpp_sample/*/*.cpp")
 ELSE()
-    FILE(GLOB TMP_SOURCES "sample/event/CMakeLists.txt" "cpp_sample/event/CMakeLists.txt" "sample/master/CMakeLists.txt" "cpp_sample/master/CMakeLists.txt" "sample/coroutine/CMakeLists.txt")
+    file(GLOB SAMPLE_SOURCES "sample/*/*.c" "cpp_sample/*/*.cpp")
+ENDIF(MSVC)
+
+IF(ZCC_LINUX)
+ELSE()
+    FILE(GLOB TMP_SOURCES "sample/event/*.c" "cpp_sample/event/*.cpp" "sample/server/*.c" "cpp_sample/server/*.cpp" "sample/coroutine/*.c")
     list(REMOVE_ITEM SAMPLE_SOURCES ${TMP_SOURCES})
 ENDIF()
 
+set(name_idx 100)
+
 foreach(file ${SAMPLE_SOURCES})
-    string(REGEX REPLACE "(.*)/[^/]*" "\\1" path ${file})
-    math(EXPR build_target_auto_int_pname_idx "${build_target_auto_int_pname_idx} + 1")
-    add_subdirectory(${path})
+    math(EXPR name_idx "${name_idx} + 1")
+    string(REGEX REPLACE ".*/(.*)" "\\1" bin ${file})
+    string(REGEX REPLACE "\\.cpp$" "" bin ${bin})
+    string(REGEX REPLACE "\\.c$" "" bin ${bin})
+
+    string(REGEX REPLACE "(.*)/.*" "\\1" path ${file})
+    string(REGEX REPLACE ".*/([^//]*)" "\\1" parent_dir ${path})
+    string(REGEX REPLACE ".*/([^//]*)/[^//]*" "\\1" pparent_dir ${path})
+
+    set(tmp_target ${name_idx}-${bin})
+
+    IF(${pparent_dir} STREQUAL "cpp_sample")
+        set(tmp_target cpp-${parent_dir}-${bin})
+    ENDIF()
+
+    IF(${pparent_dir} STREQUAL "sample")
+        set(tmp_target c-${parent_dir}-${bin})
+    ENDIF()
+
+    IF(${pparent_dir} STREQUAL "coroutine_sample")
+        set(tmp_target co-${bin})
+    ENDIF()
+
+    add_executable(${tmp_target} ${file})
+    set(mylibs "")
+
+    IF(ZCC_LINUX)
+        IF(${file} MATCHES "coroutine|puny_server.c|websocketd.c|explore_httpd.c")
+            set(mylibs $<TARGET_FILE:zc_coroutine>)
+        ENDIF()
+    ENDIF()
+
+    set_target_properties(${tmp_target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/${pparent_dir}/${parent_dir})
+    set_target_properties(${tmp_target} PROPERTIES RUNTIME_OUTPUT_NAME ${bin})
+    set_property(TARGET ${tmp_target} PROPERTY FOLDER ${pparent_dir}/${parent_dir})
+
+    IF(${pparent_dir} STREQUAL "cpp_sample")
+        target_link_libraries(${tmp_target} $<TARGET_FILE:zcc> ${mylibs} ${general_libs})
+        add_dependencies(${tmp_target} zcc)
+    ENDIF()
+
+    IF(${pparent_dir} STREQUAL "sample")
+        IF(ZCC_LINUX)
+            target_link_libraries(${tmp_target} $<TARGET_FILE:zc> ${mylibs} ${general_libs})
+        ENDIF(ZCC_LINUX)
+
+        add_dependencies(${tmp_target} zc)
+    ENDIF()
+
+    IF(ZCC_LINUX)
+        add_dependencies(${tmp_target} zc_coroutine)
+    ENDIF(ZCC_LINUX)
+
+    zcc_problem_FILE_macro(${tmp_target})
 endforeach()

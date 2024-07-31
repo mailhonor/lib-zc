@@ -16,7 +16,7 @@ int imap_client::cmd_id(const char *id)
     {
         return -1;
     }
-    if (zempty(id))
+    if (zcc::empty(id))
     {
         id = "(\"name\" \"zcc\")";
     }
@@ -24,7 +24,7 @@ int imap_client::cmd_id(const char *id)
     linebuf = "I ID ";
     linebuf.append(id);
 
-    return do_quick_cmd_simple_line_mode(linebuf);
+    return do_quick_cmd(linebuf);
 }
 
 zcc_namespace_end;

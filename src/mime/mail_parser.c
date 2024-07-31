@@ -729,6 +729,61 @@ ssize_t zmail_get_date_unix(zmail_t *parser)
     return parser->date_unix;
 }
 
+ssize_t zmail_get_date_unix_by_received(zmail_t *parser)
+{
+    ssize_t t = -1;
+    char buf[64];
+    zvector_t *raw_header_lines = parser->top_mime->raw_header_lines;
+    for (int i = raw_header_lines->len - 1; i > -1; i--)
+    {
+        zsize_data_t *sd = (zsize_data_t *)((raw_header_lines->data)[i]);
+        const unsigned char *data = (const unsigned char *)(sd->data);
+        int len = sd->size;
+        if (len < 64)
+        {
+            continue;
+        }
+        if (data[0] != 'R' && data[0] != 'r')
+        {
+            continue;
+        }
+        if (data[1] != 'E' && data[1] != 'e')
+        {
+            continue;
+        }
+        if (strncasecmp((const char *)data, "received:", 9))
+        {
+            continue;
+        }
+        data += (len - 50);
+        len = 50;
+        memcpy(buf, data, 50);
+        buf[50] = 0;
+        const char *ps = buf, *end = ps + 50, *s = 0;
+        while (ps < end)
+        {
+            ps = memchr(ps, ';', end - ps);
+            if (!ps) {
+                break;
+            }
+            s = ps + 1;
+            ps = s;
+        }
+        if (!s) {
+            continue;
+        }
+        t = zmime_header_line_decode_date(s);
+        if (t < 1) {
+            continue;
+        }
+        break;
+    }
+    if (t < 1) {
+        return -1;
+    }
+    return t;
+}
+
 const zmime_address_t *zmail_get_from(zmail_t *parser)
 {
 #define ___mail_noutf8(a, b, c)                                                                                                \

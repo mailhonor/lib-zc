@@ -6,22 +6,22 @@
  * ================================
  */
 
-#include "zc.h"
+#include "zcc/zcc_pop.h"
 
 #pragma pack(push, 4)
 zcc_namespace_begin;
 
-#define zcc_pop_client_info(fmt, args...) zinfo(fmt, ##args)
-#define zcc_pop_client_error(fmt, args...) zerror(fmt, ##args)
-#define zcc_pop_client_debug(fmt, args...) \
-    if (debug_mode_)                        \
-    zinfo(fmt, ##args)
-#define zcc_pop_client_debug_read_line(s) \
+#define zcc_pop_client_info(...) zcc_info(__VA_ARGS__)
+#define zcc_pop_client_error(...) zcc_error(__VA_ARGS__)
+#define zcc_pop_client_debug(...) \
     if (debug_mode_)                       \
-    zinfo("pop 读: %s", s.c_str())
+    zcc_info(__VA_ARGS__)
+#define zcc_pop_client_debug_read_line(s) \
+    if (debug_mode_)                      \
+    zcc_info("pop 读: %s", s.c_str())
 #define zcc_pop_client_debug_write_line(s) \
-    if (debug_mode_)                        \
-    zinfo("pop 写: %s", s.c_str())
+    if (debug_mode_)                       \
+    zcc_info("pop 写: %s", s.c_str())
 
 zcc_namespace_end;
 #pragma pack(pop)

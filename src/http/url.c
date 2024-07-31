@@ -25,7 +25,7 @@ zurl_t *zurl_parse(const char *url_string)
     if (!p) {
         if ((ps[0] == '/') && (ps[1] == '/')) {
             ru->scheme = zstrdup("http");
-            ps = p + 2;
+            ps += 2;
         } else {
         }
     } else {

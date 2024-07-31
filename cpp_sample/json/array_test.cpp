@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "zcc_json.h"
+#include "zcc/zcc_json.h"
 
 int main(int argc, char **argv)
 {

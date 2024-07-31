@@ -6,12 +6,13 @@
  * ================================
  */
 
-#ifdef _WIN32
+#ifdef __GNUC__
 #pragma GCC diagnostic ignored "-Wformat="
-#endif // _WIN32
+#endif // __GNUC__
 
 #include "./imap.h"
-#include <time.h>
+
+#include <chrono>
 
 // 命令 COPY
 // 1 copy 1:3 abc
@@ -58,7 +59,7 @@ static bool _parse_move_or_copy_result(imap_client::uidplus_result &result, cons
         return false;
     }
 
-    if (ztolower((*it)[0]) != 'o')
+    if (tolower((*it)[0]) != 'o')
     {
         return false;
     }
@@ -105,7 +106,7 @@ static bool _parse_append_result(imap_client::uidplus_result &result, const imap
         return false;
     }
 
-    if (ztolower((*it)[0]) != 'o')
+    if (tolower((*it)[0]) != 'o')
     {
         return false;
     }
@@ -138,11 +139,11 @@ static bool _parse_append_result(imap_client::uidplus_result &result, const imap
 
 int imap_client::cmd_store(const char *uids, bool plus_or_minus, const char *flags)
 {
-    if (zempty(uids) || strchr(uids, '\n'))
+    if (zcc::empty(uids) || std::strchr(uids, '\n'))
     {
         return 1;
     }
-    if (zempty(flags) || strchr(flags, '\n'))
+    if (zcc::empty(flags) || std::strchr(flags, '\n'))
     {
         return 1;
     }
@@ -154,12 +155,12 @@ int imap_client::cmd_store(const char *uids, bool plus_or_minus, const char *fla
     linebuf.clear();
     linebuf.append("S UID STORE ").append(uids).append(" ");
     linebuf.append(plus_or_minus ? "+" : "-").append("FLAGS.SILENT (").append(flags).append(")");
-    return do_quick_cmd_simple_line_mode(linebuf);
+    return do_quick_cmd(linebuf);
 }
 
 int imap_client::cmd_store(const char *uids, bool plus_or_minus, mail_flags &flags)
 {
-    if (zempty(uids) || strchr(uids, '\n'))
+    if (zcc::empty(uids) || std::strchr(uids, '\n'))
     {
         return 1;
     }
@@ -176,7 +177,7 @@ int imap_client::cmd_store(const char *uids, bool plus_or_minus, mail_flags &fla
     linebuf.clear();
     linebuf.append("S UID STORE ").append(uids).append(" ");
     linebuf.append(plus_or_minus ? "+" : "-").append("FLAGS.SILENT (").append(flags_str).append(")");
-    return do_quick_cmd_simple_line_mode(linebuf);
+    return do_quick_cmd(linebuf);
 }
 
 int imap_client::cmd_store(int uid, bool plus_or_minus, mail_flags &flags)
@@ -187,7 +188,7 @@ int imap_client::cmd_store(int uid, bool plus_or_minus, mail_flags &flags)
 
 int imap_client::cmd_store_deleted_flag(const char *uids, bool plus_or_minus)
 {
-    if (strchr(uids, '\n'))
+    if (std::strchr(uids, '\n'))
     {
         return 0;
     }
@@ -199,7 +200,7 @@ int imap_client::cmd_store_deleted_flag(const char *uids, bool plus_or_minus)
     linebuf.clear();
     linebuf.append("S UID STORE ").append(uids).append(" ");
     linebuf.append(plus_or_minus ? "+" : "-").append("FLAGS.SILENT (\\Deleted)");
-    return do_quick_cmd_simple_line_mode(linebuf);
+    return do_quick_cmd(linebuf);
 }
 
 int imap_client::cmd_store_deleted_flag(int uid, bool plus_or_minus)
@@ -216,7 +217,7 @@ int imap_client::cmd_expunge()
     }
     std::string linebuf;
     linebuf.append("E EXPUNGE");
-    return do_quick_cmd_simple_line_mode(linebuf);
+    return do_quick_cmd(linebuf);
 }
 
 int imap_client::delete_mail(int uid)
@@ -228,18 +229,18 @@ int imap_client::delete_mail(int uid)
     int r;
     std::string linebuf;
     char intbuf[32];
-    zsprintf(intbuf, "%d", uid);
+    std::sprintf(intbuf, "%d", uid);
 
     linebuf.clear();
     linebuf.append("S UID STORE ").append(intbuf).append(" +FLAGS.SILENT (\\Deleted)");
-    if ((r = do_quick_cmd_simple_line_mode(linebuf)) < 1)
+    if ((r = do_quick_cmd(linebuf)) < 1)
     {
         return r;
     }
 
     linebuf.clear();
     linebuf.append("E EXPUNGE");
-    return do_quick_cmd_simple_line_mode(linebuf);
+    return do_quick_cmd(linebuf);
 }
 
 int imap_client::cmd_move(uidplus_result &result, int from_uid, const char *to_folder_name_imap)
@@ -250,7 +251,7 @@ int imap_client::cmd_move(uidplus_result &result, int from_uid, const char *to_f
     bool dealed_uidplus = false;
     std::string linebuf;
     char intbuf[32];
-    zsprintf(intbuf, "%d", from_uid);
+    std::sprintf(intbuf, "%d", from_uid);
 
     linebuf.clear();
     linebuf.append("M UID MOVE ").append(intbuf).append(" ").append(escape_string(to_folder_name_imap));
@@ -296,7 +297,7 @@ int imap_client::cmd_copy(uidplus_result &result, int from_uid, const char *to_f
     bool dealed_uidplus = false;
     std::string linebuf;
     char intbuf[32];
-    zsprintf(intbuf, "%d", from_uid);
+    std::sprintf(intbuf, "%d", from_uid);
 
     linebuf.clear();
     linebuf.append("C UID COPY ").append(intbuf).append(" ").append(escape_string(to_folder_name_imap));
@@ -364,9 +365,8 @@ int imap_client::cmd_append_prepare_protocol(append_session &append)
     if (append.time_ > 0)
     {
         char timebuf[64 + 1];
-        struct tm tmbuf;
-        localtime_r((time_t *)&(append.time_), &tmbuf);
-        strftime(timebuf, 64, "%d-%b-%Y %T %Z", &tmbuf);
+        std::tm *now_tm = std::localtime(&(append.time_));
+        std::strftime(timebuf, 64, "%d-%b-%Y %T %Z", now_tm);
         linebuf.append(" \"").append(timebuf).append("\"");
     }
     linebuf.append(" {").append(std::to_string(append.mail_size_)).append("}");
@@ -423,8 +423,8 @@ int imap_client::append_file(uidplus_result &result, append_session &append, con
     int r = -1;
     FILE *fp = 0;
     char buf[4096 + 1];
-    ssize_t size, left;
-    ssize_t len;
+    int64_t size, left;
+    int64_t len;
 
     fp = fopen(filename, "rb");
     if (!fp)
@@ -432,7 +432,7 @@ int imap_client::append_file(uidplus_result &result, append_session &append, con
         zcc_imap_client_info("ERROR open %s", filename);
         goto over;
     }
-    size = zfile_get_size(filename);
+    size = file_get_size(filename);
     if (size < 0)
     {
         zcc_imap_client_info("ERROR open %s", filename);
@@ -482,7 +482,7 @@ over:
     return r;
 }
 
-int imap_client::append_data(uidplus_result &result, append_session &append, const void *data, size_t dlen)
+int imap_client::append_data(uidplus_result &result, append_session &append, const void *data, uint64_t dlen)
 {
     int r = -1;
     append.mail_size_ = dlen;

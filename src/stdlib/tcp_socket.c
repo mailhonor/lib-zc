@@ -395,6 +395,11 @@ static int connect_and_wait_ok(int sock, struct sockaddr *sa, int len, int timeo
         return 0;
     }
 
+    // char buf[1];
+    // if (read(sock, buf, 0) == 0) {
+    //     return 0;
+    // }
+
     ret = connect(sock, sa, len);
     if (ret == 0)
     {

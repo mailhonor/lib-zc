@@ -55,30 +55,22 @@ static int ___mime_identify_type(zmime_t *mime)
     {
         return _ZPMT_ATTACHMENT;
     }
-    if (ZSTR_N_EQ(type, "text", 4))
+    if (ZSTR_N_EQ(type, "text/", 5))
     {
         if (strstr(disposition, "attachment"))
         {
             return _ZPMT_ATTACHMENT;
         }
-        return _ZPMT_PLAIN;
-    }
-    if (ZSTR_N_EQ(type, "text/", 5))
-    {
         if (!strcmp(type + 5, "html"))
         {
-            if (strstr(disposition, "attachment"))
-            {
-                return _ZPMT_ATTACHMENT;
-            }
             return _ZPMT_HTML;
         }
         if (!strcmp(type + 5, "plain"))
         {
-            if (strstr(disposition, "attachment"))
-            {
-                return _ZPMT_ATTACHMENT;
-            }
+            return _ZPMT_PLAIN;
+        }
+        if (!strcmp(type + 5, "calendar"))
+        {
             return _ZPMT_PLAIN;
         }
         return _ZPMT_ATTACHMENT;

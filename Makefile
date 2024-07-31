@@ -6,7 +6,7 @@ all: lib
 # export CMAKE_CXX_COMPILER=/usr/local/bin/g++-12
 
 lib: 
-	mkdir -p tmp_build && cd tmp_build && cmake ../ $(ZCC_LIB_CMAKE_DEFINITIONS) && make zc zc_coroutine
+	mkdir -p tmp_build && cd tmp_build && cmake ../ $(ZCC_LIB_CMAKE_DEFINITIONS) && make zc zcc zc_coroutine -j 8
 
 test sample: lib
 	cd tmp_build && make
@@ -16,7 +16,7 @@ clean:
 	rm -rf tmp_build
 	mkdir -p tmp_build && cd tmp_build && cmake ../ $(ZCC_LIB_CMAKE_DEFINITIONS) && make clean >/dev/null
 	rm -rf tmp_build
-	rm -f libzc.a libzc_coroutine.a
+	rm -f libzc.a libzcc.a libzc_coroutine.a
 	find ./ -type f -name "*~" -exec rm {} \;
 	find ./ -type f -name "gmon.out" -exec rm {} \;
 	find ./ -type f -name "tags" -exec rm {} \;

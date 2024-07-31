@@ -6,7 +6,7 @@
  * ================================
  */
 
-#include "zcc_json.h"
+#include "zcc/zcc_json.h"
 
 int main(int argc, char **argv)
 {
@@ -18,9 +18,9 @@ int main(int argc, char **argv)
     std::string con;
     zcc::json js;
 
-    if (!js.load_from_pathname(argv[1]))
+    if (!js.load_from_file(argv[1]))
     {
-        printf("ERR load json from %s(%m)\n", argv[1]);
+        printf("ERR load json from %s\n", argv[1]);
         return 1;
     }
 

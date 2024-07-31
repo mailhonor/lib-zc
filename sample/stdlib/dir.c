@@ -11,18 +11,36 @@
 
 int main(int argc, char **argv)
 {
-    const char *fn_sys = 0;
+    const char *fn = 0;
     zmain_argument_run(argc, argv);
-    zprintf("USAGE: %s config_pathname [ dirname ]\n", zvar_progname);
-    if (zvar_main_redundant_argc > 0)
+    if (zvar_main_redundant_argc < 1)
     {
-        fn_sys = zvar_main_redundant_argv[0];
+        zprintf("USAGE: %s [ dirname ]\n", zvar_progname);
     }
+    fn = zvar_main_redundant_argv[0];
 
     zmkdirs(0777, "中文文件名", "子文件夹", 0);
-    if (!zempty(fn_sys))
+    if (zfile_exists(fn) < 1)
     {
-        zsys_mkdir(fn_sys, 0777);
+        if (zmkdir(fn, 0777) < 0)
+        {
+            zinfo("ERR mkdir: %s", fn);
+        }
+        else
+        {
+            zinfo("OK mkdir: %s", fn);
+        }
+    }
+    else
+    {
+        if (zrmdir_recurse(fn) < 0)
+        {
+            zinfo("ERR rmdir: %s", fn);
+        }
+        else
+        {
+            zinfo("OK rmdir: %s", fn);
+        }
     }
     return 0;
 }

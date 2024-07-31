@@ -6,22 +6,23 @@
  * ================================
  */
 
-#include "zc.h"
+#include "zcc/zcc_imap.h"
+#include "zcc/zcc_charset.h"
 
 #pragma pack(push, 4)
 zcc_namespace_begin;
 
-#define zcc_imap_client_info(fmt, args...) zinfo(fmt, ##args)
-#define zcc_imap_client_error(fmt, args...) zerror(fmt, ##args)
-#define zcc_imap_client_debug(fmt, args...) \
+#define zcc_imap_client_info(...) zcc_info( __VA_ARGS__)
+#define zcc_imap_client_error(...) zcc_error(__VA_ARGS__)
+#define zcc_imap_client_debug(...) \
     if (debug_mode_)                        \
-    zinfo(fmt, ##args)
+    zcc_info(__VA_ARGS__)
 #define zcc_imap_client_debug_read_line(s) \
     if (debug_mode_)                       \
-    zinfo("imap 读: %s", s.c_str())
+    zcc_info("imap 读: %s", s.c_str())
 #define zcc_imap_client_debug_write_line(s) \
     if (debug_mode_)                        \
-    zinfo("imap 写: %s", s.c_str())
+    zcc_info("imap 写: %s", s.c_str())
 
 #define zcc_imap_client_read_token_vecotr_one_loop()  \
     response_tokens.reset();                          \

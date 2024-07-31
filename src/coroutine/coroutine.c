@@ -2210,7 +2210,7 @@ void zcoroutine_go(void *(*start_job)(void *ctx), void *ctx, int stack_kilobyte)
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
     if (!cobs)
     {
-        zcoroutine_fatal("excute zcoroutine_enable() when the pthread begin");
+        zcoroutine_fatal("excute zcoroutine_base_init() when the pthread begin");
     }
     _remove_deleted_coroutines(cobs);
     zcoroutine_t *co = zcoroutine_create(cobs, stack_kilobyte, 0);
@@ -2653,7 +2653,7 @@ void zcoroutine_base_set_loop_fn(void (*loop_fn)(zcoroutine_base_t *cb))
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
     if (!cobs)
     {
-        zcoroutine_fatal("excute zcoroutine_enable() when the pthread begin");
+        zcoroutine_fatal("excute zcoroutine_base_init() when the pthread begin");
     }
     cobs->loop_fn = loop_fn;
 }
@@ -2663,7 +2663,7 @@ void zcoroutine_base_run(void (*loop_fn)())
     zcoroutine_base_t *cobs = zcoroutine_base_get_current_inner();
     if (!cobs)
     {
-        zcoroutine_fatal("excute zcoroutine_enable() when the pthread begin");
+        zcoroutine_fatal("excute zcoroutine_base_init() when the pthread begin");
     }
     zcoroutine_t *co;
     _co_rbtree_node_t *rn;

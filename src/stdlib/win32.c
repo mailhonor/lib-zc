@@ -212,7 +212,6 @@ int zUtf8ToWideChar(const char *in, int in_len, wchar_t *result_ptr, int result_
     }
 }
 
-
 // UTF-16 (wide character)
 // 返回结果是字符数
 // result_size 是 结果(result_ptr)buffer 的字符数
@@ -279,7 +278,8 @@ int zMultiByteToUTF8(const char *in, int in_len, char *result_ptr, int result_si
 {
     wchar_t *unicode_ptr = zmalloc(sizeof(wchar_t) * result_size + 16);
     int unicode_len = zMultiByteToWideChar(in, in_len, unicode_ptr, result_size);
-    if (unicode_len < 1) {
+    if (unicode_len < 1)
+    {
         zfree(unicode_ptr);
         return -1;
     }
@@ -345,7 +345,8 @@ int zUTF8ToMultiByte(const char *in, int in_len, char *result_ptr, int result_si
 {
     wchar_t *unicode_ptr = zmalloc(sizeof(wchar_t) * result_size + 16);
     int unicode_len = zUtf8ToWideChar(in, in_len, unicode_ptr, result_size);
-    if (unicode_len < 1) {
+    if (unicode_len < 1)
+    {
         zfree(unicode_ptr);
         return -1;
     }
@@ -353,7 +354,6 @@ int zUTF8ToMultiByte(const char *in, int in_len, char *result_ptr, int result_si
     zfree(unicode_ptr);
     return ret;
 }
-
 
 ssize_t zgetdelim(char **lineptr, size_t *n, int delim, FILE *stream)
 {
@@ -425,13 +425,33 @@ void *zmemmem(const void *l, size_t l_len, const void *s, size_t s_len)
     return NULL;
 }
 
+char *zstrcasestr(const char *haystack, const char *needle)
+{
+    int hl = strlen(haystack);
+    int nl = strlen(needle);
+    int clen = hl - nl;
+    if (clen < 0)
+    {
+        return 0;
+    }
+    clen++;
+    for (int i = 0; i < clen; i++)
+    {
+        int r = strncasecmp(haystack + i, needle, nl);
+        if (r == 0) {
+            return (char *)(void *)(haystack + i);
+        }
+    }
+    return 0;
+}
+
 ssize_t ztimegm(void *void_tm)
 {
     struct tm *tm = (struct tm *)void_tm;
     ssize_t t = mktime(tm);
     TIME_ZONE_INFORMATION tzi;
     GetTimeZoneInformation(&tzi);
-    t -= tzi.Bias;
+    t -= tzi.Bias * 60;
     return t;
 }
 
