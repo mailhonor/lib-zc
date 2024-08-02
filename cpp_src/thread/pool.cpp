@@ -17,7 +17,7 @@ zcc_namespace_begin;
 
 #define engine_handler_dosth(a) \
     {                           \
-        auto f = a;             \
+        auto &f = a;            \
         if (f)                  \
         {                       \
             f();                \

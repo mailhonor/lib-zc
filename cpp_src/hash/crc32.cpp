@@ -12,6 +12,10 @@ zcc_namespace_begin;
 
 unsigned int crc32(const void *data, int size, unsigned int init_value)
 {
+    if (size < 0)
+    {
+        size = std::strlen((const char *)(void *)data);
+    }
     char *p = (char *)data;
     int len = size;
     register unsigned int crc;

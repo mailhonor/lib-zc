@@ -770,4 +770,10 @@ int pop_client::cmd_rset()
     return simple_quick_cmd("RSET");
 }
 
+void pop_client::close()
+{
+    cmd_quit();
+    disconnect();
+}
+
 zcc_namespace_end;

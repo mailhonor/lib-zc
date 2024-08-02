@@ -11,8 +11,12 @@
 
 zcc_namespace_begin;
 
-std::string md5(const void *data, unsigned int len)
+std::string md5(const void *data, int len)
 {
+    if (len < 0)
+    {
+        len = std::strlen((const char *)(void *)data);
+    }
     std::string result;
     char buf[16 + 1];
     MD5_CTX c;

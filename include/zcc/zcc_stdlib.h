@@ -83,7 +83,6 @@ zcc_namespace_c_end;
 #include <map>
 #ifdef _WIN64
 #include <windows.h>
-#include <io.h>
 #endif // _WIN64
 
 #ifdef ZCC_MSVC
@@ -266,7 +265,11 @@ char *trim(char *str);
 char *skip_left(const char *str, const char *ignores);
 int skip_right(const char *str, int len, const char *ignores);
 int skip(const char *line, int len, const char *ignores_left, const char *ignores_right, char **start);
-bool str_to_bool(const char *s, bool def);
+bool str_to_bool(const char *s, bool def = false);
+inline bool str_to_bool(const std::string &s, bool def = false)
+{
+    return str_to_bool(s.c_str(), def);
+}
 int64_t str_to_second(const char *s, int64_t def);
 int64_t str_to_size(const char *s, int64_t def);
 inline int tolower(int ch) { return std::tolower(ch); }
@@ -544,22 +547,22 @@ inline unsigned hash_djb(const void *buf, int64_t len, unsigned int initial = 53
     return hash;
 }
 
-unsigned short int crc16(const void *data, int len, unsigned short int init_value = 0);
+unsigned short int crc16(const void *data, int len = -1, unsigned short int init_value = 0);
 inline unsigned short int crc16(const std::string &data, unsigned short int init_value = 0)
 {
     return crc16(data.c_str(), data.size(), init_value);
 }
-unsigned int crc32(const void *data, int size, unsigned int init_value = 0);
+unsigned int crc32(const void *data, int size = -1, unsigned int init_value = 0);
 inline unsigned int crc32(const std::string &data, unsigned int init_value = 0)
 {
     return crc32(data.c_str(), data.size(), init_value);
 }
-uint64_t crc64(const void *data, int size, uint64_t init_value = 0);
+uint64_t crc64(const void *data, int size = -1, uint64_t init_value = 0);
 inline uint64_t crc64(const std::string &data, uint64_t init_value = 0)
 {
     return crc64(data.c_str(), data.size(), init_value);
 }
-std::string md5(const void *data, unsigned int len);
+std::string md5(const void *data, int len = -1);
 inline std::string md5(const std::string &data)
 {
     return md5(data.c_str(), (unsigned int)data.size());
@@ -679,6 +682,24 @@ inline FILE *fopen(const std::string &pathname, const char *mode)
 {
     return fopen(pathname.c_str(), mode);
 }
+#ifdef _WIN64
+int64_t getdelim(char **lineptr, int64_t *n, int delim, FILE *stream);
+inline int64_t getline(char **lineptr, int64_t *n, FILE *stream)
+{
+    return getdelim(lineptr, (int64_t *)n, '\n', stream);
+}
+
+#else  // _WIN64
+inline int64_t getdelim(char **lineptr, int64_t *n, int delim, FILE *stream)
+{
+    return ::getdelim(lineptr, (uint64_t *)n, delim, stream);
+}
+inline int64_t getline(char **lineptr, int64_t *n, FILE *stream)
+{
+    return ::getline(lineptr, (uint64_t *)n, stream);
+}
+#endif // _WIN64
+
 std::string realpath(const char *pathname);
 inline std::string realpath(const std::string &pathname)
 {
@@ -720,6 +741,10 @@ inline std::string file_get_contents(const std::string &pathname)
     return file_get_contents(pathname.c_str());
 }
 int64_t file_get_contents(const char *pathname, std::string &bf);
+inline int64_t file_get_contents(const std::string &pathname, std::string &bf)
+{
+    return file_get_contents(pathname.c_str(), bf);
+}
 int64_t file_get_contents_sample(const char *pathname, std::string &bf);
 std::string file_get_contents_sample(const char *pathname);
 int stdin_get_contents(std::string &bf);
@@ -865,6 +890,12 @@ static const int64_t var_max_millisecond_duration(3600LL * 24 * 365 * 10 * 1000)
 #else  // _WIN64
 static const int64_t var_max_millisecond_duration(3600L * 24 * 365 * 10 * 1000);
 #endif // _WIN64
+struct timeofday
+{
+    int64_t tv_sec;  /* seconds */
+    int64_t tv_usec; /* microseconds */
+};
+struct timeofday gettimeofday();
 int64_t millisecond(int64_t plus = 0);
 void sleep_millisecond(int64_t delay);
 int64_t millisecond_to(int64_t stamp);

@@ -9,9 +9,10 @@
 #include "zcc/zcc_stdlib.h"
 #include "zcc/zcc_errno.h"
 #ifdef _WIN64
-#include <windows.h>
 #include <WinSock2.h>
+#include <windows.h>
 #include <handleapi.h>
+#include <io.h>
 #else // _WIN64
 #include <unistd.h>
 #include <fcntl.h>

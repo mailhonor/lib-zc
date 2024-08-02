@@ -6,6 +6,8 @@
  * ================================
  */
 
+#include "zcc/zcc_stdlib.h"
+
 #include <thread>
 #include <chrono>
 #include <time.h>
@@ -16,9 +18,18 @@
 #include <poll.h>
 #endif // _WIN64
 
-#include "zcc/zcc_stdlib.h"
-
 zcc_namespace_begin;
+
+timeofday gettimeofday()
+{
+    timeofday r;
+    auto now = std::chrono::system_clock::now();
+    auto duration_since_epoch = now.time_since_epoch();
+    auto millis = std::chrono::duration_cast<std::chrono::microseconds>(duration_since_epoch).count();
+    r.tv_sec = millis % (1000 * 1000);
+    r.tv_usec = millis / (1000 * 1000);
+    return r;
+}
 
 int64_t millisecond(int64_t timeout)
 {

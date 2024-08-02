@@ -102,6 +102,50 @@ FILE *fopen(const char *pathname, const char *mode)
 #endif // _Win32
 }
 
+#ifdef _WIN64
+int64_t getdelim(char **lineptr, int64_t *n, int delim, FILE *stream)
+{
+    if ((lineptr == 0) || (n == 0))
+    {
+        zcc_error("getdelim lineptr is NULL");
+        return -1;
+    }
+    int nn = *n, count = 0;
+    if (*lineptr == 0)
+    {
+        *n = 128;
+        nn = *n;
+        *lineptr = (char *)zcc::malloc(nn + 1);
+    }
+    while (1)
+    {
+        int ch = ::fgetc(stream);
+        if (ch == EOF)
+        {
+            break;
+        }
+        if (count + 1 > nn)
+        {
+            nn *= 2;
+            *lineptr = (char *)zcc::realloc(*lineptr, nn + 1);
+        }
+        (*lineptr)[count] = ch;
+        count++;
+        if (ch == delim)
+        {
+            break;
+        }
+        continue;
+    }
+    (*lineptr)[count] = 0;
+    if (count == 0)
+    {
+        return -1;
+    }
+    return count;
+}
+#endif // _WIN64
+
 std::string realpath(const char *pathname)
 {
     std::string r;

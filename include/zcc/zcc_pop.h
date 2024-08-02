@@ -37,6 +37,7 @@ public:
     iostream &get_iostream() { return fp_; }
     int connect(const char *destination, int times = 3);
     void disconnect();
+    void close();
     int auth_basic(const char *user, const char *password);
     int auth_apop(const char *user, const char *password);
     int auth_auto(const char *user, const char *password);
@@ -55,6 +56,7 @@ public:
     int cmd_dele(int msg_number);
     int cmd_rset();
     int cmd_noop();
+    int cmd_quit();
     const std::string &get_capability(const char *key_lowercase);
     const std::vector<std::string> &get_capability();
 
@@ -73,7 +75,6 @@ public:
 protected:
     int fp_connect(const char *destination, int times);
     int welcome();
-    int cmd_quit();
     int do_STLS();
 
 protected:

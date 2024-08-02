@@ -89,6 +89,10 @@ static const unsigned short int crc16tab[256] = {
 
 unsigned short int crc16(const void *data, int len, unsigned short int init_value)
 {
+    if (len < 0)
+    {
+        len = std::strlen((const char *)(void *)data);
+    }
     const char *buf = (const char *)data;
     int counter;
     unsigned short int crc = init_value;
