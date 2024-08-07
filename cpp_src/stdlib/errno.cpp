@@ -144,7 +144,7 @@ static const struct code_to_errno_map errno_pair[] = {
     {WSAENOTEMPTY, ZCC_ENOTEMPTY},
     {9, 0},
 };
-#else  // _WIN32
+#else  // _WIN64
 static const struct code_to_errno_map errno_pair[] = {
     {EPERM, ZCC_EPERM},
     {ENOENT, ZCC_ENOENT},
@@ -184,7 +184,9 @@ static const struct code_to_errno_map errno_pair[] = {
     {ENOSYS, ZCC_ENOSYS},
     {ENOTEMPTY, ZCC_ENOTEMPTY},
     {EILSEQ, ZCC_EILSEQ},
+#ifdef EDEADLOCK
     {EDEADLOCK, ZCC_EDEADLOCK},
+#endif // EDEADLOCK
     {EADDRINUSE, ZCC_EADDRINUSE},
     {EADDRNOTAVAIL, ZCC_EADDRNOTAVAIL},
     {EAFNOSUPPORT, ZCC_EAFNOSUPPORT},
@@ -227,7 +229,7 @@ static const struct code_to_errno_map errno_pair[] = {
     {EWOULDBLOCK, ZCC_EWOULDBLOCK},
     {0, 0},
 };
-#endif // _WIN32
+#endif // _WIN64
 
 static void _register_errno_map()
 {

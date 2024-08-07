@@ -1,6 +1,10 @@
 # 基础环境
 IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(ZCC_LINUX "Linux")
+
+    set(general_include_dirs)
+    set(general_lib_dirs)
+    set(general_libs ssl crypto resolv pthread)
 ENDIF()
 
 IF(CMAKE_SYSTEM_NAME MATCHES "Windows")
@@ -9,7 +13,7 @@ IF(CMAKE_SYSTEM_NAME MATCHES "Windows")
     IF(MINGW)
         set(general_include_dirs C:/_dev/vcpkg-master/installed/x64-mingw-static/include C:/_dev/mingw64/x86_64-w64-mingw32/include)
         set(general_lib_dirs C:/_dev/vcpkg-master/installed/x64-mingw-static/lib C:/_dev/mingw64/x86_64-w64-mingw32/lib)
-        set(general_libs Winmm Ws2_32 Crypt32 Iphlpapi iconv ssl)
+        set(general_libs iconv ssl crypto Winmm Ws2_32 Crypt32 Iphlpapi)
     ENDIF(MINGW)
 
     IF(MSVC)
@@ -18,9 +22,11 @@ IF(CMAKE_SYSTEM_NAME MATCHES "Windows")
         set(general_lib_dirs C:/_dev/vcpkg-master/installed/x64-windows-static/lib)
         set(general_libs Winmm Ws2_32 Crypt32 Iphlpapi iconv libssl libcrypto)
     ENDIF(MSVC)
-ELSE()
-    set(general_include_dirs)
-    set(general_lib_dirs)
+ENDIF()
+
+IF(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+    set(general_include_dirs /opt/homebrew/Cellar/openssl@3/3.3.1/include/ /usr/local/Cellar/openssl@3/3.3.1/include/)
+    set(general_lib_dirs /usr/local/lib/ /opt/homebrew/Cellar/openssl@3/3.3.1/lib /usr/local/Cellar/openssl@3/3.3.1/lib)
     set(general_libs ssl crypto resolv pthread)
 ENDIF()
 
@@ -49,9 +55,9 @@ ENDIF(MSVC)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 11)
-IF(MSVC)
-ELSE()
-set(CMAKE_EXE_LINKER_FLAGS -rdynamic)
+
+IF(ZCC_LINUX)
+    set(CMAKE_EXE_LINKER_FLAGS -rdynamic)
 ENDIF()
 
 # 解决 __FILE__ 宏绝对路径的问题

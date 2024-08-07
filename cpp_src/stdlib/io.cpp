@@ -582,8 +582,12 @@ int get_readable_count(int fd)
     unsigned long count;
     return (ioctlsocket(fd, FIONREAD, (unsigned long *)&count) < 0 ? -1 : count);
 #else // _WIN64
-    int count;
+    int count = -1;
+#ifdef FIONREAD
     return (ioctl(fd, FIONREAD, (char *)&count) < 0 ? -1 : count);
+#else
+    return count;
+#endif
 #endif
 }
 

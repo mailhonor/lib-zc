@@ -18,7 +18,7 @@ unsigned int crc32(const void *data, int size, unsigned int init_value)
     }
     char *p = (char *)data;
     int len = size;
-    register unsigned int crc;
+    unsigned int crc;
     static unsigned int crc32tab[256] = {
         0x00000000,
         0x77073096,

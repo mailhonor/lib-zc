@@ -11,14 +11,15 @@
 #ifndef ZCC_LIB_INCLUDE_CHARSET___
 #define ZCC_LIB_INCLUDE_CHARSET___
 
-#include <functional>
 #include "./zcc_stdlib.h"
+#include <functional>
 
 #ifdef __cplusplus
 #pragma pack(push, 4)
 zcc_namespace_begin;
 zcc_general_namespace_begin(charset);
 
+#pragma pack(push, 8)
 struct detect_data
 {
     const char *data2;
@@ -26,6 +27,8 @@ struct detect_data
     const char *data3[16];
     int count3[16];
 };
+#pragma pack(pop)
+
 
 extern bool var_debug_mode;
 extern const bool var_uconv_supported;

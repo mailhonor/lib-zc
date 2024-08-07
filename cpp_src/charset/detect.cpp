@@ -15,7 +15,11 @@
 zcc_namespace_begin;
 zcc_general_namespace_begin(charset);
 
+
+#pragma pack(push, 8)
 #include "./char_score.h"
+#pragma pack(pop)
+
 detect_data *var_default_detect_data = &___detect_data;
 
 const char *chinese[] = {"UTF-8", "GB18030", "BIG5", "UTF-7", 0};

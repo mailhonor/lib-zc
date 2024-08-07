@@ -173,7 +173,7 @@ static void zcc_msearch_builder_add_over_1(zcc_msearch_builder_t *builder_engine
     {
         zcc_fatal("zcc_msearch_builder_add_over already be excuted");
     }
-    if (((zcc_msearch_builder_t *)-10 < builder_engine_) && (builder_engine_ < 0))
+    if (((zcc_msearch_builder_t *)-10 < builder_engine_) && (builder_engine_ < (zcc_msearch_builder_t *)0))
     {
         zcc_fatal("zcc_msearch_builder_add_over should not be excuted");
     }
@@ -505,12 +505,12 @@ int msearch_reader::load_from_file(const char *filename)
     ret = -1;
     do
     {
-        if (reader_.len_ < (int64_t)sizeof(zcc_msearch_reader_t))
+        if (reader_.size_ < (int64_t)sizeof(zcc_msearch_reader_t))
         {
             break;
         }
         reader_engine_ = (zcc_msearch_reader_t *)(reader_.data_);
-        if (reader_.len_ < reader_engine_->data_len)
+        if (reader_.size_ < reader_engine_->data_len)
         {
             break;
         }

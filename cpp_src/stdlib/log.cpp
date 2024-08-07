@@ -131,12 +131,11 @@ static void output_handler_syslog(const char *source_fn, uint64_t line_number, l
     }
     else
     {
-#ifdef _WIN64
-#else  // _WIN64
+#ifdef __linux__
         char fmt_buf[1024 + 1];
         std::snprintf(fmt_buf, 1024, "%s [%s:%zu]\n", fmt, source_fn, line_number);
         vsyslog(LOG_INFO, fmt_buf, ap);
-#endif // _WIN64
+#endif // __linux__
     }
 }
 
@@ -148,8 +147,7 @@ void use_syslog(int facility)
 static std::string var_syslog_identity;
 void use_syslog(const char *identity, int facility)
 {
-#ifdef _WIN64
-#else  // _WIN64
+#ifdef __linux__
     if (identity)
     {
         var_syslog_identity = identity;
@@ -165,7 +163,7 @@ void use_syslog(const char *identity, int facility)
 
     openlog(identity, LOG_NDELAY | LOG_PID, facility);
     var_output_handler = output_handler_syslog;
-#endif // _WIN64
+#endif // __linux__
 }
 
 void use_syslog(const char *identity, const char *facility)
@@ -176,9 +174,7 @@ void use_syslog(const char *identity, const char *facility)
 
 int get_facility(const char *facility)
 {
-#ifdef _WIN64
-    return -1;
-#else // _WIN64
+#ifdef __linux__
     int fa = LOG_SYSLOG;
     if (!strncasecmp(facility, "LOG_", 4))
     {
@@ -212,7 +208,9 @@ int get_facility(const char *facility)
 #undef ___LOG_S_I
 
     return fa;
-#endif // _WIN64
+#else // __linux__
+    return -1;
+#endif // __linux__
 }
 
 zcc_general_namespace_end(logger);

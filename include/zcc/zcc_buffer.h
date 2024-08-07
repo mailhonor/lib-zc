@@ -113,11 +113,11 @@ public:
         zcc::toupper(data_);
         return *this;
     }
-#ifdef _WIN64
-    buffer &printf_1024(const char *format, ...);
-#else  // _WIN64
+#ifdef __linux__
     buffer &__attribute__((format(gnu_printf, 2, 3))) printf_1024(const char *format, ...);
-#endif // _WIN64
+#else  // __linux__
+    buffer &printf_1024(const char *format, ...);
+#endif // __linux__
     buffer &vprintf_1024(const char *format, va_list ap);
     buffer &trim_right_rn();
     buffer &clear_null();

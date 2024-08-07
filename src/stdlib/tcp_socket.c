@@ -11,22 +11,22 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <errno.h>
-#ifdef _WIN32
+#ifdef _WIN64
 #include <ws2tcpip.h>
 #include <pthread.h>
-#else // _WIN32
+#else // _WIN64
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#endif // _WIN32
+#endif // _WIN64
 
 /* accept */
 static int sane_accept(int sock, struct sockaddr *sa, socklen_t *len)
 {
     zWSAStartup();
     static int accept_ok_errors[] = {
-#ifdef _WIN32
+#ifdef _WIN64
         WSAECONNREFUSED,
         WSAECONNRESET,
         WSAEHOSTDOWN,
@@ -37,7 +37,7 @@ static int sane_accept(int sock, struct sockaddr *sa, socklen_t *len)
         WSAEWOULDBLOCK,
         WSAENOBUFS, /* HPUX11 */
         WSAECONNABORTED,
-#else // _WIN32
+#else // _WIN64
         EAGAIN,
         ECONNREFUSED,
         ECONNRESET,
@@ -49,7 +49,7 @@ static int sane_accept(int sock, struct sockaddr *sa, socklen_t *len)
         EWOULDBLOCK,
         ENOBUFS, /* HPUX11 */
         ECONNABORTED,
-#endif // _WIN32
+#endif // _WIN64
         0,
     };
     int count;
@@ -190,9 +190,9 @@ int zinet_listen(const char *sip, int port, int backlog)
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
-#ifdef _WIN32
+#ifdef _WIN64
         errno = zget_errno();
-#endif // _WIN32
+#endif // _WIN64
         return -1;
     }
 
@@ -364,9 +364,9 @@ static int sane_connect(int sock, struct sockaddr *sa, int len)
         {
             break;
         }
-#ifdef _WIN32
+#ifdef _WIN64
         errno = ec;
-#endif // _WIN32
+#endif // _WIN64
         return -1;
     }
     return (0);
@@ -413,28 +413,28 @@ static int connect_and_wait_ok(int sock, struct sockaddr *sa, int len, int timeo
         break;
 #if 0
     case EALREADY:
-#ifdef _WIN32
+#ifdef _WIN64
         errno = ec;
-#endif // _WIN32
+#endif // _WIN64
         return -1;
         break;
     case EINPROGRESS:
-#ifdef _WIN32
+#ifdef _WIN64
         errno = ec;
-#endif // _WIN32
+#endif // _WIN64
         return -1;
         break;
 #endif
     default:
-#ifdef _WIN32
+#ifdef _WIN64
         errno = ec;
-#endif // _WIN32
+#endif // _WIN64
         return -1;
         break;
     }
-#ifdef _WIN32
+#ifdef _WIN64
         errno = ec;
-#endif // _WIN32
+#endif // _WIN64
     return -1;
 }
 
@@ -507,9 +507,9 @@ int zinet_connect(const char *dip, int port, int timeout)
 
     if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
     {
-#ifdef _WIN32
+#ifdef _WIN64
         errno = zget_errno();
-#endif // _WIN32
+#endif // _WIN64
         return (-1);
     }
 

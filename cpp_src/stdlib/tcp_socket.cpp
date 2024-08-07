@@ -291,7 +291,7 @@ int netpath_listen(const char *netpath, int backlog, int *type)
 {
     WSAStartup();
     char _netpath[1024], *path, *host, *p;
-    int fd = -1, port, tp;
+    int fd = -1, port = 0, tp;
 
     std::strncpy(_netpath, netpath, 1000);
     _netpath[1000] = 0;

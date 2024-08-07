@@ -8,13 +8,13 @@
 
 #include "zc.h"
 #include <errno.h>
-#ifdef _WIN32
-#else // _WIN32
+#ifdef _WIN64
+#else // _WIN64
 #include <poll.h>
-#endif // _WIN32
+#endif // _WIN64
 
 /* timed read/write wait */
-#ifdef _WIN32
+#ifdef _WIN64
 int ztimed_read_write_wait_millisecond(int fd, ssize_t read_write_wait_timeout, int *readable, int *writeable)
 {
     int ec;
@@ -123,7 +123,7 @@ int ztimed_read_write_wait_millisecond(int fd, ssize_t read_write_wait_timeout, 
 
     return 0;
 }
-#else  // _WIN32
+#else  // _WIN64
 /* read */
 /* readable means: 1, have readable data.
  *                 2, peer closed.
@@ -218,7 +218,7 @@ int ztimed_read_write_wait_millisecond(int fd, ssize_t read_write_wait_timeout, 
 
     return 0;
 }
-#endif // _WIN32
+#endif // _WIN64
 
 int ztimed_read_write_wait(int fd, int read_write_wait_timeout, int *readable, int *writeable)
 {
@@ -256,11 +256,11 @@ int ztimed_read(int fd, void *buf, int size, int read_wait_timeout)
         for (;;)
         {
             ret = -1;
-#ifdef _WIN32
+#ifdef _WIN64
             ret = recv(fd, buf, size, 0);
-#else  // _WIN32
+#else  // _WIN64
             ret = read(fd, buf, size);
-#endif // _WIN32
+#endif // _WIN64
             if (ret < 0)
             {
                 ec = zget_errno();
@@ -268,9 +268,9 @@ int ztimed_read(int fd, void *buf, int size, int read_wait_timeout)
                 {
                     continue;
                 }
-#ifdef _WIN32
+#ifdef _WIN64
                 errno = ec;
-#endif // _WIN32
+#endif // _WIN64
             }
             return ret;
         }
@@ -283,11 +283,11 @@ int ztimed_read(int fd, void *buf, int size, int read_wait_timeout)
             return -1;
         }
         ret = -1;
-#ifdef _WIN32
+#ifdef _WIN64
         ret = recv(fd, buf, size, 0);
-#else  // _WIN32
+#else  // _WIN64
         ret = read(fd, buf, size);
-#endif // _WIN32
+#endif // _WIN64
         if (ret < 0)
         {
             ec = zget_errno();
@@ -299,9 +299,9 @@ int ztimed_read(int fd, void *buf, int size, int read_wait_timeout)
             {
                 continue;
             }
-#ifdef _WIN32
+#ifdef _WIN64
             errno = ec;
-#endif // _WIN32
+#endif // _WIN64
         }
         return ret;
     }
@@ -340,11 +340,11 @@ int ztimed_write(int fd, const void *buf, int size, int write_wait_timeout)
         for (;;)
         {
             ret = -1;
-#ifdef _WIN32
+#ifdef _WIN64
             ret = send(fd, buf, size, 0);
-#else  // _WIN32
+#else  // _WIN64
             ret = write(fd, buf, size);
-#endif // _WIN32
+#endif // _WIN64
             if (ret < 0)
             {
                 ec = zget_errno();
@@ -352,9 +352,9 @@ int ztimed_write(int fd, const void *buf, int size, int write_wait_timeout)
                 {
                     continue;
                 }
-#ifdef _WIN32
+#ifdef _WIN64
                 errno = ec;
-#endif // _WIN32
+#endif // _WIN64
             }
             return ret;
         }
@@ -365,11 +365,11 @@ int ztimed_write(int fd, const void *buf, int size, int write_wait_timeout)
         {
             return -1;
         }
-#ifdef _WIN32
+#ifdef _WIN64
         ret = send(fd, buf, size, 0);
-#else  // _WIN32
+#else  // _WIN64
         ret = write(fd, buf, size);
-#endif // _WIN32
+#endif // _WIN64
         if (ret < 0)
         {
             ec = zget_errno();
@@ -381,9 +381,9 @@ int ztimed_write(int fd, const void *buf, int size, int write_wait_timeout)
             {
                 continue;
             }
-#ifdef _WIN32
+#ifdef _WIN64
             errno = ec;
-#endif // _WIN32
+#endif // _WIN64
             return -1;
         }
         else if (ret == 0)

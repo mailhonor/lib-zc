@@ -17,16 +17,25 @@
 #endif // ZCC_MSVC
 #endif // _MSC_VER
 
-#ifdef ZCC_DEV_MODE___
 #ifdef _WIN64
-#pragma warning(disable : 4267 4244 4996)
+#ifdef _WIN32_WINNT
+#undef _WIN32_WINNT
+#endif
+#define _WIN32_WINNT 0x0A00
 #endif // _WIN64
-#define NOMINMAX
-#define _WINSOCKAPI_
+
 #ifdef _WIN64
 #define _AMD64_
 #endif // _WIN64
-#endif
+
+#ifdef ZCC_DEV_MODE___
+#ifdef ZCC_MSVC
+#pragma warning(disable : 4267 4244 4996)
+#endif // ZCC_MSVC
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif // NOMINMAX
+#endif // ZCC_DEV_MODE___
 
 #ifndef zcc_namespace_c_begin
 #define zcc_namespace_c_begin \
@@ -57,12 +66,6 @@
 #define ZCC_NUMBER_TO_PTR(n) ((void *)(int64_t)(n))
 #define ZCC_PTR_TO_NUMBER(p) ((int64_t)(void *)(p))
 
-// #ifdef _WIN64
-// #define ZCC_THREAD_LOCAL_VAR __declspec(thread)
-// #else // _WIN64
-// #define ZCC_THREAD_LOCAL_VAR __thread
-// #endif // _WIN64
-
 #ifdef __cplusplus
 
 zcc_namespace_c_begin;
@@ -82,6 +85,7 @@ zcc_namespace_c_end;
 #include <list>
 #include <map>
 #ifdef _WIN64
+#include <WinSock2.h>
 #include <windows.h>
 #endif // _WIN64
 
@@ -259,6 +263,18 @@ extern const dict var_blank_map;
 extern unsigned const char var_char_xdigitval_vector[];
 inline bool is_trimable(int ch) { return std::iscntrl(ch) || (ch == ' '); }
 inline int hex_char_to_int(int c) { return var_char_xdigitval_vector[(unsigned char)(c)]; }
+inline int isalnum(int c) { return std::isalnum(c); }
+inline int isalpha(int c) { return std::isalpha(c); }
+inline int iscntrl(int c) { return std::iscntrl(c); }
+inline int isdigit(int c) { return std::isdigit(c); }
+inline int isgraph(int c) { return std::isgraph(c); }
+inline int islower(int c) { return std::islower(c); }
+inline int isprint(int c) { return std::isprint(c); }
+inline int ispunct(int c) { return std::ispunct(c); }
+inline int isspace(int c) { return std::isspace(c); }
+inline int isupper(int c) { return std::isupper(c); }
+inline int isxdigit(int c) { return std::isxdigit(c); }
+inline int isblank(int c) { return std::isblank(c); }
 char *trim_left(char *str);
 char *trim_right(char *str);
 char *trim(char *str);
@@ -272,8 +288,14 @@ inline bool str_to_bool(const std::string &s, bool def = false)
 }
 int64_t str_to_second(const char *s, int64_t def);
 int64_t str_to_size(const char *s, int64_t def);
-inline int tolower(int ch) { return std::tolower(ch); }
-inline int toupper(int ch) { return std::toupper(ch); }
+inline int tolower(int ch)
+{
+    return std::tolower(ch);
+}
+inline int toupper(int ch)
+{
+    return std::toupper(ch);
+}
 char *tolower(char *str);
 char *toupper(char *str);
 char *clear_null(char *data, int64_t size);
@@ -537,9 +559,9 @@ int ncr_decode(int ins, char *wchar);
 /* 最经典的hash函数, 需要更高级的可以考虑 crc16, crc32, crc64, 甚至md5 等*/
 inline unsigned hash_djb(const void *buf, int64_t len, unsigned int initial = 5381)
 {
-    register const unsigned char *p = (const unsigned char *)buf;
-    register const unsigned char *end = p + len;
-    register unsigned hash = initial; /* start value */
+    const unsigned char *p = (const unsigned char *)buf;
+    const unsigned char *end = p + len;
+    unsigned hash = initial; /* start value */
     while (p < end)
     {
         hash = (hash + (hash << 5)) ^ *p++;
@@ -627,16 +649,25 @@ extern std::vector<option> var_options;
 extern std::vector<const char *> var_parameters;
 extern int var_parameter_argc;
 extern char **var_parameter_argv;
-void run(int argc, char **argv);
+void run(int argc, char **argv, bool cmd_mode = true);
 zcc_general_namespace_end(main_argument);
 
 /* os ############################################################### */
 int get_process_id();
 int get_parent_process_id();
 int get_thread_id();
-inline int getpid() { return get_process_id(); }
-inline int getppid() { return get_parent_process_id(); }
-inline int gettid() { return get_thread_id(); }
+inline int getpid()
+{
+    return get_process_id();
+}
+inline int getppid()
+{
+    return get_parent_process_id();
+}
+inline int gettid()
+{
+    return get_thread_id();
+}
 std::string get_cmd_pathname();
 std::string get_cmd_name();
 #ifdef __linux__
@@ -672,9 +703,10 @@ protected:
     void *fm_{nullptr};
 #else  // _WIN64
     int fd_{-1};
-#endif // _WIN32
+#endif // _WIN64
+
 public:
-    int64_t len_{-1};           // 映射后, 长度
+    int64_t size_{-1};          // 映射后, 长度
     const char *data_{nullptr}; // 映射后, 指针
 };
 FILE *fopen(const char *pathname, const char *mode);
@@ -686,24 +718,24 @@ inline FILE *fopen(const std::string &pathname, const char *mode)
 int64_t getdelim(char **lineptr, int64_t *n, int delim, FILE *stream);
 inline int64_t getline(char **lineptr, int64_t *n, FILE *stream)
 {
-    return getdelim(lineptr, (int64_t *)n, '\n', stream);
+    return getdelim(lineptr, (size_t *)n, '\n', stream);
 }
 
 #else  // _WIN64
 inline int64_t getdelim(char **lineptr, int64_t *n, int delim, FILE *stream)
 {
-    return ::getdelim(lineptr, (uint64_t *)n, delim, stream);
+    return ::getdelim(lineptr, (size_t *)n, delim, stream);
 }
 inline int64_t getline(char **lineptr, int64_t *n, FILE *stream)
 {
-    return ::getline(lineptr, (uint64_t *)n, stream);
+    return ::getline(lineptr, (size_t *)n, stream);
 }
 #endif // _WIN64
 
 std::string realpath(const char *pathname);
 inline std::string realpath(const std::string &pathname)
 {
-    return realpath(pathname);
+    return realpath(pathname.c_str());
 }
 #ifdef _WIN64
 #define zcc_stat struct _stat64i32
@@ -772,6 +804,11 @@ int link(const char *oldpath, const char *newpath);
 int link_force(const char *oldpath, const char *newpath, const char *tmpdir);
 int symlink(const char *oldpath, const char *newpath);
 int symlink_force(const char *oldpath, const char *newpath, const char *tmpdir);
+bool create_shortcut_link(const char *from, const char *to);
+inline bool create_shortcut_link(const std::string &from, const std::string &to)
+{
+    return create_shortcut_link(from.c_str(), to.c_str());
+}
 int rmdir(const char *pathname, bool recurse_mode = false);
 inline int rmdir(const std::string &pathname, bool recurse_mode = false)
 {
@@ -806,10 +843,6 @@ inline std::string format_filename(const std::string &filename)
 }
 std::vector<std::string> find_file_sample(std::vector<const char *> dir_or_file, const char *pathname_match = nullptr);
 std::vector<std::string> find_file_sample(const char **dir_or_file, int item_count, const char *pathname_match = nullptr);
-inline std::vector<std::string> find_file_sample(char **dir_or_file, int item_count, const char *pathname_match = nullptr)
-{
-    return find_file_sample(dir_or_file, item_count, pathname_match);
-}
 
 /* io ############################################################### */
 static const int var_io_max_timeout = (3600 * 24 * 365 * 10);

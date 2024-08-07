@@ -335,7 +335,7 @@ static void ___simple_server_accept(aio *ev, int type, std::function<void(int)> 
     {
         fd = inet_accept(listen_fd);
     }
-    else if (type == var_tcp_listen_type_inet)
+    else if (type == var_tcp_listen_type_unix)
     {
         fd = unix_accept(listen_fd);
     }

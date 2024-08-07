@@ -78,7 +78,7 @@ std::string rfc1123_time(int64_t t)
     {
         t = second();
     }
-    std::tm *now_tm = std::gmtime(&t);
+    std::tm *now_tm = std::gmtime((time_t *)&t);
     std::strftime(buf, 128, "%a, %d %b %Y %H:%M:%S GMT", now_tm);
     return buf;
 }

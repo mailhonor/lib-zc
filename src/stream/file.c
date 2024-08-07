@@ -8,8 +8,8 @@
 
 #include "zc.h"
 #include <errno.h>
-#ifdef _WIN32
-#endif // _WIN32
+#ifdef _WIN64
+#endif // _WIN64
 #include <fcntl.h>
 
 static const char *fp_get_type()
@@ -136,9 +136,9 @@ zstream_t *zstream_open_file_engine(zstream_t *fp, const char *pathname, const c
 
 zstream_t *zstream_open_file(const char *pathname, const char *mode)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     zfatal("zstream_open_file, not supported ON win32");
-#endif // _WIN32
+#endif // _WIN64
     zstream_t *fp = (zstream_t *)zmalloc(sizeof(zstream_t));
     if (!zstream_open_file_engine(fp, pathname, mode)) {
         zfree(fp);

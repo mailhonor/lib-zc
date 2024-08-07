@@ -7,17 +7,17 @@
  */
 
 #include "zc.h"
-#ifdef _WIN32
+#ifdef _WIN64
 #include <ws2tcpip.h>
-#else // _WIN32
+#else // _WIN64
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <netdb.h>
 #include <errno.h>
-#endif // _WIN32
+#endif // _WIN64
 #include <sys/types.h>
 
-#if (defined _WIN32) || (defined __APPLE__)
+#if (defined _WIN64) || (defined __APPLE__)
 int zget_hostaddr(const char *host, zargv_t *addrs)
 {
     zWSAStartup();
@@ -49,7 +49,7 @@ int zget_hostaddr(const char *host, zargv_t *addrs)
     }
     return ret_count;
 }
-#else  // _WIN32
+#else  // _WIN64
 int zget_localaddr(zargv_t *addrs)
 {
     struct ifaddrs *ifaddr, *ifa;
@@ -128,7 +128,7 @@ int zget_hostaddr(const char *host, zargv_t *addrs)
     zfree(tmpbuf);
     return ret_count;
 }
-#endif // _WIN32
+#endif // _WIN64
 
 int zis_ip(const char *ip)
 {
@@ -169,11 +169,11 @@ char *zget_ipstring(int ip, char *ipstr)
     return (char *)(void *)inet_ntop(AF_INET, &ip, ipstr, 16);
 #endif // __linux__
 
-#ifdef _WIN32
+#ifdef _WIN64
     struct in_addr addr;
     addr.s_addr = ip;
     return (char *)(void *)inet_ntoa(addr);
-#endif // _WIN32
+#endif // _WIN64
     zsprintf(ipstr, "%d.%d.%d.%d", (ip >> 24) & 0XFF, (ip >> 16) & 0XFF, (ip >> 8) & 0XFF, ip & 0XFF);
     return ipstr;
 }

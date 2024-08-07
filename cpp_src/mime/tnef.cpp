@@ -1276,7 +1276,7 @@ tnef_parser *tnef_parser::create_from_file(const char *pathname, const char *def
     }
     mp->mmap_reader_mode_ = true;
     mp->tnef_data_ = mp->reader_.data_;
-    mp->tnef_size_ = mp->reader_.len_;
+    mp->tnef_size_ = mp->reader_.size_;
     mp->default_charset_ = (default_charset ? default_charset : "");
     mp->parse();
     return mp;

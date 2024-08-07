@@ -18,10 +18,10 @@ int main(int argc, char **argv)
     init();
 
     int sock, type;
-    sock = zcc::netpath_listen(listen, 5, &type);
+    sock = zcc::netpath_listen(listen_address, 5, &type);
     if (sock < 0)
     {
-        zcc_error_and_exit("open %s(%m)", listen);
+        zcc_error_and_exit("open %s(%m)", listen_address);
     }
 
     while (1)

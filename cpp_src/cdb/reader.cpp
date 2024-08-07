@@ -170,7 +170,7 @@ bool cdb_reader::open_file(const char *pathname)
     }
     int len, file_len;
     data_ = file_reader_.data_;
-    len = file_reader_.len_;
+    len = file_reader_.size_;
     if (len < 12)
     {
         goto err;

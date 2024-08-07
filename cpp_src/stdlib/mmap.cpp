@@ -45,7 +45,7 @@ int mmap_reader::open(const char *pathname)
 
     fd_ = INVALID_HANDLE_VALUE;
     data_ = nullptr;
-    len_ = 0;
+    size_ = 0;
 
     wchar_t pathnamew[Z_MAX_PATH + 1];
     if (Utf8ToWideChar(pathname, -1, pathnamew, Z_MAX_PATH) < 1)
@@ -105,7 +105,7 @@ int mmap_reader::open(const char *pathname)
     fd_ = INVALID_HANDLE_VALUE;
     fm_ = fm;
     data_ = (const char *)data;
-    len_ = size;
+    size_ = size;
     return 1;
 #else  // _WIN64
     int fd;
@@ -140,7 +140,7 @@ int mmap_reader::open(const char *pathname)
     }
 
     fd_ = fd;
-    len_ = size;
+    size_ = size;
     data_ = (char *)data;
 
     return 1;
@@ -165,7 +165,7 @@ int mmap_reader::close()
     {
         return 1;
     }
-    munmap((void *)data_, len_ + 1);
+    munmap((void *)data_, size_ + 1);
     ::close(fd_);
     fd_ = -1;
     return 1;

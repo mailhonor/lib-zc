@@ -6,7 +6,7 @@ all: lib
 # export CMAKE_CXX_COMPILER=/usr/local/bin/g++-12
 
 lib: 
-	mkdir -p tmp_build && cd tmp_build && cmake ../ $(ZCC_LIB_CMAKE_DEFINITIONS) && make zc zcc zc_coroutine -j 8
+	mkdir -p tmp_build && cd tmp_build && cmake ../ $(ZCC_LIB_CMAKE_DEFINITIONS) && make zcc -j 8
 
 test sample: lib
 	cd tmp_build && make

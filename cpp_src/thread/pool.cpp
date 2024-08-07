@@ -264,6 +264,7 @@ static void _pool_worker_run_fini(thread_pool_node *ptn)
         }
     }
     engine->mutex.unlock();
+    _current_node = nullptr;
     delete ptn;
 }
 

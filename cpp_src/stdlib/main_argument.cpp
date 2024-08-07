@@ -208,8 +208,12 @@ std::list<std::string> args_buffer;
 #endif // _WIN64
 
 #ifdef _WIN64
-static const char *optval_charset_deal(const char *optval)
+static const char *optval_charset_deal(const char *optval, bool cmd_mode)
 {
+    if (!cmd_mode)
+    {
+        return optval;
+    }
     int need = 0;
     for (unsigned char *p = (unsigned char *)optval; *p; p++)
     {
@@ -237,13 +241,13 @@ static const char *optval_charset_deal(const char *optval)
     return args_buffer.back().c_str();
 }
 #else  // _WIN64
-static inline const char *optval_charset_deal(const char *optval)
+static inline const char *optval_charset_deal(const char *optval, bool cmd_mode)
 {
     return optval;
 }
 #endif // _WIN64
 
-static void prepare_config(int _argc, char **_argv)
+static void prepare_config(int _argc, char **_argv, bool cmd_mode)
 {
     int i;
     const char *optname, *optval;
@@ -264,7 +268,7 @@ static void prepare_config(int _argc, char **_argv)
         /* abc */
         if ((optname[0] != '-') || (optname[1] == 0))
         {
-            optname = optval_charset_deal(optname);
+            optname = optval_charset_deal(optname, cmd_mode);
             var_parameters.push_back(optname);
             continue;
         }
@@ -287,7 +291,7 @@ static void prepare_config(int _argc, char **_argv)
         }
         i++;
         optval = _argv[i];
-        optval = optval_charset_deal(optval);
+        optval = optval_charset_deal(optval, cmd_mode);
         kvp.key = optname + 1;
         kvp.val = optval;
         var_options.push_back(kvp);
@@ -312,7 +316,7 @@ static void prepare_config(int _argc, char **_argv)
     var_parameter_argv = (char **)(void *)var_parameters.data();
 }
 
-static void do_something(int argc, char **argv)
+static void do_something(int argc, char **argv, bool cmd_mode)
 {
     if (var_main_config.get_bool("debug-config"))
     {
@@ -324,7 +328,7 @@ static void do_something(int argc, char **argv)
     logger::var_output_disable = var_main_config.get_bool("log-output-disable", logger::var_output_disable);
 }
 
-void run(int _argc, char **_argv)
+void run(int _argc, char **_argv, bool cmd_mode)
 {
     static bool done_flag = false;
     if (done_flag)
@@ -332,8 +336,8 @@ void run(int _argc, char **_argv)
         return;
     }
     done_flag = true;
-    prepare_config(_argc, _argv);
-    do_something(_argc, _argv);
+    prepare_config(_argc, _argv, cmd_mode);
+    do_something(_argc, _argv, cmd_mode);
 #ifdef __linux__
     run_config();
 #endif // __linux__

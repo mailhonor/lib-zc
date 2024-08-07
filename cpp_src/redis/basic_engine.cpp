@@ -158,7 +158,8 @@ static int ___query_by_io_list_json(redis_client_basic_engine &rc, int list_coun
             }
             if (firstch == ':')
             {
-                jn->array_push(new json((rlen < 1) ? -1 : std::atol(rp + 1)));
+		uint64_t v = ((rlen < 1) ? -1 : std::atol(rp + 1));
+                jn->array_push(v);
                 continue;
             }
             if (firstch == '+')

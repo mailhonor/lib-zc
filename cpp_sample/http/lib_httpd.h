@@ -37,7 +37,7 @@ public:
     void do_websocketd_action();
 };
 
-static const char *listen = nullptr;
+static const char *listen_address = nullptr;
 static bool is_ssl = false;
 static SSL_CTX *openssl_server_ctx = nullptr;
 
@@ -215,8 +215,8 @@ static void usage()
 
 static void init()
 {
-    listen = zcc::var_main_config.get_cstring("listen");
-    if (zcc::empty(listen))
+    listen_address = zcc::var_main_config.get_cstring("listen");
+    if (zcc::empty(listen_address))
     {
         usage();
     }

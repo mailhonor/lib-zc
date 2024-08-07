@@ -116,11 +116,11 @@ public:
         write(str.c_str(), (int)str.size());
         return *this;
     }
-#ifdef _WIN64
-    int printf_1024(const char *format, ...);
-#else  // _WIN64
+#ifdef __linux__
     int __attribute__((format(gnu_printf, 2, 3))) printf_1024(const char *format, ...);
-#endif // _WIN64
+#else  // __linux__
+    int printf_1024(const char *format, ...);
+#endif // __attribute__
     int get_cint();
     int write_cint(int len);
     int write_cint_and_int(int i);

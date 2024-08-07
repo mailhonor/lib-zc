@@ -457,7 +457,7 @@ mail_parser *mail_parser::create_from_file(const char *pathname, const char *def
     }
     mp->mmap_reader_mode_ = true;
     mp->mail_data_ = mp->reader_.data_;
-    mp->mail_size_ = mp->reader_.len_;
+    mp->mail_size_ = mp->reader_.size_;
     mp->default_charset_ = (default_charset ? default_charset : "");
     mail_parser_decode_mime_inner(*mp);
     return mp;

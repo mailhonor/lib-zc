@@ -896,7 +896,7 @@ static char *_zhttpd_request_data_do_save_tmpfile(zhttpd_t *httpd, zbuf_t *lineb
 #ifdef __linux__
         zbuf_memcpy(linebuf, "/tmp/", 5);
 #endif // __linux__
-#ifdef _WIN32
+#ifdef _WIN64
         zbuf_strcpy(linebuf, "%userprofile%/AppData/Local/Temp/");
 #endif // __linux__
     }

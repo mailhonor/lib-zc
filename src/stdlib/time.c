@@ -12,9 +12,9 @@
 #endif // __linux__
 #include <sys/time.h>
 #include <time.h>
-#ifdef _WIN32
+#ifdef _WIN64
 #include <timezoneapi.h>
-#endif // _WIN32
+#endif // _WIN64
 
 ssize_t zmillisecond(void)
 {
@@ -35,9 +35,9 @@ void zsleep_millisecond(int delay)
 #ifdef __linux__
         poll(0, 0, left);
 #endif // __linux__
-#ifdef _WIN32
+#ifdef _WIN64
         usleep(left * 1000);
-#endif // _WIN32
+#endif // _WIN64
         left = end - zmillisecond();
     }
 }
@@ -84,9 +84,9 @@ void zsleep(int delay)
 #ifdef __linux__
         poll(0, 0, left);
 #endif // __linux__
-#ifdef _WIN32
+#ifdef _WIN64
         usleep(left * 1000);
-#endif // _WIN32
+#endif // _WIN64
         left = end - zmillisecond();
     }
 }

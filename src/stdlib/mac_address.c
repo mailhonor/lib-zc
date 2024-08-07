@@ -54,7 +54,7 @@ int zget_mac_address(zargv_t *mac_list)
 }
 #endif // __linux__
 
-#ifdef _WIN32
+#ifdef _WIN64
 #include <Iphlpapi.h>
 // #pragma comment(lib, "Iphlpapi.lib")
 

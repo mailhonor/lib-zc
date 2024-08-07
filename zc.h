@@ -40,9 +40,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#ifdef _WIN32
+#ifdef _WIN64
 #include <winsock2.h>
-#endif // _WIN32
+#endif // _WIN64
 
 #pragma pack(push, 4)
 
@@ -271,7 +271,7 @@ zinline unsigned zhash_djb_with_initial(const void *buf, int len, unsigned int i
 }
 
 /* WIN32 ######################################################### */
-#ifdef _WIN32
+#ifdef _WIN64
 #define zprintf __mingw_printf
 #define zsprintf __mingw_sprintf
 #define zsnprintf __mingw_snprintf
@@ -301,7 +301,7 @@ int zWideCharToUTF8(const wchar_t *in, int in_size, char *result_ptr, int result
 int zMultiByteToUTF8(const char *in, int in_len, char *result_ptr, int result_size);
 int zWideCharToMultiByte(const wchar_t *in, int in_len, char *result_ptr, int result_size);
 int zUTF8ToMultiByte(const char *in, int in_len, char *result_ptr, int result_size);
-#else // _WIN32
+#else // _WIN64
 #define zprintf printf
 #define zsprintf sprintf
 #define zsnprintf snprintf
@@ -318,7 +318,7 @@ int zUTF8ToMultiByte(const char *in, int in_len, char *result_ptr, int result_si
 #define zstrcasestr(a, b) strcasestr(a, b)
 #define ztimegm(a) timegm(a)
 #define zclosesocket(fd) zclose(fd)
-#endif // _WIN32
+#endif // _WIN64
 
 /* 日志, src/stdlib/log.c ########################################## */
 
@@ -2032,11 +2032,11 @@ int zstream_write_cint_and_pp(zstream_t *fp, const char **pp, int size);
 int zstream_flush(zstream_t *fp);
 
 /* time, src/stdlib/time.c ########################################## */
-#ifdef _WIN32
+#ifdef _WIN64
 #define zvar_max_timeout_millisecond (3600LL * 24 * 365 * 10 * 1000)
-#else // _WIN32
+#else // _WIN64
 #define zvar_max_timeout_millisecond (3600L * 24 * 365 * 10 * 1000)
-#endif // _WIN32
+#endif // _WIN64
 
 /* 返回当前毫秒精度的时间 */
 ssize_t zmillisecond(void);
@@ -2182,12 +2182,12 @@ int zsys_get_filenames_in_dir(const char *dirname, zargv_t *filenames);
 /* mmap reader */
 struct zmmap_reader_t
 {
-#ifdef _WIN32
+#ifdef _WIN64
     HANDLE fd;
     HANDLE fm;
-#else            // _WIN32
+#else            // _WIN64
     int fd;
-#endif           // _WIN32
+#endif           // _WIN64
     ssize_t len; /* 映射后, 长度 */
     char *data;  /* 映射后, 指针 */
 };

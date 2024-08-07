@@ -76,15 +76,15 @@ public:
     }
 
     // INCR命令, 返回 -1: 错; >= 0: incr的结果
-    int64_t cmd_incr(const char *key, size_t n);
-    inline int64_t cmd_incr(const std::string &key, size_t n)
+    int64_t cmd_incr(const char *key, uint64_t n);
+    inline int64_t cmd_incr(const std::string &key, uint64_t n)
     {
         return cmd_incr(key.c_str(), n);
     }
 
     // DECR命令, 返回 -1: 错; >= 0: decr的结果
-    int64_t cmd_decr(const char *key, size_t n);
-    inline int64_t cmd_decr(const std::string &key, size_t n)
+    int64_t cmd_decr(const char *key, uint64_t n);
+    inline int64_t cmd_decr(const std::string &key, uint64_t n)
     {
         return cmd_decr(key.c_str(), n);
     }

@@ -8,15 +8,15 @@
 
 #include "zc.h"
 #include <signal.h>
-#ifdef _WIN32
+#ifdef _WIN64
 #include <windows.h>
-#endif // _WIN32
+#endif // _WIN64
 
-#ifdef _WIN32
+#ifdef _WIN64
 int zvar_path_splitor = '\\';
-#else  // _WIN32
+#else  // _WIN64
 int zvar_path_splitor = '/';
-#endif // _WIN32
+#endif // _WIN64
 
 char *zvar_progname = 0;
 static zargv_t *_zvar_main_argv_buffer = 0;
@@ -56,7 +56,7 @@ static void _main_argument_fini(void *unused)
     _zvar_main_argv_buffer = 0;
 }
 
-#ifdef _WIN32
+#ifdef _WIN64
 static char *optval_charset_deal(char *optval)
 {
     int need = 0;
@@ -85,12 +85,12 @@ static char *optval_charset_deal(char *optval)
     zfree(result_ptr);
     return zargv_data(_zvar_main_argv_buffer)[zargv_len(_zvar_main_argv_buffer) - 1];
 }
-#else  // _WIN32
+#else  // _WIN64
 static inline char *optval_charset_deal(char *optval)
 {
     return optval;
 }
-#endif // _WIN32
+#endif // _WIN64
 
 static void zmain_argument_prepare_config(int argc, char **argv)
 {
@@ -102,19 +102,19 @@ static void zmain_argument_prepare_config(int argc, char **argv)
     zvar_main_argc = argc;
     zvar_main_argv = argv;
 
-#ifdef _WIN32
+#ifdef _WIN64
     SetConsoleOutputCP(65001);
-#endif // _WIN32
+#endif // _WIN64
 
     cmd_cf = zconfig_create();
     zdefault_config_init();
     zvar_main_kv_argument_vector = zvector_create(3);
     zvar_main_redundant_argument_vector = zvector_create(3);
-#ifdef _WIN32
+#ifdef _WIN64
     _zvar_main_argv_buffer = zargv_create(13);
-#else  // _WIN32
+#else  // _WIN64
     _zvar_main_argv_buffer = zargv_create(1);
-#endif // _WIN32
+#endif // _WIN64
     for (i = 1; i < argc; i++)
     {
         optname = argv[i];

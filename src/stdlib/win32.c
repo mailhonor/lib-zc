@@ -6,7 +6,7 @@
  * ================================
  */
 
-#ifdef _WIN32
+#ifdef _WIN64
 
 #include "zc.h"
 #include <errno.h>
@@ -460,4 +460,4 @@ int zclosesocket(int sock)
     return closesocket(sock);
 }
 
-#endif // _WIN32
+#endif // _WIN64

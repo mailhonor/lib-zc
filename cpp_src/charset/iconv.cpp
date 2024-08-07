@@ -29,17 +29,17 @@ struct charset_iconv_t
 static inline int charset_iconv_base(charset_iconv_t &ic, char *_in_str, int _in_len, char *_out_s, int _out_l)
 {
     char *in_str = _in_str;
-    uint64_t in_len = (uint64_t)(_in_len);
+    size_t in_len = (uint64_t)(_in_len);
     int in_converted_len = 0;
 
     char *out_str = _out_s;
-    uint64_t out_len = (uint64_t)(_out_l);
+    size_t out_len = (uint64_t)(_out_l);
     int out_converted_len = 0;
 
     int ic_ret;
     int errno2;
     char *in_str_o, *out_tmp;
-    uint64_t out_len_tmp;
+    size_t out_len_tmp;
     int t_ilen, t_olen;
 
     ic.in_converted_len = 0;

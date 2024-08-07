@@ -11,6 +11,9 @@
 #include <stdio.h>
 #ifdef _WIN64
 #include <windows.h>
+#include <winbase.h>
+#include <shellapi.h>
+#include <shlobj.h>
 #include <wchar.h>
 #include <sys/utime.h>
 #include <direct.h>
@@ -419,7 +422,7 @@ int mkdir(std::vector<std::string> paths, int mode)
         {
             break;
         }
-        if (path[0] == '/')
+        if ((path[0] == '/') && (!tmppath.empty()))
         {
             path++;
         }
@@ -745,40 +748,25 @@ int scandir(const char *dirname, std::vector<dir_item_info> &filenames)
     WIN32_FIND_DATAW FindFileData;
     HANDLE hFind;
 
-    wchar_t pathnamew[Z_MAX_PATH + 1];
-    if (Utf8ToWideChar(dirname, -1, pathnamew, Z_MAX_PATH) < 1)
+    std::string tmpdirname = dirname;
+    if (!tmpdirname.empty())
     {
-        return -1;
+        if ((tmpdirname.back() == '\\') || (tmpdirname.back() == '/'))
+        {
+            tmpdirname.pop_back();
+        }
+        tmpdirname.append("\\*.*");
     }
+    dirname = tmpdirname.c_str();
 
-    hFind = FindFirstFileW(pathnamew, &FindFileData);
+    std::wstring pw = Utf8ToWideChar(dirname);
+    hFind = FindFirstFileW(pw.c_str(), &FindFileData);
     if (hFind == INVALID_HANDLE_VALUE)
     {
         return -1;
     }
-    std::string filename = WideCharToUTF8((wchar_t *)FindFileData.cFileName);
-    const char *fn = filename.c_str();
-    if (!((fn[0] == '.') && ((fn[1] == '\0') || ((fn[1] == '.') && (fn[2] == '\0')))))
-    {
-        dir_item_info item;
-        item.filename = filename;
-        // FIXME
-        if (FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-        {
-            item.dir = true;
-        }
-        filenames.push_back(item);
-    }
     while (1)
     {
-        if (FindNextFileW(hFind, &FindFileData) == 0)
-        {
-            if (GetLastError() == ERROR_NO_MORE_FILES)
-            {
-                break;
-            }
-            goto over;
-        }
         std::string filename = WideCharToUTF8((wchar_t *)FindFileData.cFileName);
         const char *fn = filename.c_str();
         if (!((fn[0] == '.') && ((fn[1] == '\0') || ((fn[1] == '.') && (fn[2] == '\0')))))
@@ -791,6 +779,14 @@ int scandir(const char *dirname, std::vector<dir_item_info> &filenames)
                 item.dir = true;
             }
             filenames.push_back(item);
+        }
+        if (FindNextFileW(hFind, &FindFileData) == 0)
+        {
+            if (GetLastError() == ERROR_NO_MORE_FILES)
+            {
+                break;
+            }
+            goto over;
         }
     }
     ret = 1;
@@ -900,7 +896,7 @@ std::vector<std::string> find_file_sample(const char **dir_or_file, int item_cou
     std::vector<std::string> r;
 #ifdef _WIN64
     return r;
-#else  // _WIN63
+#else  // _WIN64
     std::map<std::string, bool> rs;
     char buf[4096 + 1];
     for (int i = 0; i < item_count; i++)
@@ -964,6 +960,43 @@ std::vector<std::string> find_file_sample(const char **dir_or_file, int item_cou
     }
     return r;
 #endif // _WIN64
+}
+
+bool create_shortcut_link(const char *from, const char *to)
+{
+#ifdef _WIN64
+    if (FAILED(CoInitialize(NULL)))
+    {
+        return false;
+    }
+
+    HRESULT hres;
+    IShellLinkW *psl;
+
+    hres = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW, (LPVOID *)&psl);
+    if (!SUCCEEDED(hres))
+    {
+        return false;
+    }
+    std::wstring from_path = Utf8ToWideChar(std::string(from));
+    std::wstring to_path = Utf8ToWideChar(std::string(to));
+
+    psl->SetPath((LPCWSTR)from_path.c_str());
+    psl->SetWorkingDirectory((LPCWSTR)from_path.c_str());
+
+    IPersistFile *ppf;
+    hres = psl->QueryInterface(IID_IPersistFile, (LPVOID *)&ppf);
+
+    if (SUCCEEDED(hres))
+    {
+        hres = ppf->Save((LPCOLESTR)to_path.c_str(), TRUE);
+        ppf->Release();
+    }
+    psl->Release();
+    return true;
+#else  // _WIN64
+    return false;
+#endif // _WIN32
 }
 
 zcc_namespace_end;

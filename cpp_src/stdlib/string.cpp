@@ -361,7 +361,7 @@ std::string &clear_null(std::string &data)
 
 void *no_memmem(const void *l, int64_t l_len, const void *s, int64_t s_len)
 {
-    register char *cur, *last;
+     char *cur, *last;
     const char *cl = (const char *)l;
     const char *cs = (const char *)s;
 

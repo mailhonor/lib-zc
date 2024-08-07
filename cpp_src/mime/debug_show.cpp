@@ -59,7 +59,7 @@ void mail_parser::debug_show()
     int i = 0;
 
     std::fprintf(stderr, fmt, "Date", get_date().c_str());
-    std::fprintf(stderr, "%15s: %zd\n", "", get_date_unix());
+    std::fprintf(stderr, "%15s: %zd\n", "", (size_t)get_date_unix());
     if (1)
     {
         int64_t t = get_date_unix_by_received();

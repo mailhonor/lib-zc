@@ -10,8 +10,8 @@
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #endif // __linux__
 
-#include <cstdarg>
 #include "zcc/zcc_json.h"
+#include <cstdarg>
 
 zcc_namespace_begin;
 

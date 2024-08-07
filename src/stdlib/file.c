@@ -16,13 +16,13 @@
 #include <utime.h>
 #include <stdarg.h>
 #include <dirent.h>
-#ifdef _WIN32
+#ifdef _WIN64
 #include <winbase.h>
 #include <wchar.h>
 #include <direct.h>
-#else // _WIN32
+#else // _WIN64
 #include <sys/mman.h>
-#endif // _WIN32
+#endif // _WIN64
 
 #ifndef Z_MAX_PATH
 #define Z_MAX_PATH 4096
@@ -70,7 +70,7 @@
     }                                 \
     return ret;
 
-#define ZC_ROBUST_DO_WIN32(exp) \
+#define ZC_ROBUST_DO_WIN64(exp) \
     int ret = -1;               \
     while (1)                   \
     {                           \
@@ -89,7 +89,7 @@
     }                           \
     return ret;
 
-#define ZC_ROBUST_DO_WIN32_ONE_MORE(exp, E) \
+#define ZC_ROBUST_DO_WIN64_ONE_MORE(exp, E) \
     int ret = -1;                           \
     while (1)                               \
     {                                       \
@@ -114,7 +114,7 @@
 
 static int _zstat_utf8_or_multibyte(const char *pathname, void *statbuf, int utf8_or_multibyte)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     if (utf8_or_multibyte)
     {
         wchar_t pathnamew[Z_MAX_PATH + 1];
@@ -128,9 +128,9 @@ static int _zstat_utf8_or_multibyte(const char *pathname, void *statbuf, int utf
     {
         return _stat(pathname, statbuf);
     }
-#else  // _WIN32
+#else  // _WIN64
     return stat(pathname, statbuf);
-#endif // _WIN32
+#endif // _WIN64
 }
 
 int zstat(const char *pathname, void *statbuf)
@@ -145,7 +145,7 @@ int zsys_stat(const char *pathname, void *statbuf)
 
 static FILE *_zfopen_utf8_or_multibyte(const char *pathname, const char *mode, int utf8_or_multibyte)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     if (utf8_or_multibyte)
     {
         wchar_t pathnamew[Z_MAX_PATH + 1];
@@ -169,9 +169,9 @@ static FILE *_zfopen_utf8_or_multibyte(const char *pathname, const char *mode, i
     {
         return fopen(pathname, mode);
     }
-#else  // _Win32
+#else  // _WIN64
     return fopen(pathname, mode);
-#endif // _Win32
+#endif // _WIN64
 }
 
 FILE *zfopen(const char *pathname, const char *mode)
@@ -194,9 +194,9 @@ ssize_t zfile_get_size(const char *pathname)
         {
             return 0;
         }
-#ifdef _WIN32
+#ifdef _WIN64
         errno = ec;
-#endif // _WIN32
+#endif // _WIN64
         return -1;
     }
     return st.st_size;
@@ -212,9 +212,9 @@ ssize_t zsys_file_get_size(const char *pathname)
         {
             return 0;
         }
-#ifdef _WIN32
+#ifdef _WIN64
         errno = ec;
-#endif // _WIN32
+#endif // _WIN64
         return -1;
     }
     return st.st_size;
@@ -230,9 +230,9 @@ int zfile_exists(const char *pathname)
         {
             return 0;
         }
-#ifdef _WIN32
+#ifdef _WIN64
         errno = ec;
-#endif // _WIN32
+#endif // _WIN64
         return -1;
     }
     return 1;
@@ -248,9 +248,9 @@ int zsys_file_exists(const char *pathname)
         {
             return 0;
         }
-#ifdef _WIN32
+#ifdef _WIN64
         errno = ec;
-#endif // _WIN32
+#endif // _WIN64
         return -1;
     }
     return 1;
@@ -260,7 +260,7 @@ int zsys_file_exists(const char *pathname)
 /* file get/put contents */
 static int _zfile_put_contents_utf8_or_multibyte(const char *pathname, const void *data, int len, int utf8_or_multibyte)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     int ret;
     FILE *fp;
     if (utf8_or_multibyte)
@@ -283,7 +283,7 @@ static int _zfile_put_contents_utf8_or_multibyte(const char *pathname, const voi
     {
         return -1;
     }
-#else  // _Win32
+#else  // _WIN64
     // 之所以不用FILE,而直接用open/write, 是因为open/read可以用在协程框架
     int ret;
     int fd;
@@ -319,7 +319,7 @@ static int _zfile_put_contents_utf8_or_multibyte(const char *pathname, const voi
     }
 
     close(fd);
-#endif // _WIN32
+#endif // _WIN64
 
     return 1;
 }
@@ -336,7 +336,7 @@ int zsys_file_put_contents(const char *pathname, const void *data, int len)
 
 static ssize_t _zfile_get_contents_utf8_or_multibyte(const char *pathname, zbuf_t *bf, int utf8_or_multibyte)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     int ret, ch;
     ssize_t rlen = 0;
     FILE *fp = 0;
@@ -367,7 +367,7 @@ static ssize_t _zfile_get_contents_utf8_or_multibyte(const char *pathname, zbuf_
     fclose(fp);
     zbuf_terminate(bf);
     return zbuf_len(bf);
-#else  // _WIN32
+#else  // _WIN64
     int fd;
     int errno2;
     int ret;
@@ -416,7 +416,7 @@ static ssize_t _zfile_get_contents_utf8_or_multibyte(const char *pathname, zbuf_
     close(fd);
 
     return rlen;
-#endif // _WIN32
+#endif // _WIN64
 }
 
 ssize_t zfile_get_contents(const char *pathname, zbuf_t *bf)
@@ -453,7 +453,7 @@ int zsys_file_get_contents_sample(const char *pathname, zbuf_t *bf)
 
 int zstdin_get_contents(zbuf_t *bf)
 {
-#if (defined _WIN32) || (defined __APPLE__)
+#if (defined _WIN64) || (defined __APPLE__)
     zbuf_reset(bf);
     while (1)
     {
@@ -466,7 +466,7 @@ int zstdin_get_contents(zbuf_t *bf)
     }
     zbuf_terminate(bf);
     return zbuf_len(bf);
-#else  // _WIN32
+#else  // _WIN64
     int fd = 0;
     int errno2;
     int ret;
@@ -497,13 +497,13 @@ int zstdin_get_contents(zbuf_t *bf)
     }
 
     return rlen;
-#endif // _WIN32
+#endif // _WIN64
 }
 
 /* ################################################################## */
 static int _zmmap_reader_init_utf8_or_multibyte(zmmap_reader_t *reader, const char *pathname, int utf8_or_multibyte)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     HANDLE fd, fm;
     ssize_t size;
     void *data;
@@ -589,7 +589,7 @@ static int _zmmap_reader_init_utf8_or_multibyte(zmmap_reader_t *reader, const ch
     reader->data = data;
     reader->len = size;
     return 1;
-#else  // _WIN32
+#else  // _WIN64
     int fd;
     ssize_t size;
     void *data;
@@ -630,7 +630,7 @@ static int _zmmap_reader_init_utf8_or_multibyte(zmmap_reader_t *reader, const ch
     reader->data = (char *)data;
 
     return 1;
-#endif // _WIN32
+#endif // _WIN64
     return 1;
 }
 
@@ -646,21 +646,21 @@ int zsys_mmap_reader_init(zmmap_reader_t *reader, const char *pathname)
 
 int zmmap_reader_fini(zmmap_reader_t *reader)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     UnmapViewOfFile(reader->data);
     CloseHandle(reader->fm);
     CloseHandle(reader->fd);
     return 1;
-#else  // _WIN32
+#else  // _WIN64
     munmap(reader->data, reader->len + 1);
     close(reader->fd);
     return 1;
-#endif // _WIN32
+#endif // _WIN64
 }
 
 static int _ztouch_utf8_or_multibyte(const char *pathname, int utf8_or_multibyte)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     if (utime(pathname, 0) == 0)
     {
         return 1;
@@ -680,7 +680,7 @@ static int _ztouch_utf8_or_multibyte(const char *pathname, int utf8_or_multibyte
     }
     close(fd);
     return 1;
-#else  // _WIN32
+#else  // _WIN64
     int fd = open(pathname, O_RDWR | O_CREAT, 0666);
     if (fd < 0)
     {
@@ -693,7 +693,7 @@ static int _ztouch_utf8_or_multibyte(const char *pathname, int utf8_or_multibyte
     }
     close(fd);
     return 1;
-#endif // _WIN32
+#endif // _WIN64
 }
 
 int ztouch(const char *pathname)
@@ -708,9 +708,9 @@ int zsys_touch(const char *pathname)
 
 zargv_t *zfind_file_sample(zargv_t *file_argv, const char **pathnames, int pathnames_count, const char *pathname_match)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     return file_argv;
-#else  // _WIN32
+#else  // _WIN64
     char buf[4096 + 1];
     if (file_argv == 0)
     {
@@ -769,10 +769,10 @@ zargv_t *zfind_file_sample(zargv_t *file_argv, const char **pathnames, int pathn
         fclose(fp);
     }
     return file_argv;
-#endif // _WIN32
+#endif // _WIN64
 }
 
-#ifdef _WIN32
+#ifdef _WIN64
 int _zmkdir(const char *pathname)
 {
     wchar_t pathnamew[Z_MAX_PATH + 1];
@@ -782,7 +782,7 @@ int _zmkdir(const char *pathname)
     }
     return _wmkdir(pathnamew);
 }
-#endif // _WIN32
+#endif // _WIN64
 
 static int _v_zmkdirs_utf8_or_multibyte(int utf8_or_multibyte, int mode, const char *path1, va_list ap)
 {
@@ -809,16 +809,16 @@ static int _v_zmkdirs_utf8_or_multibyte(int utf8_or_multibyte, int mode, const c
         {
             path++;
         }
-#ifdef _WIN32
+#ifdef _WIN64
         if (path[0] == '\\')
         {
             path++;
         }
-#endif // _WIN32
+#endif // _WIN64
         zbuf_strcat(tmppath, path);
     }
 
-#ifdef _WIN32
+#ifdef _WIN64
     for (unsigned char *p = (unsigned char *)zbuf_data(tmppath); *p; p++)
     {
         if (*p == '/')
@@ -826,7 +826,7 @@ static int _v_zmkdirs_utf8_or_multibyte(int utf8_or_multibyte, int mode, const c
             *p = '\\';
         }
     }
-#endif // _WIN32
+#endif // _WIN64
 
     path = (char *)zbuf_data(tmppath);
     ps = (unsigned char *)path;
@@ -874,7 +874,7 @@ static int _v_zmkdirs_utf8_or_multibyte(int utf8_or_multibyte, int mode, const c
         }
 
         ret = -1;
-#ifdef _WIN32
+#ifdef _WIN64
         if (utf8_or_multibyte)
         {
             ret = _zmkdir(path);
@@ -883,9 +883,9 @@ static int _v_zmkdirs_utf8_or_multibyte(int utf8_or_multibyte, int mode, const c
         {
             ret = _mkdir(path);
         }
-#else  // _WIN32
+#else  // _WIN64
         ret = mkdir(path, mode);
-#endif // _WIN32
+#endif // _WIN64
         if (ret < 0)
         {
             if (errno != EEXIST)
@@ -933,7 +933,7 @@ int zsys_mkdir(const char *path, int mode)
 
 static int _zrename_utf8_or_multibyte(const char *oldpath, const char *newpath, int utf8_or_multibyte)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     wchar_t oldpathw[Z_MAX_PATH + 1];
     wchar_t newpathw[Z_MAX_PATH + 1];
     if (utf8_or_multibyte)
@@ -958,9 +958,9 @@ static int _zrename_utf8_or_multibyte(const char *oldpath, const char *newpath, 
         return -1;
     }
     return 0;
-#else  // _WIN32
+#else  // _WIN64
     ZC_ROBUST_DO(rename(oldpath, newpath));
-#endif // _WIN32
+#endif // _WIN64
 }
 
 int zrename(const char *oldpath, const char *newpath)
@@ -975,7 +975,7 @@ int zsys_rename(const char *oldpath, const char *newpath)
 
 int zunlink(const char *pathname)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     wchar_t pathnamew[Z_MAX_PATH + 1];
     if (zUtf8ToWideChar(pathname, -1, pathnamew, Z_MAX_PATH) < 1)
     {
@@ -992,23 +992,23 @@ int zunlink(const char *pathname)
         return -1;
     }
     return 0;
-#else  // _WIN32
+#else  // _WIN64
     ZC_ROBUST_DO_ONE_MORE(unlink(pathname), ENOENT);
-#endif // _WIN32
+#endif // _WIN64
 }
 
 int zsys_unlink(const char *pathname)
 {
-#ifdef _WIN32
-    ZC_ROBUST_DO_WIN32_ONE_MORE(_unlink(pathname), ENOENT);
-#else  // _WIN32
+#ifdef _WIN64
+    ZC_ROBUST_DO_WIN64_ONE_MORE(_unlink(pathname), ENOENT);
+#else  // _WIN64
     ZC_ROBUST_DO_ONE_MORE(unlink(pathname), ENOENT);
-#endif // _WIN32
+#endif // _WIN64
 }
 
 int zlink(const char *oldpath, const char *newpath)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     wchar_t oldpathw[Z_MAX_PATH + 1];
     wchar_t newpathw[Z_MAX_PATH + 1];
     if ((zUtf8ToWideChar(oldpath, -1, oldpathw, Z_MAX_PATH) < 1) || (zUtf8ToWideChar(newpath, -1, newpathw, Z_MAX_PATH) < 1))
@@ -1022,14 +1022,14 @@ int zlink(const char *oldpath, const char *newpath)
         return -1;
     }
     return 0;
-#else  // _WIN32
+#else  // _WIN64
     ZC_ROBUST_DO(link(oldpath, newpath));
-#endif // _WIN32
+#endif // _WIN64
 }
 
 int zsys_link(const char *oldpath, const char *newpath)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     wchar_t oldpathw[Z_MAX_PATH + 1];
     wchar_t newpathw[Z_MAX_PATH + 1];
     if ((zMultiByteToWideChar(oldpath, -1, oldpathw, Z_MAX_PATH) < 1) || (zMultiByteToWideChar(newpath, -1, newpathw, Z_MAX_PATH) < 1))
@@ -1043,9 +1043,9 @@ int zsys_link(const char *oldpath, const char *newpath)
         return -1;
     }
     return 0;
-#else  // _WIN32
+#else  // _WIN64
     ZC_ROBUST_DO(link(oldpath, newpath));
-#endif // _WIN32
+#endif // _WIN64
 }
 
 int zlink_force(const char *oldpath, const char *newpath, const char *tmpdir)
@@ -1110,7 +1110,7 @@ int zsys_link_force(const char *oldpath, const char *newpath, const char *tmpdir
 
 int zsymlink(const char *oldpath, const char *newpath)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     DWORD attr;
     BOOLEAN res;
     wchar_t oldpathw[Z_MAX_PATH + 1];
@@ -1132,14 +1132,14 @@ int zsymlink(const char *oldpath, const char *newpath)
         return -1;
     }
     return 0;
-#else  // _WIN32
+#else  // _WIN64
     ZC_ROBUST_DO(symlink(oldpath, newpath));
-#endif // _WIN32
+#endif // _WIN64
 }
 
 int zsys_symlink(const char *oldpath, const char *newpath)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     DWORD attr;
     BOOLEAN res;
     wchar_t oldpathw[Z_MAX_PATH + 1];
@@ -1161,9 +1161,9 @@ int zsys_symlink(const char *oldpath, const char *newpath)
         return -1;
     }
     return 0;
-#else  // _WIN32
+#else  // _WIN64
     ZC_ROBUST_DO(symlink(oldpath, newpath));
-#endif // _WIN32
+#endif // _WIN64
 }
 
 int zsymlink_force(const char *oldpath, const char *newpath, const char *tmpdir)
@@ -1228,7 +1228,7 @@ int zsys_symlink_force(const char *oldpath, const char *newpath, const char *tmp
 
 int zrmdir(const char *pathname)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     wchar_t pathnamew[Z_MAX_PATH + 1];
     if (zUtf8ToWideChar(pathname, -1, pathnamew, Z_MAX_PATH) < 1)
     {
@@ -1245,18 +1245,18 @@ int zrmdir(const char *pathname)
         return -1;
     }
     return 0;
-#else  // _WIN32
+#else  // _WIN64
     ZC_ROBUST_DO_ONE_MORE(rmdir(pathname), ENOENT);
-#endif // _WIN32
+#endif // _WIN64
 }
 
 int zsys_rmdir(const char *pathname)
 {
-#ifdef _WIN32
-    ZC_ROBUST_DO_WIN32_ONE_MORE(_rmdir(pathname), ENOENT);
-#else  // _WIN32
+#ifdef _WIN64
+    ZC_ROBUST_DO_WIN64_ONE_MORE(_rmdir(pathname), ENOENT);
+#else  // _WIN64
     ZC_ROBUST_DO_ONE_MORE(rmdir(pathname), ENOENT);
-#endif // _WIN32
+#endif // _WIN64
 }
 
 static int _zrmdir_recurse_sys(const char *pathname, int sys)
@@ -1360,7 +1360,7 @@ static int _zget_filenames_in_dir_default(const char *dirname, zargv_t *filename
 
 static int _zget_filenames_in_dir_utf8_or_multibyte(const char *dirname, zargv_t *filenames, int utf8_or_multibyte)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     if (utf8_or_multibyte)
     {
         _WDIR *dir;
@@ -1403,9 +1403,9 @@ static int _zget_filenames_in_dir_utf8_or_multibyte(const char *dirname, zargv_t
     {
         return _zget_filenames_in_dir_default(dirname, filenames);
     }
-#else  // _WIN32
+#else  // _WIN64
     return _zget_filenames_in_dir_default(dirname, filenames);
-#endif // _WIN32
+#endif // _WIN64
 }
 
 int zget_filenames_in_dir(const char *dirname, zargv_t *filenames)
@@ -1418,7 +1418,7 @@ int zsys_get_filenames_in_dir(const char *dirname, zargv_t *filenames)
     return _zget_filenames_in_dir_utf8_or_multibyte(dirname, filenames, 0);
 }
 
-#ifdef _WIN32
+#ifdef _WIN64
 static int _zopen(const char *pathname, int flags, mode_t mode)
 {
     wchar_t pathnamew[Z_MAX_PATH + 1];
@@ -1428,24 +1428,24 @@ static int _zopen(const char *pathname, int flags, mode_t mode)
     }
     return _wopen(pathnamew, flags, mode);
 }
-#endif // _WIN32
+#endif // _WIN64
 
 int zopen(const char *pathname, int flags, mode_t mode)
 {
-#ifdef _WIN32
-    ZC_ROBUST_DO_WIN32(_zopen(pathname, flags, mode));
-#else  // _WIN32
+#ifdef _WIN64
+    ZC_ROBUST_DO_WIN64(_zopen(pathname, flags, mode));
+#else  // _WIN64
     ZC_ROBUST_DO(open(pathname, flags, mode));
-#endif // _WIN32
+#endif // _WIN64
 }
 
 int zsys_open(const char *pathname, int flags, mode_t mode)
 {
-#ifdef _WIN32
-    ZC_ROBUST_DO_WIN32(open(pathname, flags, mode));
-#else  // _WIN32
+#ifdef _WIN64
+    ZC_ROBUST_DO_WIN64(open(pathname, flags, mode));
+#else  // _WIN64
     ZC_ROBUST_DO(open(pathname, flags, mode));
-#endif // _WIN32
+#endif // _WIN64
 }
 
 ssize_t zread(int fd, void *buf, size_t count)
@@ -1516,16 +1516,16 @@ ssize_t zwrite(int fd, const void *buf, size_t count)
 
 int zclose(int fd)
 {
-#ifdef _WIN32
-    ZC_ROBUST_DO_WIN32(close(fd));
-#else  // _WIN32
+#ifdef _WIN64
+    ZC_ROBUST_DO_WIN64(close(fd));
+#else  // _WIN64
     ZC_ROBUST_DO(close(fd));
-#endif // _WIN32
+#endif // _WIN64
 }
 
-#ifdef _WIN32
+#ifdef _WIN64
 // https://learn.microsoft.com/zh-cn/windows/win32/api/fileapi/nf-fileapi-lockfile
-#else  // _WIN32
+#else  // _WIN64
 int zflock(int fd, int operation)
 {
     ZC_ROBUST_DO(flock(fd, operation));
@@ -1545,4 +1545,4 @@ int zfunlock(int fd)
 {
     ZC_ROBUST_DO(flock(fd, LOCK_UN));
 }
-#endif // _WIN32
+#endif // _WIN64

@@ -273,9 +273,11 @@ public:
     {
         return array_insert(-1, j, return_child);
     }
-    inline json *array_push(json *j, bool return_child = false) { return array_add(j, return_child); }
     inline json *array_add(const char *val, int len) { return array_add(new json(val, len)); }
+    inline json *array_add(const unsigned char *val, int len) { return array_add(new json((const char *)val, len)); }
     inline json *array_push(const char *val, int len) { return array_add(new json(val, len)); }
+    inline json *array_push(const unsigned char *val, int len) { return array_add(new json((const char *)val, len)); }
+    inline json *array_push(json *j, bool return_child = false) { return array_add(j, return_child); }
 
     /* 设置下表为 idx 的成员 j, 如果键idx存在则, 则把idx对应的json赋给 *old, 如果old为0, 则销毁 */
     json *array_update(int idx, json *j, json **old, bool return_child = false);
@@ -342,8 +344,29 @@ public:
         return object_update(key, new json(val, len), return_child);
     }
 
+    inline json *object_update(const std::string &key, const unsigned char *val, int len, json **old, bool return_child = false)
+    {
+        return object_update(key, new json((const char *)val, len), old, return_child);
+    }
+    inline json *object_add(const std::string &key, const unsigned char *val, int len, json **old, bool return_child = false)
+    {
+        return object_update(key, new json((const char *)val, len), old, return_child);
+    }
+    inline json *object_update(const std::string &key, const unsigned char *val, int len, bool return_child = false)
+    {
+        return object_update(key, new json((const char *)val, len), return_child);
+    }
+    inline json *object_add(const std::string &key, const unsigned char *val, int len, bool return_child = false)
+    {
+        return object_update(key, new json((const char *)val, len), return_child);
+    }
+
     /* 删除键为key的节点, 存在则返回true, 赋值给 *old, 如果 old为 0, 则销毁 */
     bool object_delete(const char *key, json **old = nullptr);
+    inline bool object_delete(const unsigned char *key, json **old = nullptr)
+    {
+        return object_delete((const char *)key, old);
+    }
     bool object_delete(const std::string &key, json **old = nullptr);
 
 #define ___zcc_json_update(TTT)                                                                        \
@@ -392,6 +415,7 @@ public:
     /* 这几组方法类似 array_update, object_update, 只不过参数不同 */
     ___zcc_json_update(const std::string &);
     ___zcc_json_update(const char *);
+    ___zcc_json_update(const unsigned char *);
     ___zcc_json_update(int64_t);
     ___zcc_json_update(uint64_t);
 #ifdef _WIN64

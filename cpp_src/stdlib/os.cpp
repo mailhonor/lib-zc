@@ -109,7 +109,15 @@ int get_thread_id()
 #if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 30)
     return ::gettid();
 #else
-    return (int64_t)syscall(__NR_gettid);
+#if defined(SYS_gettid)
+    return (int)syscall(SYS_gettid);
+#elif defined(__NR_gettid) || defined(_ANDROID)
+    return (int)syscall(__NR_gettid);
+#else
+    uint64_t tid;
+    pthread_threadid_np(NULL, &tid);
+    return (int)(static_cast<int64_t>(tid));
+#endif
 #endif
 }
 bool quick_setrlimit(int cmd, unsigned long cur_val)

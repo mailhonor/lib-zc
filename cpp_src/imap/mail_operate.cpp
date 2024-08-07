@@ -365,7 +365,7 @@ int imap_client::cmd_append_prepare_protocol(append_session &append)
     if (append.time_ > 0)
     {
         char timebuf[64 + 1];
-        std::tm *now_tm = std::localtime(&(append.time_));
+        std::tm *now_tm = std::localtime((time_t *)&(append.time_));
         std::strftime(timebuf, 64, "%d-%b-%Y %T %Z", now_tm);
         linebuf.append(" \"").append(timebuf).append("\"");
     }

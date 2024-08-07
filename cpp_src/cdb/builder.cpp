@@ -155,7 +155,7 @@ struct cdb_builder_engine_t
 
 static int builder_stream_fseek(cdb_builder_engine_t *builder, int offset, int whence)
 {
-    int cursor;
+    int cursor = -1;
     if (whence == SEEK_SET)
     {
         cursor = offset;

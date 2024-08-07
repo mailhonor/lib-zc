@@ -65,10 +65,10 @@ int main(int argc, char **argv)
     zcoroutine_base_init();
 
     int sock, type;
-    sock = zcc::netpath_listen(listen, 5, &type);
+    sock = zcc::netpath_listen(listen_address, 5, &type);
     if (sock < 0)
     {
-        zcc_error_and_exit("open %s(%m)", listen);
+        zcc_error_and_exit("open %s(%m)", listen_address);
     }
     void_long_t vl;
     vl.fd = sock;

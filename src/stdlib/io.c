@@ -9,17 +9,17 @@
 #include "zc.h"
 #include <errno.h>
 #include <sys/file.h>
-#ifdef _WIN32
+#ifdef _WIN64
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 #include <fcntl.h>
 #include <handleapi.h>
-#else // _WIN32
+#else // _WIN64
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#endif // _WIN32
+#endif // _WIN64
 
-#ifdef _WIN32
+#ifdef _WIN64
 static int zrwable_true_do(int fd, int read_flag, int write_flag)
 {
     int ec;
@@ -68,7 +68,7 @@ static int zrwable_true_do(int fd, int read_flag, int write_flag)
 
     return 0;
 }
-#else // _WIN32
+#else // _WIN64
 static int zrwable_true_do(int fd, int read_flag, int write_flag)
 {
     struct pollfd pollfd;
@@ -122,7 +122,7 @@ static int zrwable_true_do(int fd, int read_flag, int write_flag)
 
     return 0;
 }
-#endif // _WIN32
+#endif // _WIN64
 
 int zrwable(int fd)
 {
@@ -141,7 +141,7 @@ int zwriteable(int fd)
 
 int znonblocking(int fd, int no)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     u_long flags = (no ? 1 : 0);
     if (ioctlsocket(fd, FIONBIO, &flags) == SOCKET_ERROR)
     {
@@ -149,7 +149,7 @@ int znonblocking(int fd, int no)
         return -1;
     }
     return flags;
-#else // _WIN32
+#else // _WIN64
     int flags;
     if ((flags = fcntl(fd, F_GETFL, 0)) < 0)
     {
@@ -160,19 +160,19 @@ int znonblocking(int fd, int no)
         return -1;
     }
     return ((flags & O_NONBLOCK) ? 1 : 0);
-#endif // _WIN32
+#endif // _WIN64
     return -1;
 }
 
 int zclose_on_exec(int fd, int on)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     if (!SetHandleInformation((HANDLE)fd, HANDLE_FLAG_INHERIT, 0))
     {
         return -1;
     }
     return 1;
-#else // _WIN32
+#else // _WIN64
     int flags;
     if ((flags = fcntl(fd, F_GETFD, 0)) < 0)
     {
@@ -183,16 +183,16 @@ int zclose_on_exec(int fd, int on)
         return -1;
     }
     return ((flags & FD_CLOEXEC) ? 1 : 0);
-#endif // _WIN32
+#endif // _WIN64
     return -1;
 }
 
 int zget_readable_count(int fd)
 {
-#ifdef _WIN32
+#ifdef _WIN64
     unsigned long count;
     return (ioctlsocket(fd, FIONREAD, (unsigned long *)&count) < 0 ? -1 : count);
-#else // _WIN32
+#else // _WIN64
     int count;
     return (ioctl(fd, FIONREAD, (char *)&count) < 0 ? -1 : count);
 #endif
