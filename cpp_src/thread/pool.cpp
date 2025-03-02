@@ -30,26 +30,6 @@ struct thread_pool_node
     bool stop_flag{false};
 };
 
-struct timer_map_cmp
-{
-    bool operator()(const std::tuple<int64_t, int64_t> &l, const std::tuple<int64_t, int64_t> &r) const
-    {
-        if (std::get<0>(l) < std::get<0>(r))
-        {
-            return true;
-        }
-        if (std::get<0>(l) > std::get<0>(r))
-        {
-            return false;
-        }
-        if (std::get<1>(l) > std::get<0>(r))
-        {
-            return true;
-        }
-        return false;
-    }
-};
-
 struct thread_pool_engine
 {
     thread_pool *pool{nullptr};
@@ -59,7 +39,7 @@ struct thread_pool_engine
     std::mutex mutex;
     std::condition_variable cond;
     std::list<std::function<void()>> task_queue;
-    std::map<std::tuple<int64_t, int64_t>, std::function<void()>, timer_map_cmp> timer_map;
+    std::map<std::tuple<int64_t, int64_t>, std::function<void()>> timer_map;
     std::list<thread_pool_node *> pool_node_list;
     int64_t timer_plus{0};
     bool soft_stop_flag{false};
@@ -122,7 +102,11 @@ int thread_pool::get_thread_count()
 
 int thread_pool::get_task_queue_length()
 {
-    return engine_->task_queue.size();
+    int r = 0;
+    lock();
+    r = (int)(engine_->task_queue.size());
+    unlock();
+    return r;
 }
 
 void thread_pool::set_thread_init_handler(std::function<void()> fn)

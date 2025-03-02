@@ -13,8 +13,8 @@
 #endif // ZCC_USE_UCONV__
 
 #define mydebug(...)           \
-    if (var_debug_mode)                 \
-    {                               \
+    if (var_debug_mode)        \
+    {                          \
         zcc_info(__VA_ARGS__); \
     }
 
@@ -23,15 +23,13 @@ zcc_general_namespace_begin(charset);
 
 #ifdef ZCC_USE_UCONV__
 const bool var_uconv_supported = true;
-int uconv_convert(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
+std::string uconv_convert(const char *from_charset, const char *src, int src_len, const char *to_charset, int *invalid_bytes)
 {
-    int ret = -1;
-
-    dest.clear();
-    int omit_invalid_bytes_count_tmp = 0;
-    if (omit_invalid_bytes_count)
+    std::string dest;
+    int err_bytes = 0;
+    if (invalid_bytes)
     {
-        *omit_invalid_bytes_count = 0;
+        *invalid_bytes = 0;
     }
 
     from_charset = correct_name(from_charset);
@@ -90,22 +88,7 @@ int uconv_convert(const char *from_charset, const char *src, int src_len, const 
         {
             errorLength = 1;
         }
-        omit_invalid_bytes_count_tmp += errorLength;
-        if (omit_invalid_bytes_limit == 0)
-        {
-            break;
-        }
-        if (omit_invalid_bytes_limit > 0)
-        {
-            if (omit_invalid_bytes_count_tmp > omit_invalid_bytes_limit)
-            {
-                break;
-            }
-        }
-    }
-    if (src_converted_len)
-    {
-        *src_converted_len = from_p - src;
+        err_bytes += errorLength;
     }
 
     from_p = uni_bf.c_str();
@@ -143,7 +126,6 @@ int uconv_convert(const char *from_charset, const char *src, int src_len, const 
             dest.append(to_last, to_p - to_last);
         }
     }
-    ret = (int)dest.size();
 
 over:
     uni_bf.clear();
@@ -156,23 +138,23 @@ over:
     {
         ucnv_close(to_conv);
     }
-    if (omit_invalid_bytes_count)
+    if (invalid_bytes)
     {
-        *omit_invalid_bytes_count = omit_invalid_bytes_count_tmp;
+        *invalid_bytes = err_bytes;
     }
-    return ret;
+    return dest;
 }
 
 void use_uconv()
 {
-    convert = uconv_convert;
+    convert_engine = uconv_convert;
 }
 #else  // ZCC_USE_UCONV__
 const bool var_uconv_supported = false;
-int uconv_convert(const char *from_charset, const char *src, int src_len, const char *to_charset, std::string &dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
+std::string uconv_convert(const char *from_charset, const char *src, int src_len, const char *to_charset)
 {
     zcc_warning("unsupported; install libicu-dev etc and rebuild");
-    return -1;
+    return "";
 }
 void use_uconv()
 {

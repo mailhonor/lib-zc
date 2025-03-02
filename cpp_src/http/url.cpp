@@ -343,17 +343,17 @@ void http_url::reset()
 
 void http_url::debug_show()
 {
-    zcc_output("%s = %s", "scheme", protocol_.c_str());
-    zcc_output("%s = %s", "host", host_.c_str());
-    zcc_output("%s = %d", "port", port_);
-    zcc_output("%s = %s", "destination", destination_.c_str());
-    zcc_output("%s = %s", "path", path_.c_str());
-    zcc_output("%s = %s", "query", query_.c_str());
+    std::fprintf(stderr, "%s = %s\n", "scheme", protocol_.c_str());
+    std::fprintf(stderr, "%s = %s\n", "host", host_.c_str());
+    std::fprintf(stderr, "%s = %d\n", "port", port_);
+    std::fprintf(stderr, "%s = %s\n", "destination", destination_.c_str());
+    std::fprintf(stderr, "%s = %s\n", "path", path_.c_str());
+    std::fprintf(stderr, "%s = %s\n", "query", query_.c_str());
     for (auto it = querys_.begin(); it != querys_.end(); it++)
     {
-        zcc_output("    %s = %s", it->first.c_str(), it->second.c_str());
+        std::fprintf(stderr, "    %s = %s\n", it->first.c_str(), it->second.c_str());
     }
-    zcc_output("%s = %s\n", "fragment", fragment_.c_str());
+    std::fprintf(stderr, "%s = %s\n\n", "fragment", fragment_.c_str());
 }
 
 zcc_namespace_end;

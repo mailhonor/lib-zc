@@ -45,7 +45,7 @@ IF(ENABLE_ICU_UCONV)
 ENDIF()
 
 IF(ENABLE_SQLITE)
-    add_definitions(-D_LIB_ZC_SQLITE3_)
+    add_definitions(-DZCC_USE_SQLITE3__)
     set(general_libs sqlite3 ${general_libs})
 ENDIF()
 

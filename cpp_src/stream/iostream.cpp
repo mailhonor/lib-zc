@@ -46,32 +46,6 @@ bool iostream::connect(const char *destination)
     return true;
 }
 
-bool iostream::connect(const connect_options &options)
-{
-    close(true);
-    int fd = -1;
-    for (int i = 0; i < options.retry_times; i++)
-    {
-        int fd = netpath_connect(options.destination, engine_->wait_timeout);
-        if (fd > -1)
-        {
-            break;
-        }
-    }
-    open_socket(fd);
-    if (options.ssl_ctx)
-    {
-
-        if (tls_connect(options.ssl_ctx) < 0)
-        {
-            close(true);
-            return false;
-        }
-    }
-    operate_nonblocking();
-    return true;
-}
-
 iostream::iostream()
 {
     close(true);
@@ -110,6 +84,7 @@ int iostream::close(bool close_fd_or_release_ssl)
     fd_ = -1;
     nonblocking_set_flag_ = false;
     nonblocking_flag_ = false;
+    is_iostream_ = true;
     int timeout = engine_->wait_timeout;
     reset();
     set_timeout(timeout);
@@ -144,11 +119,26 @@ void iostream::operate_nonblocking()
     }
     nonblocking(fd_, nonblocking_flag_);
 }
+
 iostream &iostream::set_timeout(int wait_timeout)
 {
     engine_->wait_timeout = wait_timeout;
     operate_nonblocking();
     return *this;
+}
+
+int iostream::trueDataReadabel()
+{
+    if (get_read_cache_len() > 0)
+    {
+        return 1;
+    }
+    int r = get_readable_count(fd_);
+    if (r > 1)
+    {
+        r = 1;
+    }
+    return r;
 }
 
 int iostream::timed_read_wait(int wait_timeout)

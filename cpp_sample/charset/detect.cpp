@@ -8,10 +8,9 @@
 
 #include "zcc/zcc_charset.h"
 
-static bool windows_1252_flag = false;
 static void ___usage()
 {
-    zcc_error_and_exit("USAGE: %s [ --uconv ] [ --windows_1252 ] filename1 [filename2 ...]", zcc::progname);
+    zcc_error_and_exit("USAGE: %s [ --uconv ] filename1 [filename2 ...]", zcc::progname);
 }
 
 static void dorun(const char *fn)
@@ -19,29 +18,14 @@ static void dorun(const char *fn)
     std::string content = zcc::file_get_contents(fn);
     std::string charset;
 
-    if (windows_1252_flag)
+    charset = zcc::charset::detect_cjk(content.c_str(), (int)content.size());
+    if (charset.empty())
     {
-        charset = zcc::charset::detect_1252(content.c_str(), (int)content.size());
-        if (charset.empty())
-        {
-            zcc_info("%-30s: not found, windows-1252", fn);
-        }
-        else
-        {
-            zcc_info("%-30s: %s\n", fn, charset.c_str());
-        }
+        zcc_info("%-30s: not found", fn);
     }
     else
     {
-        charset = zcc::charset::detect_cjk(content.c_str(), (int)content.size());
-        if (charset.empty())
-        {
-            zcc_info("%-30s: not found", fn);
-        }
-        else
-        {
-            zcc_info("%-30s: %s\n", fn, charset.c_str());
-        }
+        zcc_info("%-30s: %s\n", fn, charset.c_str());
     }
 }
 
@@ -53,7 +37,6 @@ int main(int argc, char **argv)
     {
         zcc::charset::use_uconv();
     }
-    windows_1252_flag = zcc::var_main_config.get_bool("windows_1252");
 
     if (zcc::main_argument::var_parameters.size() == 0)
     {

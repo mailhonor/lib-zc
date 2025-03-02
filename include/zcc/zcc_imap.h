@@ -75,8 +75,10 @@ public:
     public:
         std::string name_;
         std::set<std::string> attrs_;
+        int hierarchy_separator_;
         bool noinferiors_;
         bool noselect_;
+        bool inbox_;
         bool drafts_;
         bool junk_;
         bool trash_;
@@ -154,6 +156,7 @@ public:
 
 public:
     imap_client();
+    imap_client(stream *third_stream, bool auto_release_third_stream = true);
     ~imap_client();
     inline bool is_no() { return (ok_no_bad_ == result_onb::no); }
     inline bool is_bad() { return (ok_no_bad_ == result_onb::bad); }
@@ -169,7 +172,11 @@ public:
     void set_simple_line_length_limit(int limit);
     void set_timeout(int timeout);
     void set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bool tls_try_mode = false);
-    iostream &get_iostream() { return fp_; }
+    virtual inline void set_ssl_tls(void *ssl_ctx, bool ssl_mode, bool tls_mode, bool tls_try_mode = false)
+    {
+        set_ssl_tls((SSL_CTX *)ssl_ctx, ssl_mode, tls_mode, tls_try_mode);
+    }
+    stream &get_stream() { return *fp_; }
     int connect(const char *destination, int times = 1);
     void disconnect();
     int do_auth(const char *user, const char *password);
@@ -179,15 +186,25 @@ public:
     int cmd_list(folder_list_result &folder_list);
     int cmd_lsub(folder_list_result &folder_list);
     int cmd_select(select_result &ser, const char *folder_name_imap);
-    inline int cmd_select(select_result &ser, const std::string folder_name_imap)
+    inline int cmd_select(select_result &ser, const std::string &folder_name_imap)
     {
         return cmd_select(ser, folder_name_imap.c_str());
     }
     int cmd_select(const char *folder_name_imap);
-    int cmd_select_forced(const char *folder_name_imap);
     inline int cmd_select(const std::string &folder_name_imap) { return cmd_select(folder_name_imap.c_str()); }
+    int cmd_select_forced(select_result &ser, const char *folder_name_imap);
+    inline int cmd_select_forced(select_result &ser, const std::string &folder_name_imap)
+    {
+        return cmd_select_forced(ser, folder_name_imap.c_str());
+    }
+    int cmd_select_forced(const char *folder_name_imap);
     inline int cmd_select_forced(const std::string &folder_name_imap) { return cmd_select_forced(folder_name_imap.c_str()); }
     int cmd_status(status_result &ser, const char *folder_name_imap);
+    inline int cmd_status(status_result &ser, const std::string &folder_name_imap)
+    {
+        return cmd_status(ser, folder_name_imap.c_str());
+    }
+    int cmd_search(std::vector<int> &uid_vector, const std::string &search_string);
     int cmd_search_all(std::vector<int> &uid_vector);
     int cmd_search_unseen(std::vector<int> &uid_vector);
     int cmd_search_answered(std::vector<int> &uid_vector);
@@ -227,7 +244,12 @@ public:
     int get_capability_cached(const char *key, char *cache);
     inline int get_capability_move() { return get_capability_cached("move", &capability_move_); }
     inline int get_capability_uidplus() { return get_capability_cached("uidplus", &capability_move_); }
+    inline int get_capability_idle() { return get_capability_cached("idle", &capability_idle_); }
     std::string &get_capability() { return capability_; }
+    int check_new_message_by_noop(const std::string &mbox = "INBOX");
+    int idle_beign(const std::string &mbox = "INBOX");
+    bool idle_check_new_message(int wait_second = 0);
+    int idle_end();
 
 public:
     imap_client &fp_append(const char *s, int slen = -1);
@@ -258,11 +280,12 @@ private:
     int _cmd_search_flag(std::vector<int> &uid_vector, const char *flag_token);
 
 protected:
-    iostream fp_;
+    stream *fp_{nullptr};
     SSL_CTX *ssl_ctx_{NULL};
     bool ssl_mode_{false};
     bool tls_mode_{false};
     bool tls_try_mode_{false};
+    bool auto_release_third_stream_{false};
     std::string capability_;
     std::string last_selected_;
     int simple_line_length_limit_{102400};
@@ -279,11 +302,13 @@ protected:
     bool ssl_flag_{false};
     bool need_close_connection_{false};
     bool tmp_verbose_mode_{false};
+    bool third_stream_mode_{false};
     int tmp_verbose_line_{0};
     bool auth_capability_{false};
     bool capability_clear_flag_{false};
     char capability_move_{0};
     char capability_uidplus_{0};
+    char capability_idle_{0};
 };
 
 zcc_namespace_end;

@@ -144,7 +144,7 @@ static const struct code_to_errno_map errno_pair[] = {
     {WSAENOTEMPTY, ZCC_ENOTEMPTY},
     {9, 0},
 };
-#else  // _WIN64
+#else // _WIN64
 static const struct code_to_errno_map errno_pair[] = {
     {EPERM, ZCC_EPERM},
     {ENOENT, ZCC_ENOENT},
@@ -251,6 +251,10 @@ int get_errno(int code)
 #else  // _WIN64
         code = errno;
 #endif // _WIN64
+    }
+    if (code == 0)
+    {
+        return 0;
     }
     auto it = errno_map_sys_to_zcc.find(code);
     if (it == errno_map_sys_to_zcc.end())

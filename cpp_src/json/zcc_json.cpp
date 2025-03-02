@@ -1880,7 +1880,7 @@ json *json::debug_show()
 #ifdef zcc_debug_show
     zcc_debug_show("JSON: %s\n", s.c_str());
 #else
-    zcc_output("JSON: %s", s.c_str());
+    std::fprintf(stderr, "JSON: %s\n", s.c_str());
 #endif
     return this;
 }

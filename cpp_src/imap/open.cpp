@@ -20,7 +20,7 @@ void imap_client::set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bo
 
 void imap_client::set_timeout(int timeout)
 {
-    fp_.set_timeout(timeout);
+    fp_->set_timeout(timeout);
 }
 
 int imap_client::do_startTLS()
@@ -35,7 +35,7 @@ int imap_client::do_startTLS()
         return r;
     }
 
-    if (fp_.tls_connect(ssl_ctx_) < 0)
+    if (fp_->tls_connect(ssl_ctx_) < 0)
     {
         need_close_connection_ = true;
         zcc_imap_client_error("建立SSL");
@@ -64,7 +64,7 @@ int imap_client::fp_connect(const char *destination, int times)
         }
         return -1;
     }
-    if (!fp_.connect(destination))
+    if (!fp_->connect(destination))
     {
         need_close_connection_ = true;
         zcc_imap_client_error("连接(%s)", destination);
@@ -72,7 +72,7 @@ int imap_client::fp_connect(const char *destination, int times)
     }
     if (ssl_mode_)
     {
-        if (fp_.tls_connect(ssl_ctx_) < 0)
+        if (fp_->tls_connect(ssl_ctx_) < 0)
         {
             disconnect();
             need_close_connection_ = true;
@@ -88,7 +88,7 @@ int imap_client::fp_connect(const char *destination, int times)
 
 void imap_client::disconnect()
 {
-    fp_.close();
+    fp_->close();
     opened_ = false;
     connected_ = false;
     ssl_flag_ = false;

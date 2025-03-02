@@ -44,9 +44,7 @@ static zbool_t _zhttpd_response_mix(zhttpd_t *httpd, _response_mix_t *ctx, int m
     char *rwdata = 0, *old_etag, *new_etag, *rwline, *range, *p;
 
     if (mix_type == 'f') {
-        while ((fd = zopen(ctx->pathname, O_RDONLY, 0)) == -1) {
-            continue;
-        }
+        fd = zopen(ctx->pathname, O_RDONLY, 0);
         if (fd == -1) {
             ret = 0;
             goto over;

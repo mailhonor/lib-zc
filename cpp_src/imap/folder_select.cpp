@@ -145,6 +145,12 @@ int imap_client::cmd_select_forced(const char *folder_name_imap)
     return cmd_select(ser, folder_name_imap);
 }
 
+int imap_client::cmd_select_forced(select_result &ser, const char *folder_name_imap)
+{
+    last_selected_ = "";
+    return cmd_select(ser, folder_name_imap);
+}
+
 int imap_client::cmd_status(status_result &ser, const char *folder_name_imap)
 {
     // S status abc (MESSAGES RECENT UIDNEXT UIDVALIDITY UNSEEN)

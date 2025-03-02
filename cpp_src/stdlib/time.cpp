@@ -10,7 +10,7 @@
 
 #include <thread>
 #include <chrono>
-#include <time.h>
+#include <ctime>
 #ifdef _WIN64
 #include <windows.h>
 #include <timezoneapi.h>
@@ -19,6 +19,36 @@
 #endif // _WIN64
 
 zcc_namespace_begin;
+
+const char *get_day_abbr_of_week(int day)
+{
+    const char *days[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+    // %w
+    if (day < 0)
+    {
+        day = 0;
+    }
+    if (day > 6)
+    {
+        day = 6;
+    }
+    return days[day];
+}
+
+const char *get_month_abbr(int month)
+{
+    const char *months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+    // %m - 1
+    if (month < 0)
+    {
+        month = 0;
+    }
+    if (month > 11)
+    {
+        month = 11;
+    }
+    return months[month];
+}
 
 timeofday gettimeofday()
 {
@@ -85,20 +115,28 @@ std::string rfc1123_time(int64_t t)
 
 std::string rfc822_time(int64_t t)
 {
+    std::string r;
     char buf[128 + 1];
-    if (t == 0)
+    if (t < 1)
     {
         t = second();
     }
-    struct tm tmbuf, *p = &tmbuf;
-#ifdef _WIN64
-    p = std::localtime((time_t *)&t);
-#else  // _WIN64
-    ::localtime_r((time_t *)&t, p);
-#endif // _WIN64
+    auto p = std::localtime((time_t *)&t);
     // FIXME %Z
-    std::strftime(buf, 128, "%a, %d %b %Y %H:%M:%S %z (%Z)", &tmbuf);
-    return buf;
+    // std::strftime(buf, 128, "%a, %d %b %Y %H:%M:%S %z", p);
+
+    // week
+    r.append(get_day_abbr_of_week(p->tm_wday));
+    // month day
+    std::strftime(buf, 128, ", %d ", p);
+    r.append(buf);
+    // month
+    r.append(get_month_abbr(p->tm_mon));
+    // left
+    std::strftime(buf, 128, " %Y %H:%M:%S %z", p);
+    r.append(buf);
+
+    return r;
 }
 
 int64_t timegm(struct tm *tm)

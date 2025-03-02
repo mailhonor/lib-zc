@@ -24,18 +24,23 @@
 
 zcc_namespace_begin;
 
-#ifdef _WIN64
 void exit(int status)
 {
     ::exit(status);
 }
+
 int get_process_id()
 {
+#ifdef _WIN64
     return ::GetCurrentProcessId();
+#else  // _WIN64
+    return ::getpid();
+#endif // _WIN64
 }
 
 int get_parent_process_id()
 {
+#ifdef _WIN64
     int parent_pid = -1;
     HANDLE handle;
     PROCESSENTRY32 pe;
@@ -58,15 +63,37 @@ int get_parent_process_id()
 
     CloseHandle(handle);
     return parent_pid;
+#else  // _WIN64
+    return ::getppid();
+#endif // _WIN64
 }
 
 int get_thread_id()
 {
+#ifdef _WIN64
     return ::GetCurrentThreadId();
+#else // _WIN64
+#if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 30)
+    return ::gettid();
+#else
+#if defined(SYS_gettid)
+    return (int)syscall(SYS_gettid);
+#elif defined(__NR_gettid) || defined(_ANDROID)
+    return (int)syscall(__NR_gettid);
+#elif defined(__APPLE__)
+    uint64_t tid;
+    pthread_threadid_np(NULL, &tid);
+    return (int)(static_cast<int64_t>(tid));
+#else
+    return -1;
+#endif
+#endif
+#endif // _WIN64
 }
 
 std::string get_cmd_pathname()
 {
+#ifdef _WIN64
     char szFileName[4096 + 1];
     DWORD size = 4096, ret;
     // HMODULE hModule = GetModuleHandle(NULL);
@@ -75,12 +102,29 @@ std::string get_cmd_pathname()
         return MultiByteToUTF8(szFileName, ret);
     }
     return "";
+#else  // _WIN64
+    char path[4096 + 1];
+    int64_t len = readlink("/proc/self/exe", path, 4096);
+    if (len != -1)
+    {
+        path[len] = '\0';
+        return path;
+    }
+    else
+    {
+        return "";
+    }
+#endif // _WIN64
 }
 
 std::string get_cmd_name()
 {
     std::string r = get_cmd_pathname();
+#ifdef _WIN64
     size_t pos = r.find_last_of('\\');
+#else  // _WIN64
+    size_t pos = r.find_last_of('/');
+#endif // _WIN64
     if (pos != std::string::npos)
     {
         return r.substr(pos + 1);
@@ -88,38 +132,7 @@ std::string get_cmd_name()
     return r;
 }
 
-#else // _WIN64
-void exit(int status)
-{
-    ::exit(status);
-}
-
-int get_process_id()
-{
-    return ::getpid();
-}
-
-int get_parent_process_id()
-{
-    return ::getppid();
-}
-
-int get_thread_id()
-{
-#if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 30)
-    return ::gettid();
-#else
-#if defined(SYS_gettid)
-    return (int)syscall(SYS_gettid);
-#elif defined(__NR_gettid) || defined(_ANDROID)
-    return (int)syscall(__NR_gettid);
-#else
-    uint64_t tid;
-    pthread_threadid_np(NULL, &tid);
-    return (int)(static_cast<int64_t>(tid));
-#endif
-#endif
-}
+#ifdef __linux__
 bool quick_setrlimit(int cmd, unsigned long cur_val)
 {
     struct rlimit rlim;
@@ -255,32 +268,6 @@ int get_cpu_core_count()
     fclose(fp);
     return count;
 }
-
-std::string get_cmd_pathname()
-{
-    char path[4096 + 1];
-    int64_t len = readlink("/proc/self/exe", path, 4096);
-    if (len != -1)
-    {
-        path[len] = '\0';
-        return path;
-    }
-    else
-    {
-        return "";
-    }
-}
-
-std::string get_cmd_name()
-{
-    std::string r = get_cmd_pathname();
-    size_t pos = r.find_last_of('/');
-    if (pos != std::string::npos)
-    {
-        return r.substr(pos + 1);
-    }
-    return r;
-}
-#endif // _WIN64
+#endif // __linux__
 
 zcc_namespace_end;

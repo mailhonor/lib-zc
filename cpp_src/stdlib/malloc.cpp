@@ -7,7 +7,6 @@
  */
 
 #include "zcc/zcc_stdlib.h"
-#include <stdlib.h>
 
 zcc_namespace_begin;
 

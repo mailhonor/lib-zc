@@ -210,8 +210,8 @@ std::string imap_client::imap_utf7_to_utf8(const char *str, int slen)
             tmps.append((const char *)ps, p - ps + 1);
             ps = p + 1;
 #else
-            p ++;
-            for (; ps < p; ps ++)
+            p++;
+            for (; ps < p; ps++)
             {
                 if (*ps == ',')
                 {
@@ -232,7 +232,7 @@ std::string imap_client::imap_utf7_to_utf8(const char *str, int slen)
             ps = end;
         }
         tmpr.clear();
-        charset::convert("UTF-7", tmps.c_str(), tmps.size(), "UTF-8", tmpr, 0, -1, 0);
+        tmpr = charset::convert_to_utf8("UTF-7", tmps);
         r.append(tmpr);
     }
     return r;
@@ -256,8 +256,10 @@ std::string imap_client::utf8_to_imap_utf7(const char *str, int slen)
             ps += 1;
             continue;
         }
-        if (*(unsigned char *)ps < 128) {
-            if (*ps < ' ') {
+        if (*(unsigned char *)ps < 128)
+        {
+            if (*ps < ' ')
+            {
                 goto err;
             }
             r.push_back(*ps);
@@ -265,8 +267,10 @@ std::string imap_client::utf8_to_imap_utf7(const char *str, int slen)
             continue;
         }
         tmps.clear();
-        while (ps < end) {
-            if (*(unsigned char *)ps < 128) {
+        while (ps < end)
+        {
+            if (*(unsigned char *)ps < 128)
+            {
                 break;
             }
             tmps.push_back(*ps);
@@ -274,8 +278,9 @@ std::string imap_client::utf8_to_imap_utf7(const char *str, int slen)
             continue;
         }
         tmpr.clear();
-        charset::convert("UTF-8", tmps.c_str(), tmps.size(), "UTF-7", tmpr, 0, -1, 0);
-        if (tmpr.size() > 0) {
+        tmpr = charset::convert("UTF-8", tmps.c_str(), tmps.size(), "UTF-7");
+        if (tmpr.size() > 0)
+        {
             r.push_back('&');
             r.append(tmpr.c_str() + 1);
         }

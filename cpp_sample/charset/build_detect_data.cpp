@@ -200,6 +200,8 @@ static void build_chars_map_one(int char_number, int count)
         data2[char_number] = score;
         return;
     }
+    // std::string ch = char_number_tostring(char_number);
+    // std::fprintf(stderr, "cccc: %s, score: %d, %d, %f, %d\n", ch.c_str(), score, count, li->scale, li->sample_count);
     int nc = char_number & (0XFFFF);
     int prefix = (char_number >> 16) & 0X0F;
     data3[prefix][nc] = score;

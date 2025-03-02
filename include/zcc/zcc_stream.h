@@ -42,11 +42,20 @@ public:
     stream &reset();
 
 public:
+    virtual inline bool connect(const char *destination) { return false; }
+    inline bool connect(const std::string &destination)
+    {
+        return connect(destination.c_str());
+    }
+    virtual int tls_connect(void *ctx) { return -1; }
+    virtual int tls_accept(void *ctx) { return -1; }
     virtual inline int get_socket() { return -1; }
     inline int get_timeout() { return engine_->wait_timeout; }
     virtual stream &set_timeout(int wait_timeout);
     virtual int timed_read_wait(int wait_timeout);
+    virtual inline int trueDataReadabel() { return 0; };
     virtual int timed_write_wait(int wait_timeout);
+    virtual inline int close(bool close_fd_or_release_ssl = true) { return true; };
     virtual inline bool is_opened() { return false; };
     virtual inline bool is_closed() { return true; };
     inline bool is_error() { return (engine_->error ? true : false); }
@@ -127,6 +136,8 @@ public:
     int write_cint_and_long(int64_t l);
     int write_cint_and_data(const void *buf, int len);
     inline int write_cint_and_pp(const char **pp, int size);
+    //
+    inline bool is_iostream() { return is_iostream_; }
 
 protected:
     virtual int engine_read(void *buf, int len) = 0;
@@ -138,18 +149,11 @@ private:
 
 protected:
     stream_engine *engine_{nullptr};
+    bool is_iostream_{false};
 };
 
 class iostream : public stream
 {
-public:
-    struct connect_options
-    {
-        const char *destination{nullptr};
-        SSL_CTX *ssl_ctx{nullptr};
-        int retry_times{1};
-    };
-
 public:
     iostream();
     iostream(int fd);
@@ -162,11 +166,11 @@ public:
     {
         return connect(destination.c_str());
     }
-    bool connect(const connect_options &options);
 
 public:
     virtual inline int get_socket() { return fd_; }
     virtual iostream &set_timeout(int wait_timeout);
+    virtual int trueDataReadabel();
     virtual int timed_read_wait(int wait_timeout);
     virtual int timed_write_wait(int wait_timeout);
     virtual int close(bool close_fd_or_release_ssl = true);
@@ -181,6 +185,8 @@ public:
     inline SSL *get_ssl() { return ssl_; }
     int tls_connect(SSL_CTX *ctx);
     int tls_accept(SSL_CTX *ctx);
+    inline int tls_connect(void *ctx) { return tls_connect((SSL_CTX *)ctx); }
+    inline int tls_accept(void *ctx) { return tls_accept((SSL_CTX *)ctx); }
 
 protected:
     virtual int engine_read(void *buf, int len);

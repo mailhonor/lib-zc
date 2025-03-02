@@ -361,7 +361,7 @@ std::string &clear_null(std::string &data)
 
 void *no_memmem(const void *l, int64_t l_len, const void *s, int64_t s_len)
 {
-     char *cur, *last;
+    char *cur, *last;
     const char *cl = (const char *)l;
     const char *cs = (const char *)s;
 
@@ -407,23 +407,25 @@ std::string &sprintf_1024(std::string &str, const char *format, ...)
     return str;
 }
 
-static inline int _tolower_xxx(int ch)
-{
-    return zcc::tolower(ch);
-}
 std::string &tolower(std::string &str)
 {
-    std::transform(str.begin(), str.end(), str.begin(), _tolower_xxx);
+    size_t i = 0;
+    size_t size = str.size();
+    for (i = 0; i < size; i++)
+    {
+        str[i] = tolower(str[i]);
+    }
     return str;
 }
 
-static inline int _toupper_xxx(int ch)
-{
-    return zcc::tolower(ch);
-}
 std::string &toupper(std::string &str)
 {
-    std::transform(str.begin(), str.end(), str.begin(), _toupper_xxx);
+    size_t i = 0;
+    size_t size = str.size();
+    for (i = 0; i < size; i++)
+    {
+        str[i] = toupper(str[i]);
+    }
     return str;
 }
 

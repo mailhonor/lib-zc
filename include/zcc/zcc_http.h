@@ -265,7 +265,7 @@ public:
     // 0: 1.0;  1: 1.1
     inline int request_get_version_code()
     {
-        return (version_code_ == -1) ? request_get_version_code_deal() : version_code_;
+        return (version_code_ == 0XFF) ? request_get_version_code_deal() : version_code_;
     }
 
     // 分析http头Content-Lengtgh字段
@@ -475,7 +475,7 @@ protected:
     std::vector<httpd_uploaded_file> request_uploaded_files_;
     mail_parser *post_data_parser_{nullptr};
     std::string post_data_pathname_;
-    char version_code_{-1};
+    unsigned char version_code_{0XFF};
     bool request_gzip_dealed_{false};
     bool request_gzip_{false};
     bool request_deflate_dealed_{false};

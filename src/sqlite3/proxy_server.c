@@ -6,7 +6,7 @@
  * ================================
  */
 
-#ifdef _LIB_ZC_SQLITE3_
+#ifdef ZCC_USE_SQLITE3__
 
 #include "zc.h"
 #include <pthread.h>
@@ -403,5 +403,5 @@ int zsqlite3_proxy_server_main(int argc, char **argv)
 * vim600: fdm=marker
 */
 
-#endif /* _LIB_ZC_SQLITE3_ */
+#endif /* ZCC_USE_SQLITE3__ */
 

@@ -57,7 +57,7 @@ const char *correct_name(const char *charset)
         {"CSISO88596E", "ISO-8859-6"},
         {"CSISO88596I", "ISO-8859-6"},
         {"CSISO88598E", "ISO-8859-8"},
-        {"CSISO88598I", "ISO-8859-8-I"},
+        {"CSISO88598I", "ISO-8859-8"},
         {"CSISOLATIN1", "WINDOWS-1252"},
         {"CSISOLATIN2", "ISO-8859-2"},
         {"CSISOLATIN3", "ISO-8859-3"},
@@ -141,7 +141,7 @@ const char *correct_name(const char *charset)
         {"ISO88597", "ISO-8859-7"},
         {"ISO_8859-8:1988", "ISO-8859-8"},
         {"ISO-8859-8-E", "ISO-8859-8"},
-        {"ISO-8859-8-I", "ISO-8859-8-I"},
+        {"ISO-8859-8-I", "ISO-8859-8"},
         {"ISO-8859-8", "ISO-8859-8"},
         {"ISO_8859-8", "ISO-8859-8"},
         {"ISO8859-8", "ISO-8859-8"},
@@ -187,7 +187,7 @@ const char *correct_name(const char *charset)
         {"LATIN4", "ISO-8859-4"},
         {"LATIN5", "WINDOWS-1254"},
         {"LATIN6", "ISO-8859-10"},
-        {"LOGICAL", "ISO-8859-8-I"},
+        {"LOGICAL", "ISO-8859-8"},
         {"MACINTOSH", "MACINTOSH"},
         {"MAC", "MACINTOSH"},
         {"MS932", "SHIFT_JIS"},
@@ -226,7 +226,7 @@ const char *correct_name(const char *charset)
         {"X-CP1258", "WINDOWS-1258"},
         {"X-EUC-JP", "EUC-JP"},
         {"X-GB18030", "GB18030"},
-        {"X-MAC-CYRILLIC", "X-MAC-CYRILLIC"},
+        {"X-GBK", "GB18030"},
         {"X-MAC-ROMAN", "MACINTOSH"},
         {"X-MAC-UKRAINIAN", "X-MAC-CYRILLIC"},
         {"X-SJIS", "SHIFT_JIS"},
@@ -234,11 +234,11 @@ const char *correct_name(const char *charset)
         {"X-X-BIG5", "BIG5"},
     };
     auto it = formats.find(tmpcharset);
-    if (it == formats.end())
+    if (it != formats.end())
     {
-        return charset;
+        return it->second.c_str();
     }
-    return it->second.c_str();
+    return charset;
 }
 
 static void _clear_null_inner(std::string &bf)
@@ -254,27 +254,15 @@ static void _clear_null_inner(std::string &bf)
     }
 }
 
-static bool _mime_iconv_1252(const char *data, int size, std::string &result)
+static bool check_is_7bit(const unsigned char *str, int len)
 {
-    result.clear();
-    int omit_invalid_bytes_count = 0;
-
-    std::string charset = detect_1252(data, size);
-    if (charset.empty())
+    for (int i = 0; i < len; i++)
     {
-        charset = "windows-1252";
-    }
-
-    if (convert(charset.c_str(), data, size,
-                "UTF-8", result, 0,
-                10, &omit_invalid_bytes_count) < 0)
-    {
-        return false;
-    }
-
-    if (omit_invalid_bytes_count > 0)
-    {
-        return false;
+        unsigned c = str[i];
+        if (c & 0X80)
+        {
+            return false;
+        }
     }
     return true;
 }
@@ -293,19 +281,22 @@ static void _convert_to_utf8(const char *from_charset, const char *data, int siz
     std::string from_charset_buf;
     std::string charset;
 
+    if (zcc::empty(from_charset))
+    {
+        if (check_is_7bit((const unsigned char *)data, size))
+        {
+            result.clear();
+            result.append(data, size);
+            _clear_null_inner(result);
+            return;
+        }
+    }
+
     if (from_charset)
     {
         from_charset_buf = from_charset;
         zcc::tolower(from_charset_buf);
         from_charset = from_charset_buf.c_str();
-        if ((from_charset_buf == "iso-8859-1") || (from_charset_buf == "windows-1252"))
-        {
-            // if (_mime_iconv_1252(data, size, result))
-            // {
-            //     return;
-            // }
-            // from_charset = 0;
-        }
     }
 
     const char *default_charset = "WINDOWS-1252";
@@ -338,9 +329,8 @@ static void _convert_to_utf8(const char *from_charset, const char *data, int siz
         f_charset = correct_name(f_charset);
     }
 
-    if (convert(f_charset, data, size,
-                "UTF-8", result, 0,
-                -1, 0) > 0)
+    result = convert(f_charset, data, size, "UTF-8");
+    if (!result.empty())
     {
         _clear_null_inner(result);
         return;
@@ -349,8 +339,6 @@ static void _convert_to_utf8(const char *from_charset, const char *data, int siz
     if (detected)
     {
         result.clear();
-        result.append(data, size);
-        _clear_null_inner(result);
         return;
     }
 
@@ -363,17 +351,8 @@ static void _convert_to_utf8(const char *from_charset, const char *data, int siz
     {
         f_charset = default_charset;
     }
-    result.clear();
-    if (convert(f_charset, data, size,
-                "UTF-8", result, 0,
-                -1, 0) > 0)
-    {
-        _clear_null_inner(result);
-        return;
-    }
 
-    result.clear();
-    result.append(data, size);
+    result = convert(f_charset, data, size, "UTF-8");
     _clear_null_inner(result);
     return;
 }
@@ -385,29 +364,7 @@ std::string convert_to_utf8(const char *from_charset, const char *data, int size
     return r;
 }
 
-std::string utf8_tail_complete(const std::string &s)
-{
-    std::string r = s;
-    while (1)
-    {
-        size_t len = r.size();
-        if (len < 1)
-        {
-            break;
-        }
-        unsigned char ch = r[len - 1];
-        if (ch < 128)
-        {
-            break;
-        }
-        r.resize(len - 1);
-        if ((ch & 0XC0) == 0XC0)
-        {
-            break;
-        }
-    }
-    return r;
-}
+std::string (*convert_engine)(const char *from_charset, const char *src, int src_len, const char *to_charset, int *invalid_bytes) = iconv_convert;
 
 zcc_general_namespace_end(charset);
 zcc_namespace_end;

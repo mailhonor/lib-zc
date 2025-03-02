@@ -77,9 +77,10 @@ zcc_namespace_c_end;
 #ifndef _WIN64
 #include <strings.h>
 #endif // _WIN64
-#include <string.h>
 #include <cstring>
 #include <cstdarg>
+#include <cstddef>
+#include <cstdlib>
 #include <string>
 #include <vector>
 #include <list>
@@ -175,7 +176,6 @@ enum level
     verbose = 1,
     debug,
     info,
-    output,
     warning,
     error,
     fatal,
@@ -207,7 +207,7 @@ inline int get_facility(const std::string &facility)
 {
     return get_facility(facility.c_str());
 }
-zcc_general_namespace_end(logger);
+
 #define zcc_verbose(...) (zcc::logger::var_verbose_enable ? zcc::logger::log_output(ZCC__FILE__, __LINE__, zcc::logger::verbose, __VA_ARGS__) : (void)0);
 #define zcc_debug(...) (zcc::logger::var_debug_enable ? zcc::logger::log_output(ZCC__FILE__, __LINE__, zcc::logger::debug, __VA_ARGS__) : (void)0);
 #define zcc_info(...) zcc::logger::log_output(ZCC__FILE__, __LINE__, zcc::logger::info, __VA_ARGS__)
@@ -215,8 +215,117 @@ zcc_general_namespace_end(logger);
 #define zcc_error(...) zcc::logger::log_output(ZCC__FILE__, __LINE__, zcc::logger::error, __VA_ARGS__)
 #define zcc_fatal(...) zcc::logger::log_output(ZCC__FILE__, __LINE__, zcc::logger::fatal, __VA_ARGS__)
 #define zcc_error_and_exit(...) zcc::logger::log_output(ZCC__FILE__, __LINE__, zcc::logger::error_and_exit, __VA_ARGS__)
-#define zcc_output(...) zcc::logger::log_output(ZCC__FILE__, __LINE__, zcc::logger::output, __VA_ARGS__)
 #define zcc_exit(status) zcc::exit(status)
+
+class LOG
+{
+public:
+    LOG(level ll, const char *sourcePathname, uint64_t lineNumber);
+    ~LOG();
+    inline LOG &append(int v)
+    {
+        buf_.append(std::to_string(v));
+        return *this;
+    };
+    inline LOG &operator<<(int v) { return append(v); }
+
+    inline LOG &append(unsigned int v)
+    {
+        buf_.append(std::to_string(v));
+        return *this;
+    };
+    inline LOG &operator<<(unsigned int v) { return append(v); }
+
+    inline LOG &append(double v)
+    {
+        buf_.append(std::to_string(v));
+        return *this;
+    };
+    inline LOG &operator<<(double v) { return append(v); }
+
+    inline LOG &append(bool v)
+    {
+        buf_.append(v ? "true" : "false");
+        return *this;
+    };
+    inline LOG &operator<<(bool v) { return append(v); }
+
+    inline LOG &append(char v)
+    {
+        buf_.push_back(v);
+        return *this;
+    };
+    inline LOG &operator<<(char v) { return append(v); }
+
+    inline LOG &append(unsigned char v)
+    {
+        buf_.push_back(v);
+        return *this;
+    };
+    inline LOG &operator<<(unsigned char v) { return append(v); }
+
+    inline LOG &append(const char *v)
+    {
+        buf_.append(v);
+        return *this;
+    };
+    inline LOG &operator<<(const char *v) { return append(v); }
+
+    inline LOG &append(const unsigned char *v)
+    {
+        buf_.append((const char *)v);
+        return *this;
+    };
+    inline LOG &operator<<(const unsigned char *v) { return append(v); }
+
+    inline LOG &append(const char *v, int len)
+    {
+        buf_.append(v, len);
+        return *this;
+    };
+
+    inline LOG &append(const unsigned char *v, int len)
+    {
+        buf_.append((const char *)v, len);
+        return *this;
+    };
+
+    inline LOG &append(const std::string &v)
+    {
+        buf_.append(v);
+        return *this;
+    };
+    inline LOG &operator<<(const std::string &v) { return append(v); }
+
+    inline LOG &append(const std::string *v)
+    {
+        if (v)
+        {
+            buf_.append(*v);
+        }
+        return *this;
+    };
+    inline LOG &operator<<(const std::string *v) { return append(v); }
+
+public:
+    const char *sourcePathname_;
+    uint64_t lineNumber_;
+    logger::level level_;
+    std::string buf_;
+};
+
+#define zccVerbose()                     \
+    if (zcc::logger::var_verbose_enable) \
+    zcc::logger::LOG(zcc::logger::verbose, ZCC__FILE__, __LINE__)
+#define zccDebug()                                                        \
+    if (zcc::logger::var_verbose_enable || zcc::logger::var_debug_enable) \
+    zcc::logger::LOG(zcc::logger::debug, ZCC__FILE__, __LINE__)
+#define zccInfo() zcc::logger::LOG(zcc::logger::info, ZCC__FILE__, __LINE__)
+#define zccWarning() zcc::logger::LOG(zcc::logger::warning, ZCC__FILE__, __LINE__)
+#define zccError() zcc::logger::LOG(zcc::logger::error, ZCC__FILE__, __LINE__)
+#define zccFatal() zcc::logger::LOG(zcc::logger::fatal, ZCC__FILE__, __LINE__)
+
+zcc_general_namespace_end(logger);
 
 /* malloc ########################################################### */
 void *malloc(int64_t len);
@@ -591,12 +700,15 @@ inline std::string md5(const std::string &data)
 }
 
 /* config ########################################################## */
+// 线程, 读写不安全
+// 线程, 只有读是安全的
 class config : public std::map<std::string, std::string>
 {
 public:
     config();
     ~config();
     config &reset();
+    virtual inline void afterUpdate() {};
     config &update(const char *key, const char *val, int vlen = -1);
     config &update(const char *key, const std::string &val);
     config &update(const std::string &key, const std::string &val);
@@ -718,7 +830,7 @@ inline FILE *fopen(const std::string &pathname, const char *mode)
 int64_t getdelim(char **lineptr, int64_t *n, int delim, FILE *stream);
 inline int64_t getline(char **lineptr, int64_t *n, FILE *stream)
 {
-    return getdelim(lineptr, (size_t *)n, '\n', stream);
+    return getdelim(lineptr, (int64_t *)n, '\n', stream);
 }
 
 #else  // _WIN64
@@ -934,6 +1046,8 @@ void sleep_millisecond(int64_t delay);
 int64_t millisecond_to(int64_t stamp);
 int64_t second();
 void sleep(int64_t delay);
+const char *get_day_abbr_of_week(int day);
+const char *get_month_abbr(int month);
 std::string rfc1123_time(int64_t t = 0);
 std::string rfc822_time(int64_t t = 0);
 int64_t timegm(struct tm *tm);

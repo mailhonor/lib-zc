@@ -6,7 +6,6 @@
  * ================================
  */
 
-#include <cstdarg>
 #include "zcc/zcc_stdlib.h"
 #if __linux__
 #include <assert.h>
@@ -23,17 +22,9 @@ bool var_output_disable = false;
 
 static void output_handler_default(const char *source_fn, uint64_t line_number, level ll, const char *fmt, va_list ap)
 {
-    if (ll == level::output)
-    {
-        std::vfprintf(stderr, fmt, ap);
-        std::fputs("\n", stderr);
-    }
-    else
-    {
-        char fmt_buf[1024 + 1];
-        std::snprintf(fmt_buf, 1024, "%s [%s:%zu]\n", fmt, source_fn, line_number);
-        std::vfprintf(stderr, fmt_buf, ap);
-    }
+    char fmt_buf[1024 + 1];
+    std::snprintf(fmt_buf, 1024, "%s [%s:%zu]\n", fmt, source_fn, line_number);
+    std::vfprintf(stderr, fmt_buf, ap);
 }
 
 output_handler_type var_output_handler = output_handler_default;
@@ -85,6 +76,23 @@ void log_output(const char *source_fn, uint64_t line_number, level ll, const cha
     va_end(ap);
 }
 
+// class LOG
+LOG::LOG(level ll, const char *sourcePathname, uint64_t lineNumber)
+{
+    sourcePathname_ = sourcePathname;
+    lineNumber_ = lineNumber;
+    level_ = ll;
+}
+
+LOG::~LOG()
+{
+    if (buf_.empty())
+    {
+        return;
+    }
+    log_output(sourcePathname_, lineNumber_, level_, "%s", buf_.c_str());
+}
+
 // syslog
 
 void use_syslog_by_config(const char *attr /* facility[,identity */)
@@ -124,19 +132,11 @@ void use_syslog_by_config(const char *attr /* facility[,identity */)
 
 static void output_handler_syslog(const char *source_fn, uint64_t line_number, level ll, const char *fmt, va_list ap)
 {
-    if (ll == level::output)
-    {
-        std::vfprintf(stderr, fmt, ap);
-        std::fputs("\n", stderr);
-    }
-    else
-    {
 #ifdef __linux__
-        char fmt_buf[1024 + 1];
-        std::snprintf(fmt_buf, 1024, "%s [%s:%zu]\n", fmt, source_fn, line_number);
-        vsyslog(LOG_INFO, fmt_buf, ap);
+    char fmt_buf[1024 + 1];
+    std::snprintf(fmt_buf, 1024, "%s [%s:%zu]\n", fmt, source_fn, line_number);
+    vsyslog(LOG_INFO, fmt_buf, ap);
 #endif // __linux__
-    }
 }
 
 void use_syslog(int facility)
@@ -208,7 +208,7 @@ int get_facility(const char *facility)
 #undef ___LOG_S_I
 
     return fa;
-#else // __linux__
+#else  // __linux__
     return -1;
 #endif // __linux__
 }

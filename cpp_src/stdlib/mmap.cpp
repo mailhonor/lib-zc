@@ -97,12 +97,18 @@ int mmap_reader::open(const char *pathname)
 
     if (NULL == data)
     {
-        CloseHandle(fm);
-        CloseHandle(fd);
-        return -1;
+        if (size == 0)
+        {
+            data = (void *)var_blank_buffer;
+        }
+        else
+        {
+            CloseHandle(fm);
+            CloseHandle(fd);
+            return -1;
+        }
     }
     fd_ = fd;
-    fd_ = INVALID_HANDLE_VALUE;
     fm_ = fm;
     data_ = (const char *)data;
     size_ = size;

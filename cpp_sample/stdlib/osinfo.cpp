@@ -20,5 +20,6 @@ int main(int argc, char **argv)
 {
     zcc::main_argument::run(argc, argv);
     cmdname();
+    zccInfo() << "LOGGER, INFO: " << 1 << " " << "test";
     return 0;
 }

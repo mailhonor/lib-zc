@@ -12,6 +12,17 @@
 #include <mutex>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/conf.h>
+
+#ifndef CRYPTO_num_locks
+extern "C"
+{
+    struct CRYPTO_dynlock_value
+    {
+        std::mutex mutex;
+    };
+}
+#endif // CRYPTO_num_locks
 
 zcc_namespace_begin;
 zcc_general_namespace_begin(openssl);
@@ -41,11 +52,6 @@ static unsigned long thread_safe_id_fn(void)
 {
     return get_thread_id();
 }
-
-struct CRYPTO_dynlock_value
-{
-    std::mutex mutex;
-};
 
 static struct CRYPTO_dynlock_value *thread_safe_dynlock_create_fn(const char *file, int line)
 {
@@ -391,7 +397,7 @@ int SSL_get_fd(SSL *ssl)
         }                                                                                    \
         else                                                                                 \
         {                                                                                    \
-            /* FIXME 这里有问题 */                                                      \
+            /* FIXME 这里有问题 */                                                           \
             if (need_check_read_close && (ret == 0) /* && (err == SSL_ERROR_ZERO_RETURN) */) \
             {                                                                                \
                 {                                                                            \
@@ -399,7 +405,7 @@ int SSL_get_fd(SSL *ssl)
                     break;                                                                   \
                 }                                                                            \
             }                                                                                \
-            if (var_debug_mode)                                                                  \
+            if (var_debug_mode)                                                              \
             {                                                                                \
                 zcc_info("openssl: found error ret=%d, status=%d", ret, err);                \
             }                                                                                \

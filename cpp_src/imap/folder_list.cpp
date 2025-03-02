@@ -28,9 +28,11 @@ imap_client::folder_result::~folder_result()
 void imap_client::folder_result::reset()
 {
     name_ = "";
+    hierarchy_separator_ = '/';
     noinferiors_ = false;
     noselect_ = false;
     subscribed_ = false;
+    inbox_ = false;
     drafts_ = false;
     junk_ = false;
     trash_ = false;
@@ -104,12 +106,35 @@ static void _parse_folder_list(imap_client::folder_result &folder, const imap_cl
     // * LIST (\HasNoChildren \UnMarked) "/" vvv
     auto &token_vector = response_tokens.token_vector_;
     folder.reset();
+
+    // name
     folder.name_ = token_vector.back();
+
+    // inbox
+    if ((folder.name_[0] == 'i') || (folder.name_[0] == 'I'))
+    {
+        if (!zcc::strcasecmp(folder.name_.c_str(), "inbox"))
+        {
+            folder.inbox_ = true;
+        }
+    }
+
     if (token_vector.size() < 2)
     {
         return;
     }
+    // hierarchy separator
+    const char *separator = token_vector[token_vector.size() - 2].c_str();
+    if (*separator == '"')
+    {
+        separator++;
+    }
+    if (*separator)
+    {
+        folder.hierarchy_separator_ = *separator;
+    }
 
+    // attrs
     bool stop = false;
     for (auto it = token_vector.begin() + 2; (!stop) && (it != token_vector.end()); it++)
     {

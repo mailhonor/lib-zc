@@ -27,7 +27,6 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <time.h>
 #include <utime.h>
 #include <stdarg.h>
 #include <dirent.h>

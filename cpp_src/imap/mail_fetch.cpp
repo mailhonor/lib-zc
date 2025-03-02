@@ -133,7 +133,7 @@ int imap_client::get_message(FILE *dest_fp, mail_flags &flags, int uid)
     int r = -1;
 
     linebuf.clear();
-    zcc::sprintf_1024(linebuf, "F UID FETCH %d (FLAGS BODY.PEEK[])", uid);
+    zcc::sprintf_1024(linebuf, "F UID FETCH %d (UID FLAGS BODY.PEEK[])", uid);
     fp_append(linebuf).fp_append("\r\n");
     zcc_imap_client_debug_write_line(linebuf);
 
@@ -154,19 +154,32 @@ int imap_client::get_message(FILE *dest_fp, mail_flags &flags, int uid)
         }
         if (response_tokens.token_vector_[0] == "*")
         {
-            _imap_client_parse_mail_flags(flags, response_tokens, 3);
+            if ((response_tokens.token_vector_.size() > 3) && (response_tokens.token_vector_[3] == "(UID"))
+            {
+                _imap_client_parse_mail_flags(flags, response_tokens, 5);
 
-            if ((r = read_big_data(dest_fp, response_tokens.token_vector_.back(), extra_length)) < 1)
-            {
-                r = -1;
-                break;
-            }
-            zcc_imap_client_debug("获取一封信件, (Answered:%d, Seen: %d, Draft:%d, Flagged: %d, Deleted: %d, Recent: %d)", flags.answered_, flags.seen_, flags.draft_, flags.flagged_, flags.deleted_, flags.recent_);
-            if (extra_length > -1)
-            {
-                if ((r = ignore_left_token(-1)) < 1)
+                if ((r = read_big_data(dest_fp, response_tokens.token_vector_.back(), extra_length)) < 1)
                 {
+                    r = -1;
                     break;
+                }
+                zcc_imap_client_debug("获取一封信件, (Answered:%d, Seen: %d, Draft:%d, Flagged: %d, Deleted: %d, Recent: %d)", flags.answered_, flags.seen_, flags.draft_, flags.flagged_, flags.deleted_, flags.recent_);
+                if (extra_length > -1)
+                {
+                    if ((r = ignore_left_token(-1)) < 1)
+                    {
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                if (extra_length > -1)
+                {
+                    if ((r = ignore_left_token(extra_length)) < 1)
+                    {
+                        break;
+                    }
                 }
             }
         }

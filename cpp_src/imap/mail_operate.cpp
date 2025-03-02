@@ -364,10 +364,15 @@ int imap_client::cmd_append_prepare_protocol(append_session &append)
 
     if (append.time_ > 0)
     {
-        char timebuf[64 + 1];
+        char timebuf[128 + 1];
         std::tm *now_tm = std::localtime((time_t *)&(append.time_));
-        std::strftime(timebuf, 64, "%d-%b-%Y %T %Z", now_tm);
-        linebuf.append(" \"").append(timebuf).append("\"");
+        std::string r;
+        std::strftime(timebuf, 128, "%d-", now_tm);
+        r.append(timebuf);
+        r.append(get_month_abbr(now_tm->tm_mon));
+        std::strftime(timebuf, 128, "-%Y %T %z", now_tm);
+        r.append(timebuf);
+        linebuf.append(" \"").append(r).append("\"");
     }
     linebuf.append(" {").append(std::to_string(append.mail_size_)).append("}");
     fp_append(linebuf).fp_append("\r\n");
@@ -459,7 +464,7 @@ int imap_client::append_file(uidplus_result &result, append_session &append, con
             need_close_connection_ = true;
             goto over;
         }
-        if (fp_.write(buf, (int)len) < 0)
+        if (fp_->write(buf, (int)len) < 0)
         {
             zcc_imap_client_info("ERROR write");
             need_close_connection_ = true;
@@ -491,7 +496,7 @@ int imap_client::append_data(uidplus_result &result, append_session &append, con
         goto over;
     }
 
-    if (fp_.write(data, (int)dlen) < 0)
+    if (fp_->write(data, (int)dlen) < 0)
     {
         zcc_imap_client_info("ERROR write");
         need_close_connection_ = true;

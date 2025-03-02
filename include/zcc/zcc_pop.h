@@ -23,6 +23,7 @@ class pop_client
 {
 public:
     pop_client();
+    pop_client(stream *third_stream);
     ~pop_client();
     inline void set_debug_mode(bool tf = true) { debug_mode_ = tf; }
     inline void set_verbose_mode(bool tf = true) { verbose_mode_ = tf; }
@@ -34,7 +35,11 @@ public:
 
     void set_timeout(int timeout);
     void set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bool tls_try_mode = false);
-    iostream &get_iostream() { return fp_; }
+    virtual inline void set_ssl_tls(void *ssl_ctx, bool ssl_mode, bool tls_mode, bool tls_try_mode = false)
+    {
+        set_ssl_tls((SSL_CTX *)ssl_ctx, ssl_mode, tls_mode, tls_try_mode);
+    }
+    stream &get_iostream() { return *fp_; }
     int connect(const char *destination, int times = 3);
     void disconnect();
     void close();
@@ -81,7 +86,7 @@ protected:
     std::string banner_apop_id_;
     std::vector<std::string> capability_;
     std::string blank_;
-    iostream fp_;
+    stream *fp_{nullptr};
     SSL_CTX *ssl_ctx_{NULL};
     bool ssl_mode_{false};
     bool tls_mode_{false};
@@ -98,6 +103,7 @@ protected:
     bool quited_{false};
     bool authed_{false};
     bool ssl_flag_{false};
+    bool third_stream_mode_{false};
     int capa_before_auth_{-1};
     int capa_after_auth_{-1};
 };

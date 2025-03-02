@@ -27,7 +27,7 @@ ENDIF()
 IF(CMAKE_SYSTEM_NAME MATCHES "Darwin")
     set(general_include_dirs /opt/homebrew/Cellar/openssl@3/3.3.1/include/ /usr/local/Cellar/openssl@3/3.3.1/include/)
     set(general_lib_dirs /usr/local/lib/ /opt/homebrew/Cellar/openssl@3/3.3.1/lib /usr/local/Cellar/openssl@3/3.3.1/lib)
-    set(general_libs ssl crypto resolv pthread)
+    set(general_libs iconv ssl crypto resolv pthread)
 ENDIF()
 
 IF(MINGW OR ZCC_LINUX OR APPLE)

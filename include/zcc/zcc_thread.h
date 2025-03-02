@@ -11,8 +11,9 @@
 #ifndef ZCC_LIB_INCLUDE_THREAD__
 #define ZCC_LIB_INCLUDE_THREAD__
 
-#include <functional>
 #include "./zcc_stdlib.h"
+#include <functional>
+#include <thread>
 
 #ifdef __cplusplus
 #pragma pack(push, 4)
@@ -56,6 +57,21 @@ public:
 protected:
     thread_pool_engine *engine_{nullptr};
 };
+
+#ifndef __APPLE__
+void set_thread_name(std::thread &t, const char *name);
+inline void set_thread_name(std::thread &t, const std::string &name)
+{
+    set_thread_name(t, name.c_str());
+}
+#endif // __APPLE__
+void set_thread_name(const char *name);
+inline void set_thread_name(const std::string &name)
+{
+    set_thread_name(name.c_str());
+}
+std::string get_thread_name(std::thread &t);
+std::string get_thread_name();
 
 zcc_namespace_end;
 #pragma pack(pop)

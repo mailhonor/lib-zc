@@ -32,6 +32,7 @@
 #include "./include/zcc/zcc_thread.h"
 #include "./include/zcc/zcc_aio.h"
 #include "./include/zcc/zcc_server.h"
+#include "./include/zcc/zcc_sqlite3.h"
 #include "./include/zcc/zcc_win64.h"
 
 #endif // ZCC_LIB_INCLUDE___

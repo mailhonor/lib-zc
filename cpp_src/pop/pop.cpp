@@ -12,10 +12,21 @@ zcc_namespace_begin;
 
 pop_client::pop_client()
 {
+    fp_ = new iostream();
+}
+
+pop_client::pop_client(stream *third_stream)
+{
+    fp_ = third_stream;
+    third_stream_mode_ = true;
 }
 
 pop_client::~pop_client()
 {
+    if (!third_stream_mode_)
+    {
+        delete fp_;
+    }
 }
 
 void pop_client::set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bool tls_try_mode)
@@ -28,7 +39,7 @@ void pop_client::set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, boo
 
 void pop_client::set_timeout(int timeout)
 {
-    fp_.set_timeout(timeout);
+    fp_->set_timeout(timeout);
 }
 
 pop_client &pop_client::fp_append(const char *s, int slen)
@@ -37,7 +48,7 @@ pop_client &pop_client::fp_append(const char *s, int slen)
     {
         slen = std::strlen(s);
     }
-    fp_.append(s, slen);
+    fp_->append(s, slen);
     if (debug_protocol_fn_)
     {
         debug_protocol_fn_('C', s, slen);
@@ -47,7 +58,7 @@ pop_client &pop_client::fp_append(const char *s, int slen)
 
 pop_client &pop_client::fp_append(const std::string &s)
 {
-    fp_.append(s);
+    fp_->append(s);
     if (debug_protocol_fn_)
     {
         debug_protocol_fn_('C', s.c_str(), (int)s.size());
@@ -57,7 +68,7 @@ pop_client &pop_client::fp_append(const std::string &s)
 
 int pop_client::fp_readn(void *mem, int strict_len)
 {
-    int r = fp_.readn(mem, strict_len);
+    int r = fp_->readn(mem, strict_len);
     if (r < strict_len)
     {
         need_close_connection_ = true;
@@ -76,7 +87,7 @@ int pop_client::fp_readn(void *mem, int strict_len)
 
 int pop_client::fp_readn(std::string &str, int strict_len)
 {
-    int r = fp_.readn(str, strict_len);
+    int r = fp_->readn(str, strict_len);
     if (r < strict_len)
     {
         need_close_connection_ = true;
@@ -94,7 +105,7 @@ int pop_client::fp_readn(std::string &str, int strict_len)
 
 int pop_client::fp_read_delimiter(void *mem, int delimiter, int max_len)
 {
-    int r = fp_.read_delimiter(mem, delimiter, max_len);
+    int r = fp_->read_delimiter(mem, delimiter, max_len);
     if (r < 0)
     {
         need_close_connection_ = true;
@@ -112,7 +123,7 @@ int pop_client::fp_read_delimiter(void *mem, int delimiter, int max_len)
 
 int pop_client::fp_read_delimiter(std::string &str, int delimiter, int max_len)
 {
-    int r = fp_.read_delimiter(str, delimiter, max_len);
+    int r = fp_->read_delimiter(str, delimiter, max_len);
     if (r < 0)
     {
         need_close_connection_ = true;
@@ -169,7 +180,7 @@ int pop_client::do_STLS()
         return r;
     }
 
-    if (fp_.tls_connect(ssl_ctx_) < 0)
+    if (fp_->tls_connect(ssl_ctx_) < 0)
     {
         zcc_pop_client_error("建立SSL");
         return -1;
@@ -200,7 +211,7 @@ int pop_client::fp_connect(const char *destination, int times)
         }
         return -1;
     }
-    if (!fp_.connect(destination))
+    if (!fp_->connect(destination))
     {
         zcc_pop_client_error("连接(%s)", destination);
         need_close_connection_ = true;
@@ -208,7 +219,7 @@ int pop_client::fp_connect(const char *destination, int times)
     }
     if (ssl_mode_)
     {
-        if (fp_.tls_connect(ssl_ctx_) < 0)
+        if (fp_->tls_connect(ssl_ctx_) < 0)
         {
             disconnect();
             need_close_connection_ = true;
@@ -224,7 +235,7 @@ int pop_client::fp_connect(const char *destination, int times)
 
 void pop_client::disconnect()
 {
-    fp_.close();
+    fp_->close();
     opened_ = false;
     need_close_connection_ = false;
     connected_ = false;

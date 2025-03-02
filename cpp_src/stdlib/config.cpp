@@ -34,18 +34,21 @@ config &config::update(const char *key, const char *val, int vlen)
         vlen = std::strlen(val);
     }
     (*this)[key] = std::string(val, vlen);
+    afterUpdate();
     return *this;
 }
 
 config &config::update(const char *key, const std::string &val)
 {
     (*this)[key] = val;
+    afterUpdate();
     return *this;
 }
 
 config &config::update(const std::string &key, const std::string &val)
 {
     (*this)[key] = val;
+    afterUpdate();
     return *this;
 }
 
@@ -55,6 +58,7 @@ config &config::remove(const char *key)
     if (it != end())
     {
         erase(it);
+        afterUpdate();
     }
     return *this;
 }
@@ -65,6 +69,7 @@ config &config::remove(const std::string &key)
     if (it != end())
     {
         erase(it);
+        afterUpdate();
     }
     return *this;
 }
@@ -132,7 +137,7 @@ config &config::debug_show()
     {
         s.append(it->first).append(" = ").append(it->second).append("\r\n");
     }
-    zcc_output("%s", s.c_str());
+    std::fprintf(stderr, "%s\n", s.c_str());
     return *this;
 }
 

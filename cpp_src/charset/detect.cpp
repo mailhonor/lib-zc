@@ -7,6 +7,7 @@
  */
 
 #include "zcc/zcc_charset.h"
+#include <cmath>
 
 #define mydebug         \
     if (var_debug_mode) \
@@ -15,7 +16,6 @@
 zcc_namespace_begin;
 zcc_general_namespace_begin(charset);
 
-
 #pragma pack(push, 8)
 #include "./char_score.h"
 #pragma pack(pop)
@@ -23,9 +23,9 @@ zcc_general_namespace_begin(charset);
 detect_data *var_default_detect_data = &___detect_data;
 
 const char *chinese[] = {"UTF-8", "GB18030", "BIG5", "UTF-7", 0};
-const char *japanese[] = {"UTF-8", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", "UTF-7", 0};
+const char *japanese[] = {"UTF-8", "EUC-JP", "SHIFT-JIS", "ISO-2022-JP", "UTF-7", 0};
 const char *korean[] = {"UTF-8", "EUC-KR", "UTF-7", 0};
-const char *cjk[] = {"WINDOWS-1252", "UTF-8", "GB18030", "BIG5", "EUC-JP", "JIS", "SHIFT-JIS", "ISO-2022-JP", "EUC-KR", "UTF-7", 0};
+const char *cjk[] = {"WINDOWS-1252", "UTF-8", "GB18030", "BIG5", "EUC-JP", "SHIFT-JIS", "ISO-2022-JP", "EUC-KR", "UTF-7", 0};
 
 static inline int chinese_word_score(detect_data *dd, unsigned char *word, int ulen)
 {
@@ -76,8 +76,9 @@ static inline int chinese_word_score(detect_data *dd, unsigned char *word, int u
     return 0;
 }
 
-static void _check_info(unsigned char *str, int len, int *is_7bit, int *is_maybe_utf7)
+static void _check_info(unsigned char *str, int len, int *is_7bit)
 {
+    *is_7bit = 0;
     int i = 0, c, have_plus = 0;
     int plus_count = 0, plus_error = 0;
     for (; i < len; i++)
@@ -87,71 +88,24 @@ static void _check_info(unsigned char *str, int len, int *is_7bit, int *is_maybe
         {
             return;
         }
-        if (c == '+')
-        {
-            if (have_plus == 1)
-            {
-                plus_error = 1;
-            }
-            have_plus = 1;
-            continue;
-        }
-        if (c == '-')
-        {
-            if (have_plus)
-            {
-                plus_count++;
-            }
-            have_plus = 0;
-            continue;
-        }
-        if (c == '\n')
-        {
-            if (have_plus)
-            {
-                plus_count++;
-            }
-            have_plus = 0;
-            continue;
-        }
-        if (c == '\r')
-        {
-            continue;
-        }
-        if (have_plus == 1)
-        {
-            if (var_base64_decode_table[c] == 0XFF)
-            {
-                break;
-            }
-        }
     }
 
-    for (; i < len; i++)
-    {
-        c = str[i];
-        if (c & 0X80)
-        {
-            break;
-        }
-    }
     if (i == len)
     {
         *is_7bit = 1;
-        if ((plus_count > 0) && (plus_error < 1))
-        {
-            *is_maybe_utf7 = 1;
-        }
     }
 }
 
 static int _check_is_not_1252(unsigned char *str, int len)
 {
-    int i = 0, c, have_plus = 0;
-    int count = 0;
-    for (; i < len; i++)
+    if (len < 4)
     {
-        c = str[i];
+        return 1;
+    }
+    int count = 0;
+    for (int i = 0; i < len; i++)
+    {
+        int c = str[i];
         if (c & 0X80)
         {
             count++;
@@ -168,11 +122,11 @@ static int _check_is_not_1252(unsigned char *str, int len)
     return 0;
 }
 
-static double chinese_get_score(detect_data *dd, const char *fromcode, const char *str, int len, int *valid_count, int omit_invalid_bytes_count)
+static double chinese_get_score(detect_data *dd, const char *fromcode, const char *str, int len, int *valid_count, int invalid_bytes)
 {
     int i = 0, ulen;
-    unsigned int score = 0, token_score;
-    unsigned int count = 0;
+    uint64_t score = 0, token_score;
+    uint64_t count = 0;
     if (valid_count)
     {
         *valid_count = 0;
@@ -183,7 +137,14 @@ static double chinese_get_score(detect_data *dd, const char *fromcode, const cha
         ulen = utf8_len((const unsigned char *)str + i);
         if ((ulen == 2) || (ulen == 3))
         {
-            token_score = chinese_word_score(dd, (unsigned char *)str + i, ulen);
+            token_score = (uint64_t)chinese_word_score(dd, (unsigned char *)str + i, ulen);
+            // std::string r(str + i, ulen);
+            // std::printf("SSSSSSSSSSSSSSSSSSSS:%d, %s", token_score, r.c_str());
+            // for (int i = 0; i < ulen; i++)
+            // {
+            //     std::printf("= %d, ", r.c_str()[i]);
+            // }
+            // std::printf("\n");
             score += token_score;
             count++;
             if (token_score == 0)
@@ -195,16 +156,34 @@ static double chinese_get_score(detect_data *dd, const char *fromcode, const cha
     }
 
     auto r = 0.0;
-    if (count + omit_invalid_bytes_count > 0)
+
+    uint16_t a = count;
+    if (invalid_bytes > 100)
     {
-        r = ((double)score / (count + omit_invalid_bytes_count));
+        a += invalid_bytes * 10;
     }
-    if (omit_invalid_bytes_count > 1)
+    else if (invalid_bytes > 20)
     {
-        r = r / 10.0;
+        a += invalid_bytes * 7;
+    }
+    else if (invalid_bytes > 10)
+    {
+        a += invalid_bytes * 5;
+    }
+    else if (invalid_bytes > 3)
+    {
+        a += invalid_bytes * 3;
+    }
+    else
+    {
+        a += invalid_bytes * 2;
+    }
+    if (a > 0)
+    {
+        r = ((double)score / a);
     }
 
-    mydebug("        # %-20s, score:%lu(%f), count:%lu, omit:%d", fromcode, score, r, count, omit_invalid_bytes_count);
+    mydebug("        # %-20s, score:%lu(%f), count:%lu, invalid_bytes:%d", fromcode, score, r, count, invalid_bytes);
     if (count == 0)
     {
         return 0;
@@ -224,12 +203,13 @@ std::string detect(detect_data *dd, const char **charset_list, const char *data,
         dd = var_default_detect_data;
     }
     int i;
-    int ret, max_i, min_omit_invalid_bytes_count_i, min_omit_invalid_bytes_count;
+    int ret, max_i_invalid, max_i_no_invalid, min_invalid_bytes_i, min_invalid_bytes;
     const char **csp, *fromcode;
     int len_to_use, list_len;
-    double result_score, max_score;
-    int converted_len, omit_invalid_bytes_count;
-    int is_7bit = 0, is_maybe_utf7 = 0;
+    double result_score, max_score_invalid, max_score_no_invalid;
+    int max_count, tmp_count, invalid_count;
+    int invalid_bytes;
+    int is_7bit = 0;
     int is_not_windows1252 = 0;
 
     list_len = 0;
@@ -244,16 +224,18 @@ std::string detect(detect_data *dd, const char **charset_list, const char *data,
         list_len = 1000;
     }
 
-    _check_info((unsigned char *)(void *)data, size, &is_7bit, &is_maybe_utf7);
+    _check_info((unsigned char *)(void *)data, size, &is_7bit);
 
     if (is_7bit)
     {
-        if (is_maybe_utf7 == 0)
+        convert("UTF-7", data, len_to_use, "UTF-8", &invalid_bytes);
+        if (invalid_bytes > 0)
         {
-            mydebug("        # %-20s, ASCII, NOT UTF-7", "");
+            mydebug(" 7bit, invalid_bytes: %d, not utf-7, return", invalid_bytes);
             return "ASCII";
         }
-        mydebug("        # %-20s, ASCII, MAYBE UTF-7, continue", "");
+        mydebug(" 7bit, invalid_bytes: 0, maybe utf-7, return", invalid_bytes);
+        return "UTF-7";
     }
     else
     {
@@ -261,17 +243,21 @@ std::string detect(detect_data *dd, const char **charset_list, const char *data,
     }
 
     std::string out_bf;
-    max_score = -1;
-    max_i = -1;
-    min_omit_invalid_bytes_count = len_to_use * 2 + 100;
-    min_omit_invalid_bytes_count_i = -1;
+    max_score_invalid = 0;
+    max_score_no_invalid = 0;
+    max_i_invalid = -1;
+    max_i_no_invalid = -1;
+    min_invalid_bytes = len_to_use * 2 + 100;
+    min_invalid_bytes_i = -1;
+    max_count = 0;
+    invalid_count = 0;
     mydebug("###########");
     for (i = 0; i < list_len; i++)
     {
         ret = 0;
         result_score = 0;
         fromcode = charset_list[i];
-        if (is_maybe_utf7 == 0)
+        if (is_7bit == 0)
         {
             if (!strcmp(fromcode, "UTF-7"))
             {
@@ -288,163 +274,55 @@ std::string detect(detect_data *dd, const char **charset_list, const char *data,
                 continue;
             }
         }
-        ret = convert(fromcode, data, len_to_use, "UTF-8", out_bf, &converted_len, -1, &omit_invalid_bytes_count);
+        out_bf = convert(fromcode, data, len_to_use, "UTF-8", &invalid_bytes);
         if (ret < 0)
         {
             mydebug("        # %-20s, convert failure", fromcode);
             continue;
         }
-        if (omit_invalid_bytes_count < min_omit_invalid_bytes_count)
+        if (invalid_bytes < min_invalid_bytes)
         {
-            min_omit_invalid_bytes_count = omit_invalid_bytes_count;
-            min_omit_invalid_bytes_count_i = i;
+            min_invalid_bytes = invalid_bytes;
+            min_invalid_bytes_i = i;
         }
-        if (omit_invalid_bytes_count > 2)
+        result_score = chinese_get_score(dd, fromcode, out_bf.c_str(), (int)out_bf.size(), &tmp_count, invalid_bytes);
+        if (invalid_bytes == 0)
         {
-            mydebug("        # %-20s, omit_invalid_bytes: %d", fromcode, omit_invalid_bytes_count);
-            continue;
-        }
-        if (converted_len < 1)
-        {
-            mydebug("        # %-20s, converted_len < 1", fromcode);
-            continue;
-        }
-        if (omit_invalid_bytes_count > 0)
-        {
-            if (len_to_use < 1024)
+            if (max_score_no_invalid < result_score)
             {
-                mydebug("        # %-20s, omit_invalid_bytes: %d, skip", fromcode, omit_invalid_bytes_count);
-                continue;
-            }
-            if (len_to_use - converted_len > 6)
-            {
-                mydebug("        # %-20s, omit_invalid_bytes: %d, not tail", fromcode, omit_invalid_bytes_count);
-                continue;
+                max_i_no_invalid = i;
+                max_score_no_invalid = result_score;
             }
         }
-        result_score = chinese_get_score(dd, fromcode, out_bf.c_str(), ret, 0, omit_invalid_bytes_count);
-        if (max_score < result_score)
+        else
         {
-            max_i = i;
-            max_score = result_score;
-        }
-    }
-
-    if (max_i == -1)
-    {
-        if (min_omit_invalid_bytes_count_i == -1)
-        {
-            return "";
-        }
-        max_i = min_omit_invalid_bytes_count_i;
-    }
-    return charset_list[max_i];
-}
-
-std::string detect_1252(detect_data *dd, const char *data, int size)
-{
-    if (!dd)
-    {
-        dd = var_default_detect_data;
-    }
-    int i;
-    int ret, max_i, valid_count, omit_invalid_bytes_count;
-    const char **csp, *fromcode;
-    int len_to_use, list_len;
-    double result_score, max_score;
-    int converted_len;
-    int is_7bit = 0, is_maybe_utf7 = 0;
-
-    list_len = 0;
-    len_to_use = (size > 102400 ? 102400 : size);
-    const char *charset_list[] = {"WINDOWS-1252", "UTF-8", "GB18030", "BIG5", 0};
-    csp = charset_list;
-    for (fromcode = *csp; fromcode; csp++, fromcode = *csp)
-    {
-        list_len++;
-    }
-    if (list_len > 1000)
-    {
-        list_len = 1000;
-    }
-
-    _check_info((unsigned char *)(void *)data, size, &is_7bit, &is_maybe_utf7);
-
-    if (is_7bit)
-    {
-        if (is_maybe_utf7 == 0)
-        {
-            mydebug("        # %-20s, ASCII, NOT UTF-7", "");
-            return "ASCII";
-        }
-        mydebug("        # %-20s, ASCII, MAYBE UTF-7, continue", "");
-    }
-
-    std::string out_bf;
-    max_score = -1;
-    max_i = -1;
-    mydebug("###########");
-    for (i = 0; i < list_len; i++)
-    {
-        ret = 0;
-        result_score = 0;
-        fromcode = charset_list[i];
-        if (is_maybe_utf7 == 0)
-        {
-            if ((fromcode[0] == 'u') || (fromcode[0] == 'U'))
+            if (max_score_invalid < result_score)
             {
-                if ((fromcode[1] == 't') || (fromcode[1] == 'T'))
-                {
-                    if ((!std::strcmp(fromcode + 3, "7")) || (!std::strcmp(fromcode + 3, "-7")))
-                    {
-                        mydebug("        # %-20s, skip utf7", fromcode);
-                        continue;
-                    }
-                }
+                max_i_invalid = i;
+                max_score_invalid = result_score;
+                max_count = tmp_count;
+                invalid_count = invalid_bytes;
             }
         }
-
-        ret = convert(fromcode, data, len_to_use, "UTF-8", out_bf, &converted_len, 5, &omit_invalid_bytes_count);
-        if (ret < 0)
+    }
+    if (max_i_no_invalid > -1)
+    {
+        return charset_list[max_i_no_invalid];
+    }
+    if (max_i_invalid > -1)
+    {
+        if (max_count > invalid_count * 3)
         {
-            mydebug("        # %-20s, convert failure", fromcode);
-            continue;
+            return charset_list[max_i_invalid];
         }
-        if (omit_invalid_bytes_count > 2)
-        {
-            mydebug("        # %-20s, omit_invalid_bytes: %d", fromcode, omit_invalid_bytes_count);
-            continue;
-        }
-        if (omit_invalid_bytes_count > 0)
-        {
-            if (len_to_use - converted_len > 6)
-            {
-                mydebug("        # %-20s, omit_invalid_bytes: %d, not tail", fromcode, omit_invalid_bytes_count);
-                continue;
-            }
-        }
-        if (converted_len < 1)
-        {
-            mydebug("        # %-20s, converted_len < 1", fromcode);
-            continue;
-        }
-        result_score = chinese_get_score(dd, fromcode, out_bf.c_str(), ret, &valid_count, omit_invalid_bytes_count);
-        if (valid_count < 3)
-        {
-            continue;
-        }
-        if (max_score < result_score)
-        {
-            max_i = i;
-            max_score = result_score;
-        }
+        return "WINDOWS-1252";
     }
 
-    if (max_i == -1)
+    if (min_invalid_bytes_i == -1)
     {
         return "";
     }
-    return charset_list[max_i];
+    return charset_list[min_invalid_bytes_i];
 }
 
 std::string detect_cjk(const char *data, int size)

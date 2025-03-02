@@ -68,7 +68,7 @@ int64_t mail_parser::classify_mime_identify_type(mime_node *mime)
         }
         if (!std::strcmp(type + 5, "calendar"))
         {
-            return _ZPMT_PLAIN;
+            return _ZPMT_ATTACHMENT;
         }
         return _ZPMT_ATTACHMENT;
     }

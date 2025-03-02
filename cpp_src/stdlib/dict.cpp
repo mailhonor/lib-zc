@@ -19,7 +19,7 @@ void debug_show(const dict &dt)
     {
         s.append(it->first).append(" = ").append(it->second).append("\r\n");
     }
-    zcc_output("%s", s.c_str());
+    std::fprintf(stderr, "%s\n", s.c_str());
 }
 
 const char *get_cstring(const dict &dt, const char *key, const char *def_val)
