@@ -1,5 +1,7 @@
 <A name="readme_md" id="readme_md"></A>
 
+[C++版本](./master_cpp.md)
+
 ## MASTER/SERVER 服务进程管理框架, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
 
 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持 MASTER/SERVER 服务进程管理框架

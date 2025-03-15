@@ -1,5 +1,7 @@
 <A name="readme_md" id="readme_md"></A>
 
+[C++版本](./mime_cpp.md)
+
 ## 邮件解析, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
 
 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持解析 RFC822 格式邮件

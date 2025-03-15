@@ -24,7 +24,7 @@ class pop_client
 public:
     pop_client();
     pop_client(stream *third_stream);
-    ~pop_client();
+    virtual ~pop_client();
     inline void set_debug_mode(bool tf = true) { debug_mode_ = tf; }
     inline void set_verbose_mode(bool tf = true) { verbose_mode_ = tf; }
     inline void set_debug_protocol_fn(std::function<void(int /* S/C */, const char *, int)> fn)

@@ -1,5 +1,7 @@
 <A name="readme_md" id="readme_md"></A>
 
+[C++版本](./log_cpp.md)
+
 ## 日志输出, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
 
 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持通用日志机制
@@ -120,7 +122,7 @@ void zlog_use_masterlog(const char *identity, const char *dest);
 zinfo("start");
 zinfo("progname: %s",  "do_something");
 zdebug("哦了");
-zfatal("can not do something!"); /* then exist */
+zfatal("can not do something!"); /* then exit(1) */
 ```
 
 ## 例子: 自定义后端函数

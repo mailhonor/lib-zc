@@ -3140,7 +3140,7 @@ const char *zredis_client_get_error_msg(zredis_client_t *rc);
 void zredis_client_disconnect(zredis_client_t *rc);
 
 /* redis命令返回结果可以抽象为json, 绝大部分可以简化为4类:
- * 1: 成功/失败, 2: 整数, 3: 字符串, 4:字符换vecgtor */
+ * 1: 成功/失败, 2: 整数, 3: 字符串, 4:字符换vector */
 
 /* 下面的 (redis_fmt, ...) 介绍:
  *  s: char *
@@ -3166,10 +3166,10 @@ int zredis_client_get_success(zredis_client_t *rc, const char *redis_fmt, ...);
 /* 返回: 如上; 一些命令, 适合得到一个整数结果并赋值给 *number_ret, 如 klen/incrby/ttl 等 */
 int zredis_client_get_long(zredis_client_t *rc, ssize_t *number_ret, const char *redis_fmt, ...);
 
-/* 返回: 如上; 一些命令, 适合得到一个字符串结果赋值给string_ret, 如 GET/HGET/ */
+/* 返回: 如上; 一些命令, 适合得到一个字符串结果赋值给 string_ret, 如 GET/HGET/ */
 int zredis_client_get_string(zredis_client_t *rc, zbuf_t *string_ret, const char *redis_fmt, ...);
 
-/* 返回: 如上; 一些命令, 适合得到一串字符串结果并赋值给string_ret, 如 MGET/HMGET/ */
+/* 返回: 如上; 一些命令, 适合得到一串字符串结果并赋值给 vector_ret, 如 MGET/HMGET/ */
 int zredis_client_get_vector(zredis_client_t *rc, zvector_t *vector_ret, const char *redis_fmt, ...);
 
 /* 返回: 如上; 所有命令都可以用 zredis_client_get_json */

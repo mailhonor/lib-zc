@@ -11,12 +11,6 @@
 #ifndef ZCC_LIB_INCLUDE_STDLIB___
 #define ZCC_LIB_INCLUDE_STDLIB___
 
-#if defined(_MSC_VER)
-#ifndef ZCC_MSVC
-#define ZCC_MSVC
-#endif // ZCC_MSVC
-#endif // _MSC_VER
-
 #ifdef _WIN64
 #ifdef _WIN32_WINNT
 #undef _WIN32_WINNT
@@ -29,9 +23,9 @@
 #endif // _WIN64
 
 #ifdef ZCC_DEV_MODE___
-#ifdef ZCC_MSVC
+#ifdef _MSC_VER
 #pragma warning(disable : 4267 4244 4996)
-#endif // ZCC_MSVC
+#endif // _MSC_VER
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif // NOMINMAX
@@ -62,7 +56,7 @@
 #define ZCC_STR_CASE_EQ(a, b) ((zcc::toupper(a[0]) == zcc::toupper(b[0])) && (!zcc::strcasecmp(a, b)))
 #define ZCC_STR_N_EQ(a, b, n) ((a[0] == b[0]) && (!std::strncmp(a, b, n)))
 #define ZCC_STR_EQ(a, b) ((a[0] == b[0]) && (!std::strcmp(a, b)))
-#define ZCC_VOID_PTR_ONE ((void *)(int64_t) - 1)
+#define ZCC_VOID_PTR_ONE ((void *)(int64_t)-1)
 #define ZCC_NUMBER_TO_PTR(n) ((void *)(int64_t)(n))
 #define ZCC_PTR_TO_NUMBER(p) ((int64_t)(void *)(p))
 
@@ -89,9 +83,6 @@ zcc_namespace_c_end;
 #include <WinSock2.h>
 #include <windows.h>
 #endif // _WIN64
-
-#ifdef ZCC_MSVC
-#endif // ZCC_MSVC
 
 #pragma pack(push, 4)
 zcc_namespace_begin;
@@ -714,13 +705,16 @@ public:
     config &update(const std::string &key, const std::string &val);
     config &remove(const char *key);
     config &remove(const std::string &key);
+    // 从文件加载配置, 且覆盖
     bool load_from_file(const char *pathname);
     bool load_from_file(const std::string &pathname)
     {
         return load_from_file(pathname.c_str());
     }
+    // 从另一个配置复制
     config &load_another(config &another);
     config &debug_show();
+    // 获取值
     std::string *get_value(const char *key);
     std::string *get_value(const std::string &key);
     const char *get_cstring(const char *key, const char *def_val = "");
@@ -728,14 +722,19 @@ public:
     std::string get_string(const char *key, const char *def_val = "");
     std::string get_string(const std::string &key, const char *def_val = "");
     const std::string &get_string(const std::string &key, const std::string &def_val);
+    // y/Y/t/T/1 => true, n/N/f/F/0 => false
     bool get_bool(const char *key, bool def_val = false);
     bool get_bool(const std::string &key, bool def_val = false);
+    // atoi
     int get_int(const char *key, int def_val = 0);
     int get_int(const std::string &key, int def_val = 0);
+    // atol
     int64_t get_long(const char *key, int64_t def_val = 0);
     int64_t get_long(const std::string &key, int64_t def_val = 0);
+    // 1s, 1m, 1h, 1d, 1w
     int64_t get_second(const char *key, int64_t def_val = 0);
     int64_t get_second(const std::string &key, int64_t def_val = 0);
+    // 1b, 1k, 1m, 1g
     int64_t get_size(const char *key, int64_t def_val = 0);
     int64_t get_size(const std::string &key, int64_t def_val = 0);
 
@@ -791,6 +790,7 @@ int64_t get_MemAvailable();
 int get_cpu_core_count();
 int chroot_user(const char *root_dir, const char *user_name);
 #endif // __linux__
+// 获取本机mac地址
 int get_mac_address(std::vector<std::string> &mac_list);
 
 void signal(int signum, void (*handler)(int));
@@ -959,27 +959,40 @@ std::vector<std::string> find_file_sample(const char **dir_or_file, int item_cou
 /* io ############################################################### */
 static const int var_io_max_timeout = (3600 * 24 * 365 * 10);
 
+// 是否可读/可写
 int timed_read_write_wait_millisecond(int fd, int read_wait_timeout, int *readable, int *writeable);
 int timed_read_write_wait(int fd, int read_wait_timeout, int *readable, int *writeable);
+// 带超时, 是否可读
 int timed_read_wait_millisecond(int fd, int wait_timeout);
 int timed_read_wait(int fd, int wait_timeout);
+// 超时读
 int timed_read(int fd, void *buf, int size, int wait_timeout);
+// 带超时, 是否可写
 int timed_write_wait_millisecond(int fd, int wait_timeout);
 int timed_write_wait(int fd, int wait_timeout);
+// 超时写
 int timed_write(int fd, const void *buf, int size, int wait_timeout);
+// 是否可读写
 int rwable(int fd);
+// 是否可读
 int readable(int fd);
+// 是否可写
 int writeable(int fd);
+// 设置fd阻塞
 int nonblocking(int fd, bool tf = true);
 #ifdef _WIN64
 int close(HANDLE fd);
 #else  // _WIN64
 int close(int fd);
 #endif // _WIN64
+// close_on_exec
 int close_on_exec(int fd, bool tf = true);
+// 获取真实可读字节数
 int get_readable_count(int fd);
 #ifdef __linux__
+// 跨父子进程接收 fd
 int recv_fd(int fd);
+// 跨父子进程发送 fd
 int send_fd(int fd, int sendfd);
 #endif // __linux__
 
@@ -1003,29 +1016,40 @@ int netpath_connect(const char *netpath, int timeout);
 int get_peername(int sockfd, int *host, int *port);
 
 /* dns ############################################################## */
+// 获取域名/主机名的ip地址, 存储到addrs
 int get_hostaddr(const char *host, std::vector<std::string> &addrs);
 inline int get_hostaddr(const std::string &host, std::vector<std::string> &addrs)
 {
     return get_hostaddr(host.c_str(), addrs);
 }
+// 获取本机ip地址
 int get_localaddr(std::vector<std::string> &addrs);
+// ip 地址转 int
 int get_ipint(const char *ipstr);
 inline int get_ipint(const std::string &ipstr)
 {
     return get_ipint(ipstr.c_str());
 }
+// 获得ip地址的网段地址
 int get_network(int ip, int masklen);
+// 获得ip地址的掩码
 int get_netmask(int masklen);
+// 获得ip地址的广播地址
 int get_broadcast(int ip, int masklen);
+// 指定掩码, 最小的ip
 int get_ip_min(int ip, int masklen);
+// 指定掩码, 最大的ip
 int get_ip_max(int ip, int masklen);
+// 是不是 ip
 bool is_ip(const char *ip);
 inline bool is_ip(const std::string &ip)
 {
     return is_ip(ip.c_str());
 }
+// 是否保留地址
 int is_intranet(int ip);
 int is_intranet2(const char *ip);
+// ip 转字符串
 char *get_ipstring(int ip, char *ipstr);
 std::string get_ipstring(int ip);
 

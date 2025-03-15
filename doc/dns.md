@@ -1,5 +1,8 @@
 <A name="readme_md" id="readme_md"></A>
 
+[C++版本](./dns_cpp.md)
+
+
 ## 常用 DNS/IP地址/MAC地址 函数, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
 
 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 封装了常用 DNS/IP地址/MAC地址 函数

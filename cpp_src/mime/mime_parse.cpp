@@ -33,6 +33,7 @@ public:
     mail_parser_running_context(mail_parser &parser);
     ~mail_parser_running_context();
     void run();
+    void sortNode(zcc::mail_parser::mime_node *node);
     void decode_mime_get_all_boundary();
     void decode_mime_prepare_node();
     int64_t read_header_logic_line(mail_parser_running_node *cnode, char **ptr);
@@ -460,10 +461,36 @@ void mail_parser_running_context::run()
     }
 }
 
+void mail_parser_running_context::sortNode(zcc::mail_parser::mime_node *node)
+{
+    if (!node)
+    {
+        node = parser_.top_mime_;
+    }
+    std::map<int64_t, zcc::mail_parser::mime_node *> nodes;
+    for (auto n = node->child_head_; n; n = n->next_)
+    {
+        nodes[n->body_offset_] = n;
+    }
+    node->child_head_ = nullptr;
+    node->child_tail_ = nullptr;
+    for (auto &it : nodes)
+    {
+        zcc::mail_parser::mime_node *n = it.second;
+        ZCC_MLINK_APPEND(node->child_head_, node->child_tail_, n, prev_, next_);
+    }
+
+    for (auto n = node->child_head_; n; n = n->next_)
+    {
+        sortNode(n);
+    }
+}
+
 void mail_parser_decode_mime_inner(mail_parser &parser)
 {
     mail_parser_running_context ctx(parser);
     ctx.run();
+    ctx.sortNode(0);
 }
 
 zcc_namespace_end;

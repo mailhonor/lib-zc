@@ -1,5 +1,7 @@
 <A name="readme_md" id="readme_md"></A>
 
+[C++版本](./charset_cpp.md)
+
 ## 字符集转码, 字符集探测, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
 
 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 对字符集转码做了封装, 支持字符集探测

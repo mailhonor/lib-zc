@@ -21,19 +21,18 @@ static void ___usage()
     zcc_fatal("%s -server pop3_server:port -user xxx@a.com -pass 123456 [--ssl ] [ --tls]", zcc::progname);
 }
 
-static void debug_protocol_fn(int rw, const void *mem, int len)
-{
-    std::string s;
-    s.append((const char *)mem, len);
-    zcc_info("debug_protocol_fn, %c: %s", rw, s.c_str());
-}
-
 static void run_test()
 {
     zcc::pop_client pc;
     pc.set_debug_mode();
     pc.set_verbose_mode();
-    pc.set_debug_protocol_fn(debug_protocol_fn);
+    pc.set_debug_protocol_fn([](int rw, const void *mem, int len)
+                             {
+                                 std::string s;
+                                 s.append((const char *)mem, len);
+                                 zcc_info("debug_protocol_fn, %c: %s", rw, s.c_str());
+                                 //
+                             });
     pc.set_timeout(10);
     pc.set_ssl_tls(ssl_ctx, ssl_mode, tls_mode);
 

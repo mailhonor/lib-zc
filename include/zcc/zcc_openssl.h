@@ -26,16 +26,26 @@ zcc_general_namespace_begin(openssl);
 extern bool var_debug_mode;
 extern bool var_disable_server_tls1_0;
 extern bool var_disable_client_tls1_0;
+// openssl 环境初始化, 执行完后, 可多线程操作openssl
 void env_init(void);
 void env_fini(void);
+
+// 创建服务端 SSL_CTX
 SSL_CTX *SSL_CTX_create_client(void);
+// 创建客户端 SSL_CTX
 SSL_CTX *SSL_CTX_create_server(const char *cert_file, const char *key_file);
+
+// sni 处理
 void SSL_CTX_set_sni_handler(SSL_CTX *ctx, SSL_CTX *(*get_ssl_ctx_by_server_name)(const char *servername));
+
+// 微不足道的封装
 void SSL_CTX_free(SSL_CTX *ctx);
 void get_error(unsigned long *ecode, char *buf, int buf_len);
 SSL *SSL_create(SSL_CTX *ctx, int fd);
 void SSL_free(SSL *ssl);
 int SSL_get_fd(SSL *ssl);
+
+// 超时操作
 int timed_connect(SSL *ssl, int wait_timeout);
 int timed_accept(SSL *ssl, int wait_timeout);
 int timed_shutdown(SSL *ssl, int wait_timeout);

@@ -7,6 +7,8 @@
 
 必须了解 redis 的命令和协议才能顺利使用本客户端, 请参阅 http://doc.redisfans.com/
 
+[C++版本](./redis_client_cpp.md)
+
 ## 函数: 基本操作
 
 ### zredis_client_t *zredis_client_connect(const char *destination, const char *password, int connect_timeout);

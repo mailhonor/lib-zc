@@ -19,20 +19,6 @@ static void ___usage()
     zcc_fatal("%s -server imap_server:port -user xxx@a.com -pass 123456 [--ssl ] [ --tls] [ -timeout 10]", zcc::progname);
 }
 
-static void debug_protocol_fn(int rw, const void *mem, int len)
-{
-    std::string s;
-    s.append((const char *)mem, len);
-    zcc_info("debug_protocol_fn, %c: %s", rw, s.c_str());
-}
-
-static void debug_protocol_fn2(const char *ctx, int rw, const void *mem, int len)
-{
-    std::string s;
-    s.append((const char *)mem, len);
-    zcc_info("debug_protocol_fn(%s), %c: %s", ctx, rw, s.c_str());
-}
-
 int main(int argc, char **argv)
 {
     SSL_CTX *ssl_ctx = 0;
@@ -60,8 +46,13 @@ int main(int argc, char **argv)
     zcc::imap_client ic;
     ic.set_debug_mode();
     ic.set_verbose_mode();
-    ic.set_debug_protocol_fn(debug_protocol_fn);
-    ic.set_debug_protocol_fn(std::bind(debug_protocol_fn2, "abc", std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    ic.set_debug_protocol_fn([](int rw, const char *con, int len)
+                             {
+                                 std::string s;
+                                 s.append(con, len);
+                                 zcc_info("debug_protocol, %c: %s", rw, s.c_str());
+                                 //
+                             });
     ic.set_timeout(zcc::var_main_config.get_second("timeout", 10));
     ic.set_ssl_tls(ssl_ctx, ssl_mode, tls_mode);
 

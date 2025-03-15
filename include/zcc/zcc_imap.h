@@ -157,7 +157,7 @@ public:
 public:
     imap_client();
     imap_client(stream *third_stream, bool auto_release_third_stream = true);
-    ~imap_client();
+    virtual ~imap_client();
     inline bool is_no() { return (ok_no_bad_ == result_onb::no); }
     inline bool is_bad() { return (ok_no_bad_ == result_onb::bad); }
     inline void set_debug_mode(bool tf = true) { debug_mode_ = tf; }

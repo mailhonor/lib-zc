@@ -4,6 +4,8 @@
 
 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 封装了openssl重要操作
 
+[C++版本](./openssl_cpp.md)
+
 ## 特别说明
 
 * [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 并没有对openssl的数据结构(SSL_CTX/SSL)做任何封装

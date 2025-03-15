@@ -20,7 +20,7 @@ zcc_namespace_begin;
 
 static void set_thread_name_by_handle(std::thread::native_handle_type h, const char *name)
 {
-#ifdef _WIN64
+#ifdef _MSC_VER
     auto n = Utf8ToWideChar(name);
     SetThreadDescription(h, n.c_str());
 #elif defined(__APPLE__)
@@ -37,7 +37,7 @@ void set_thread_name(std::thread &t, const char *name)
 
 void set_thread_name(const char *name)
 {
-#ifdef _WIN64
+#ifdef _MSC_VER
     return set_thread_name_by_handle(GetCurrentThread(), name);
 #else  // _WIN64
     return set_thread_name_by_handle(pthread_self(), name);
@@ -47,7 +47,7 @@ void set_thread_name(const char *name)
 static std::string get_thread_name_by_handle(std::thread::native_handle_type h)
 {
     std::string r;
-#ifdef _WIN64
+#ifdef _MSC_VER
     PWSTR data;
     HRESULT hr = GetThreadDescription(h, &data);
     if (SUCCEEDED(hr))
@@ -73,7 +73,7 @@ std::string get_thread_name(std::thread &t)
 
 std::string get_thread_name()
 {
-#ifdef _WIN64
+#ifdef _MSC_VER
     return get_thread_name_by_handle(GetCurrentThread());
 #else  // _WIN64
     return get_thread_name_by_handle(pthread_self());

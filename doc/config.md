@@ -1,5 +1,7 @@
 <A name="readme_md" id="readme_md"></A>
 
+[C++版本](./config_cpp.md)
+
 ## key = value 型通用配置, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
 
 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持通用配置,

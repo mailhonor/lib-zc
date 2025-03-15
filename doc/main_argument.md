@@ -1,9 +1,11 @@
 <A name="readme_md" id="readme_md"></A>
 
+[C++版本](./main_argument_cpp.md)
+
 ## 通用命令行参数, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
 
 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持 **main** 函数参数处理机制,
-可以和 [全局配置(zvar_default_config)](./confid.md) 无缝结合
+可以和 [全局配置(zvar_default_config)](./config.md) 无缝结合
 
 ## 参数风格, 例子
 

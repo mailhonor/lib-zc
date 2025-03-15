@@ -43,7 +43,11 @@ static HANDLE open_lock_file(const std::string pathname)
 {
 #ifdef _WIN64
     std::wstring fn = Utf8ToWideChar(pathname);
+#ifdef _MSC_VER
     HANDLE fd = ::CreateFileW(fn.c_str(), GENERIC_READ | GENERIC_WRITE, NULL, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+#else
+    HANDLE fd = ::CreateFileW(fn.c_str(), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+#endif
     if (fd == INVALID_HANDLE_VALUE)
     {
         CloseHandle(fd);
@@ -72,7 +76,7 @@ static void lock_file(HANDLE fd)
 {
 #ifdef _WIN64
     DWORD dwLow = 0;
-    BOOL retLockFile = LockFile(fd, NULL, NULL, dwLow, NULL);
+    BOOL retLockFile = LockFile(fd, 0, 0, dwLow, 0);
 #else  // _WIN64
     ::flock(fd, LOCK_EX);
 #endif // _WIN64
@@ -82,7 +86,7 @@ static void unlock_file(HANDLE fd)
 {
 #ifdef _WIN64
     DWORD dwLow = 0;
-    UnlockFile(fd, NULL, NULL, dwLow, NULL);
+    UnlockFile(fd, 0, 0, dwLow, 0);
 #else  // _WIN64
     ::flock(fd, LOCK_UN);
 #endif // _WIN64
