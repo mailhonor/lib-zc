@@ -158,5 +158,5 @@ int main(int argc, char **argv)
 
 ## 例子: 2
 
-* ../blob/master/sample/stdlib/list.c
+* [goto](../blob/master/sample/stdlib/list.c)
 

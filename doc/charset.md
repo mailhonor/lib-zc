@@ -54,7 +54,7 @@ zcharset_iconv("GB18030", "abcdef", 6, "UTF-8" , result, 0, 0, 0);
 
 类似 Linux 的程序 iconv
 
-* ../blob/master/sample/charset/iconv.c
+* [goto](../blob/master/sample/charset/iconv.c)
 
 
 ## 字符集探测
@@ -92,5 +92,5 @@ GB18030       广东省
 
 ## 例子: 字符集探测
 
-* ../blob/master/sample/charset/detact.c
+* [goto](../blob/master/sample/charset/detact.c)
 

@@ -107,5 +107,5 @@ struct zmap_node_t {
 
 ## 例子
 
-* ../blob/master/sample/rbtree/map_demo.c
+* [goto](../blob/master/sample/rbtree/map_demo.c)
 

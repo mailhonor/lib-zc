@@ -17,7 +17,7 @@ _PS: 在Linux系统, 可以通过命令 **tnef** 解开 winmail.dat_
 
 ## 类见:
 
-../blob/master/include/zcc/zcc_mime.h
+[goto](../blob/master/include/zcc/zcc_mime.h)
 
 
 ## 解析
@@ -37,5 +37,5 @@ void foo()
 
 ## 例子
 
-* ../blob/master/cpp_sample/mime/
+* [goto](../blob/master/cpp_sample/mime/)
 

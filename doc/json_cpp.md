@@ -5,9 +5,9 @@
 
 [LIB-ZC](./README.md) 是 Linux 平台通用 C 扩展库, 内嵌 LIB-ZJSON
 
-LIB-ZJSON C++ 版本 JSON 库, 可独立使用, 代码仓库 https://gitee.com/linuxmail/lib-zjson#readme_md
+[LIB-ZJSON C++ 版本 JSON 库, 可独立使用, 代码仓库](https://github.com/mailhonor/lib-zjson)
 
-C 版本 json 库 ../blob/master/doc/json.md
+[C 版本 json 库](./json.md)
 
 ## 生成一个 json
 
@@ -407,5 +407,5 @@ js.unserialize(s, -1);
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zjson/blob/master/
+* [goto](../blob/master/)
 

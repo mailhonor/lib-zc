@@ -86,7 +86,7 @@ efore_1106->prev=_node_1106;}\
 
 ## 例子
 
-* ../blob/master/sample/stdlib/mlink.c
-* ../blob/master/sample/stdlib/mlink2.c
-* ../blob/master/src/stdlib/list.c
+* [goto](../blob/master/sample/stdlib/mlink.c)
+* [goto](../blob/master/sample/stdlib/mlink2.c)
+* [goto](../blob/master/src/stdlib/list.c)
 

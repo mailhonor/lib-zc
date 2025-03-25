@@ -1,7 +1,7 @@
 
 ## JSON 库, [LIB-ZC](./README.md)
 
-C++ 版本 json 库 ../blob/master/doc/json_cpp.md
+[C++ 版本 json 库](./json_cpp.md)
 
 [LIB-ZC](./README.md) 支持 JSON, 其 STRUCT 类型是 **zjson_t**
 
@@ -358,5 +358,5 @@ zjson_unserialize(j, s, -1);
 
 ## 例子
 
-* ../blob/master/sample/json/
+* [goto](../blob/master/sample/json/)
 

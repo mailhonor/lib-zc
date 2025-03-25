@@ -14,14 +14,13 @@ zhttpd_t 作为 [LIB-ZC](./README.md) 的一个模块, 和专门的 httpd 库不
 
 建议开发者浏览 **httpd 服务开发通用模版**:
 
-* ../blob/master/sample/http/general_coroutine_server_httpd.c
+* [goto](../blob/master/sample/http/general_coroutine_server_httpd.c)
 
 ## 数据结构
 
 ```
 struct zhttpd_uploaded_file_t { /* 上传的文件; 隐藏细节, 不必深究 };
 struct zhttpd_t { /* httpd 服务; 隐藏细节, 不必深究 */};
-/* 源码 ../blob/master/src/http/httpd.h */
 ```
 
 ## 最简单的用法
@@ -318,5 +317,5 @@ void foo(int fd)
 
 ## 例子
 
-* ../blob/master/sample/http/
+* [goto](../blob/master/sample/http/)
 

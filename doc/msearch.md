@@ -5,7 +5,6 @@
 
 [LIB-ZC](./README.md) 内嵌多关键字搜索模块
 
-文件格式和实现, 参考:  ../blob/master/src/search/msearch.c
 
 ## 数据结构
 
@@ -180,6 +179,6 @@ zmsearch_free(ms);
 
 ## 例子
 
-* ../blob/master/sample/search/msearch_match.c
-* ../blob/master/sample/search/msearch_builder.c
+* [goto](../blob/master/sample/search/msearch_match.c)
+* [goto](../blob/master/sample/search/msearch_builder.c)
 

@@ -149,5 +149,5 @@ _本节提到的 zstr_to_bool, zstr_to_second, zstr_to_size, 请参考 [字符�
 
 ## 例子
 
-* ../blob/master/sample/rbtree/dict_demo.c
+* [goto](../blob/master/sample/rbtree/dict_demo.c)
 

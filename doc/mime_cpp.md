@@ -30,11 +30,11 @@ parser = zcc::mail_parser::create_from_file(eml_fn);
 
 ## 获取主题等, 获取附件信息等
 
-* ../blob/master/include/zcc/zcc_mime.h
+* [goto](../blob/master/include/zcc/zcc_mime.h)
 
 ## 例子
 
-* ../blob/master/cpp_sample/mime/
+* [goto](../blob/master/cpp_sample/mime/)
 
 
 ## TNEF

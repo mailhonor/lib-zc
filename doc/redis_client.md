@@ -195,6 +195,6 @@ for (int i = 0; i < 100; i++) {
 
 ## 例子
 
-* ../blob/master/sample/redis/client.c
-* ../blob/master/sample/redis/subscribe.c
+* [goto](../blob/master/sample/redis/client.c)
+* [goto](../blob/master/sample/redis/subscribe.c)
 

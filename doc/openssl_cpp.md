@@ -89,7 +89,29 @@ SSL_CTX *_change_ssl_ctx_by_servername(const char *servername)
 
 ### SNI, 原理
 
-* https://gitee.com/linuxmail/codes/d8ymz6xn1b2o5ts9gjqaf50
+```c++
+
+/* 第一, 在服务器在 已经创建好了服务端 SSL_CTX *ctx; */
+
+/* 第二, 对上述ctx执行 */
+SSL_CTX_set_tlsext_servername_callback(ctx,  _change_ssl_ctx_by_servername);
+
+int _change_ssl_ctx_by_servername(SSL *ssl, int *ad, void *arg)
+{
+	/* 获取 servername */
+	const char *servername = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+	
+	/* 根据servername, 查找或创建匹配的SSL_CTX */
+	SSL_CTX *another_ctx = find_or_create_SSL_CTX_by_servername(servername);
+	
+	/* 把当前ssl的SSL_CTX重置为 another_ctx */
+	SSL_set_SSL_CTX(ssl, another_ctx);
+	
+	return SSL_TLSEXT_ERR_OK;
+	/* PS: servername, another_ctx都可能为 NULL */
+	/* 此时函数应该返回 SSL_TLSEXT_ERR_NOACK */
+}
+```
 
 ## 内部应用
 

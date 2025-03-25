@@ -78,6 +78,6 @@
 
 ## 例子
 
-* ../blob/master/sample/encode/base64.c
-* ../blob/master/sample/encode/quoted_printable.c
+* [goto](../blob/master/sample/encode/base64.c)
+* [goto](../blob/master/sample/encode/quoted_printable.c)
 

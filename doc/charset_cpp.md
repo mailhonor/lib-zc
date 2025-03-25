@@ -44,7 +44,7 @@ inline std::string convert_to_utf8(const std::string &data);
 
 类似 Linux 的程序 iconv
 
-* ../blob/master/cpp_sample/charset/iconv.cpp
+* [goto](../blob/master/cpp_sample/charset/iconv.cpp)
 
 
 ## 字符集探测
@@ -83,7 +83,7 @@ GB18030       广东省
 
 ### 例子: 字符集探测
 
-* ../blob/master/cpp_sample/charset/detact.cpp
+* [goto](../blob/master/cpp_sample/charset/detact.cpp)
 
 ## 其他工具
 

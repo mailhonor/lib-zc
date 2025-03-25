@@ -3,7 +3,7 @@
 
 [LIB-ZC](./README.md) 是 Linux 平台通用 C 扩展库, 内嵌 LIB-ZO
 
-LIB-ZO 是协程开发框架的单独封装, 可独立使用, 代码仓库 https://gitee.com/linuxmail/lib-zo
+LIB-ZO 是协程开发框架的单独封装, 可独立使用, 代码仓库 https://github.com/mailhonor/lib-zo
 
 LIB-ZO 协程库参考了 libco, libgo, nodejs 的实现
 
@@ -273,6 +273,6 @@ zvar_coroutine_fileio_use_block_pthread == 1
 
 ## 例子
 
+* https://github.com/mailhonor/lib-zo
 * https://gitee.com/linuxmail/lib-zo/
-* https://gitee.com/linuxmail/lib-zo/blob/master/
 

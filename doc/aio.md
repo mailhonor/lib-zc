@@ -516,5 +516,5 @@ zaio_disable(aio);
 
 ## 例子
 
-* ../blob/master/sample/event/
+* [goto](../blob/master/sample/event/)
 

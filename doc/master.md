@@ -74,7 +74,7 @@ _zmaster_server_main 会根据参数 "**-C config_dir**" 读取 server 配置文
 ### 启动/停止/重启
 
 * master 进程的启动/停止/重启, 请参考脚本, 这个脚本稍微修改即可通用
-* ../blob/master/sample/master/general_master.sh
+* [goto](../blob/master/sample/master/general_master.sh)
 
 ## server 服务配置
 
@@ -99,7 +99,6 @@ server-proc-count = 1
 # server模式下, 通用的日志配置, 可选
 # syslog,mail : 使用syslog, facility 是 mail, 级别固定是 INFO
 # masterlog,./var/socket/log : 内置的日志服务, 参考
-#     ../blob/master/sample/master/master.sh
 server-log = syslog,mail
 
 # 下面是其他配置, server 会读取
@@ -259,7 +258,7 @@ int main(int argc, char **argv)
 
 ## 例子
 
-* ../blob/master/sample/master/
+* [goto](../blob/master/sample/master/)
 
 ## 命令行(调试)启动 server 
 

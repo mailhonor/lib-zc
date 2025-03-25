@@ -26,4 +26,4 @@ std::string build_url()
 ```
 
 ## 例子
-* ../blob/master/cpp_sample/http/
+* [goto](../blob/master/cpp_sample/http/)

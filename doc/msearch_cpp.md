@@ -16,7 +16,7 @@
 
 ## 类
 
-../blob/master/include/zcc/zcc_search.h
+[goto](../blob/master/include/zcc/zcc_search.h)
 
 ```c++
 // 生成
@@ -91,5 +91,5 @@ else
 
 ## 例子
 
-* ../blob/master/cpp_sample/search/
+* [goto](../blob/master/cpp_sample/search/)
 

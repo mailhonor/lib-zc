@@ -66,13 +66,13 @@ _PS: 本文的ip地址都是 ipv4_
 
 ## 例子: 域名查询
 
-* ../blob/master/sample/stdlib/get_addr.c
+* [goto](../blob/master/sample/stdlib/get_addr.c)
 
 ## 例子: IP 属性
 
-* ../blob/master/sample/stdlib/ip.c
+* [goto](../blob/master/sample/stdlib/ip.c)
 
 ## 例子: MAC
 
-* ../blob/master/sample/stdlib/mac.c
+* [goto](../blob/master/sample/stdlib/mac.c)
 
