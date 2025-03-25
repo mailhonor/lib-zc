@@ -15,7 +15,6 @@
 #include <mutex>
 #include <thread>
 #ifdef _WIN64
-#include <Windows.h>
 #include <io.h>
 #else // _WIN64
 #include <sys/types.h>

@@ -1,14 +1,13 @@
-<A name="readme_md" id="readme_md"></A>
 
-## C++ JSON 库, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## C++ JSON 库, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持 json
+[LIB-ZC](./README.md) 支持 json
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 是 Linux 平台通用 C 扩展库, 内嵌 LIB-ZJSON
+[LIB-ZC](./README.md) 是 Linux 平台通用 C 扩展库, 内嵌 LIB-ZJSON
 
 LIB-ZJSON C++ 版本 JSON 库, 可独立使用, 代码仓库 https://gitee.com/linuxmail/lib-zjson#readme_md
 
-C 版本 json 库 https://gitee.com/linuxmail/lib-zc/blob/master/doc/json.md
+C 版本 json 库 ../blob/master/doc/json.md
 
 ## 生成一个 json
 

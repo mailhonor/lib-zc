@@ -1,15 +1,14 @@
-<A name="readme_md" id="readme_md"></A>
 
-## OEPNSSL初始化/线程安全/SSL上下文/超时读写/SNI, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## OEPNSSL初始化/线程安全/SSL上下文/超时读写/SNI, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 封装了openssl重要操作
+[LIB-ZC](./README.md) 封装了openssl重要操作
 
 [C版本](./openssl.md)
 
 ## 特别说明
 
-* [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 并没有对openssl的数据结构(SSL_CTX/SSL)做任何封装
-* 尽管[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 内部很多模块使用openssl, 使用者也可以自己生成这些 SSL_CTX/SSL, 而不必依赖本文提供的方法
+* [LIB-ZC](./README.md) 并没有对openssl的数据结构(SSL_CTX/SSL)做任何封装
+* 尽管[LIB-ZC](./README.md) 内部很多模块使用openssl, 使用者也可以自己生成这些 SSL_CTX/SSL, 而不必依赖本文提供的方法
 
 ## 初始化 openssl 环境
 

@@ -1,11 +1,10 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C++版本](./dns_cpp.md)
 
 
-## 常用 DNS/IP地址/MAC地址 函数, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 常用 DNS/IP地址/MAC地址 函数, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 封装了常用 DNS/IP地址/MAC地址 函数
+[LIB-ZC](./README.md) 封装了常用 DNS/IP地址/MAC地址 函数
 
 _PS: 本文的ip地址都是 ipv4_
 
@@ -67,13 +66,13 @@ _PS: 本文的ip地址都是 ipv4_
 
 ## 例子: 域名查询
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/stdlib/get_addr.c
+* ../blob/master/sample/stdlib/get_addr.c
 
 ## 例子: IP 属性
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/stdlib/ip.c
+* ../blob/master/sample/stdlib/ip.c
 
 ## 例子: MAC
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/stdlib/mac.c
+* ../blob/master/sample/stdlib/mac.c
 

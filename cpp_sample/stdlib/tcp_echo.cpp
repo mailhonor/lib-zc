@@ -37,7 +37,7 @@ static bool do_accept()
             break;
         }
         zcc::trim_line_end_rn(r);
-        fp.append(zcc::rfc1123_time()).append(" ").append(r).append("\n");
+        fp.append(zcc::http_time()).append(" ").append(r).append("\n");
         fp.flush();
         if ((r == "exit") || r == "quit")
         {

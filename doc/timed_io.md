@@ -1,8 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
-## 带超时IO函数封装, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 带超时IO函数封装, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 封装了常见的带超时IO函数
+[LIB-ZC](./README.md) 封装了常见的带超时IO函数
+
+[C++版本](./io_cpp.md)
 
 ## 超时等待可读写
 

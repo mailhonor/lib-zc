@@ -1,10 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C版本](./iopipe.md)
 
-## IO管道, IO映射, IO端口转发, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## IO管道, IO映射, IO端口转发, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+[LIB-ZC](./README.md)
 支持 IO管道, IO映射, IO端口转发, 支持 OPENSSL
 
 ## 基于异步IO
@@ -37,7 +36,7 @@ void aio_iopipe_enter(aio *client, aio *server, aio_base *aiobase, std::function
 
 提示: nginx 可以实现此功能
 
-本文只介绍 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 提供的 IO管道的方法
+本文只介绍 [LIB-ZC](./README.md) 提供的 IO管道的方法
 
 ### 实现: (异步IO环境)
 
@@ -64,5 +63,5 @@ after_close();
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/cpp_sample/event/iopipe.cpp
+* ../blob/master/cpp_sample/event/iopipe.cpp
 

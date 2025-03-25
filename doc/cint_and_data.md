@@ -1,8 +1,7 @@
-<A name="readme_md" id="readme_md"></A>
 
-## cint and data, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## cint and data, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 在内存传输的时候,
+[LIB-ZC](./README.md) 在内存传输的时候,
 有一种对长度本身(int)的特殊编码, 可以节约一部分内存
 
 所谓 **cint_and_data** 抄袭的 postfix 队列文件的存储方式
@@ -11,7 +10,7 @@
 
 ## 对 int 编码
 
-原理, 可以参考源码: https://gitee.com/linuxmail/lib-zc/blob/master/src/stdlib/cint_and_data.c
+原理, 可以参考源码: ../blob/master/src/stdlib/cint_and_data.c
 
 下面给出一些例子, 整数和编码后的内存
 

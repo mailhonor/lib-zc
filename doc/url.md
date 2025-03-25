@@ -1,8 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
-## 编解码: url, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 编解码: url, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持 URL 解析, 其 STRUCT 类型是 **zurl_t**
+[LIB-ZC](./README.md) 支持 URL 解析, 其 STRUCT 类型是 **zurl_t**
+
+[C++版本](./url_cpp.md)
 
 ## 数据结构
 
@@ -117,5 +118,5 @@ rsv_spt=1&rsv_sug=1&rsv_sug2=2&wd=Linux
 ```
 
 ## 例子
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/http/url.c
+* ../blob/master/sample/http/url.c
 

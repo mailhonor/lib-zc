@@ -1,8 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
-## winmail.dat(tnef,Transport Neutral Encapsulation Format)文件解析, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## winmail.dat(tnef,Transport Neutral Encapsulation Format)文件解析, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持解析 winmail.dat(tnef,Transport Neutral Encapsulation Format)
+[LIB-ZC](./README.md) 支持解析 winmail.dat(tnef,Transport Neutral Encapsulation Format)
+
+[C++版本](./tnef_cpp.md)
 
 电子邮件中有一种附件
 
@@ -13,7 +14,7 @@
 _PS: 在Linux系统, 可以通过命令 **tnef** 解开 winmail.dat_
 
 
-下面介绍通过 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 的 API 解析 winmail.dat, 并介绍这些 API
+下面介绍通过 [LIB-ZC](./README.md) 的 API 解析 winmail.dat, 并介绍这些 API
 
 ## 第一步, 创建解析器
 
@@ -87,5 +88,5 @@ _PS: 在Linux系统, 可以通过命令 **tnef** 解开 winmail.dat_
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/mime/tnef_parser.c
+* ../blob/master/sample/mime/tnef_parser.c
 

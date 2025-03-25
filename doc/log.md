@@ -1,10 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C++版本](./log_cpp.md)
 
-## 日志输出, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 日志输出, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持通用日志机制
+[LIB-ZC](./README.md) 支持通用日志机制
 
 _请注意: 本日志系统没有日志级别的概念_
 
@@ -104,7 +103,7 @@ void zlog_use_syslog(const char *identity, int facility);
 int zlog_get_facility_from_str(const char *facility);
 ```
 
-### 用 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)内嵌的 masterlog
+### 用 [LIB-ZC](./README.md)内嵌的 masterlog
 
 _PS:看不明白就跳过本节_
 

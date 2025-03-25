@@ -1,10 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C++版本](./charset_cpp.md)
 
-## 字符集转码, 字符集探测, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 字符集转码, 字符集探测, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 对字符集转码做了封装, 支持字符集探测
+[LIB-ZC](./README.md) 对字符集转码做了封装, 支持字符集探测
 
 ## 字符集
 
@@ -55,7 +54,7 @@ zcharset_iconv("GB18030", "abcdef", 6, "UTF-8" , result, 0, 0, 0);
 
 类似 Linux 的程序 iconv
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/charset/iconv.c
+* ../blob/master/sample/charset/iconv.c
 
 
 ## 字符集探测
@@ -93,5 +92,5 @@ GB18030       广东省
 
 ## 例子: 字符集探测
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/charset/detact.c
+* ../blob/master/sample/charset/detact.c
 

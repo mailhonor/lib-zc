@@ -1,10 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C版本](./master.md)
 
-## MASTER/SERVER 服务进程管理框架, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## MASTER/SERVER 服务进程管理框架, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持 MASTER/SERVER 服务进程管理框架
+[LIB-ZC](./README.md) 支持 MASTER/SERVER 服务进程管理框架
 
 此框架下:
 
@@ -56,7 +55,7 @@ ms.main_run(argc, argv);
 ### 启动/停止/重启
 
 * master 进程的启动/停止/重启, 请参考脚本, 这个脚本稍微修改即可通用
-* https://gitee.com/linuxmail/lib-zc/blob/master/cpp_sample/server/general_master.sh
+* ../blob/master/cpp_sample/server/general_master.sh
 
 ### server 服务配置
 
@@ -218,7 +217,7 @@ int main(int argc, char **argv)
 ```
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/cpp_sample/server/
+* ../blob/master/cpp_sample/server/
 
 ## 命令行(调试)启动 server 
 

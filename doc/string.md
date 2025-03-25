@@ -1,9 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
-## 常用字符串函数, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 常用字符串函数, [LIB-ZC](./README.md)
 
+[LIB-ZC](./README.md) 封装了常用字符串函数
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 封装了常用字符串函数
+[C++版本](./stream_cpp.md)
 
 ## 字符操作,类别判定
 

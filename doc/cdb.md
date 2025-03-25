@@ -1,13 +1,12 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C++版本](./cdb_cpp.md)
 
-## 一种新的静态 DB (CDB), [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 一种新的静态 DB (CDB), [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 内嵌一种新的静态 DB (CDB),
+[LIB-ZC](./README.md) 内嵌一种新的静态 DB (CDB),
 不支持修改, 读取线程安全, 当前版本代码 "0001"
 
-本文不介绍文件格式, 有兴趣的可以看源码 https://gitee.com/linuxmail/lib-zc/blob/master/src/cdb/
+本文不介绍文件格式, 有兴趣的可以看源码 ../blob/master/src/cdb/
 
 ## 数据结构
 
@@ -105,5 +104,5 @@ struct zcdb_builder_t {
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/cdb/
+* ../blob/master/sample/cdb/
 

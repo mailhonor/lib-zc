@@ -1,12 +1,11 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C版本](./msearch.md)
 
-## 多关键字匹配, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 多关键字匹配, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 内嵌多关键字搜索模块
+[LIB-ZC](./README.md) 内嵌多关键字搜索模块
 
-文件格式和实现, 参考:  https://gitee.com/linuxmail/lib-zc/blob/master/cpp_src/search/msearch.cpp
+文件格式和实现, 参考:  ../blob/master/cpp_src/search/msearch.cpp
 
 本实现, 使用了 mmap 机制, 多进程共享数据
 
@@ -17,7 +16,7 @@
 
 ## 类
 
-https://gitee.com/linuxmail/lib-zc/blob/master/include/zcc/zcc_search.h
+../blob/master/include/zcc/zcc_search.h
 
 ```c++
 // 生成
@@ -92,5 +91,5 @@ else
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/cpp_sample/search/
+* ../blob/master/cpp_sample/search/
 

@@ -1,8 +1,7 @@
-<A name="readme_md" id="readme_md"></A>
 
-## REDIS 客户端, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## REDIS 客户端, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 封装了 redis 客户端,
+[LIB-ZC](./README.md) 封装了 redis 客户端,
 支持单点(standalone)和集群(cluster)
 
 必须了解 redis 的命令和协议才能顺利使用本客户端, 请参阅 http://doc.redisfans.com/
@@ -196,6 +195,6 @@ for (int i = 0; i < 100; i++) {
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/redis/client.c
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/redis/subscribe.c
+* ../blob/master/sample/redis/client.c
+* ../blob/master/sample/redis/subscribe.c
 

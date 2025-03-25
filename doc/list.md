@@ -1,10 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
-## 双向链表, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 双向链表, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持双向链表,
+[LIB-ZC](./README.md) 支持双向链表,
 其 STRUCT 类型是 **zlist_t**,
-是 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 的基本数据结构
+是 [LIB-ZC](./README.md) 的基本数据结构
 
 ## 数据结构
 
@@ -159,5 +158,5 @@ int main(int argc, char **argv)
 
 ## 例子: 2
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/stdlib/list.c
+* ../blob/master/sample/stdlib/list.c
 

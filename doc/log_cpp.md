@@ -1,10 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C版本](./log.md)
 
-## 日志输出, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 日志输出, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持通用日志机制
+[LIB-ZC](./README.md) 支持通用日志机制
 
 命名空间  zcc::logger
 

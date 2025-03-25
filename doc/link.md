@@ -1,10 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
-## 数据结构: 链表, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 数据结构: 链表, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持双向链表(数据结构),
+[LIB-ZC](./README.md) 支持双向链表(数据结构),
 其 STRUCT 类型是 **zlink_t**,
-是 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 的基本数据结构
+是 [LIB-ZC](./README.md) 的基本数据结构
 
 所谓"**链表**"是一个数据结构, 通用链表算法. **不涉及到<s>内存分配</s>**
 
@@ -87,10 +86,10 @@ struct zlink_node_t {
 实现一个简单的列表, 功能很简单:
 
 * 表尾追加, 表头移除
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/stdlib/link.c
+* ../blob/master/sample/stdlib/link.c
 
 ## 例子: 2
 
-* [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 的 [zlist_t](./list.md)是基于 zlink_t 实现的
-* https://gitee.com/linuxmail/lib-zc/blob/master/src/stdlib/list.c
+* [LIB-ZC](./README.md) 的 [zlist_t](./list.md)是基于 zlink_t 实现的
+* ../blob/master/src/stdlib/list.c
 

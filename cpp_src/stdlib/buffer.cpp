@@ -20,7 +20,8 @@ static bool re_new_data(buffer &buffer, int64_t capability)
         return true;
     }
     capability += buffer.capability_;
-    if (capability < 13) {
+    if (capability < 13)
+    {
         capability = 13;
     }
     buffer.data_ = (char *)zcc::realloc(buffer.data_, capability + 1);
@@ -213,12 +214,12 @@ buffer &buffer::trim_right_rn()
     {
         if (data[len_ - 1] == '\r')
         {
-            len_;
+            len_--;
             continue;
         }
         if (data[len_ - 1] == '\n')
         {
-            len_;
+            len_--;
             continue;
         }
         break;

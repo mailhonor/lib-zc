@@ -1,13 +1,12 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C++版本](./config_cpp.md)
 
-## key = value 型通用配置, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## key = value 型通用配置, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持通用配置,
+[LIB-ZC](./README.md) 支持通用配置,
 其 STRUCT 类型是 **zconfig_t**,
 是 [dict_t](./dict.md) 的别名,
-是 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 的基本数据结构
+是 [LIB-ZC](./README.md) 的基本数据结构
 
 推荐使用, 一些内嵌服务如master/server使用此配置风格  
 
@@ -109,7 +108,7 @@ void zconfig_get_size_table(zconfig_t *cf, zconfig_size_table_t *table);
 
 ## 全局配置
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 框架维护了一个全局配置
+[LIB-ZC](./README.md) 框架维护了一个全局配置
 
 ```
 extern zconfig_t *zvar_default_config;
@@ -118,12 +117,12 @@ extern zconfig_t *zvar_default_config;
 zconfig_t *zdefault_config_init(void);
 ```
 
-_PS: [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)底层不使用 zvar_default_config, 但一些内嵌的服务器框架使用_
+_PS: [LIB-ZC](./README.md)底层不使用 zvar_default_config, 但一些内嵌的服务器框架使用_
 
 
 ## 例子: 加载配置文件
 
-https://gitee.com/linuxmail/lib-zc/blob/master/sample/stdlib/config.c
+../blob/master/sample/stdlib/config.c
 
 ## 例子: 处理大量配置
 

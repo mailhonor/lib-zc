@@ -11,20 +11,45 @@
 zcc_namespace_begin;
 zcc_general_namespace_begin(charset);
 
+/**
+ * @brief 调试模式标志。设置为 true 时，会输出调试信息。
+ */
 bool var_debug_mode = false;
 
+/**
+ * @brief 修正字符集名称为标准格式。
+ * 
+ * 该函数接收一个字符集名称作为输入，将其转换为大写，
+ * 然后在预定义的映射表中查找标准名称。如果找到匹配项，
+ * 则返回标准名称；否则，返回原始名称。
+ * 
+ * @param charset 输入的字符集名称。
+ * @return 指向修正后的字符集名称的指针，如果无需修正则返回原始名称。
+ */
 const char *correct_name(const char *charset)
 {
+    // 如果输入的字符集名称为空指针，返回空字符串
+    if (!charset)
+    {
+        return "";
+    }
+    // 用于存储复制和处理后的字符集名称的缓冲区
     char tmpcharset[32];
+    // 获取输入字符集名称的长度
     int charsetlen = std::strlen(charset);
+    // 如果长度过长，直接返回原始名称
     if (charsetlen > 30)
     {
         return charset;
     }
+    // 将输入的字符集名称复制到临时缓冲区
     std::memcpy(tmpcharset, charset, charsetlen);
+    // 为临时缓冲区添加字符串结束符
     tmpcharset[charsetlen] = 0;
+    // 此处存在问题：toupper 是用于单个字符的，而非字符串。需要修正。
     toupper(tmpcharset);
 
+    // 静态映射表，将各种字符集别名映射到标准名称
     static std::map<std::string, std::string> formats = {
         {"866", "IBM866"},
         {"ANSI_X3.4-1968", "WINDOWS-1252"},
@@ -82,7 +107,6 @@ const char *correct_name(const char *charset)
         {"EUC-JP", "EUC-JP"},
         {"EUC-KR", "EUC-KR"},
         {"GB_2312-80", "GB18030"},
-        {"GB2312", "GB18030"},
         {"GB_2312", "GB18030"},
         {"GB2312", "GB18030"},
         {"GBK", "GB18030"},
@@ -209,7 +233,6 @@ const char *correct_name(const char *charset)
         {"UTF-16BE", "UTF-16BE"},
         {"UTF-16LE", "UTF-16LE"},
         {"UTF7", "UTF-7"},
-        {"UTF8", "UTF-8"},
         {"UTF8", "UTF-8"},
         {"VISUAL", "ISO-8859-8"},
         {"WINDOWS-31J", "SHIFT_JIS"},

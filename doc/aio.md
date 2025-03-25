@@ -1,10 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
-## 异步IO开发框架, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 异步IO开发框架, [LIB-ZC](./README.md)
 
 [C++版本](./aio_cpp.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 异步 IO 开发框架, 基于 epoll 实现, 支持 IO 事件, IO 读写(支持SSL), 定时器
+[LIB-ZC](./README.md) 异步 IO 开发框架, 基于 epoll 实现, 支持 IO 事件, IO 读写(支持SSL), 定时器
 
 ## 框架特色
 
@@ -517,5 +516,5 @@ zaio_disable(aio);
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/event/
+* ../blob/master/sample/event/
 

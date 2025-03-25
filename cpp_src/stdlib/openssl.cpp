@@ -116,6 +116,7 @@ static void thread_safe_cleanup(void)
 }
 #endif // CRYPTO_num_locks
 
+// 应该在程序启动时初始化, 应该在主进程执行
 static bool ___openssl_init = false;
 void env_init(void)
 {

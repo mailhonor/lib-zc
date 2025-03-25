@@ -1,8 +1,7 @@
-<A name="readme_md" id="readme_md"></A>
 
-## 宏: 链表, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 宏: 链表, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 提供一组宏,
+[LIB-ZC](./README.md) 提供一组宏,
 支持双向链表, 可实现各类链表操作. 不涉及到内存分配
 
 推荐使用, 每次都自己实现的话,一不注意就出错了, 可单独使用
@@ -87,7 +86,7 @@ efore_1106->prev=_node_1106;}\
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/stdlib/mlink.c
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/stdlib/mlink2.c
-* https://gitee.com/linuxmail/lib-zc/blob/master/src/stdlib/list.c
+* ../blob/master/sample/stdlib/mlink.c
+* ../blob/master/sample/stdlib/mlink2.c
+* ../blob/master/src/stdlib/list.c
 

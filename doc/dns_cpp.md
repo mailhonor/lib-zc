@@ -1,9 +1,8 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C版本](./dns.md)
 
 
-## 常用 DNS/IP地址/MAC地址 函数, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 常用 DNS/IP地址/MAC地址 函数, [LIB-ZC](./README.md)
 
 ```c++
 // 获取域名/主机名的ip地址, 存储到addrs

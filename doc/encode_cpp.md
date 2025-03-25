@@ -1,8 +1,7 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C++版本](./encode_cpp.md)
 
-## 编解码: base64/quoted-printable/hex/ncr, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 编解码: base64/quoted-printable/hex/ncr, [LIB-ZC](./README.md)
 
 命名空间: zcc
 
@@ -74,5 +73,5 @@ int ncr_decode(int ins, char *wchar);
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/cpp_sample/encode/
+* ../blob/master/cpp_sample/encode/
 

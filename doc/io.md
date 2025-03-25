@@ -1,10 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C++版本](./io_cpp.md)
 
-## 常见的 IO 函数, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 常见的 IO 函数, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 封装了常见的 IO 函数
+[LIB-ZC](./README.md) 封装了常见的 IO 函数
 
 ## 状态
 

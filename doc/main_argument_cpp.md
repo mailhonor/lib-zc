@@ -1,10 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C版本](./main_argument.md)
 
-## 通用命令行参数, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 通用命令行参数, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持 **main** 函数参数处理机制,
+[LIB-ZC](./README.md) 支持 **main** 函数参数处理机制,
 可以和 [全局配置(zcc::var_main_config)](./config_cpp.md) 无缝结合
 
 命名空间 zcc::main_argument

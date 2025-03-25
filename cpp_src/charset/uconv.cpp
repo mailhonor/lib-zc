@@ -129,7 +129,7 @@ std::string uconv_convert(const char *from_charset, const char *src, int src_len
 
 over:
     uni_bf.clear();
-    delete dest_buf;
+    delete[] dest_buf;
     if (from_conv)
     {
         ucnv_close(from_conv);

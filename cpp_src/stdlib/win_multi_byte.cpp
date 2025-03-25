@@ -8,7 +8,6 @@
 
 #ifdef _WIN64
 #include "zcc/zcc_win64.h"
-#include <windows.h>
 
 zcc_namespace_begin;
 

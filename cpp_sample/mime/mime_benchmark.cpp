@@ -29,7 +29,7 @@ int main(int argc, char **argv)
     zcc_info("eml     : %s", eml_fn);
     zcc_info("size    : %zd(bytes)", eml_data.size());
     zcc_info("loop    : %d", times);
-    std::string h = zcc::hunman_byte_size(eml_data.size() * times);
+    std::string h = zcc::human_byte_size(eml_data.size() * times);
     zcc_info("total   : %s(bytes)", h.c_str());
 
     int64_t t = zcc::millisecond();
@@ -72,7 +72,7 @@ int main(int argc, char **argv)
     if (t > 0)
     {
         zcc_info("elapse  : %zd.%03zd(second)", t / 1000, t % 1000);
-        zcc_info("%%second : %s(bytes)", zcc::hunman_byte_size(((eml_data.size() * times) / ((1.0 * t) / 1000))).c_str());
+        zcc_info("%%second : %s(bytes)", zcc::human_byte_size(((eml_data.size() * times) / ((1.0 * t) / 1000))).c_str());
     }
 
     return 0;

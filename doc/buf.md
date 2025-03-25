@@ -1,9 +1,8 @@
-<A name="readme_md" id="readme_md"></A>
 
-## 不定长字符串封装, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 不定长字符串封装, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持不定长字符串,
-其 STRUCT 类型是 **zbuf_t**, 是 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 的基本数据结构
+[LIB-ZC](./README.md) 支持不定长字符串,
+其 STRUCT 类型是 **zbuf_t**, 是 [LIB-ZC](./README.md) 的基本数据结构
 
 ## 数据结构
 

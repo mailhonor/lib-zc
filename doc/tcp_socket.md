@@ -1,9 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
-## TCP SOCKET 封装, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## TCP SOCKET 封装, [LIB-ZC](./README.md)
 
+[LIB-ZC](./README.md) 封装了常见的 TCP SOCKET 函数
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 封装了常见的 TCP SOCKET 函数
+[C++版本](./tcp_socket_cpp.md)
 
 本文全部函数忽略信号 EINTR
 

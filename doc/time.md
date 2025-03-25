@@ -1,8 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
-## 几个时间函数, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 几个时间函数, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 封装了几个时间函数
+[LIB-ZC](./README.md) 封装了几个时间函数
+
+[C++版本](./time_cpp.md)
 
 ## 时间, 毫秒
 

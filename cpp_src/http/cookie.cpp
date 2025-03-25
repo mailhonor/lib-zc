@@ -84,7 +84,7 @@ std::string http_cookie_build_item(const char *name, const char *value, int64_t 
 
     if (expires > 0)
     {
-        r.append("; expires=").append(rfc1123_time(expires));
+        r.append("; expires=").append(rfc7231_time(expires));
         r.append("; Max-Age=").append(std::to_string(expires - second()));
     }
 

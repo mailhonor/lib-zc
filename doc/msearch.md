@@ -1,12 +1,11 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C++版本](./msearch_cpp.md)
 
-## 多关键字匹配, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 多关键字匹配, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 内嵌多关键字搜索模块
+[LIB-ZC](./README.md) 内嵌多关键字搜索模块
 
-文件格式和实现, 参考:  https://gitee.com/linuxmail/lib-zc/blob/master/src/search/msearch.c
+文件格式和实现, 参考:  ../blob/master/src/search/msearch.c
 
 ## 数据结构
 
@@ -181,6 +180,6 @@ zmsearch_free(ms);
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/search/msearch_match.c
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/search/msearch_builder.c
+* ../blob/master/sample/search/msearch_match.c
+* ../blob/master/sample/search/msearch_builder.c
 

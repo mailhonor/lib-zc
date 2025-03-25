@@ -1,10 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
-## 向量(vector), [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 向量(vector), [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持向量(vector),
+[LIB-ZC](./README.md) 支持向量(vector),
 其 STRUCT 类型是 **zvector_t**,
-是 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 的基本数据结构
+是 [LIB-ZC](./README.md) 的基本数据结构
 
 推荐使用 zvector_push, zvector_pop;
 
@@ -88,5 +87,5 @@ struct zvector_t {
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/stdlib/vector.c
+* ../blob/master/sample/stdlib/vector.c
 

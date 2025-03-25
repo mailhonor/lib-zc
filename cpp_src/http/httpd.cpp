@@ -597,7 +597,7 @@ void httpd::response_header(const char *name, int64_t value)
 
 void httpd::response_header_date(const char *name, int64_t value)
 {
-    response_header(name, rfc1123_time(value));
+    response_header(name, rfc7231_time(value));
 }
 
 void httpd::response_header_content_type(const char *value, const char *charset)

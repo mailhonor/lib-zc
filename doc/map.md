@@ -1,10 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
-## map 映射, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## map 映射, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持 map 映射,
+[LIB-ZC](./README.md) 支持 map 映射,
 其 STRUCT 类型是 **zmap_t**, 基于 [红黑树(zrbtree_t)](./rbtree.md) 实现,
-是 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 的基本数据结构
+是 [LIB-ZC](./README.md) 的基本数据结构
 
 ## 数据结构
 
@@ -108,5 +107,5 @@ struct zmap_node_t {
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/rbtree/map_demo.c
+* ../blob/master/sample/rbtree/map_demo.c
 

@@ -14,15 +14,15 @@ int main(int argc, char **argv)
     zcc::main_argument::run(argc, argv);
     t = zcc::millisecond();
     zcc_info("millisecond: %zd.%03zd", t / 1000, t % 1000);
-    zcc_info("sleep 3000ms");
-    zcc::sleep_millisecond(3000);
+    zcc_info("sleep 2000ms");
+    zcc::sleep_millisecond(2000);
     t = zcc::millisecond();
     zcc_info("millisecond: %zd.%03zd", t / 1000, t % 1000);
 
-    std::string s = zcc::rfc1123_time();
-    zcc_info("rfc1123_time: %s", s.c_str());
+    std::string s = zcc::http_time();
+    zcc_info("http_time: %s", s.c_str());
     s = zcc::rfc822_time();
-    zcc_info("rfc822_time: %s", s.c_str());
+    zcc_info("mail_time: %s", s.c_str());
 
     return 0;
 }

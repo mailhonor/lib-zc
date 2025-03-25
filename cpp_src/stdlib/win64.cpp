@@ -11,7 +11,6 @@
 #include "zcc/zcc_stdlib.h"
 #include <mutex>
 #include <cerrno>
-#include <windows.h>
 
 zcc_namespace_begin;
 

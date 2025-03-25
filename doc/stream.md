@@ -1,9 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
-## IO 流(stream), [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## IO 流(stream), [LIB-ZC](./README.md)
 
+[LIB-ZC](./README.md) 支持IO 流(stream), 其 STRUCT 类型是 **zstream_t**
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持IO 流(stream), 其 STRUCT 类型是 **zstream_t**
+[C++版本](./stream_cpp.md)
 
 ## 数据结构
 
@@ -261,7 +261,7 @@ void foo(zstream_t *fp, SSL_CTX *ssl_ctx)
 
 ## 例子: 连接 smtp 服务器
 
-https://gitee.com/linuxmail/lib-zc/blob/master/sample/stream/io.c
+../blob/master/sample/stream/io.c
 
 这个例子,连接smtp服务器, 做几个简单的smtp协议, 逻辑流程如下
 

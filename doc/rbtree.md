@@ -1,11 +1,10 @@
-<A name="readme_md" id="readme_md"></A>
 
-## 数据结构: 红黑树(rbtree), [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 数据结构: 红黑树(rbtree), [LIB-ZC](./README.md)
 
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持红黑树(rbtree),
+[LIB-ZC](./README.md) 支持红黑树(rbtree),
 其 STRUCT 类型是 **zrbtree_t**,
-是 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 的基本数据结构
+是 [LIB-ZC](./README.md) 的基本数据结构
 
 zrbtree_t 是数据结构, 不是容器, **不涉及到<s>内存分配</s>**. 基于 zrbtree_t 可实现 [词典(zdict_t)](./dict.md), [MAP](./map.md) 等
 
@@ -111,9 +110,9 @@ struct zrbtree_node_t {
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/src/stdlib/dict.c
-* https://gitee.com/linuxmail/lib-zc/blob/master/src/stdlib/map.c
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/rbtree/
+* ../blob/master/src/stdlib/dict.c
+* ../blob/master/src/stdlib/map.c
+* ../blob/master/sample/rbtree/
 
 ## 技巧
 

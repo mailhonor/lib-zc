@@ -9,7 +9,6 @@
 #include "zcc/zcc_errno.h"
 
 #ifdef _WIN64
-#include <windows.h>
 #include <WinSock2.h>
 #else // _WIN64
 #include <errno.h>

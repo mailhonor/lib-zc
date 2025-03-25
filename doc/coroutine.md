@@ -1,8 +1,7 @@
-<A name="readme_md" id="readme_md"></A>
 
-## 协程框架, LIB-ZO, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 协程框架, LIB-ZO, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 是 Linux 平台通用 C 扩展库, 内嵌 LIB-ZO
+[LIB-ZC](./README.md) 是 Linux 平台通用 C 扩展库, 内嵌 LIB-ZO
 
 LIB-ZO 是协程开发框架的单独封装, 可独立使用, 代码仓库 https://gitee.com/linuxmail/lib-zo
 

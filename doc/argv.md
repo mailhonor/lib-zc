@@ -1,9 +1,8 @@
-<A name="readme_md" id="readme_md"></A>
 
-## 字符串向量(argv), [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 字符串向量(argv), [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持字符串向量(argv),
-其 STRUCT 类型是 **zargv_t**, 是 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 的基本数据结构
+[LIB-ZC](./README.md) 支持字符串向量(argv),
+其 STRUCT 类型是 **zargv_t**, 是 [LIB-ZC](./README.md) 的基本数据结构
 
 ## 数据结构
 
@@ -77,5 +76,5 @@ struct zargv_t {
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/stdlib/argv.c
+* ../blob/master/sample/stdlib/argv.c
 

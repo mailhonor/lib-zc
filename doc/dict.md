@@ -1,10 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
-## 词典, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 词典, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持词典,
+[LIB-ZC](./README.md) 支持词典,
 其 STRUCT 类型是 **zdict_t**, 基于[红黑树(zrbtree_t)](./rbtree.md)实现,
-是 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 的基本数据结构
+是 [LIB-ZC](./README.md) 的基本数据结构
 
 ## 数据结构
 
@@ -150,5 +149,5 @@ _本节提到的 zstr_to_bool, zstr_to_second, zstr_to_size, 请参考 [字符�
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/rbtree/dict_demo.c
+* ../blob/master/sample/rbtree/dict_demo.c
 

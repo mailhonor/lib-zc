@@ -1,10 +1,9 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C版本](./memcache_client.md)
 
-## MEMCACHE 客户端, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## MEMCACHE 客户端, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 封装 memcache 客户端
+[LIB-ZC](./README.md) 封装 memcache 客户端
 
 ## 类: zcc::memcache
 
@@ -98,4 +97,4 @@ private:
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/cpp_sample/memcache/client.cpp
+* ../blob/master/cpp_sample/memcache/client.cpp

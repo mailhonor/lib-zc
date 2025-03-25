@@ -1,8 +1,7 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C版本](./file.md)
 
-## 文件操作, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 文件操作, [LIB-ZC](./README.md)
 
 命名空间: zcc
 

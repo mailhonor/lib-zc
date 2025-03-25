@@ -1,8 +1,7 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C++版本](./encode_cpp.md)
 
-## 编解码: base64/quoted-printable/hex/ncr, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 编解码: base64/quoted-printable/hex/ncr, [LIB-ZC](./README.md)
 
 ## BASE64
 
@@ -79,6 +78,6 @@
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/encode/base64.c
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/encode/quoted_printable.c
+* ../blob/master/sample/encode/base64.c
+* ../blob/master/sample/encode/quoted_printable.c
 

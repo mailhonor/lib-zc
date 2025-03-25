@@ -1,12 +1,11 @@
-<A name="readme_md" id="readme_md"></A>
 
 [C++版本](./httpd_cpp.md)
 
-## httpd 服务器, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## httpd 服务器, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 支持 httpd服务器, STRUCT 类型是 **zhttpd_t**
+[LIB-ZC](./README.md) 支持 httpd服务器, STRUCT 类型是 **zhttpd_t**
 
-zhttpd_t 作为 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 的一个模块, 和专门的 httpd 库不同:
+zhttpd_t 作为 [LIB-ZC](./README.md) 的一个模块, 和专门的 httpd 库不同:
 
 * 只负责自己该做的事: 根据一个 fd(文件描述符) 或 SSL创建 zhttpd_t, http 协议处理完毕后, 释放 zhttpd_t
 * 端口的打开, SSL的创建, 进程还是线程还是协程模式, 服务的管理, 配置, 等等由其他模块负责
@@ -15,14 +14,14 @@ zhttpd_t 作为 [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 的一个
 
 建议开发者浏览 **httpd 服务开发通用模版**:
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/http/general_coroutine_server_httpd.c
+* ../blob/master/sample/http/general_coroutine_server_httpd.c
 
 ## 数据结构
 
 ```
 struct zhttpd_uploaded_file_t { /* 上传的文件; 隐藏细节, 不必深究 };
 struct zhttpd_t { /* httpd 服务; 隐藏细节, 不必深究 */};
-/* 源码 https://gitee.com/linuxmail/lib-zc/blob/master/src/http/httpd.h */
+/* 源码 ../blob/master/src/http/httpd.h */
 ```
 
 ## 最简单的用法
@@ -319,5 +318,5 @@ void foo(int fd)
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/http/
+* ../blob/master/sample/http/
 

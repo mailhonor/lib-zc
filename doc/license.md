@@ -1,8 +1,7 @@
-<A name="readme_md" id="readme_md"></A>
 
-## 一种简单的序列号, [LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md)
+## 一种简单的序列号, [LIB-ZC](./README.md)
 
-[LIB-ZC](https://gitee.com/linuxmail/lib-zc#readme_md) 内嵌一种简单的序列号生成和验证的方法,
+[LIB-ZC](./README.md) 内嵌一种简单的序列号生成和验证的方法,
 这个方法基于 MAC 地址
 
 _MAC 地址的获取参考: [int zget_mac_address(zargv_t *mac_list)](./dns.md)_
@@ -43,5 +42,5 @@ D1DDA02369DDE895
 
 ## 例子
 
-* https://gitee.com/linuxmail/lib-zc/blob/master/sample/stdlib/license.c
+* ../blob/master/sample/stdlib/license.c
 
