@@ -358,5 +358,5 @@ zjson_unserialize(j, s, -1);
 
 ## 例子
 
-* [goto](../blob/master/sample/json/)
+* [goto](../sample/json/)
 

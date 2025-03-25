@@ -73,5 +73,5 @@ int ncr_decode(int ins, char *wchar);
 
 ## 例子
 
-* [goto](../blob/master/cpp_sample/encode/)
+* [goto](../cpp_sample/encode/)
 

@@ -37,7 +37,7 @@ rc.exec_command(sval, {"GET", "abc"});
 
 方法很有先, 直接见 include
 
-* [goto](../blob/master/include/zcc/zcc_redis.h)
+* [goto](../include/zcc/zcc_redis.h)
 
 
 ## 简单的用法
@@ -82,5 +82,5 @@ rc.exec_command(jval, {"fffSCAN", "0"});
 
 ## 例子
 
-* [goto](../blob/master/cpp_sample/redis/)
+* [goto](../cpp_sample/redis/)
 

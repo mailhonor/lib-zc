@@ -417,5 +417,5 @@ elapse  : 0.764(second)
 
 ## 例子
 
-* [goto](../blob/master/sample/mime/)
+* [goto](../sample/mime/)
 

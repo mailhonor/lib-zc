@@ -74,7 +74,7 @@ _zmaster_server_main 会根据参数 "**-C config_dir**" 读取 server 配置文
 ### 启动/停止/重启
 
 * master 进程的启动/停止/重启, 请参考脚本, 这个脚本稍微修改即可通用
-* [goto](../blob/master/sample/master/general_master.sh)
+* [goto](../sample/master/general_master.sh)
 
 ## server 服务配置
 
@@ -258,7 +258,7 @@ int main(int argc, char **argv)
 
 ## 例子
 
-* [goto](../blob/master/sample/master/)
+* [goto](../sample/master/)
 
 ## 命令行(调试)启动 server 
 

@@ -261,7 +261,7 @@ void foo(zstream_t *fp, SSL_CTX *ssl_ctx)
 
 ## 例子: 连接 smtp 服务器
 
-[goto](../blob/master/sample/stream/io.c)
+[goto](../sample/stream/io.c)
 
 这个例子,连接smtp服务器, 做几个简单的smtp协议, 逻辑流程如下
 

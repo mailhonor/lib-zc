@@ -102,5 +102,5 @@ struct zcdb_builder_t {
 
 ## 例子
 
-* [goto](../blob/master/sample/cdb/)
+* [goto](../sample/cdb/)
 

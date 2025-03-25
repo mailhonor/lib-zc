@@ -63,5 +63,5 @@ after_close();
 
 ## 例子
 
-* [goto](../blob/master/cpp_sample/event/iopipe.cpp)
+* [goto](../cpp_sample/event/iopipe.cpp)
 

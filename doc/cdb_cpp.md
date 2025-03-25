@@ -8,9 +8,9 @@
 
 ## 基础类库
 
-* [goto](../blob/master/include/zcc/zcc_cdb.h)
+* [goto](../include/zcc/zcc_cdb.h)
 
 ## 例子
 
-* [goto](../blob/master/sample/cdb/)
+* [goto](../sample/cdb/)
 

@@ -88,5 +88,5 @@ _PS: 在Linux系统, 可以通过命令 **tnef** 解开 winmail.dat_
 
 ## 例子
 
-* [goto](../blob/master/sample/mime/tnef_parser.c)
+* [goto](../sample/mime/tnef_parser.c)
 

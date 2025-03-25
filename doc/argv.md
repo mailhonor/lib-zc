@@ -76,5 +76,5 @@ struct zargv_t {
 
 ## 例子
 
-* [goto](../blob/master/sample/stdlib/argv.c)
+* [goto](../sample/stdlib/argv.c)
 

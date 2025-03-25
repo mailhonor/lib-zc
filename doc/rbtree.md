@@ -110,9 +110,9 @@ struct zrbtree_node_t {
 
 ## 例子
 
-* [goto](../blob/master/src/stdlib/dict.c)
-* [goto](../blob/master/src/stdlib/map.c)
-* [goto](../blob/master/sample/rbtree/)
+* [goto](../src/stdlib/dict.c)
+* [goto](../src/stdlib/map.c)
+* [goto](../sample/rbtree/)
 
 ## 技巧
 

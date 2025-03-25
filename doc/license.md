@@ -42,5 +42,5 @@ D1DDA02369DDE895
 
 ## 例子
 
-* [goto](../blob/master/sample/stdlib/license.c)
+* [goto](../sample/stdlib/license.c)
 

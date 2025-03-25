@@ -446,5 +446,5 @@ protected:
 
 ## 例子
 
-* [goto](../blob/master/cpp_sample/event/)
+* [goto](../cpp_sample/event/)
 

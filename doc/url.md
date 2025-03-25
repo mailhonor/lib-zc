@@ -118,5 +118,5 @@ rsv_spt=1&rsv_sug=1&rsv_sug2=2&wd=Linux
 ```
 
 ## 例子
-* [goto](../blob/master/sample/http/url.c)
+* [goto](../sample/http/url.c)
 

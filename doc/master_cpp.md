@@ -55,7 +55,7 @@ ms.main_run(argc, argv);
 ### 启动/停止/重启
 
 * master 进程的启动/停止/重启, 请参考脚本, 这个脚本稍微修改即可通用
-* [goto](../blob/master/cpp_sample/server/general_master.sh)
+* [goto](../cpp_sample/server/general_master.sh)
 
 ### server 服务配置
 
@@ -217,7 +217,7 @@ int main(int argc, char **argv)
 ```
 ## 例子
 
-* [goto](../blob/master/cpp_sample/server/)
+* [goto](../cpp_sample/server/)
 
 ## 命令行(调试)启动 server 
 

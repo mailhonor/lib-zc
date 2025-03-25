@@ -95,5 +95,5 @@
 
 ## 例子
 
-* [goto](../blob/master/sample/memcache/client.c)
+* [goto](../sample/memcache/client.c)
 

@@ -407,5 +407,5 @@ js.unserialize(s, -1);
 
 ## 例子
 
-* [goto](../blob/master/)
+* [goto](../)
 

@@ -179,6 +179,6 @@ zmsearch_free(ms);
 
 ## 例子
 
-* [goto](../blob/master/sample/search/msearch_match.c)
-* [goto](../blob/master/sample/search/msearch_builder.c)
+* [goto](../sample/search/msearch_match.c)
+* [goto](../sample/search/msearch_builder.c)
 

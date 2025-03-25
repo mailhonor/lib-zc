@@ -5,7 +5,7 @@
 
 [LIB-ZC](./README.md) 内嵌多关键字搜索模块
 
-文件格式和实现, 参考:  ../blob/master/cpp_src/search/msearch.cpp
+文件格式和实现, 参考:  ../cpp_src/search/msearch.cpp
 
 本实现, 使用了 mmap 机制, 多进程共享数据
 
@@ -16,7 +16,7 @@
 
 ## 类
 
-[goto](../blob/master/include/zcc/zcc_search.h)
+[goto](../include/zcc/zcc_search.h)
 
 ```c++
 // 生成
@@ -91,5 +91,5 @@ else
 
 ## 例子
 
-* [goto](../blob/master/cpp_sample/search/)
+* [goto](../cpp_sample/search/)
 

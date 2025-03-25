@@ -7,7 +7,7 @@
 
 ## 用法
 
-* [goto](../blob/master/include/zcc/zcc_stream.h)
+* [goto](../include/zcc/zcc_stream.h)
 
 ## 简单用法
 
@@ -38,4 +38,4 @@ static void () {
 
 ## 例子: 连接 smtp 服务器
 
-* [goto](../blob/master/cpp_sample/stream/)
+* [goto](../cpp_sample/stream/)

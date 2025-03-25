@@ -97,4 +97,4 @@ private:
 
 ## 例子
 
-* [goto](../blob/master/cpp_sample/memcache/client.cpp)
+* [goto](../cpp_sample/memcache/client.cpp)

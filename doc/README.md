@@ -21,10 +21,10 @@ LIB-ZC 是一个Linux平台通用 C/C++ 扩展库
 * [REDIS 客户端(支持集群)](./redis_client_cpp.md)
 *  [MEMCACHE 客户端](./memcache_client_cpp.md)
 * [httpd服务器库](./httpd_cpp.md), [URL编解码](./url.md)
-* [IMAP 客户端](../blob/master/include/zcc/zcc_imap.h)
-* [POP 客户端](../blob/master/include/zcc/zcc_pop.h)
+* [IMAP 客户端](../include/zcc/zcc_imap.h)
+* [POP 客户端](../include/zcc/zcc_pop.h)
 * [JSON 解析库](./json_cpp.md)
-* [SQLITE3封装](../blob/master/include/zcc/zcc_sqlite3.h)
+* [SQLITE3封装](../include/zcc/zcc_sqlite3.h)
 * [一个全新的CONST DB库](./cdb_cpp.md)
 * [多关键字搜索](./msearch_cpp.md)
 * SQLITE3 代理服务器/客户端
@@ -47,7 +47,7 @@ LIB-ZC 是一个Linux平台通用 C/C++ 扩展库
 * [JSON 解析库](./json.md), [NCR 解析](./encode.md)
 * [MIME 邮件解析库](./mime.md), [TNEF 邮件解析库](./tnef.md), [BASE64/QUOTED-PRINTABLE](./encode.md)
 * [REDIS 客户端(支持集群)](./redis_client.md), [MEMCACHE 客户端](./memcache_client.md)
-* [httpd服务器库](./httpd.md), [httpd服务开发通用模版](../blob/master/sample/http/general_coroutine_server_httpd.c), [URL编解码](./url.md)
+* [httpd服务器库](./httpd.md), [httpd服务开发通用模版](../sample/http/general_coroutine_server_httpd.c), [URL编解码](./url.md)
 * [一个全新的CONST DB库](./cdb.md)
 * [多关键字搜索](./msearch.md)
 * SQLITE3 代理服务器/客户端

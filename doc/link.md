@@ -86,10 +86,10 @@ struct zlink_node_t {
 实现一个简单的列表, 功能很简单:
 
 * 表尾追加, 表头移除
-* [goto](../blob/master/sample/stdlib/link.c)
+* [goto](../sample/stdlib/link.c)
 
 ## 例子: 2
 
 * [LIB-ZC](./README.md) 的 [zlist_t](./list.md)是基于 zlink_t 实现的
-* [goto](../blob/master/src/stdlib/list.c)
+* [goto](../src/stdlib/list.c)
 

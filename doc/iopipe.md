@@ -97,6 +97,6 @@ after_close(ctx);
 
 ## 例子
 
-* [goto](../blob/master/sample/event/iopipe.c)
-* [goto](../blob/master/sample/coroutine/iopipe.c)
+* [goto](../sample/event/iopipe.c)
+* [goto](../sample/coroutine/iopipe.c)
 

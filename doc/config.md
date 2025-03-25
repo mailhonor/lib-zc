@@ -122,7 +122,7 @@ _PS: [LIB-ZC](./README.md)底层不使用 zvar_default_config, 但一些内嵌�
 
 ## 例子: 加载配置文件
 
-[goto](../blob/master/sample/stdlib/config.c)
+[goto](../sample/stdlib/config.c)
 
 ## 例子: 处理大量配置
 

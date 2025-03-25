@@ -87,5 +87,5 @@ struct zvector_t {
 
 ## 例子
 
-* [goto](../blob/master/sample/stdlib/vector.c)
+* [goto](../sample/stdlib/vector.c)
 

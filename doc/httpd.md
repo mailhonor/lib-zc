@@ -14,7 +14,7 @@ zhttpd_t 作为 [LIB-ZC](./README.md) 的一个模块, 和专门的 httpd 库不
 
 建议开发者浏览 **httpd 服务开发通用模版**:
 
-* [goto](../blob/master/sample/http/general_coroutine_server_httpd.c)
+* [goto](../sample/http/general_coroutine_server_httpd.c)
 
 ## 数据结构
 
@@ -317,5 +317,5 @@ void foo(int fd)
 
 ## 例子
 
-* [goto](../blob/master/sample/http/)
+* [goto](../sample/http/)
 

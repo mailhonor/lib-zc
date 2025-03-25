@@ -10,7 +10,7 @@
 
 ## 对 int 编码
 
-原理, 可以参考源码: [goto](../blob/master/src/stdlib/cint_and_data.c)
+原理, 可以参考源码: [goto](../src/stdlib/cint_and_data.c)
 
 下面给出一些例子, 整数和编码后的内存
 
