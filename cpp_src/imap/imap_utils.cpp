@@ -140,6 +140,11 @@ std::string imap_client::escape_string(const char *s, int slen)
         {
         case ' ':
         case '{':
+        case '}':
+        case '(':
+        case ')':
+        case '[':
+        case ']':
             flag_quote = true;
             break;
         case '\\':
