@@ -312,6 +312,37 @@ over:
     return r;
 }
 
+std::string human_kmg_size(double size)
+{
+    char buf[128 + 1];
+    if (size < 1)
+    {
+        return "0";
+    }
+    size /= 1024;
+
+    if (size < 1024)
+    {
+        if (size < 1)
+        {
+            size = 1;
+        }
+        return std::to_string(static_cast<int>(size)) + "K";
+    }
+
+    size /= 1024;
+
+    if (size < 1000)
+    {
+        sprintf(buf, "%.1fM", size);
+        return buf;
+    }
+
+    size /= 1024;
+    sprintf(buf, "%.2fG", size);
+    return buf;
+}
+
 char *tolower(char *str)
 {
     if (!str)
@@ -485,6 +516,23 @@ std::string &trim_line_end_rn(std::string &s)
     return s;
 }
 
+std::string trim(const std::string &str)
+{
+    auto start = str.begin();
+    while (start != str.end() && std::isspace(static_cast<unsigned char>(*start)))
+    {
+        ++start;
+    }
+
+    auto end = str.end();
+    do
+    {
+        --end;
+    } while (std::distance(start, end) > 0 && std::isspace(static_cast<unsigned char>(*end)));
+
+    return std::string(start, end + 1);
+}
+
 /* vector */
 std::vector<std::string> split(const char *s, int len, const char *delims, bool ignore_empty_token)
 {
@@ -602,5 +650,19 @@ char *strcasestr(const char *haystack, const char *needle)
     return 0;
 }
 #endif // _WIN6
+
+std::string str_replace(const std::string &input, const std::string &from, const std::string &to)
+{
+    std::string result = input;
+    size_t pos = 0;
+
+    while ((pos = result.find(from, pos)) != std::string::npos)
+    {
+        result.replace(pos, from.length(), to);
+        pos += to.length(); // 移动到替换后的文本之后
+    }
+
+    return result;
+}
 
 zcc_namespace_end;

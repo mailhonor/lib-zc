@@ -11,6 +11,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include "zc.h"
+#include "zc_coroutine.h"
 
 typedef void (*cmd_fn_t)(zhttpd_t *httpd);
 

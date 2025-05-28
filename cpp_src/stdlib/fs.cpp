@@ -36,6 +36,14 @@
 #define Z_MAX_PATH 10240
 #endif // Z_MAX_PATH
 
+#ifdef _WIN64
+// 定义 Windows 64 位系统下的路径分隔符
+#define path_splitor '\\'
+#else // _WIN64
+// 定义非 Windows 64 位系统下的路径分隔符
+#define path_splitor '/'
+#endif // _WIN64
+
 /**
  * @brief 健壮地执行一个表达式，处理 EINTR 错误
  * @param exp 要执行的表达式
@@ -325,6 +333,62 @@ int file_exists(const char *pathname)
     return 1;
 }
 
+int file_is_regular(const char *pathname)
+{
+    zcc_stat st;
+    int ret = zcc::stat(pathname, &st);
+    if (ret == -1)
+    {
+        int ec = get_errno();
+        // 如果文件不存在，返回 0
+        if (ec == ZCC_ENOENT)
+        {
+            return 0;
+        }
+        return -1;
+    }
+#ifdef _WIN64
+    if (st.st_mode & _S_IFREG)
+    {
+        return 1;
+    }
+#else  // _WIN64
+    if (S_ISREG(st.st_mode))
+    {
+        return 1;
+    }
+#endif // _WIN64
+    return 0;
+}
+
+int file_is_dir(const char *pathname)
+{
+    zcc_stat st;
+    int ret = zcc::stat(pathname, &st);
+    if (ret == -1)
+    {
+        int ec = get_errno();
+        // 如果文件不存在，返回 0
+        if (ec == ZCC_ENOENT)
+        {
+            return 0;
+        }
+        return -1;
+    }
+#ifdef _WIN64
+    if (st.st_mode & _S_IFDIR)
+    {
+        return 1;
+    }
+#else  // _WIN64
+    if (S_ISDIR(st.st_mode))
+    {
+        return 1;
+    }
+#endif // _WIN64
+    return 0;
+}
+
 /* ################################################################## */
 /* file get/put contents */
 
@@ -477,6 +541,47 @@ std::string stdin_get_contents()
     return r;
 }
 
+int file_copy(const char *sourcePathname, const char *destPathname)
+{
+    FILE *sourceFile, *destFile;
+    char buffer[1024 + 1];
+    size_t bytesRead;
+
+    // 打开源文件（附件），以二进制读模式
+    sourceFile = fopen(sourcePathname, "rb");
+    if (sourceFile == NULL)
+    {
+        zcc_debug("无法打开源文件");
+        return -1;
+    }
+
+    // 打开目标文件，以二进制写模式，如果文件不存在则创建
+    destFile = fopen(destPathname, "wb");
+    if (destFile == NULL)
+    {
+        zcc_debug("无法创建目标文件");
+        fclose(sourceFile);
+        return -1;
+    }
+
+    // 使用缓冲区读取和写入文件
+    while ((bytesRead = fread(buffer, 1, 1024, sourceFile)) > 0)
+    {
+        fwrite(buffer, 1, bytesRead, destFile);
+    }
+
+    // 关闭文件
+    fclose(sourceFile);
+    fflush(destFile);
+    int ret = ferror(destFile);
+    fclose(destFile);
+    if (ret)
+    {
+        return -1;
+    }
+    return 1;
+}
+
 #ifdef _WIN64
 /**
  * @brief Windows 64 位系统下打开文件的辅助函数
@@ -577,14 +682,6 @@ int mkdir(const char *pathname, int mode)
 #endif // _WIN64
 }
 
-#ifdef _WIN64
-// 定义 Windows 64 位系统下的路径分隔符
-#define path_splitor '\\'
-#else // _WIN64
-// 定义非 Windows 64 位系统下的路径分隔符
-#define path_splitor '/'
-#endif // _WIN64
-
 /**
  * @brief 根据路径列表创建多级目录
  * @param paths 路径列表
@@ -611,10 +708,18 @@ int mkdir(std::vector<std::string> paths, int mode)
     for (auto it = paths.begin(); it != paths.end(); it++)
     {
         const char *path = it->c_str();
-        if ((!tmppath.empty()) && (tmppath.back() != path_splitor))
+        if (!tmppath.empty())
         {
-            tmppath.push_back(path_splitor);
+            if ((tmppath.back() != '/')
+#ifdef _WIN64
+                && (tmppath.back() != '\\')
+#endif // _WIN64
+            )
+            {
+                tmppath.push_back(path_splitor);
+            }
         }
+
         if (empty(path))
         {
             break;
@@ -647,6 +752,36 @@ int mkdir(std::vector<std::string> paths, int mode)
     {
         goto over;
     }
+
+    // 检查目录是否存在
+    if ((ret = zcc::stat(tmppath.c_str(), &st)) < 0)
+    {
+        if (get_errno() == ZCC_ENOTDIR)
+        {
+            goto over;
+        }
+    }
+    else
+    {
+#ifdef _WIN64
+        // 检查是否为目录
+        if (!(st.st_mode & _S_IFDIR))
+        {
+            set_errno(ZCC_ENOTDIR);
+            goto over;
+        }
+#else  // _WIN64
+       // 检查是否为目录
+        if (!S_ISDIR(st.st_mode))
+        {
+            set_errno(ZCC_ENOTDIR);
+            goto over;
+        }
+#endif // _WIN64
+        r = 1;
+        goto over;
+    }
+
     // 将路径复制到缓冲区
     std::memcpy(pathbuf, tmppath.c_str(), tmppath.size());
     pathbuf[tmppath.size()] = 0;
@@ -717,7 +852,6 @@ int mkdir(std::vector<std::string> paths, int mode)
 over:
     return r;
 }
-#undef path_splitor
 
 /**
  * @brief 根据可变参数列表创建多级目录
@@ -783,6 +917,10 @@ int rename(const char *oldpath, const char *newpath)
  */
 int unlink(const char *pathname)
 {
+    if (empty(pathname))
+    {
+        return 0;
+    }
 #ifdef _WIN64
     // 用于存储宽字符版本的文件路径
     wchar_t pathnamew[Z_MAX_PATH + 1];
@@ -1374,6 +1512,194 @@ bool create_shortcut_link(const char *from, const char *to)
 #else  // _WIN64
     return false;
 #endif // _WIN64
+}
+
+std::string path_concat(const char *path1, ...)
+{
+    std::string return_path = path1;
+    char *path;
+    va_list ap;
+    va_start(ap, path1);
+    while ((path = (char *)va_arg(ap, char *)))
+    {
+        if (!return_path.empty())
+        {
+            if ((return_path.back() != '/')
+#ifdef _WIN64
+                && (return_path.back() != '\\')
+#endif // _WIN64
+            )
+            {
+                return_path.push_back(path_splitor);
+            }
+        }
+        if (empty(path))
+        {
+            break;
+        }
+        if ((path[0] == '/') && (!return_path.empty()))
+        {
+            path++;
+        }
+#ifdef _WIN64
+        if (path[0] == '\\')
+        {
+            path++;
+        }
+#endif // _WIN64
+        return_path.append(path);
+    }
+    va_end(ap);
+
+    if ((!return_path.empty()) && (return_path.back() == path_splitor))
+    {
+        return_path.pop_back();
+    }
+    return return_path;
+}
+
+std::string get_dirname(const char *pathname)
+{
+    std::string path = pathname;
+    size_t pos = path.rfind('/');
+#ifdef _WIN64
+    size_t pos2 = path.rfind('\\');
+    if ((pos2 != std::string::npos) && (pos2 != std::string::npos) && (pos2 > pos))
+    {
+        pos = pos2;
+    }
+#endif // _WIN64
+    if (pos != std::string::npos)
+    {
+        return path.substr(0, pos);
+    }
+    return "";
+}
+
+void get_dirname_and_filename(const char *pathname, std::string &dirname, std::string &filename)
+{
+    std::string path = pathname;
+    size_t pos = path.rfind('/');
+#ifdef _WIN64
+    size_t pos2 = path.rfind('\\');
+    if ((pos2 != std::string::npos) && (pos2 != std::string::npos) && (pos2 > pos))
+    {
+        pos = pos2;
+    }
+#endif // _WIN64
+    if (pos != std::string::npos)
+    {
+        dirname = path.substr(0, pos);
+        filename = path.substr(pos + 1);
+    }
+    else
+    {
+        dirname = "";
+        filename = path;
+    }
+}
+
+std::string get_pathname_for_dump(const char *dirname, const char *filename, int max_loop)
+{
+    if (max_loop < 1)
+    {
+        max_loop = 10000;
+    }
+    std::string tmp_pathname = dirname;
+    tmp_pathname.push_back(path_splitor);
+    tmp_pathname.append(filename);
+
+    int ret = zcc::file_exists(tmp_pathname);
+    if (ret < 0)
+    {
+        return "";
+    }
+    if (ret == 0)
+    {
+        return tmp_pathname;
+    }
+    const char *suffix = "";
+    std::string prefix = dirname;
+    prefix.push_back(path_splitor);
+    const char *p = strrchr(filename, '.');
+    if (p)
+    {
+        suffix = p;
+        if (p > filename)
+        {
+            prefix.append(filename, p - filename);
+        }
+    }
+    else
+    {
+        prefix.append(filename);
+    }
+
+    do
+    {
+        size_t size = prefix.size();
+        if (size == 0)
+        {
+            break;
+        }
+        if (prefix[size - 1] != ')')
+        {
+            break;
+        }
+        size--;
+        if (size == 0)
+        {
+            break;
+        }
+        while (size > 0)
+        {
+            int ch = prefix[size - 1];
+            if (isdigit(ch))
+            {
+                size--;
+                continue;
+            }
+            break;
+        }
+        if (size == 0)
+        {
+            break;
+        }
+        if (prefix[size - 1] != '(')
+        {
+            break;
+        }
+        size--;
+        prefix.resize(size);
+        break;
+    } while (0);
+
+    std::string r;
+    int i = 0;
+    for (i = 1; i < max_loop; i++)
+    {
+        r = prefix;
+        r.append("(").append(std::to_string(i)).append(")").append(suffix);
+        ret = zcc::file_exists(r.c_str());
+        if (ret < 0)
+        {
+            return "";
+        }
+        if (ret > 0)
+        {
+            continue;
+        }
+        return r;
+    }
+    return "";
+}
+
+std::string get_pathname_for_dump(const char *pathname, int max_loop)
+{
+    std::string dirname;
+    std::string filename;
+    get_dirname_and_filename(pathname, dirname, filename);
+    return get_pathname_for_dump(dirname.c_str(), filename.c_str(), max_loop);
 }
 
 zcc_namespace_end;

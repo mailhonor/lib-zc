@@ -392,7 +392,7 @@ static void _aio_event_monitor(aio_engine *engine_, int monitor_cmd)
     {
         if (action_type == action_sleep)
         {
-            engine_->cutoff_time = millisecond(1000L * (engine_->want_read_len));
+            engine_->cutoff_time = millisecond() + 1000L * (engine_->want_read_len);
             rbtree_attach(&(eb->timeout_tree), &(engine_->rbnode_time));
             engine_->in_timeout_tree = 1;
         }
@@ -425,7 +425,7 @@ static void _aio_event_monitor(aio_engine *engine_, int monitor_cmd)
             }
             if (max_timeout > -1)
             {
-                engine_->cutoff_time = millisecond(1000L * max_timeout);
+                engine_->cutoff_time = millisecond() + 1000L * max_timeout;
                 rbtree_attach(&(eb->timeout_tree), &(engine_->rbnode_time));
                 engine_->in_timeout_tree = 1;
             }

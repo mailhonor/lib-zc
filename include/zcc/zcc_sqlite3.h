@@ -89,7 +89,7 @@ public:
 
 public:
     sqlite3_mini_client();
-    ~sqlite3_mini_client();
+    virtual ~sqlite3_mini_client();
     inline const std::string &get_db_pathname() { return db_pathname_; }
     inline const std::string &get_last_error() { return last_error_; }
     bool close();

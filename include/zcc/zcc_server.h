@@ -34,7 +34,7 @@ public:
 
 public:
     master_server();
-    ~master_server();
+    virtual ~master_server();
     void main_run(int argc, char **argv);
     virtual std::list<config> load_server_configs();
     virtual void before_service();
@@ -75,7 +75,7 @@ public:
     {
     public:
         simple_line_aio();
-        ~simple_line_aio();
+        virtual ~simple_line_aio();
         void clear();
         void cache_flush_and_request();
         void cache_flush_and_stop();

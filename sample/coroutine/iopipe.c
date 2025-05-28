@@ -8,6 +8,7 @@
 
 #include <openssl/ssl.h>
 #include "zc.h"
+#include "zc_coroutine.h"
 #include <errno.h>
 #include <poll.h>
 
@@ -26,9 +27,9 @@ static SSL_CTX * ssl_dest_ctx = 0;
 static void ___usage()
 {
 
-    zprintf("USAGE: %s -proxy host:port -dest host:port [ -times 9999991 ]\n", zvar_progname);
-    zprintf("USAGE: %s -proxy host:port -ssl-dest host:port\n", zvar_progname);
-    zprintf("USAGE: %s -ssl-proxy host:port -dest host:port -ssl-cert filename -ssl-key filename\n", zvar_progname);
+    printf("USAGE: %s -proxy host:port -dest host:port [ -times 9999991 ]\n", zvar_progname);
+    printf("USAGE: %s -proxy host:port -ssl-dest host:port\n", zvar_progname);
+    printf("USAGE: %s -ssl-proxy host:port -dest host:port -ssl-cert filename -ssl-key filename\n", zvar_progname);
     exit(1);
 }
 
@@ -71,11 +72,11 @@ static void parameters_do(int argc, char **argv)
         dest_is_ssl = 0;
     }
     if (zempty(proxy_address)) {
-        zprintf("ERROR proxy'address is null\n");
+        printf("ERROR proxy'address is null\n");
         ___usage();
     }
     if (zempty(dest_address)) {
-        zprintf("ERROR dest'address is null\n");
+        printf("ERROR dest'address is null\n");
         ___usage();
     }
 }
@@ -88,12 +89,12 @@ static void ssl_do()
 
     if (proxy_is_ssl) {
         if (zempty(ssl_key) || zempty(ssl_cert)) {
-            zprintf("ERROR ssl-proxy mode, need -ssl-key, -ssl-cert\n");
+            printf("ERROR ssl-proxy mode, need -ssl-key, -ssl-cert\n");
             ___usage();
         }
         ssl_proxy_ctx = zopenssl_SSL_CTX_create_server(ssl_cert, ssl_key);
         if (!ssl_proxy_ctx) {
-            zprintf("ERROR can load ssl err: %s, %s\n", ssl_cert, ssl_key);
+            printf("ERROR can load ssl err: %s, %s\n", ssl_cert, ssl_key);
             exit(1);
         }
     }
@@ -118,14 +119,14 @@ void * do_after_accept(void *arg)
         if (proxy_is_ssl) {
             proxy_ssl = zopenssl_SSL_create(ssl_proxy_ctx, proxy_fd);
             if (zopenssl_timed_accept(proxy_ssl, 10, 10) < 1) {
-                zprintf("ERROR openssl_accept error\n");
+                printf("ERROR openssl_accept error\n");
                 err = 1;
                 break;
             }
         }
         dest_fd = zconnect(dest_address, 10);
         if (dest_fd == -1) {
-            zprintf("ERROR can not connect %s\n", dest_address);
+            printf("ERROR can not connect %s\n", dest_address);
             err = 1;
             break;
         }
@@ -133,7 +134,7 @@ void * do_after_accept(void *arg)
         if (dest_is_ssl) {
             dest_ssl = zopenssl_SSL_create(ssl_dest_ctx, dest_fd);
             if (zopenssl_timed_connect(dest_ssl, 10, 10) < 1) {
-                zprintf("ERROR openssl_connect error\n");
+                printf("ERROR openssl_connect error\n");
                 err = 1;
                 break;
             }
@@ -165,7 +166,7 @@ static void *do_listen(void * arg)
     int sock_type;
     int listen_fd = zlisten(proxy_address, &sock_type, 10);
     if (listen_fd < 0) {
-        zprintf("ERROR: can not open %s (%m), proxy_address\n", proxy_address);
+        printf("ERROR: can not open %s (%m), proxy_address\n", proxy_address);
         exit(1);
     }
     while(1) {
@@ -173,7 +174,7 @@ static void *do_listen(void * arg)
             break;
         }
         if (ztimed_read_wait(listen_fd, 100) < 0) {
-            zprintf("accept error (%m)");
+            printf("accept error (%m)");
             exit(1);
         }
         int fd = zaccept(listen_fd, sock_type);

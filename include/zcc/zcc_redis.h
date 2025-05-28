@@ -119,12 +119,12 @@ public:
 
     // 订阅
     int subscribe(const char *channel);
-    int subscribe(const std::string &channel)
+    inline int subscribe(const std::string &channel)
     {
         return subscribe(channel.c_str());
     }
     int unsubscribe(const char *channel = nullptr);
-    int unsubscribe(const std::string &channel = var_blank_string)
+    inline int unsubscribe(const std::string &channel = var_blank_string)
     {
         return unsubscribe(channel.c_str());
     }
@@ -134,7 +134,7 @@ public:
         return psubscribe(channel.c_str());
     }
     int punsubscribe(const char *channel = nullptr);
-    int punsubscribe(const std::string &channel = var_blank_string)
+    inline int punsubscribe(const std::string &channel = var_blank_string)
     {
         return punsubscribe(channel.c_str());
     }

@@ -27,7 +27,7 @@ static void test_string()
 
 static void test_bool_one(zcc::json js)
 {
-    printf("bool: %d\n", js.get_bool_value(false)?1:0);
+    printf("bool: %d\n", js.get_bool_value(false) ? 1 : 0);
 }
 
 static void test_bool()
@@ -101,4 +101,3 @@ int main(int argc, char **argv)
     test_object();
     return 0;
 }
-

@@ -72,6 +72,12 @@
     namespace ns                        \
     {
 #define zcc_general_namespace_end(ns) }
+
+#define zcc_anonymous_namespace_begin() \
+    namespace                           \
+    {
+#define zcc_anonymous_namespace_end() }
+
 #endif
 
 #ifndef ZCC__FILE__
@@ -215,26 +221,23 @@ public:
 };
 
 /* gloabal init ##################################################### */
-class global_init
-{
-public:
-    inline global_init(void (*_init_fn)()) { _init_fn(); }
-    inline global_init(void (*_init_fn)(void *ctx), void *ctx) { _init_fn(ctx); }
-    inline global_init(void (*_init_fn)(int i), int i) { _init_fn(i); }
-    inline ~global_init() {}
+#define zcc_global_init(doSth)                                   \
+    namespace                                                    \
+    {                                                            \
+        static struct zcc_global_init_class_##__LINE__           \
+        {                                                        \
+            inline zcc_global_init_class_##__LINE__() { doSth; } \
+        } zcc_global_init_class_instance_##__LINE__;             \
+    }
 
-public:
-    int unused;
-};
-class global_fini
-{
-public:
-    inline global_fini(void (*_fini_fn)()) { _fini_fn_ = _fini_fn; }
-    inline ~global_fini() {}
-
-public:
-    void (*_fini_fn_)();
-};
+#define zcc_global_fini(doSth)                                    \
+    namespace                                                     \
+    {                                                             \
+        static struct zcc_global_fini_class_##__LINE__            \
+        {                                                         \
+            inline ~zcc_global_fini_class_##__LINE__() { doSth; } \
+        } zcc_global_fini_class_instance_##__LINE__;              \
+    }
 
 /* log ############################################################## */
 zcc_general_namespace_begin(logger);
@@ -755,7 +758,7 @@ extern unsigned const char var_char_xdigitval_vector[];
 /**
  * @brief 判断一个字符是否可被修剪。
  * 可被修剪的字符包括控制字符和空格。
- * 
+ *
  * @param ch 要判断的字符。
  * @return bool 如果字符可被修剪则返回 true，否则返回 false。
  */
@@ -764,7 +767,7 @@ inline bool is_trimable(int ch) { return std::iscntrl(ch) || (ch == ' '); }
 /**
  * @brief 判断一个字符是否可被修剪，功能与 is_trimable 相同。
  * 可被修剪的字符包括控制字符和空格。
- * 
+ *
  * @param ch 要判断的字符。
  * @return bool 如果字符可被修剪则返回 true，否则返回 false。
  */
@@ -773,7 +776,7 @@ inline bool istrim(int ch) { return std::iscntrl(ch) || (ch == ' '); }
 /**
  * @brief 将十六进制字符转换为对应的整数值。
  * 使用预定义的数组 var_char_xdigitval_vector 进行转换。
- * 
+ *
  * @param c 要转换的十六进制字符。
  * @return int 转换后的整数值。
  */
@@ -782,7 +785,7 @@ inline int hex_char_to_int(int c) { return var_char_xdigitval_vector[(unsigned c
 /**
  * @brief 判断一个字符是否为字母或数字。
  * 调用标准库函数 std::isalnum 进行判断。
- * 
+ *
  * @param c 要判断的字符。
  * @return int 如果是字母或数字则返回非零值，否则返回零。
  */
@@ -791,7 +794,7 @@ inline int isalnum(int c) { return std::isalnum(c); }
 /**
  * @brief 判断一个字符是否为字母。
  * 调用标准库函数 std::isalpha 进行判断。
- * 
+ *
  * @param c 要判断的字符。
  * @return int 如果是字母则返回非零值，否则返回零。
  */
@@ -800,7 +803,7 @@ inline int isalpha(int c) { return std::isalpha(c); }
 /**
  * @brief 判断一个字符是否为控制字符。
  * 调用标准库函数 std::iscntrl 进行判断。
- * 
+ *
  * @param c 要判断的字符。
  * @return int 如果是控制字符则返回非零值，否则返回零。
  */
@@ -809,7 +812,7 @@ inline int iscntrl(int c) { return std::iscntrl(c); }
 /**
  * @brief 判断一个字符是否为数字。
  * 调用标准库函数 std::isdigit 进行判断。
- * 
+ *
  * @param c 要判断的字符。
  * @return int 如果是数字则返回非零值，否则返回零。
  */
@@ -818,7 +821,7 @@ inline int isdigit(int c) { return std::isdigit(c); }
 /**
  * @brief 判断一个字符是否为可打印的图形字符。
  * 调用标准库函数 std::isgraph 进行判断。
- * 
+ *
  * @param c 要判断的字符。
  * @return int 如果是可打印的图形字符则返回非零值，否则返回零。
  */
@@ -827,7 +830,7 @@ inline int isgraph(int c) { return std::isgraph(c); }
 /**
  * @brief 判断一个字符是否为小写字母。
  * 调用标准库函数 std::islower 进行判断。
- * 
+ *
  * @param c 要判断的字符。
  * @return int 如果是小写字母则返回非零值，否则返回零。
  */
@@ -836,7 +839,7 @@ inline int islower(int c) { return std::islower(c); }
 /**
  * @brief 判断一个字符是否为可打印字符。
  * 调用标准库函数 std::isprint 进行判断。
- * 
+ *
  * @param c 要判断的字符。
  * @return int 如果是可打印字符则返回非零值，否则返回零。
  */
@@ -845,7 +848,7 @@ inline int isprint(int c) { return std::isprint(c); }
 /**
  * @brief 判断一个字符是否为标点符号。
  * 调用标准库函数 std::ispunct 进行判断。
- * 
+ *
  * @param c 要判断的字符。
  * @return int 如果是标点符号则返回非零值，否则返回零。
  */
@@ -854,7 +857,7 @@ inline int ispunct(int c) { return std::ispunct(c); }
 /**
  * @brief 判断一个字符是否为空白字符。
  * 调用标准库函数 std::isspace 进行判断。
- * 
+ *
  * @param c 要判断的字符。
  * @return int 如果是空白字符则返回非零值，否则返回零。
  */
@@ -863,7 +866,7 @@ inline int isspace(int c) { return std::isspace(c); }
 /**
  * @brief 判断一个字符是否为大写字母。
  * 调用标准库函数 std::isupper 进行判断。
- * 
+ *
  * @param c 要判断的字符。
  * @return int 如果是大写字母则返回非零值，否则返回零。
  */
@@ -872,7 +875,7 @@ inline int isupper(int c) { return std::isupper(c); }
 /**
  * @brief 判断一个字符是否为十六进制数字。
  * 调用标准库函数 std::isxdigit 进行判断。
- * 
+ *
  * @param c 要判断的字符。
  * @return int 如果是十六进制数字则返回非零值，否则返回零。
  */
@@ -881,7 +884,7 @@ inline int isxdigit(int c) { return std::isxdigit(c); }
 /**
  * @brief 判断一个字符是否为空白分隔符（空格或制表符）。
  * 调用标准库函数 std::isblank 进行判断。
- * 
+ *
  * @param c 要判断的字符。
  * @return int 如果是空白分隔符则返回非零值，否则返回零。
  */
@@ -890,28 +893,28 @@ inline int isblank(int c) { return std::isblank(c); }
 // trim
 /**
  * @brief 去除字符串左侧的空白字符。
- * 
+ *
  * @param str 待处理的字符串指针。
  * @return char* 处理后的字符串指针。
  */
 char *trim_left(char *str);
 /**
  * @brief 去除字符串右侧的空白字符。
- * 
+ *
  * @param str 待处理的字符串指针。
  * @return char* 处理后的字符串指针。
  */
 char *trim_right(char *str);
 /**
  * @brief 去除字符串两侧的空白字符。
- * 
+ *
  * @param str 待处理的字符串指针。
  * @return char* 处理后的字符串指针。
  */
 char *trim(char *str);
 /**
  * @brief 去除 std::string 右侧指定的分隔字符。
- * 
+ *
  * @param str 待处理的 std::string 对象引用。
  * @param delims 可选参数，指定要去除的分隔字符，默认为 0。
  * @return std::string& 处理后的 std::string 对象引用。
@@ -919,16 +922,18 @@ char *trim(char *str);
 std::string &trim_right(std::string &str, const char *delims = 0);
 /**
  * @brief 去除 std::string 末尾的换行符（\r 和 \n）。
- * 
+ *
  * @param str 待处理的 std::string 对象引用。
  * @return std::string& 处理后的 std::string 对象引用。
  */
 std::string &trim_line_end_rn(std::string &str);
 
+std::string trim(const std::string &str);
+
 // skip
 /**
  * @brief 跳过字符串左侧指定的忽略字符。
- * 
+ *
  * @param str 待处理的字符串指针。
  * @param ignores 要忽略的字符集合。
  * @return char* 跳过忽略字符后的字符串指针。
@@ -936,7 +941,7 @@ std::string &trim_line_end_rn(std::string &str);
 char *skip_left(const char *str, const char *ignores);
 /**
  * @brief 从字符串右侧开始跳过指定的忽略字符，返回剩余字符串的长度。
- * 
+ *
  * @param str 待处理的字符串指针。
  * @param len 字符串的长度。
  * @param ignores 要忽略的字符集合。
@@ -945,7 +950,7 @@ char *skip_left(const char *str, const char *ignores);
 int skip_right(const char *str, int len, const char *ignores);
 /**
  * @brief 从字符串两侧跳过指定的忽略字符，返回剩余字符串的长度，并更新起始指针。
- * 
+ *
  * @param line 待处理的字符串指针。
  * @param len 字符串的长度。
  * @param ignores_left 左侧要忽略的字符集合。
@@ -960,7 +965,7 @@ int skip(const char *line, int len, const char *ignores_left, const char *ignore
 // 否则 返回 def
 /**
  * @brief 将字符串转换为布尔值。
- * 
+ *
  * @param s 待转换的字符串指针。
  * @param def 转换失败时的默认值，默认为 false。
  * @return bool 转换后的布尔值。
@@ -968,7 +973,7 @@ int skip(const char *line, int len, const char *ignores_left, const char *ignore
 bool str_to_bool(const char *s, bool def = false);
 /**
  * @brief 将 std::string 转换为布尔值，调用 str_to_bool(const char*, bool) 实现。
- * 
+ *
  * @param s 待转换的 std::string 对象。
  * @param def 转换失败时的默认值，默认为 false。
  * @return bool 转换后的布尔值。
@@ -982,9 +987,9 @@ inline bool str_to_bool(const std::string &s, bool def = false)
 // 如 "1026S" => 1026, "8h" => 8 * 3600, "" => def
 /**
  * @brief 将字符串转换为秒数。
- * 
+ *
  * 支持的单位有 h(小时), m(分), s(秒), d(天), w(周)。
- * 
+ *
  * @param s 待转换的字符串指针。
  * @param def 转换失败时的默认值。
  * @return int64_t 转换后的秒数。
@@ -995,9 +1000,9 @@ int64_t str_to_second(const char *s, int64_t def);
 // 如 "9M" => 9 * 1024 * 1024
 /**
  * @brief 将字符串转换为字节大小。
- * 
+ *
  * 支持的单位有 g(G), m(兆), k(千), b。
- * 
+ *
  * @param s 待转换的字符串指针。
  * @param def 转换失败时的默认值。
  * @return int64_t 转换后的字节大小。
@@ -1007,7 +1012,7 @@ int64_t str_to_size(const char *s, int64_t def);
 //
 /**
  * @brief 将字符转换为小写，调用标准库函数 std::tolower 实现。
- * 
+ *
  * @param ch 待转换的字符。
  * @return int 转换后的小写字符。
  */
@@ -1017,7 +1022,7 @@ inline int tolower(int ch)
 }
 /**
  * @brief 将字符转换为大写，调用标准库函数 std::toupper 实现。
- * 
+ *
  * @param ch 待转换的字符。
  * @return int 转换后的大写字符。
  */
@@ -1027,28 +1032,28 @@ inline int toupper(int ch)
 }
 /**
  * @brief 将字符串中的所有字符转换为小写。
- * 
+ *
  * @param str 待处理的字符串指针。
  * @return char* 处理后的字符串指针。
  */
 char *tolower(char *str);
 /**
  * @brief 将字符串中的所有字符转换为大写。
- * 
+ *
  * @param str 待处理的字符串指针。
  * @return char* 处理后的字符串指针。
  */
 char *toupper(char *str);
 /**
  * @brief 将 std::string 中的所有字符转换为小写。
- * 
+ *
  * @param str 待处理的 std::string 对象引用。
  * @return std::string& 处理后的 std::string 对象引用。
  */
 std::string &tolower(std::string &str);
 /**
  * @brief 将 std::string 中的所有字符转换为大写。
- * 
+ *
  * @param str 待处理的 std::string 对象引用。
  * @return std::string& 处理后的 std::string 对象引用。
  */
@@ -1057,7 +1062,7 @@ std::string &toupper(std::string &str);
 //
 /**
  * @brief 清除字符串中指定大小范围内的空字符（'\0'）。
- * 
+ *
  * @param data 待处理的字符串指针。
  * @param size 处理的范围大小。
  * @return char* 处理后的字符串指针。
@@ -1065,7 +1070,7 @@ std::string &toupper(std::string &str);
 char *clear_null(char *data, int64_t size);
 /**
  * @brief 清除 std::string 中的空字符（'\0'）。
- * 
+ *
  * @param data 待处理的 std::string 对象引用。
  * @return std::string& 处理后的 std::string 对象引用。
  */
@@ -1074,9 +1079,9 @@ std::string &clear_null(std::string &data);
 // windows 没有
 /**
  * @brief 不区分大小写比较两个字符串。
- * 
+ *
  * 在 Windows 平台使用 _stricmp 实现，其他平台使用系统的 strcasecmp 函数。
- * 
+ *
  * @param a 第一个字符串指针。
  * @param b 第二个字符串指针。
  * @return int 比较结果：0 表示相等，小于 0 表示 a 小于 b，大于 0 表示 a 大于 b。
@@ -1084,7 +1089,7 @@ std::string &clear_null(std::string &data);
 int strcasecmp(const char *a, const char *b);
 /**
  * @brief 不区分大小写比较两个字符串的前 c 个字符。
- * 
+ *
  * @param a 第一个字符串指针。
  * @param b 第二个字符串指针。
  * @param c 要比较的字符数量。
@@ -1093,7 +1098,7 @@ int strcasecmp(const char *a, const char *b);
 inline int strncasecmp(const char *a, const char *b, size_t c);
 /**
  * @brief 使用可变参数列表格式化字符串到 std::string 中，最多支持 1024 个字符。
- * 
+ *
  * @param str 用于存储格式化结果的 std::string 对象引用。
  * @param format 格式化字符串。
  * @param ap 可变参数列表。
@@ -1104,7 +1109,7 @@ std::string &vsprintf_1024(std::string &str, const char *format, va_list ap);
 #ifdef __linux__
 /**
  * @brief 在 Linux 平台使用可变参数格式化字符串到 std::string 中，最多支持 1024 个字符。
- * 
+ *
  * @param str 用于存储格式化结果的 std::string 对象引用。
  * @param format 格式化字符串。
  * @param ... 可变参数。
@@ -1114,7 +1119,7 @@ std::string __attribute__((format(gnu_printf, 2, 3))) & sprintf_1024(std::string
 #else  // __linux__
 /**
  * @brief 在非 Linux 平台使用可变参数格式化字符串到 std::string 中，最多支持 1024 个字符。
- * 
+ *
  * @param str 用于存储格式化结果的 std::string 对象引用。
  * @param format 格式化字符串。
  * @param ... 可变参数。
@@ -1125,7 +1130,7 @@ std::string &sprintf_1024(std::string &str, const char *format, ...);
 
 /**
  * @brief 根据指定的分隔符分割字符串。
- * 
+ *
  * @param s 待分割的字符串指针。
  * @param len 字符串的长度，-1 表示自动计算。
  * @param delims 分隔符集合。
@@ -1135,7 +1140,7 @@ std::string &sprintf_1024(std::string &str, const char *format, ...);
 std::vector<std::string> split(const char *s, int len, const char *delims, bool ignore_empty_token = false);
 /**
  * @brief 根据指定的分隔符分割字符串，自动计算字符串长度。
- * 
+ *
  * @param s 待分割的字符串指针。
  * @param delims 分隔符集合。
  * @param ignore_empty_token 是否忽略空的分割结果，默认为 false。
@@ -1147,7 +1152,7 @@ inline std::vector<std::string> split(const char *s, const char *delims, bool ig
 }
 /**
  * @brief 根据指定的分隔符分割 std::string。
- * 
+ *
  * @param s 待分割的 std::string 对象。
  * @param delims 分隔符集合。
  * @param ignore_empty_token 是否忽略空的分割结果，默认为 false。
@@ -1160,7 +1165,7 @@ inline std::vector<std::string> split(const std::string &s, const char *delims, 
 
 /**
  * @brief 根据指定的单个字符分隔符分割字符串。
- * 
+ *
  * @param s 待分割的字符串指针。
  * @param len 字符串的长度，-1 表示自动计算。
  * @param delim 单个字符分隔符。
@@ -1170,7 +1175,7 @@ inline std::vector<std::string> split(const std::string &s, const char *delims, 
 std::vector<std::string> split(const char *s, int len, int delim, bool ignore_empty_token = false);
 /**
  * @brief 根据指定的单个字符分隔符分割字符串，自动计算字符串长度。
- * 
+ *
  * @param s 待分割的字符串指针。
  * @param delim 单个字符分隔符。
  * @param ignore_empty_token 是否忽略空的分割结果，默认为 false。
@@ -1182,7 +1187,7 @@ inline std::vector<std::string> split(const char *s, int delim, bool ignore_empt
 }
 /**
  * @brief 根据指定的单个字符分隔符分割 std::string。
- * 
+ *
  * @param s 待分割的 std::string 对象。
  * @param delim 单个字符分隔符。
  * @param ignore_empty_token 是否忽略空的分割结果，默认为 false。
@@ -1195,7 +1200,7 @@ inline std::vector<std::string> split(const std::string &s, int delim, bool igno
 
 /**
  * @brief 根据指定的分隔符分割字符串，并忽略空的分割结果。
- * 
+ *
  * @param s 待分割的字符串指针。
  * @param len 字符串的长度，-1 表示自动计算。
  * @param delims 分隔符集合。
@@ -1207,7 +1212,7 @@ inline std::vector<std::string> split_and_ignore_empty_token(const char *s, int 
 }
 /**
  * @brief 根据指定的分隔符分割字符串，并忽略空的分割结果，自动计算字符串长度。
- * 
+ *
  * @param s 待分割的字符串指针。
  * @param delims 分隔符集合。
  * @return std::vector<std::string> 分割后的字符串向量。
@@ -1218,7 +1223,7 @@ inline std::vector<std::string> split_and_ignore_empty_token(const char *s, cons
 }
 /**
  * @brief 根据指定的分隔符分割 std::string，并忽略空的分割结果。
- * 
+ *
  * @param s 待分割的 std::string 对象。
  * @param delims 分隔符集合。
  * @return std::vector<std::string> 分割后的字符串向量。
@@ -1230,7 +1235,7 @@ inline std::vector<std::string> split_and_ignore_empty_token(const std::string &
 
 /**
  * @brief 根据指定的单个字符分隔符分割字符串，并忽略空的分割结果。
- * 
+ *
  * @param s 待分割的字符串指针。
  * @param len 字符串的长度，-1 表示自动计算。
  * @param delim 单个字符分隔符。
@@ -1243,7 +1248,7 @@ inline std::vector<std::string> split_and_ignore_empty_token(const char *s, int 
 
 /**
  * @brief 根据指定的单个字符分隔符分割字符串，并忽略空的分割结果，自动计算字符串长度。
- * 
+ *
  * @param s 待分割的字符串指针。
  * @param delim 单个字符分隔符。
  * @return std::vector<std::string> 分割后的字符串向量。
@@ -1254,7 +1259,7 @@ inline std::vector<std::string> split_and_ignore_empty_token(const char *s, int 
 }
 /**
  * @brief 根据指定的单个字符分隔符分割 std::string，并忽略空的分割结果。
- * 
+ *
  * @param s 待分割的 std::string 对象。
  * @param delim 单个字符分隔符。
  * @return std::vector<std::string> 分割后的字符串向量。
@@ -1267,7 +1272,7 @@ inline std::vector<std::string> split_and_ignore_empty_token(const std::string &
 // windows 没有 memmem
 /**
  * @brief 在 Windows 平台实现 memmem 函数，用于在大字符串中查找小字符串。
- * 
+ *
  * @param l 大字符串指针。
  * @param l_len 大字符串的长度。
  * @param s 小字符串指针。
@@ -1277,7 +1282,7 @@ inline std::vector<std::string> split_and_ignore_empty_token(const std::string &
 void *no_memmem(const void *l, int64_t l_len, const void *s, int64_t s_len);
 /**
  * @brief 根据平台选择使用系统的 memmem 函数或自定义的 no_memmem 函数。
- * 
+ *
  * @param l 大字符串指针。
  * @param l_len 大字符串的长度。
  * @param s 小字符串指针。
@@ -1296,9 +1301,9 @@ inline static void *memmem(const void *l, int64_t l_len, const void *s, int64_t 
 // windows 没有 strcasecmp
 /**
  * @brief 不区分大小写比较两个字符串，根据平台选择不同的实现。
- * 
+ *
  * 在 Windows 平台使用 _stricmp 实现，其他平台使用系统的 strcasecmp 函数。
- * 
+ *
  * @param a 第一个字符串指针。
  * @param b 第二个字符串指针。
  * @return int 比较结果：0 表示相等，小于 0 表示 a 小于 b，大于 0 表示 a 大于 b。
@@ -1314,9 +1319,9 @@ inline int strcasecmp(const char *a, const char *b)
 
 /**
  * @brief 不区分大小写比较两个字符串的前 c 个字符，根据平台选择不同的实现。
- * 
+ *
  * 在 Windows 平台使用 _strnicmp 实现，其他平台使用系统的 strncasecmp 函数。
- * 
+ *
  * @param a 第一个字符串指针。
  * @param b 第二个字符串指针。
  * @param c 要比较的字符数量。
@@ -1334,7 +1339,7 @@ inline int strncasecmp(const char *a, const char *b, size_t c)
 #ifdef _WIN64
 /**
  * @brief 在 Windows 平台实现 strcasestr 函数，用于在大字符串中不区分大小写查找小字符串。
- * 
+ *
  * @param haystack 大字符串指针。
  * @param needle 小字符串指针。
  * @return char* 找到小字符串的起始指针，未找到返回 nullptr。
@@ -1343,7 +1348,7 @@ char *strcasestr(const char *haystack, const char *needle);
 #else  // _WIN64
 /**
  * @brief 在非 Windows 平台调用系统的 strcasestr 函数，用于在大字符串中不区分大小写查找小字符串。
- * 
+ *
  * @param haystack 大字符串指针。
  * @param needle 小字符串指针。
  * @return char* 找到小字符串的起始指针，未找到返回 nullptr。
@@ -1354,12 +1359,14 @@ inline char *strcasestr(const char *haystack, const char *needle)
 }
 #endif // _WIN64
 
+std::string str_replace(const std::string &input, const std::string &from, const std::string &to);
+
 // debug
 /**
  * @brief 显示词典的调试信息。
- * 
+ *
  * 该函数用于打印词典的相关信息，方便调试使用。
- * 
+ *
  * @param dt 待显示调试信息的词典对象。
  */
 void debug_show(const dict &dt);
@@ -1367,9 +1374,9 @@ void debug_show(const dict &dt);
 // 下面是词典 std::map<std::string,
 /**
  * @brief 从词典中获取指定键对应的 C 风格字符串值。
- * 
+ *
  * 如果键存在，则返回对应的值；如果键不存在，则返回默认值。
- * 
+ *
  * @param dt 词典对象。
  * @param key 要查找的键，C 风格字符串。
  * @param def_val 键不存在时返回的默认值，默认为空字符串。
@@ -1379,9 +1386,9 @@ const char *get_cstring(const dict &dt, const char *key, const char *def_val = "
 
 /**
  * @brief 从词典中获取指定键对应的 C 风格字符串值。
- * 
+ *
  * 如果键存在，则返回对应的值；如果键不存在，则返回默认值。
- * 
+ *
  * @param dt 词典对象。
  * @param key 要查找的键，std::string 类型。
  * @param def_val 键不存在时返回的默认值，默认为空字符串。
@@ -1391,9 +1398,9 @@ const char *get_cstring(const dict &dt, const std::string &key, const char *def_
 
 /**
  * @brief 从词典中获取指定键对应的 std::string 类型值。
- * 
+ *
  * 如果键存在，则返回对应的值；如果键不存在，则返回默认值。
- * 
+ *
  * @param dt 词典对象。
  * @param key 要查找的键，C 风格字符串。
  * @param def_val 键不存在时返回的默认值，默认为空字符串。
@@ -1402,22 +1409,10 @@ const char *get_cstring(const dict &dt, const std::string &key, const char *def_
 std::string get_string(const dict &dt, const char *key, const char *def_val = "");
 
 /**
- * @brief 从词典中获取指定键对应的 std::string 类型值。
- * 
- * 如果键存在，则返回对应的值；如果键不存在，则返回默认值。
- * 
- * @param dt 词典对象。
- * @param key 要查找的键，std::string 类型。
- * @param def_val 键不存在时返回的默认值，默认为空字符串。
- * @return std::string 查找到的值或默认值。
- */
-std::string get_string(const dict &dt, const std::string &key, const char *def_val = "");
-
-/**
  * @brief 从词典中获取指定键对应的 std::string 类型值的引用。
- * 
+ *
  * 如果键存在，则返回对应的值的引用；如果键不存在，则返回默认值的引用。
- * 
+ *
  * @param dt 词典对象。
  * @param key 要查找的键，std::string 类型。
  * @param def_val 键不存在时返回的默认值的引用，默认为 var_blank_string。
@@ -1427,9 +1422,9 @@ const std::string &get_string(const dict &dt, const std::string &key, const std:
 
 /**
  * @brief 从词典中获取指定键对应的布尔值。
- * 
+ *
  * 如果键存在，则将对应的值转换为布尔值返回；如果键不存在，则返回默认值。
- * 
+ *
  * @param dt 词典对象。
  * @param key 要查找的键，C 风格字符串。
  * @param def_val 键不存在时返回的默认值，默认为 false。
@@ -1439,9 +1434,9 @@ bool get_bool(const dict &dt, const char *key, bool def_val = false);
 
 /**
  * @brief 从词典中获取指定键对应的布尔值。
- * 
+ *
  * 如果键存在，则将对应的值转换为布尔值返回；如果键不存在，则返回默认值。
- * 
+ *
  * @param dt 词典对象。
  * @param key 要查找的键，std::string 类型。
  * @param def_val 键不存在时返回的默认值，默认为 false。
@@ -1451,9 +1446,9 @@ bool get_bool(const dict &dt, const std::string &key, bool def_val = false);
 
 /**
  * @brief 从词典中获取指定键对应的整数值。
- * 
+ *
  * 如果键存在，则将对应的值转换为整数返回；如果键不存在，则返回默认值。
- * 
+ *
  * @param dt 词典对象。
  * @param key 要查找的键，C 风格字符串。
  * @param def_val 键不存在时返回的默认值，默认为 -1。
@@ -1463,9 +1458,9 @@ int get_int(const dict &dt, const char *key, int def_val = -1);
 
 /**
  * @brief 从词典中获取指定键对应的整数值。
- * 
+ *
  * 如果键存在，则将对应的值转换为整数返回；如果键不存在，则返回默认值。
- * 
+ *
  * @param dt 词典对象。
  * @param key 要查找的键，std::string 类型。
  * @param def_val 键不存在时返回的默认值，默认为 -1。
@@ -1475,9 +1470,9 @@ int get_int(const dict &dt, const std::string &key, int def_val = -1);
 
 /**
  * @brief 从词典中获取指定键对应的长整数值。
- * 
+ *
  * 如果键存在，则将对应的值转换为长整数返回；如果键不存在，则返回默认值。
- * 
+ *
  * @param dt 词典对象。
  * @param key 要查找的键，C 风格字符串。
  * @param def_val 键不存在时返回的默认值，默认为 -1。
@@ -1487,9 +1482,9 @@ int64_t get_long(const dict &dt, const char *key, int64_t def_val = -1);
 
 /**
  * @brief 从词典中获取指定键对应的长整数值。
- * 
+ *
  * 如果键存在，则将对应的值转换为长整数返回；如果键不存在，则返回默认值。
- * 
+ *
  * @param dt 词典对象。
  * @param key 要查找的键，std::string 类型。
  * @param def_val 键不存在时返回的默认值，默认为 -1。
@@ -1499,9 +1494,9 @@ int64_t get_long(const dict &dt, const std::string &key, int64_t def_val = -1);
 
 /**
  * @brief 从词典中获取指定键对应的秒数值。
- * 
+ *
  * 如果键存在，则将对应的值转换为秒数返回；如果键不存在，则返回默认值。
- * 
+ *
  * @param dt 词典对象。
  * @param key 要查找的键，C 风格字符串。
  * @param def_val 键不存在时返回的默认值，默认为 -1。
@@ -1511,9 +1506,9 @@ int64_t get_second(const dict &dt, const char *key, int64_t def_val = -1);
 
 /**
  * @brief 从词典中获取指定键对应的秒数值。
- * 
+ *
  * 如果键存在，则将对应的值转换为秒数返回；如果键不存在，则返回默认值。
- * 
+ *
  * @param dt 词典对象。
  * @param key 要查找的键，std::string 类型。
  * @param def_val 键不存在时返回的默认值，默认为 -1。
@@ -1523,9 +1518,9 @@ int64_t get_second(const dict &dt, const std::string &key, int64_t def_val = -1)
 
 /**
  * @brief 从词典中获取指定键对应的字节大小值。
- * 
+ *
  * 如果键存在，则将对应的值转换为字节大小返回；如果键不存在，则返回默认值。
- * 
+ *
  * @param dt 词典对象。
  * @param key 要查找的键，C 风格字符串。
  * @param def_val 键不存在时返回的默认值，默认为 -1。
@@ -1535,9 +1530,9 @@ int64_t get_size(const dict &dt, const char *key, int64_t def_val = -1);
 
 /**
  * @brief 从词典中获取指定键对应的字节大小值。
- * 
+ *
  * 如果键存在，则将对应的值转换为字节大小返回；如果键不存在，则返回默认值。
- * 
+ *
  * @param dt 词典对象。
  * @param key 要查找的键，std::string 类型。
  * @param def_val 键不存在时返回的默认值，默认为 -1。
@@ -1547,35 +1542,37 @@ int64_t get_size(const dict &dt, const std::string &key, int64_t def_val = -1);
 
 /**
  * @brief 生成一个唯一的 ID。
- * 
+ *
  * 该函数用于生成一个唯一的字符串 ID，可用于各种需要唯一标识的场景。
- * 
+ *
  * @return std::string 生成的唯一 ID。
  */
 std::string build_unique_id();
 
 /**
  * @brief 将字节大小转换为人类可读的字符串格式。
- * 
+ *
  * 该函数将给定的字节大小转换为带有合适单位（如 KB、MB、GB 等）的字符串。
- * 
+ *
  * @param a 要转换的字节大小。
  * @return std::string 转换后的人类可读的字符串。
  */
 std::string human_byte_size(int64_t a);
 
+std::string human_kmg_size(double size);
+
 /**
  * @brief 外部声明的默认 MIME 类型字符串。
- * 
+ *
  * 该变量存储了默认的 MIME 类型，可在获取 MIME 类型时作为默认值使用。
  */
 extern const char *var_default_mime_type;
 
 /**
  * @brief 根据文件路径名获取对应的 MIME 类型。
- * 
+ *
  * 如果能根据路径名找到对应的 MIME 类型，则返回该类型；否则返回默认值。
- * 
+ *
  * @param pathname 文件的路径名。
  * @param def 找不到 MIME 类型时返回的默认值，默认为 nullptr。
  * @return const char* 查找到的 MIME 类型或默认值。
@@ -1584,9 +1581,9 @@ const char *get_mime_type(const char *pathname, const char *def = nullptr);
 
 /**
  * @brief 根据文件路径名获取对应的 MIME 类型。
- * 
+ *
  * 功能与 get_mime_type 相同，是该函数的另一个命名版本。
- * 
+ *
  * @param pathname 文件的路径名。
  * @param def 找不到 MIME 类型时返回的默认值，默认为 nullptr。
  * @return const char* 查找到的 MIME 类型或默认值。
@@ -1726,6 +1723,15 @@ std::string xml_unescape_string(const char *data, int len);
 void uudecode(const void *src, int src_size, std::string &str);
 // ncr
 int ncr_decode(int ins, char *wchar);
+// csv
+/**
+ * 从 CSV 数据中反序列化一行数据.
+ * 该函数根据 CSV 数据的格式,从给定的数据区间中反序列化一行数据,并将结果存储在 fields 向量中.
+ * 返回下一行数据的起始位置.
+ */
+const char *csv_unserialize_one_row(const char *data_start, const char *data_end, std::vector<std::string> &fields);
+//
+std::string csv_serialize_one_field(const std::string &field);
 
 /* hash ############################################################# */
 /* 最经典的hash函数, 需要更高级的可以考虑 crc16, crc32, crc64, 甚至md5 等*/
@@ -1769,12 +1775,15 @@ class config : public std::map<std::string, std::string>
 {
 public:
     config();
-    ~config();
+    virtual ~config();
     config &reset();
     virtual inline void afterUpdate() {};
     config &update(const char *key, const char *val, int vlen = -1);
     config &update(const char *key, const std::string &val);
+    config &update(const std::string &key, const char *val, int vlen = -1);
     config &update(const std::string &key, const std::string &val);
+    inline config &update(const std::string &key, int64_t val) { return update(key, std::to_string(val)); }
+    inline config &update(const std::string &key, bool val) { return update(key, val ? "1" : "0"); }
     config &remove(const char *key);
     config &remove(const std::string &key);
     // 从文件加载配置, 且覆盖
@@ -1856,10 +1865,10 @@ std::string get_cmd_name();
 #ifdef __linux__
 /**
  * @brief 快速设置资源限制。
- * 
+ *
  * 该函数用于快速设置系统资源限制，具体限制类型由 cmd 参数指定，
  * 当前限制值由 cur_val 参数指定。
- * 
+ *
  * @param cmd 资源限制命令，用于指定要设置的资源类型。
  * @param cur_val 当前要设置的资源限制值。
  * @return bool 如果设置成功返回 true，失败返回 false。
@@ -1868,9 +1877,9 @@ bool quick_setrlimit(int cmd, unsigned long cur_val);
 
 /**
  * @brief 设置核心转储文件的最大大小。
- * 
+ *
  * 该函数用于设置核心转储文件的最大大小，单位为兆字节。
- * 
+ *
  * @param megabyte 核心转储文件的最大大小，单位为兆字节。
  * @return bool 如果设置成功返回 true，失败返回 false。
  */
@@ -1878,9 +1887,9 @@ bool set_core_file_size(int megabyte);
 
 /**
  * @brief 设置进程的最大内存使用量。
- * 
+ *
  * 该函数用于设置进程的最大内存使用量，单位为兆字节。
- * 
+ *
  * @param megabyte 进程的最大内存使用量，单位为兆字节。
  * @return bool 如果设置成功返回 true，失败返回 false。
  */
@@ -1888,9 +1897,9 @@ bool set_max_mem(int megabyte);
 
 /**
  * @brief 设置控制组（cgroup）的名称。
- * 
+ *
  * 该函数用于设置控制组的名称，控制组用于对进程进行资源管理。
- * 
+ *
  * @param name 要设置的控制组名称。
  * @return bool 如果设置成功返回 true，失败返回 false。
  */
@@ -1898,27 +1907,27 @@ bool set_cgroup_name(const char *name);
 
 /**
  * @brief 获取系统可用内存的大小。
- * 
+ *
  * 该函数用于获取系统当前可用内存的大小，单位为字节。
- * 
+ *
  * @return int64_t 系统可用内存的大小，单位为字节。
  */
 int64_t get_MemAvailable();
 
 /**
  * @brief 获取系统的 CPU 核心数。
- * 
+ *
  * 该函数用于获取系统中可用的 CPU 核心数量。
- * 
+ *
  * @return int 系统的 CPU 核心数。
  */
 int get_cpu_core_count();
 
 /**
  * @brief 改变进程的根目录并切换用户。
- * 
+ *
  * 该函数用于改变进程的根目录到指定的目录，并将进程的有效用户切换到指定用户。
- * 
+ *
  * @param root_dir 要设置为进程根目录的路径。
  * @param user_name 要切换到的用户名称。
  * @return int 如果操作成功返回 0，失败返回一个非零错误码。
@@ -1935,7 +1944,7 @@ void signal_ignore(int signum);
 /* fs ############################################################### */
 /**
  * @brief 用于内存映射文件读取的类。
- * 
+ *
  * 该类提供了打开、关闭内存映射文件的功能，
  * 并能获取映射文件的大小和数据指针。
  */
@@ -1952,14 +1961,14 @@ public:
     ~mmap_reader();
     /**
      * @brief 打开指定路径的文件并进行内存映射。
-     * 
+     *
      * @param pathname 文件的路径名。
      * @return int 操作结果，成功返回 0，失败返回非零值。
      */
     int open(const char *pathname);
     /**
      * @brief 重载的 open 函数，接受 std::string 类型的路径名。
-     * 
+     *
      * @param pathname 文件的路径名。
      * @return int 操作结果，成功返回 0，失败返回非零值。
      */
@@ -1969,7 +1978,7 @@ public:
     }
     /**
      * @brief 关闭内存映射文件，释放资源。
-     * 
+     *
      * @return int 操作结果，成功返回 0，失败返回非零值。
      */
     int close();
@@ -1987,14 +1996,14 @@ protected:
 
 public:
     // 映射后文件的长度，初始化为 -1
-    int64_t size_{-1};          
+    int64_t size_{-1};
     // 映射后文件数据的指针，初始化为 nullptr
-    const char *data_{nullptr}; 
+    const char *data_{nullptr};
 };
 
 /**
  * @brief 打开指定路径的文件。
- * 
+ *
  * @param pathname 文件的路径名。
  * @param mode 文件打开模式。
  * @return FILE* 指向文件流的指针，失败时返回 nullptr。
@@ -2002,7 +2011,7 @@ public:
 FILE *fopen(const char *pathname, const char *mode);
 /**
  * @brief 重载的 fopen 函数，接受 std::string 类型的路径名。
- * 
+ *
  * @param pathname 文件的路径名。
  * @param mode 文件打开模式。
  * @return FILE* 指向文件流的指针，失败时返回 nullptr。
@@ -2015,7 +2024,7 @@ inline FILE *fopen(const std::string &pathname, const char *mode)
 #ifdef _WIN64
 /**
  * @brief 从文件流中读取一行，直到遇到指定分隔符。
- * 
+ *
  * @param lineptr 指向存储读取行的缓冲区指针。
  * @param n 指向缓冲区大小的指针。
  * @param delim 分隔符。
@@ -2025,7 +2034,7 @@ inline FILE *fopen(const std::string &pathname, const char *mode)
 int64_t getdelim(char **lineptr, int64_t *n, int delim, FILE *stream);
 /**
  * @brief 从文件流中读取一行，直到遇到换行符。
- * 
+ *
  * @param lineptr 指向存储读取行的缓冲区指针。
  * @param n 指向缓冲区大小的指针。
  * @param stream 文件流指针。
@@ -2039,7 +2048,7 @@ inline int64_t getline(char **lineptr, int64_t *n, FILE *stream)
 #else  // _WIN64
 /**
  * @brief 从文件流中读取一行，直到遇到指定分隔符。
- * 
+ *
  * @param lineptr 指向存储读取行的缓冲区指针。
  * @param n 指向缓冲区大小的指针。
  * @param delim 分隔符。
@@ -2052,7 +2061,7 @@ inline int64_t getdelim(char **lineptr, int64_t *n, int delim, FILE *stream)
 }
 /**
  * @brief 从文件流中读取一行，直到遇到换行符。
- * 
+ *
  * @param lineptr 指向存储读取行的缓冲区指针。
  * @param n 指向缓冲区大小的指针。
  * @param stream 文件流指针。
@@ -2066,14 +2075,14 @@ inline int64_t getline(char **lineptr, int64_t *n, FILE *stream)
 
 /**
  * @brief 获取指定路径的绝对路径。
- * 
+ *
  * @param pathname 文件或目录的路径名。
  * @return std::string 绝对路径的字符串。
  */
 std::string realpath(const char *pathname);
 /**
  * @brief 重载的 realpath 函数，接受 std::string 类型的路径名。
- * 
+ *
  * @param pathname 文件或目录的路径名。
  * @return std::string 绝对路径的字符串。
  */
@@ -2087,7 +2096,7 @@ inline std::string realpath(const std::string &pathname)
 #define zcc_stat struct _stat64i32
 /**
  * @brief 获取指定文件的状态信息。
- * 
+ *
  * @param pathname 文件的路径名。
  * @param statbuf 指向存储文件状态信息的结构体指针。
  * @return int 操作结果，成功返回 0，失败返回 -1。
@@ -2098,7 +2107,7 @@ int stat(const char *pathname, struct _stat64i32 *statbuf);
 #define zcc_stat struct stat
 /**
  * @brief 获取指定文件的状态信息。
- * 
+ *
  * @param pathname 文件的路径名。
  * @param statbuf 指向存储文件状态信息的结构体指针。
  * @return int 操作结果，成功返回 0，失败返回 -1。
@@ -2108,14 +2117,14 @@ int stat(const char *pathname, struct stat *statbuf);
 
 /**
  * @brief 获取指定文件的大小。
- * 
+ *
  * @param pathname 文件的路径名。
  * @return int64_t 文件的大小，失败时返回 -1。
  */
 int64_t file_get_size(const char *pathname);
 /**
  * @brief 重载的 file_get_size 函数，接受 std::string 类型的路径名。
- * 
+ *
  * @param pathname 文件的路径名。
  * @return int64_t 文件的大小，失败时返回 -1。
  */
@@ -2126,14 +2135,14 @@ inline int64_t file_get_size(const std::string &pathname)
 
 /**
  * @brief 检查指定文件是否存在。
- * 
+ *
  * @param pathname 文件的路径名。
  * @return int 0, -1, 1。
  */
 int file_exists(const char *pathname);
 /**
  * @brief 重载的 file_exists 函数，接受 std::string 类型的路径名。
- * 
+ *
  * @param pathname 文件的路径名。
  * @return int 0, -1, 1
  */
@@ -2143,8 +2152,42 @@ inline int file_exists(const std::string &pathname)
 }
 
 /**
+ * @brief 检查指定路径是否为普通文件
+ * @param pathname 文件路径(C字符串)
+ * @return int 1:是普通文件, 0:不是普通文件, -1:发生错误
+ */
+int file_is_regular(const char *pathname);
+
+/**
+ * @brief 检查指定路径是否为普通文件(std::string重载版本)
+ * @param pathname 文件路径(std::string)
+ * @return int 1:是普通文件, 0:不是普通文件, -1:发生错误
+ */
+inline int file_is_regular(const std::string &pathname)
+{
+    return file_is_regular(pathname.c_str());
+}
+
+/**
+ * @brief 检查指定路径是否为目录
+ * @param pathname 目录路径(C字符串)
+ * @return int 1:是目录, 0:不是目录, -1:发生错误
+ */
+int file_is_dir(const char *pathname);
+
+/**
+ * @brief 检查指定路径是否为目录(std::string重载版本)
+ * @param pathname 目录路径(std::string)
+ * @return int 1:是目录, 0:不是目录, -1:发生错误
+ */
+inline int file_is_dir(const std::string &pathname)
+{
+    return file_is_dir(pathname.c_str());
+}
+
+/**
  * @brief 将数据写入指定文件。
- * 
+ *
  * @param pathname 文件的路径名。
  * @param data 要写入的数据指针。
  * @param len 要写入的数据长度。
@@ -2153,7 +2196,7 @@ inline int file_exists(const std::string &pathname)
 int file_put_contents(const char *pathname, const void *data, int len);
 /**
  * @brief 重载的 file_put_contents 函数，接受 std::string 类型的路径名。
- * 
+ *
  * @param pathname 文件的路径名。
  * @param data 要写入的数据指针。
  * @param len 要写入的数据长度。
@@ -2165,7 +2208,7 @@ inline int file_put_contents(const std::string &pathname, const void *data, int 
 }
 /**
  * @brief 重载的 file_put_contents 函数，接受 std::string 类型的数据。
- * 
+ *
  * @param pathname 文件的路径名。
  * @param data 要写入的字符串数据。
  * @return int 失败返回 -1
@@ -2176,7 +2219,7 @@ inline int file_put_contents(const char *pathname, const std::string &data)
 }
 /**
  * @brief 重载的 file_put_contents 函数，接受 std::string 类型的路径名和数据。
- * 
+ *
  * @param pathname 文件的路径名。
  * @param data 要写入的字符串数据。
  * @return int 失败返回 -1
@@ -2188,14 +2231,14 @@ inline int file_put_contents(const std::string &pathname, const std::string &dat
 
 /**
  * @brief 读取指定文件的全部内容。
- * 
+ *
  * @param pathname 文件的路径名。
  * @return std::string 文件的全部内容。
  */
 std::string file_get_contents(const char *pathname);
 /**
  * @brief 重载的 file_get_contents 函数，接受 std::string 类型的路径名。
- * 
+ *
  * @param pathname 文件的路径名。
  * @return std::string 文件的全部内容。
  */
@@ -2206,7 +2249,7 @@ inline std::string file_get_contents(const std::string &pathname)
 
 /**
  * @brief 读取指定文件的全部内容到字符串缓冲区。
- * 
+ *
  * @param pathname 文件的路径名。
  * @param bf 存储文件内容的字符串缓冲区。
  * @return int64_t 失败时返回 -1
@@ -2214,7 +2257,7 @@ inline std::string file_get_contents(const std::string &pathname)
 int64_t file_get_contents(const char *pathname, std::string &bf);
 /**
  * @brief 重载的 file_get_contents 函数，接受 std::string 类型的路径名。
- * 
+ *
  * @param pathname 文件的路径名。
  * @param bf 存储文件内容的字符串缓冲区。
  * @return int64_t 读取的字节数，失败时返回 -1
@@ -2226,7 +2269,7 @@ inline int64_t file_get_contents(const std::string &pathname, std::string &bf)
 
 /**
  * @brief 读取指定文件的部分内容到字符串缓冲区。
- * 
+ *
  * @param pathname 文件的路径名。
  * @param bf 存储文件部分内容的字符串缓冲区。
  * @return int64_t 失败时返回 -1。
@@ -2234,7 +2277,7 @@ inline int64_t file_get_contents(const std::string &pathname, std::string &bf)
 int64_t file_get_contents_sample(const char *pathname, std::string &bf);
 /**
  * @brief 读取指定文件的部分内容。
- * 
+ *
  * @param pathname 文件的路径名。
  * @return std::string 文件的部分内容。
  */
@@ -2242,21 +2285,33 @@ std::string file_get_contents_sample(const char *pathname);
 
 /**
  * @brief 从标准输入读取全部内容到字符串缓冲区。
- * 
+ *
  * @param bf 存储标准输入内容的字符串缓冲区。
  * @return int 失败返回 -1。
  */
 int stdin_get_contents(std::string &bf);
 /**
  * @brief 从标准输入读取全部内容。
- * 
+ *
  * @return std::string 标准输入的全部内容。
  */
 std::string stdin_get_contents();
 
 /**
+ * @brief 复制文件
+ * @param sourcePathname 源文件路径(C字符串)
+ * @param destPathname 目标文件路径(C字符串)
+ * @return int 成功返回1，失败返回-1
+ */
+int file_copy(const char *sourcePathname, const char *destPathname);
+inline int file_copy(const std::string &sourcePathname, const std::string &destPathname)
+{
+    return file_copy(sourcePathname.c_str(), destPathname.c_str());
+}
+
+/**
  * @brief 打开指定路径的文件。
- * 
+ *
  * @param pathname 文件的路径名。
  * @param flags 打开文件的标志。
  * @param mode 文件的访问权限。
@@ -2265,7 +2320,7 @@ std::string stdin_get_contents();
 int open(const char *pathname, int flags, int mode);
 /**
  * @brief 重载的 open 函数，接受 std::string 类型的路径名。
- * 
+ *
  * @param pathname 文件的路径名。
  * @param flags 打开文件的标志。
  * @param mode 文件的访问权限。
@@ -2278,14 +2333,14 @@ inline int open(const std::string &pathname, int flags, int mode)
 
 /**
  * @brief 创建一个空文件，如果文件已存在则更新其访问和修改时间。
- * 
+ *
  * @param pathname 文件的路径名。
  * @return int 操作成功返回 0，失败返回 -1。
  */
 int touch(const char *pathname);
 /**
  * @brief 重载的 touch 函数，接受 std::string 类型的路径名。
- * 
+ *
  * @param pathname 文件的路径名。
  * @return int 操作成功返回 0，失败返回 -1。
  */
@@ -2296,7 +2351,7 @@ inline int touch(const std::string &pathname)
 
 /**
  * @brief 创建多个目录。
- * 
+ *
  * @param paths 存储目录路径的向量。
  * @param mode 目录的访问权限，默认为 0666。
  * @return int 操作成功返回 0，失败返回 -1。
@@ -2304,7 +2359,7 @@ inline int touch(const std::string &pathname)
 int mkdir(std::vector<std::string> paths, int mode = 0666);
 /**
  * @brief 可变参数函数，创建多个目录。
- * 
+ *
  * @param mode 目录的访问权限。
  * @param path1 第一个目录路径。
  * @param ... 可变参数，后续的目录路径。
@@ -2313,7 +2368,7 @@ int mkdir(std::vector<std::string> paths, int mode = 0666);
 int mkdir(int mode, const char *path1, ...);
 /**
  * @brief 创建指定路径的目录。
- * 
+ *
  * @param pathname 目录的路径名。
  * @param mode 目录的访问权限，默认为 0666。
  * @return int 操作成功返回 0，失败返回 -1。
@@ -2322,23 +2377,27 @@ int mkdir(const char *pathname, int mode = 0666);
 
 /**
  * @brief 重命名文件或目录。
- * 
+ *
  * @param oldpath 旧的文件或目录路径名。
  * @param newpath 新的文件或目录路径名。
  * @return int 操作成功返回 0，失败返回 -1。
  */
 int rename(const char *oldpath, const char *newpath);
+inline int rename(const std::string &oldpath, const std::string &newpath)
+{
+    return rename(oldpath.c_str(), newpath.c_str());
+}
 
 /**
  * @brief 删除指定文件。
- * 
+ *
  * @param pathname 文件的路径名。
  * @return int 操作成功返回 0，失败返回 -1。
  */
 int unlink(const char *pathname);
 /**
  * @brief 重载的 unlink 函数，接受 std::string 类型的路径名。
- * 
+ *
  * @param pathname 文件的路径名。
  * @return int 操作成功返回 0，失败返回 -1。
  */
@@ -2349,7 +2408,7 @@ inline int unlink(const std::string &pathname)
 
 /**
  * @brief 创建一个硬链接。
- * 
+ *
  * @param oldpath 源文件的路径名。
  * @param newpath 硬链接的路径名。
  * @return int 操作成功返回 0，失败返回 -1。
@@ -2357,7 +2416,7 @@ inline int unlink(const std::string &pathname)
 int link(const char *oldpath, const char *newpath);
 /**
  * @brief 强制创建一个硬链接，如果目标已存在则先删除。
- * 
+ *
  * @param oldpath 源文件的路径名。
  * @param newpath 硬链接的路径名。
  * @param tmpdir 临时目录的路径名。
@@ -2367,7 +2426,7 @@ int link_force(const char *oldpath, const char *newpath, const char *tmpdir);
 
 /**
  * @brief 创建一个符号链接。
- * 
+ *
  * @param oldpath 源文件的路径名。
  * @param newpath 符号链接的路径名。
  * @return int 操作成功返回 0，失败返回 -1。
@@ -2375,7 +2434,7 @@ int link_force(const char *oldpath, const char *newpath, const char *tmpdir);
 int symlink(const char *oldpath, const char *newpath);
 /**
  * @brief 强制创建一个符号链接，如果目标已存在则先删除。
- * 
+ *
  * @param oldpath 源文件的路径名。
  * @param newpath 符号链接的路径名。
  * @param tmpdir 临时目录的路径名。
@@ -2385,7 +2444,7 @@ int symlink_force(const char *oldpath, const char *newpath, const char *tmpdir);
 
 /**
  * @brief 创建一个快捷方式链接。
- * 
+ *
  * @param from 源文件的路径名。
  * @param to 快捷方式的路径名。
  * @return bool 创建成功返回 true，失败返回 false。
@@ -2393,7 +2452,7 @@ int symlink_force(const char *oldpath, const char *newpath, const char *tmpdir);
 bool create_shortcut_link(const char *from, const char *to);
 /**
  * @brief 重载的 create_shortcut_link 函数，接受 std::string 类型的路径名。
- * 
+ *
  * @param from 源文件的路径名。
  * @param to 快捷方式的路径名。
  * @return bool 创建成功返回 true，失败返回 false。
@@ -2405,7 +2464,7 @@ inline bool create_shortcut_link(const std::string &from, const std::string &to)
 
 /**
  * @brief 删除指定目录。
- * 
+ *
  * @param pathname 目录的路径名。
  * @param recurse_mode 是否递归删除，默认为 false。
  * @return int 操作成功返回 0，失败返回 -1。
@@ -2413,7 +2472,7 @@ inline bool create_shortcut_link(const std::string &from, const std::string &to)
 int rmdir(const char *pathname, bool recurse_mode = false);
 /**
  * @brief 重载的 rmdir 函数，接受 std::string 类型的路径名。
- * 
+ *
  * @param pathname 目录的路径名。
  * @param recurse_mode 是否递归删除，默认为 false。
  * @return int 操作成功返回 0，失败返回 -1。
@@ -2446,7 +2505,7 @@ struct dir_item_info
 
 /**
  * @brief 扫描指定目录下的所有文件和子目录。
- * 
+ *
  * @param dirname 目录的路径名。
  * @param filenames 存储目录项信息的向量。
  * @return int 扫描到的目录项数量，失败时返回 -1。
@@ -2454,7 +2513,7 @@ struct dir_item_info
 int scandir(const char *dirname, std::vector<dir_item_info> &filenames);
 /**
  * @brief 重载的 scandir 函数，接受 std::string 类型的路径名。
- * 
+ *
  * @param dirname 目录的路径名。
  * @param filenames 存储目录项信息的向量。
  * @return int 扫描到的目录项数量，失败时返回 -1。
@@ -2466,14 +2525,14 @@ inline int scandir(const std::string &dirname, std::vector<dir_item_info> &filen
 
 /**
  * @brief 扫描指定目录下的所有文件和子目录，返回目录项信息向量。
- * 
+ *
  * @param dirname 目录的路径名。
  * @return std::vector<dir_item_info> 包含目录项信息的向量。
  */
 std::vector<dir_item_info> scandir(const char *dirname);
 /**
  * @brief 重载的 scandir 函数，接受 std::string 类型的路径名。
- * 
+ *
  * @param dirname 目录的路径名。
  * @return std::vector<dir_item_info> 包含目录项信息的向量。
  */
@@ -2484,14 +2543,14 @@ inline std::vector<dir_item_info> scandir(const std::string &dirname)
 
 /**
  * @brief 格式化文件名，去除非法字符等。
- * 
+ *
  * @param filename 原始文件名。
  * @return std::string 格式化后的文件名。
  */
 std::string format_filename(const char *filename);
 /**
  * @brief 重载的 format_filename 函数，接受 std::string 类型的文件名。
- * 
+ *
  * @param filename 原始文件名。
  * @return std::string 格式化后的文件名。
  */
@@ -2502,7 +2561,7 @@ inline std::string format_filename(const std::string &filename)
 
 /**
  * @brief 在指定目录或文件中查找匹配的文件。
- * 
+ *
  * @param dir_or_file 存储目录或文件路径的向量。
  * @param pathname_match 文件名匹配模式，默认为 nullptr。
  * @return std::vector<std::string> 匹配的文件路径向量。
@@ -2510,7 +2569,7 @@ inline std::string format_filename(const std::string &filename)
 std::vector<std::string> find_file_sample(std::vector<const char *> dir_or_file, const char *pathname_match = nullptr);
 /**
  * @brief 在指定目录或文件中查找匹配的文件。
- * 
+ *
  * @param dir_or_file 存储目录或文件路径的数组。
  * @param item_count 数组中元素的数量。
  * @param pathname_match 文件名匹配模式，默认为 nullptr。
@@ -2518,6 +2577,72 @@ std::vector<std::string> find_file_sample(std::vector<const char *> dir_or_file,
  */
 
 std::vector<std::string> find_file_sample(const char **dir_or_file, int item_count, const char *pathname_match = nullptr);
+
+/**
+ * @brief 拼接多个路径字符串为一个完整的路径。
+ *
+ * 该函数接受一个以 `path1` 开始的可变参数列表，将所有路径字符串拼接成一个完整的路径。
+ * 拼接过程中会处理路径分隔符，确保路径格式正确。
+ *
+ * @param path1 第一个路径字符串。
+ * @param ... 可变参数列表，包含后续的路径字符串。
+ * @return std::string 拼接后的完整路径字符串。
+ */
+std::string path_concat(const char *path1, ...);
+
+/**
+ * @brief 获取指定路径的父目录名称。
+ *
+ * 该函数接受一个路径字符串作为输入，返回该路径对应的父目录的名称。
+ * 如果路径没有父目录（例如根目录），则返回空字符串或根据具体实现处理。
+ *
+ * @param pathname 要处理的路径字符串。
+ * @return std::string 父目录的名称，如果没有父目录则返回空字符串。
+ */
+std::string get_dirname(const char *pathname);
+inline std::string get_dirname(const std::string &pathname)
+{
+    return get_dirname(pathname.c_str());
+}
+
+/**
+ * @brief 从给定的路径名中提取目录名和文件名。
+ *
+ * 此函数接受一个C风格的字符串路径名，将路径中的目录名和文件名分别提取出来，
+ * 并存储到传入的 `dirname` 和 `filename` 引用中。
+ *
+ * @param pathname 要处理的路径名，C风格字符串。
+ * @param dirname 用于存储提取出的目录名的引用。
+ * @param filename 用于存储提取出的文件名的引用。
+ */
+void get_dirname_and_filename(const char *pathname, std::string &dirname, std::string &filename);
+inline void get_dirname_and_filename(const std::string &pathname, std::string &dirname, std::string &filename)
+{
+    get_dirname_and_filename(pathname.c_str(), dirname, filename);
+}
+
+/**
+ * @brief 生成用于转储文件的路径名。
+ *
+ * 该函数根据指定的目录名和文件名生成一个用于转储文件的路径名。
+ * 如果指定了最大循环次数 `max_loop`，则会尝试生成唯一的文件名，
+ * 避免文件名冲突。如果 `max_loop` 为 -1，则不进行循环尝试。
+ *
+ * @param dirname 存储转储文件的目录名。
+ * @param filename 要生成的转储文件的基础文件名。
+ * @param max_loop 最大循环次数，用于生成唯一的文件名，默认为 -1。
+ * @return 生成的用于转储文件的完整路径名。
+ */
+std::string get_pathname_for_dump(const char *dirname, const char *filename, int max_loop = -1);
+inline std::string get_pathname_for_dump(const std::string &dirname, const std::string &filename, int max_loop = -1)
+{
+    return get_pathname_for_dump(dirname.c_str(), filename.c_str(), max_loop);
+}
+std::string get_pathname_for_dump(const char *pathname, int max_loop = -1);
+inline std::string get_pathname_for_dump(const std::string &pathname, int max_loop = -1)
+{
+    return get_pathname_for_dump(pathname.c_str(), max_loop);
+}
 
 /* io ############################################################### */
 static const int var_io_max_timeout = (3600 * 24 * 365 * 10);
@@ -2569,18 +2694,18 @@ static const char var_tcp_listen_type_fifo = 'f';
 // 0:25;127.0.0.1:46;./somepath/123;/home/xxx/111;0:8899
 /**
  * @brief 初始化Windows Sockets DLL。
- * 
+ *
  * 该函数用于在Windows平台上初始化Windows Sockets DLL，使应用程序能够使用Windows Sockets API。
- * 
+ *
  * @return int 成功时返回0，失败时返回非零错误码。
  */
 int WSAStartup();
 
 /**
  * @brief 关闭指定的套接字描述符。
- * 
+ *
  * 该函数用于关闭指定的套接字描述符，释放相关的系统资源。
- * 
+ *
  * @param fd 要关闭的套接字描述符。
  * @return int 成功时返回0，失败时返回非零错误码。
  */
@@ -2588,9 +2713,9 @@ int close_socket(int fd);
 
 /**
  * @brief 接受一个Unix域套接字的连接请求。
- * 
+ *
  * 该函数用于接受一个Unix域套接字的连接请求，并返回一个新的套接字描述符用于与客户端通信。
- * 
+ *
  * @param fd 监听的Unix域套接字描述符。
  * @return int 成功时返回新的套接字描述符，失败时返回-1。
  */
@@ -2598,9 +2723,9 @@ int unix_accept(int fd);
 
 /**
  * @brief 接受一个Internet域套接字的连接请求。
- * 
+ *
  * 该函数用于接受一个Internet域套接字的连接请求，并返回一个新的套接字描述符用于与客户端通信。
- * 
+ *
  * @param fd 监听的Internet域套接字描述符。
  * @return int 成功时返回新的套接字描述符，失败时返回-1。
  */
@@ -2608,9 +2733,9 @@ int inet_accept(int fd);
 
 /**
  * @brief 根据指定的套接字类型接受连接请求。
- * 
+ *
  * 该函数根据指定的套接字类型（Unix域或Internet域）接受连接请求，并返回一个新的套接字描述符用于与客户端通信。
- * 
+ *
  * @param fd 监听的套接字描述符。
  * @param type 套接字类型，用于指定是Unix域还是Internet域。
  * @return int 成功时返回新的套接字描述符，失败时返回-1。
@@ -2619,9 +2744,9 @@ int socket_accept(int fd, int type);
 
 /**
  * @brief 创建并监听一个Unix域套接字。
- * 
+ *
  * 该函数用于创建一个Unix域套接字，并将其绑定到指定的地址，开始监听连接请求。
- * 
+ *
  * @param addr 要绑定的Unix域套接字地址。
  * @param backlog 监听队列的最大长度，默认为128。
  * @return int 成功时返回监听的套接字描述符，失败时返回-1。
@@ -2630,9 +2755,9 @@ int unix_listen(char *addr, int backlog = 128);
 
 /**
  * @brief 创建并监听一个Internet域套接字。
- * 
+ *
  * 该函数用于创建一个Internet域套接字，并将其绑定到指定的IP地址和端口，开始监听连接请求。
- * 
+ *
  * @param sip 要绑定的IP地址。
  * @param port 要绑定的端口号。
  * @param backlog 监听队列的最大长度，默认为128。
@@ -2642,9 +2767,9 @@ int inet_listen(const char *sip, int port, int backlog = 128);
 
 /**
  * @brief 创建并监听一个命名管道（FIFO）。
- * 
+ *
  * 该函数用于创建一个命名管道（FIFO），并开始监听连接请求。
- * 
+ *
  * @param path 命名管道的路径。
  * @return int 成功时返回监听的文件描述符，失败时返回-1。
  */
@@ -2652,9 +2777,9 @@ int fifo_listen(const char *path);
 
 /**
  * @brief 根据网络路径创建并监听套接字。
- * 
+ *
  * 该函数根据指定的网络路径（如IP地址和端口、Unix域套接字路径等）创建并监听套接字。
- * 
+ *
  * @param netpath 网络路径字符串。
  * @param backlog 监听队列的最大长度，默认为128。
  * @param type 可选参数，用于返回监听的套接字类型。
@@ -2664,9 +2789,9 @@ int netpath_listen(const char *netpath, int backlog = 128, int *type = nullptr);
 
 /**
  * @brief 连接到指定的Unix域套接字。
- * 
+ *
  * 该函数用于连接到指定的Unix域套接字，并在指定的超时时间内等待连接完成。
- * 
+ *
  * @param addr 要连接的Unix域套接字地址。
  * @param timeout 连接超时时间（毫秒）。
  * @return int 成功时返回连接的套接字描述符，失败时返回-1。
@@ -2675,9 +2800,9 @@ int unix_connect(const char *addr, int timeout);
 
 /**
  * @brief 连接到指定的Internet域套接字。
- * 
+ *
  * 该函数用于连接到指定的Internet域套接字（IP地址和端口），并在指定的超时时间内等待连接完成。
- * 
+ *
  * @param dip 要连接的目标IP地址。
  * @param port 要连接的目标端口号。
  * @param timeout 连接超时时间（毫秒）。
@@ -2687,9 +2812,9 @@ int inet_connect(const char *dip, int port, int timeout);
 
 /**
  * @brief 连接到指定主机的指定端口。
- * 
+ *
  * 该函数用于连接到指定主机的指定端口，会自动解析主机名，并在指定的超时时间内等待连接完成。
- * 
+ *
  * @param host 要连接的主机名或IP地址。
  * @param port 要连接的目标端口号。
  * @param timeout 连接超时时间（毫秒）。
@@ -2699,9 +2824,9 @@ int host_connect(const char *host, int port, int timeout);
 
 /**
  * @brief 根据网络路径连接到目标套接字。
- * 
+ *
  * 该函数根据指定的网络路径（如IP地址和端口、Unix域套接字路径等）连接到目标套接字，并在指定的超时时间内等待连接完成。
- * 
+ *
  * @param netpath 网络路径字符串。
  * @param timeout 连接超时时间（毫秒）。
  * @return int 成功时返回连接的套接字描述符，失败时返回-1。
@@ -2710,9 +2835,9 @@ int netpath_connect(const char *netpath, int timeout);
 
 /**
  * @brief 获取与指定套接字连接的对端地址和端口。
- * 
+ *
  * 该函数用于获取与指定套接字连接的对端的IP地址和端口号。
- * 
+ *
  * @param sockfd 已连接的套接字描述符。
  * @param host 用于存储对端IP地址的指针。
  * @param port 用于存储对端端口号的指针。
@@ -2760,6 +2885,7 @@ char *get_ipstring(int ip, char *ipstr);
 std::string get_ipstring(int ip);
 
 /* time ############################################################ */
+static const int64_t var_use_current_time = -20250428001;
 #ifdef _WIN64
 static const int64_t var_max_millisecond_duration(3600LL * 24 * 365 * 10 * 1000);
 #else  // _WIN64
@@ -2773,7 +2899,7 @@ struct timeofday
 // MSVC 没类似函数
 struct timeofday gettimeofday();
 // 毫秒
-int64_t millisecond(int64_t plus = 0);
+int64_t millisecond();
 // 睡眠毫秒
 void sleep_millisecond(int64_t delay);
 // 睡眠直到
@@ -2782,6 +2908,8 @@ int64_t millisecond_to(int64_t stamp);
 int64_t second();
 // 睡眠
 void sleep(int64_t delay);
+// 微秒
+int64_t microsecond();
 
 // 获取 week day 的简称, 从 0 开始
 // {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
@@ -2791,13 +2919,28 @@ const char *get_day_abbr_of_week(int day);
 const char *get_month_abbr(int month);
 
 // http time
-std::string rfc7231_time(int64_t t = 0);
-ZCC_DEPRECATED inline std::string rfc1123_time(int64_t t = 0) { return rfc7231_time(t); }
+std::string rfc7231_time(int64_t t);
+inline std::string rfc7231_time()
+{
+    return rfc7231_time(var_use_current_time);
+}
+ZCC_DEPRECATED inline std::string rfc1123_time(int64_t t) { return rfc7231_time(t); }
+ZCC_DEPRECATED inline std::string rfc1123_time() { return rfc7231_time(); }
 inline std::string http_time(int64_t t = 0) { return rfc7231_time(t); }
 
 // mime time
-std::string rfc822_time(int64_t t = 0);
-inline std::string mail_time(int64_t t = 0) { return rfc822_time(t); }
+std::string rfc822_time(int64_t t);
+inline std::string rfc822_time() { return rfc822_time(var_use_current_time); }
+inline std::string mail_time(int64_t t) { return rfc822_time(t); }
+inline std::string mail_time() { return rfc822_time(); }
+
+// 形如 xxxx-xx-xx xx:xx
+std::string simple_date_time(int64_t t);
+inline std::string simple_date_time() { return simple_date_time(var_use_current_time); }
+
+// 形如 xxxx-xx-xx xx:xx:xx
+std::string simple_date_time_with_second(int64_t t);
+inline std::string simple_date_time_with_second() { return simple_date_time_with_second(var_use_current_time); }
 
 // 类似GCC标准C库的 time_t timegm(struct tm *tm); windows平台没有
 int64_t timegm(struct tm *tm);

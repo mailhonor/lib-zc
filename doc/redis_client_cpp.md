@@ -33,9 +33,9 @@ rc.exec_command(sval, {"GET", "abc"});
 *  0: 失败/不存在/逻辑错误/等
 * >0: 成功/存在/逻辑正确/等
 
-## zcc::redis_clinet
+## zcc::redis_client
 
-方法很有先, 直接见 include
+方法很有限, 直接见 include
 
 * [goto](../include/zcc/zcc_redis.h)
 

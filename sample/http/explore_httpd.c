@@ -8,6 +8,7 @@
 
 #ifdef __linux__
 #include "zc.h"
+#include "zc_coroutine.h"
 #include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -229,7 +230,8 @@ static void *do_httpd(void *arg)
         }
         httpd_handler(httpd);
         zhttpd_response_flush(httpd);
-        if (!zhttpd_maybe_continue(httpd)) {
+        if (!zhttpd_maybe_continue(httpd))
+        {
             break;
         }
     }
@@ -305,7 +307,7 @@ int main(int argc, char **argv)
 
     return 0;
 }
-#else // __linux__
+#else  // __linux__
 int main()
 {
     return 0;

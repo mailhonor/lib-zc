@@ -99,6 +99,7 @@ public:
 
     /* 序列化 */
     json *serialize(std::string &result, int flags = 0 /* json_serialize_XXX */);
+    std::string serialize(int flags = 0 /* json_serialize_XXX */);
 
     /* 类型 */
     inline int get_type() { return type_; }
@@ -429,12 +430,6 @@ public:
 #undef ___zcc_json_update
 
     /* */
-    json *mv_value(json *val);
-    json *mv_value(json &val);
-    inline void operator=(json *val) { mv_value(val); }
-    inline void operator=(json val) { mv_value(val); }
-
-    /* */
     inline json &operator[](const std::string &key) { return object_get_or_create(key); }
     inline json &operator[](int idx) { return array_get_or_create(idx); }
 
@@ -461,6 +456,10 @@ public:
     std::string object_get_string_value(const std::string &key, const char *def = "");
     int64_t object_get_long_value(const std::string &key, int64_t def = 0);
     bool object_get_bool_value(const std::string &key, bool def = false);
+
+private:
+    inline void operator=(json *val) {}
+    inline void operator=(json val) {}
 
 private:
     unsigned char type_;

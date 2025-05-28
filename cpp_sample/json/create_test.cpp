@@ -64,10 +64,6 @@ int main()
         ->object_update("published2", false, true)
         ->set_string_value("sssss");
 
-    json["tmp"] = new zcc::json("tmp...");
-    json["tmp2"] = zcc::json("tmp...");
-
-
     result.clear();
     json.serialize(result, zcc::json_serialize_pretty);
     printf("Json: %s\n", result.c_str());

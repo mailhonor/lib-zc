@@ -496,7 +496,7 @@ private:
     std::string subject_utf8_;
     std::string message_id_;
     std::string date_;
-    int64_t date_unix_;
+    int64_t date_unix_{-1};
     mail_address from_;
     mail_address sender_;
     mail_address reply_to_;

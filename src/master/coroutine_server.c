@@ -10,6 +10,7 @@
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 #include "zc.h"
+#include "zc_coroutine.h"
 #include "errno.h"
 #include "master.h"
 #include <signal.h>
@@ -17,9 +18,9 @@
 #include <dirent.h>
 #include <sys/prctl.h>
 
-void (*zcoroutine_server_service_register) (const char *service, int fd, int fd_type) = 0;
-void (*zcoroutine_server_before_service) (void) = 0;
-void (*zcoroutine_server_before_softstop) (void) = 0;
+void (*zcoroutine_server_service_register)(const char *service, int fd, int fd_type) = 0;
+void (*zcoroutine_server_before_service)(void) = 0;
+void (*zcoroutine_server_before_softstop)(void) = 0;
 
 static zcoroutine_base_t *current_cobs = 0;
 static zbool_t flag_run = 0;
@@ -39,30 +40,40 @@ static void *do_stop_after(void *arg)
 
 static void *monitor_reload_signal(void *arg)
 {
-    while(ztimed_read_wait(zvar_master_server_status_fd, 10) == 0) {
+    while (ztimed_read_wait(zvar_master_server_status_fd, 10) == 0)
+    {
     }
 
-    if (flag_detach_from_master) {
+    if (flag_detach_from_master)
+    {
         return 0;
     }
 
     int need_stop_coroutine = 0;
     int exit_after = (int)zconfig_get_second(zvar_default_config, "server-stop-on-softstop-after", 0);
 
-    if (zcoroutine_server_before_softstop) {
+    if (zcoroutine_server_before_softstop)
+    {
         need_stop_coroutine = 1;
-        if (exit_after < 1) {
+        if (exit_after < 1)
+        {
             exit_after = 3600;
         }
         zcoroutine_server_before_softstop();
-    } else {
-        if (exit_after > 0) {
+    }
+    else
+    {
+        if (exit_after > 0)
+        {
             need_stop_coroutine = 1;
         }
     }
-    if (need_stop_coroutine) {
+    if (need_stop_coroutine)
+    {
         zcoroutine_server_stop_notify(exit_after);
-    } else {
+    }
+    else
+    {
         flag_stop = 1;
     }
 
@@ -71,15 +82,18 @@ static void *monitor_reload_signal(void *arg)
 
 static void *detach_monitor(void *arg)
 {
-    while(1) {
+    while (1)
+    {
         zsleep(10);
-        if (flag_detach_from_master) {
+        if (flag_detach_from_master)
+        {
             zclose(zvar_coroutine_server_status_fd);
             break;
         }
     }
     int exit_after = (int)zconfig_get_second(zvar_default_config, "server-stop-on-softstop-after", 0);
-    if (exit_after < 1) {
+    if (exit_after < 1)
+    {
         exit_after = 3600;
     }
     zsleep(exit_after);
@@ -89,9 +103,11 @@ static void *detach_monitor(void *arg)
 
 static void *ppid_check(void *arg)
 {
-    while(1) {
+    while (1)
+    {
         zsleep(10);
-        if(getppid() != parent_pid) {
+        if (getppid() != parent_pid)
+        {
             break;
         }
     }
@@ -105,30 +121,38 @@ static void alone_register(char *alone_url)
     char *service, *url, *p;
     zstrtok_t splitor;
     zstrtok_init(&splitor, alone_url);
-    while(zstrtok(&splitor, " \t,;\r\n")) {
-        if (splitor.len > 1000) {
+    while (zstrtok(&splitor, " \t,;\r\n"))
+    {
+        if (splitor.len > 1000)
+        {
             zfatal("alone_register: url too long");
         }
         memcpy(service_buf, splitor.str, splitor.len);
         service_buf[splitor.len] = 0;
         p = strstr(service_buf, "://");
-        if (p) {
-            *p=0;
+        if (p)
+        {
+            *p = 0;
             service = service_buf;
-            url = p+3;
-        } else {
+            url = p + 3;
+        }
+        else
+        {
             service = zblank_buffer;
             url = service_buf;
         }
 
         int fd_type;
         int fd = zlisten(url, &fd_type, 5);
-        if (fd < 0) {
+        if (fd < 0)
+        {
             zfatal("alone_register: open %s(%m)", alone_url);
         }
-        if (zvar_memleak_check) {
-            if (!alone_listen_fd_vector) {
-                alone_listen_fd_vector = (int *)zcalloc(sizeof(int), 1024+1);
+        if (zvar_memleak_check)
+        {
+            if (!alone_listen_fd_vector)
+            {
+                alone_listen_fd_vector = (int *)zcalloc(sizeof(int), 1024 + 1);
             }
             alone_listen_fd_vector[alone_listen_fd_count++] = fd;
         }
@@ -141,30 +165,36 @@ static void master_register(char *master_url)
 {
     zargv_t *service_argv = zargv_create(-1);
     zargv_split_append(service_argv, master_url, ",");
-    for (int i = 0; i < zargv_len(service_argv); i++) {
+    for (int i = 0; i < zargv_len(service_argv); i++)
+    {
         char *service_name, *typefd;
         zargv_t *stfd = zargv_create(5);
         zargv_split_append(stfd, zargv_data(service_argv)[i], ":");
-        if (zargv_len(stfd) == 1) {
+        if (zargv_len(stfd) == 1)
+        {
             service_name = zblank_buffer;
             typefd = zargv_data(stfd)[0];
-        } else {
+        }
+        else
+        {
             service_name = zargv_data(stfd)[0];
             typefd = zargv_data(stfd)[1];
         }
         int fdtype = typefd[0];
-        switch(fdtype) {
-            case zvar_tcp_listen_type_inet:
-            case zvar_tcp_listen_type_unix:
-            case zvar_tcp_listen_type_fifo:
-                break;
-            default:
-                zfatal("unknown service type %c", fdtype);
-                break;
+        switch (fdtype)
+        {
+        case zvar_tcp_listen_type_inet:
+        case zvar_tcp_listen_type_unix:
+        case zvar_tcp_listen_type_fifo:
+            break;
+        default:
+            zfatal("unknown service type %c", fdtype);
+            break;
         }
-        int fd = atoi(typefd+1);
-        if (fd < zvar_aio_server_listen_fd) {
-            zfatal("fd(%s) is invalid", typefd+1);
+        int fd = atoi(typefd + 1);
+        if (fd < zvar_aio_server_listen_fd)
+        {
+            zfatal("fd(%s) is invalid", typefd + 1);
         }
         zcoroutine_enable_fd(fd);
         znonblocking(fd, 0);
@@ -178,14 +208,20 @@ static void master_register(char *master_url)
 static void deal_argument()
 {
     char *s = zvar_main_redundant_argv[0];
-    if (zempty(s)) {
+    if (zempty(s))
+    {
         s = zblank_buffer;
     }
-    if (!strcmp(s, "MASTER")) {
+    if (!strcmp(s, "MASTER"))
+    {
         master_mode = 1;
-    } else if (!strcmp(s, "alone")) {
+    }
+    else if (!strcmp(s, "alone"))
+    {
         master_mode = 0;
-    } else {
+    }
+    else
+    {
         fprintf(stderr, "FATAL USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]\n", zvar_progname);
         zfatal("USAGE: %s alone [ ... ] -server-service 0:8899 [ ... ]", zvar_progname);
     }
@@ -193,14 +229,16 @@ static void deal_argument()
 
 static void _loop_fn(zcoroutine_base_t *cb)
 {
-    if (flag_stop || zvar_sigint_flag) {
+    if (flag_stop || zvar_sigint_flag)
+    {
         zcoroutine_base_stop_notify(current_cobs);
     }
 }
 
-static void zcoroutine_server_init(int argc, char ** argv)
+static void zcoroutine_server_init(int argc, char **argv)
 {
-    if (flag_run) {
+    if (flag_run)
+    {
         zfatal("zaio_server_main: only once");
     }
     flag_run = 1;
@@ -212,16 +250,19 @@ static void zcoroutine_server_init(int argc, char ** argv)
     prctl(PR_SET_PDEATHSIG, SIGHUP);
 
     parent_pid = getppid();
-    if (parent_pid == 1) {
+    if (parent_pid == 1)
+    {
         exit(1);
     }
 
-    if (!zcoroutine_server_service_register) {
+    if (!zcoroutine_server_service_register)
+    {
         zfatal("zcoroutine_server_service_register is null");
     }
 
     char *attr = zconfig_get_str(zvar_default_config, "server-config-path", "");
-    if (!zempty(attr)) {
+    if (!zempty(attr))
+    {
         zconfig_t *cf = zconfig_create();
         zmaster_load_global_config_from_dir_inner(cf, attr);
         zconfig_load_another(cf, zvar_default_config);
@@ -235,7 +276,8 @@ static void zcoroutine_server_init(int argc, char ** argv)
     zcoroutine_base_set_loop_fn(_loop_fn);
     current_cobs = zcoroutine_base_get_current();
 
-    if (master_mode) {
+    if (master_mode)
+    {
         zclose_on_exec(zvar_master_server_status_fd, 1);
         znonblocking(zvar_master_server_status_fd, 1);
         zcoroutine_enable_fd(zvar_master_server_status_fd);
@@ -244,18 +286,23 @@ static void zcoroutine_server_init(int argc, char ** argv)
         zcoroutine_go(ppid_check, 0, 4);
     }
 
-    if (zcoroutine_server_before_service) {
+    if (zcoroutine_server_before_service)
+    {
         zcoroutine_server_before_service();
     }
 
-    if (master_mode == 0) {
+    if (master_mode == 0)
+    {
         alone_register(zconfig_get_str(zvar_default_config, "server-service", ""));
-    } else {
+    }
+    else
+    {
         master_register(zconfig_get_str(zvar_default_config, "server-service", ""));
     }
 
     long ea = zconfig_get_second(zvar_default_config, "exit-after", 0);
-    if (ea > 0) {
+    if (ea > 0)
+    {
         alarm(0);
         zcoroutine_go(do_stop_after, (void *)ea, 4);
     }
@@ -263,7 +310,8 @@ static void zcoroutine_server_init(int argc, char ** argv)
 
 static void alone_listen_fd_clear()
 {
-    for (int i = 0; i < alone_listen_fd_count; i++) {
+    for (int i = 0; i < alone_listen_fd_count; i++)
+    {
         close(alone_listen_fd_vector[i]);
     }
     zfree(alone_listen_fd_vector);
@@ -275,7 +323,8 @@ int zcoroutine_server_main(int argc, char **argv)
     zcoroutine_base_run();
     alone_listen_fd_clear();
     zcoroutine_base_fini();
-    if (zvar_memleak_check) {
+    if (zvar_memleak_check)
+    {
         zsleep(1);
     }
     return 0;
@@ -283,7 +332,8 @@ int zcoroutine_server_main(int argc, char **argv)
 
 void zcoroutine_server_stop_notify(int stop_after_second)
 {
-    if (stop_after_second < 1) {
+    if (stop_after_second < 1)
+    {
         flag_stop = 1;
         return;
     }
@@ -296,4 +346,3 @@ void zcoroutine_server_detach_from_master()
 }
 
 #endif // __linux__
-

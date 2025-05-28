@@ -16,7 +16,7 @@ static void *test_sleep1(void *context)
     while(1){
         sleep(1);
         zcoroutine_sleep_millisecond(10);
-        zprintf("test_sleep1, 1s + 10ms \n");
+        printf("test_sleep1, 1s + 10ms \n");
     }
     return context;
 }
@@ -26,7 +26,7 @@ static void *test_sleep2(void *context)
     while(1){
         sleep(2);
         zcoroutine_sleep_millisecond(300);
-        zprintf("test_sleep2, 2s + 300ms \n");
+        printf("test_sleep2, 2s + 300ms \n");
     }
     return context;
 }

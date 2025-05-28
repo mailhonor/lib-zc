@@ -7,6 +7,7 @@
  */
 
 #include "zc.h"
+#include "zc_coroutine.h"
 #include <errno.h>
 
 void *do_log_test(void *arg)

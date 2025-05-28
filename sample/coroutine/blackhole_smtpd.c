@@ -7,6 +7,7 @@
  */
 
 #include "zc.h"
+#include "zc_coroutine.h"
 
 static char *server_address=0;
 static void ___usage()

@@ -12,7 +12,8 @@ int main(int argc, char **argv)
 {
     zcc::json js;
 
-    do {
+    do
+    {
         /* 准备 js */
         js.object_update("str", "string2");
         js.object_update("str", "string");
@@ -22,28 +23,32 @@ int main(int argc, char **argv)
         js.debug_show();
     } while (0);
 
-    do {
+    do
+    {
         /* 更改 "bool" 的值为 true */
         js.object_get("bool")->get_bool_value() = true;
         /* 得到 {"bool":ture,"int":2,"str":"string"} */
         js.debug_show();
     } while (0);
 
-    do {
+    do
+    {
         /* 更改 "int" 的值为 3 */
         js.object_update("int", 3);
         /* 得到 {"bool":ture,"int":3,"str":"string"} */
         js.debug_show();
     } while (0);
 
-    do {
+    do
+    {
         /* 更改 "str" 的值为 {} */
         js.object_update("str", new zcc::json(zcc::json_type_object));
         /* 得到 {"bool":ture,"int":3,"str":{}} */
         js.debug_show();
     } while (0);
 
-    do {
+    do
+    {
         /* 增加 "array" => [ 1, false ] */
         js.object_update("array", new zcc::json(), true)->array_push(1)->array_push(false);
         /* 得到 {"array":[1,false],"bool":true,"int":3,"str":{}} */
@@ -52,4 +57,3 @@ int main(int argc, char **argv)
 
     return 0;
 }
-

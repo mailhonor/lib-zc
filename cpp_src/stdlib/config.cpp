@@ -18,7 +18,7 @@ config var_main_config;
 
 /**
  * @brief 配置类的构造函数
- * 
+ *
  * 目前构造函数为空，不执行任何初始化操作
  */
 config::config()
@@ -27,7 +27,7 @@ config::config()
 
 /**
  * @brief 配置类的析构函数
- * 
+ *
  * 目前析构函数为空，不执行任何清理操作
  */
 config::~config()
@@ -36,7 +36,7 @@ config::~config()
 
 /**
  * @brief 重置配置对象，清除所有配置项
- * 
+ *
  * @return config& 返回当前配置对象的引用，支持链式调用
  */
 config &config::reset()
@@ -48,7 +48,7 @@ config &config::reset()
 
 /**
  * @brief 使用 C 风格字符串更新配置项
- * 
+ *
  * @param key 配置项的键
  * @param val 配置项的值
  * @param vlen 值的长度，如果为 -1，则自动计算字符串长度
@@ -68,9 +68,23 @@ config &config::update(const char *key, const char *val, int vlen)
     return *this;
 }
 
+config &config::update(const std::string &key, const char *val, int vlen)
+{
+    // 如果未指定值的长度，则自动计算
+    if (vlen < 0)
+    {
+        vlen = std::strlen(val);
+    }
+    // 将配置项添加或更新到配置对象中
+    (*this)[key] = std::string(val, vlen);
+    // 调用更新后的处理函数
+    afterUpdate();
+    return *this;
+}
+
 /**
  * @brief 使用 std::string 和 C 风格字符串更新配置项
- * 
+ *
  * @param key 配置项的键
  * @param val 配置项的值
  * @return config& 返回当前配置对象的引用，支持链式调用
@@ -86,7 +100,7 @@ config &config::update(const char *key, const std::string &val)
 
 /**
  * @brief 使用两个 std::string 更新配置项
- * 
+ *
  * @param key 配置项的键
  * @param val 配置项的值
  * @return config& 返回当前配置对象的引用，支持链式调用
@@ -102,7 +116,7 @@ config &config::update(const std::string &key, const std::string &val)
 
 /**
  * @brief 使用 C 风格字符串移除配置项
- * 
+ *
  * @param key 要移除的配置项的键
  * @return config& 返回当前配置对象的引用，支持链式调用
  */
@@ -123,7 +137,7 @@ config &config::remove(const char *key)
 
 /**
  * @brief 使用 std::string 移除配置项
- * 
+ *
  * @param key 要移除的配置项的键
  * @return config& 返回当前配置对象的引用，支持链式调用
  */
@@ -144,7 +158,7 @@ config &config::remove(const std::string &key)
 
 /**
  * @brief 从文件中加载配置项
- * 
+ *
  * @param pathname 配置文件的路径
  * @return bool 加载成功返回 true，失败返回 false
  */
@@ -217,7 +231,7 @@ bool config::load_from_file(const char *pathname)
 
 /**
  * @brief 加载另一个配置对象的所有配置项
- * 
+ *
  * @param another 另一个配置对象
  * @return config& 返回当前配置对象的引用，支持链式调用
  */
@@ -234,7 +248,7 @@ config &config::load_another(config &another)
 
 /**
  * @brief 调试输出所有配置项
- * 
+ *
  * 将所有配置项以 "key = value" 的格式输出到标准错误流
  * @return config& 返回当前配置对象的引用，支持链式调用
  */
@@ -255,7 +269,7 @@ config &config::debug_show()
 
 /**
  * @brief 使用 C 风格字符串获取配置项的值
- * 
+ *
  * @param key 配置项的键
  * @return std::string* 如果找到配置项，返回其值的指针；否则返回 nullptr
  */
@@ -273,7 +287,7 @@ std::string *config::get_value(const char *key)
 
 /**
  * @brief 使用 std::string 获取配置项的值
- * 
+ *
  * @param key 配置项的键
  * @return std::string* 如果找到配置项，返回其值的指针；否则返回 nullptr
  */
@@ -291,7 +305,7 @@ std::string *config::get_value(const std::string &key)
 
 /**
  * @brief 使用 C 风格字符串获取配置项的 C 风格字符串值
- * 
+ *
  * @param key 配置项的键
  * @param def_val 默认值，如果未找到配置项，返回该默认值
  * @return const char* 配置项的值或默认值
@@ -310,7 +324,7 @@ const char *config::get_cstring(const char *key, const char *def_val)
 
 /**
  * @brief 使用 std::string 获取配置项的 C 风格字符串值
- * 
+ *
  * @param key 配置项的键
  * @param def_val 默认值，如果未找到配置项，返回该默认值
  * @return const char* 配置项的值或默认值
@@ -329,7 +343,7 @@ const char *config::get_cstring(const std::string &key, const char *def_val)
 
 /**
  * @brief 使用 C 风格字符串获取配置项的 std::string 值
- * 
+ *
  * @param key 配置项的键
  * @param def_val 默认值，如果未找到配置项，返回该默认值
  * @return std::string 配置项的值或默认值
@@ -348,7 +362,7 @@ std::string config::get_string(const char *key, const char *def_val)
 
 /**
  * @brief 使用 std::string 获取配置项的 std::string 值
- * 
+ *
  * @param key 配置项的键
  * @param def_val 默认值，如果未找到配置项，返回该默认值
  * @return std::string 配置项的值或默认值
@@ -367,7 +381,7 @@ std::string config::get_string(const std::string &key, const char *def_val)
 
 /**
  * @brief 使用 std::string 获取配置项的 std::string 引用值
- * 
+ *
  * @param key 配置项的键
  * @param def_val 默认值，如果未找到配置项，返回该默认值的引用
  * @return const std::string& 配置项的值或默认值的引用
@@ -386,7 +400,7 @@ const std::string &config::get_string(const std::string &key, const std::string 
 
 /**
  * @brief 使用 C 风格字符串获取配置项的布尔值
- * 
+ *
  * @param key 配置项的键
  * @param def_val 默认值，如果未找到配置项，返回该默认值
  * @return bool 配置项的布尔值或默认值
@@ -406,7 +420,7 @@ bool config::get_bool(const char *key, bool def_val)
 
 /**
  * @brief 使用 std::string 获取配置项的布尔值
- * 
+ *
  * @param key 配置项的键
  * @param def_val 默认值，如果未找到配置项，返回该默认值
  * @return bool 配置项的布尔值或默认值
@@ -426,7 +440,7 @@ bool config::get_bool(const std::string &key, bool def_val)
 
 /**
  * @brief 使用 C 风格字符串获取配置项的整数值
- * 
+ *
  * @param key 配置项的键
  * @param def_val 默认值，如果未找到配置项，返回该默认值
  * @return int 配置项的整数值或默认值
@@ -446,7 +460,7 @@ int config::get_int(const char *key, int def_val)
 
 /**
  * @brief 使用 std::string 获取配置项的整数值
- * 
+ *
  * @param key 配置项的键
  * @param def_val 默认值，如果未找到配置项，返回该默认值
  * @return int 配置项的整数值或默认值
@@ -466,7 +480,7 @@ int config::get_int(const std::string &key, int def_val)
 
 /**
  * @brief 使用 C 风格字符串获取配置项的长整数值
- * 
+ *
  * @param key 配置项的键
  * @param def_val 默认值，如果未找到配置项，返回该默认值
  * @return int64_t 配置项的长整数值或默认值
@@ -486,7 +500,7 @@ int64_t config::get_long(const char *key, int64_t def_val)
 
 /**
  * @brief 使用 std::string 获取配置项的长整数值
- * 
+ *
  * @param key 配置项的键
  * @param def_val 默认值，如果未找到配置项，返回该默认值
  * @return int64_t 配置项的长整数值或默认值
@@ -506,7 +520,7 @@ int64_t config::get_long(const std::string &key, int64_t def_val)
 
 /**
  * @brief 使用 C 风格字符串获取配置项的秒数
- * 
+ *
  * @param key 配置项的键
  * @param def_val 默认值，如果未找到配置项，返回该默认值
  * @return int64_t 配置项的秒数或默认值
@@ -526,7 +540,7 @@ int64_t config::get_second(const char *key, int64_t def_val)
 
 /**
  * @brief 使用 std::string 获取配置项的秒数
- * 
+ *
  * @param key 配置项的键
  * @param def_val 默认值，如果未找到配置项，返回该默认值
  * @return int64_t 配置项的秒数或默认值
@@ -546,7 +560,7 @@ int64_t config::get_second(const std::string &key, int64_t def_val)
 
 /**
  * @brief 使用 C 风格字符串获取配置项的大小值
- * 
+ *
  * @param key 配置项的键
  * @param def_val 默认值，如果未找到配置项，返回该默认值
  * @return int64_t 配置项的大小值或默认值
@@ -566,7 +580,7 @@ int64_t config::get_size(const char *key, int64_t def_val)
 
 /**
  * @brief 使用 std::string 获取配置项的大小值
- * 
+ *
  * @param key 配置项的键
  * @param def_val 默认值，如果未找到配置项，返回该默认值
  * @return int64_t 配置项的大小值或默认值

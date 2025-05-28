@@ -21,7 +21,7 @@ zcc_namespace_begin;
 
 /**
  * @brief 根据传入的星期几的数字返回对应的缩写字符串
- * 
+ *
  * @param day 星期几的数字，范围0-6，0表示周日，6表示周六
  * @return const char* 对应的星期缩写字符串
  */
@@ -45,7 +45,7 @@ const char *get_day_abbr_of_week(int day)
 
 /**
  * @brief 根据传入的月份数字返回对应的缩写字符串
- * 
+ *
  * @param month 月份数字，范围0-11，0表示一月，11表示十二月
  * @return const char* 对应的月份缩写字符串
  */
@@ -69,7 +69,7 @@ const char *get_month_abbr(int month)
 
 /**
  * @brief 获取当前时间的秒和微秒部分
- * 
+ *
  * @return timeofday 包含秒和微秒的结构体
  */
 timeofday gettimeofday()
@@ -86,26 +86,19 @@ timeofday gettimeofday()
     return r;
 }
 
-/**
- * @brief 获取当前时间戳加上指定超时时间后的毫秒时间戳
- * 
- * @param timeout 超时时间（毫秒）
- * @return int64_t 当前时间戳加上超时时间后的毫秒时间戳
- */
-int64_t millisecond(int64_t timeout)
+int64_t millisecond()
 {
-    // 获取当前系统时间
-    auto now = std::chrono::system_clock::now();
-    // 获取从纪元开始到现在的持续时间
-    auto duration_since_epoch = now.time_since_epoch();
-    // 将持续时间转换为毫秒
-    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration_since_epoch).count();
-    return millis + timeout;
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+}
+
+int64_t microsecond()
+{
+    return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
 }
 
 /**
  * @brief 让当前线程休眠指定的毫秒数
- * 
+ *
  * @param delay 休眠时间（毫秒）
  */
 void sleep_millisecond(int64_t delay)
@@ -129,7 +122,7 @@ void sleep_millisecond(int64_t delay)
 
 /**
  * @brief 计算从当前时间到指定时间戳的剩余毫秒数
- * 
+ *
  * @param stamp 指定的时间戳（毫秒）
  * @return int64_t 从当前时间到指定时间戳的剩余毫秒数
  */
@@ -140,7 +133,7 @@ int64_t millisecond_to(int64_t stamp)
 
 /**
  * @brief 获取当前时间的秒级时间戳
- * 
+ *
  * @return int64_t 当前时间的秒级时间戳
  */
 int64_t second(void)
@@ -154,7 +147,7 @@ int64_t second(void)
 
 /**
  * @brief 让当前线程休眠指定的秒数
- * 
+ *
  * @param delay 休眠时间（秒）
  */
 void sleep(int64_t delay)
@@ -165,14 +158,14 @@ void sleep(int64_t delay)
 
 /**
  * @brief 根据指定的时间戳生成符合RFC 7231标准的时间字符串
- * 
+ *
  * @param t 时间戳，如果为0则使用当前时间
  * @return std::string 符合RFC 7231标准的时间字符串
  */
 std::string rfc7231_time(int64_t t)
 {
     char buf[128 + 1];
-    if (t == 0)
+    if (t == var_use_current_time)
     {
         // 如果时间戳为0，使用当前时间
         t = second();
@@ -186,7 +179,7 @@ std::string rfc7231_time(int64_t t)
 
 /**
  * @brief 根据指定的时间戳生成符合RFC 822标准的时间字符串
- * 
+ *
  * @param t 时间戳，如果小于1则使用当前时间
  * @return std::string 符合RFC 822标准的时间字符串
  */
@@ -194,9 +187,8 @@ std::string rfc822_time(int64_t t)
 {
     std::string r;
     char buf[128 + 1];
-    if (t < 1)
+    if (t == var_use_current_time)
     {
-        // 如果时间戳小于1，使用当前时间
         t = second();
     }
     // 将时间戳转换为本地时间结构体
@@ -219,8 +211,38 @@ std::string rfc822_time(int64_t t)
 }
 
 /**
+ * @brief 将时间戳转换为简单的日期时间字符串
+ *
+ * @param t 时间戳，如果小于1则使用当前时间
+ * @return std::string 格式为" %Y %H:%M:"的日期时间字符串
+ */
+std::string simple_date_time(int64_t t)
+{
+    char buf[128 + 1];
+    if (t == var_use_current_time)
+    {
+        t = second();
+    }
+    auto p = std::localtime((time_t *)&t);
+    std::strftime(buf, 128, "%Y-%m-%d %H:%M", p);
+    return buf;
+}
+
+std::string simple_date_time_with_second(int64_t t)
+{
+    char buf[128 + 1];
+    if (t == var_use_current_time)
+    {
+        t = second();
+    }
+    auto p = std::localtime((time_t *)&t);
+    std::strftime(buf, 128, "%Y-%m-%d %H:%M:%S", p);
+    return buf;
+}
+
+/**
  * @brief 将tm结构体转换为UTC时间戳
- * 
+ *
  * @param tm 指向tm结构体的指针
  * @return int64_t UTC时间戳
  */

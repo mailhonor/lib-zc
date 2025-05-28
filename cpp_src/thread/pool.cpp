@@ -300,7 +300,7 @@ void thread_pool::enter_timer_millisecond(std::function<void()> fn, int64_t time
         return;
     }
 
-    int64_t until = millisecond(timeout_millisecond);
+    int64_t until = millisecond() + timeout_millisecond;
     lock();
     engine_->timer_plus++;
     engine_->timer_map[std::make_tuple(until, engine_->timer_plus)] = fn;

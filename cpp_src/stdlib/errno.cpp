@@ -239,7 +239,7 @@ static void _register_errno_map()
     }
 }
 
-static global_init errno_map_init(_register_errno_map);
+zcc_global_init(_register_errno_map());
 
 int get_errno(int code)
 {

@@ -29,7 +29,7 @@ public:
 
 public:
     thread_pool();
-    ~thread_pool();
+    virtual ~thread_pool();
     //
     void create_thread(int count = 1);
     inline void create_one_thread()

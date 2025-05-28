@@ -174,7 +174,7 @@ static void on_child_strike(aio *a, child_status_t *cs)
         {
             server->stamp_next_start = millisecond() + 100;
         }
-        else if (millisecond(0) - cs->stamp > 1000)
+        else if (millisecond() - cs->stamp > 1000)
         {
             server->stamp_next_start = 0;
         }

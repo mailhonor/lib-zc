@@ -104,29 +104,6 @@ std::string get_string(const dict &dt, const char *key, const char *def_val)
 }
 
 /**
- * @brief 从字典中获取 std::string 类型的值
- * 
- * 如果字典中存在指定的键，则返回对应的值；否则返回默认值。
- * 
- * @param dt 要查询的字典对象
- * @param key 要查询的键，使用 std::string 表示
- * @param def_val 默认值，当字典中不存在指定键时返回
- * @return std::string 字典中对应键的值或默认值
- */
-std::string get_string(const dict &dt, const std::string &key, const char *def_val)
-{
-    // 在字典中查找指定的键
-    auto it = dt.find(key);
-    // 如果未找到该键
-    if (it == dt.end())
-    {
-        return def_val;
-    }
-    // 返回对应的值
-    return it->second;
-}
-
-/**
  * @brief 从字典中获取 std::string 类型的值的引用
  * 
  * 如果字典中存在指定的键，则返回对应的值的引用；否则返回默认值的引用。

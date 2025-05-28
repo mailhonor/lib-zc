@@ -18,7 +18,7 @@ static void *wait_cond_then_do_something(void *context)
     for (int i = 0; i < 2; i++) {
         /* zcoroutine_mutex_lock(mutex); */
         zcoroutine_cond_wait(cond, mutex);
-        zprintf("get signal, id=%d, loop=%d\n", (int)(long)context, i+1);
+        printf("get signal, id=%d, loop=%d\n", (int)(long)context, i+1);
         /* zcoroutine_mutex_unlock(mutex); */
     }
     /* should execute unlock, here */
@@ -30,32 +30,32 @@ static void *begin_my_test(void *context)
 {
     cond  = zcoroutine_cond_create();
     mutex  = zcoroutine_mutex_create();
-    zprintf("start 10 coroutine to wait cond.\n");
+    printf("start 10 coroutine to wait cond.\n");
     for (int i = 0; i < 10; i++) {
         zcoroutine_go(wait_cond_then_do_something, (void *)(long)i, 0);
     }
-    zprintf("waiting 1 second ...\n");
+    printf("waiting 1 second ...\n");
 
-    zprintf("\n\ncoroutine_cond_signal, then sleep 1s  ... \n");
+    printf("\n\ncoroutine_cond_signal, then sleep 1s  ... \n");
     zcoroutine_cond_signal(cond);
     sleep(1);
 
-    zprintf("\n\ncoroutine_cond_broadcast ... \n");
+    printf("\n\ncoroutine_cond_broadcast ... \n");
     zcoroutine_cond_broadcast(cond);
 
-    zprintf("\n\ncoroutine_cond_broadcast, then sleep 1s ... \n");
+    printf("\n\ncoroutine_cond_broadcast, then sleep 1s ... \n");
     zcoroutine_cond_broadcast(cond);
     sleep(1);
 
-    zprintf("\n\ncoroutine_cond_broadcast ... \n");
+    printf("\n\ncoroutine_cond_broadcast ... \n");
     zcoroutine_cond_broadcast(cond);
 
-    zprintf("\n\ncoroutine_cond_free, coroutine_mutex_free then sleep 1s ... \n");
+    printf("\n\ncoroutine_cond_free, coroutine_mutex_free then sleep 1s ... \n");
     zcoroutine_cond_free(cond);
     zcoroutine_mutex_free(mutex);
     sleep(1);
 
-    zprintf("\n\nnotify stop ... \n");
+    printf("\n\nnotify stop ... \n");
     zcoroutine_base_stop_notify(0);
 
     return 0;
@@ -66,8 +66,8 @@ int main(int argc, char **argv)
     zcoroutine_base_init();
     zcoroutine_go(begin_my_test, 0, 0);
     zcoroutine_base_run();
-    zprintf("\n\nzcoroutine_base_run over, then zcoroutine_base_fini \n");
+    printf("\n\nzcoroutine_base_run over, then zcoroutine_base_fini \n");
     zcoroutine_base_fini();
-    zprintf("\n");
+    printf("\n");
     return 0;
 }

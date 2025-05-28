@@ -102,6 +102,7 @@ typedef struct zcdb_builder_t zcdb_builder_t;
 typedef struct zmsearch_t zmsearch_t;
 typedef struct zmsearch_walker_t zmsearch_walker_t;
 typedef struct zpthread_pool_t zpthread_pool_t;
+typedef struct zcoroutine_base_t zcoroutine_base_t;
 
 #ifndef zinline
 #define zinline inline __attribute__((always_inline))
@@ -2464,7 +2465,6 @@ void zaio_iopipe_enter(zaio_t *client, zaio_t *server, zaio_base_t *aiobase, voi
 
 /* coroutine, src/coroutine/ ########################################## */
 /* 协程框架, 本协程不得跨线程操作 例子见 sample/coroutine/ */
-#include "./src/coroutine/coroutine.h"
 void zcoroutine_go_iopipe(int fd1, SSL *ssl1, int fd2, SSL *ssl2, zcoroutine_base_t *cobs, void (*after_close)(void *ctx), void *ctx);
 
 /* master, src/master/ ################################################ */
@@ -3404,10 +3404,9 @@ int zhttpd_response_file_try_gzip(zhttpd_t *httpd, const char *pathname, const c
 int zhttpd_response_file_data(zhttpd_t *httpd, const void *data, size_t size, const char *content_type, int max_age, ssize_t mtime, const char *etag, zbool_t is_gzip);
 
 /* 日志 */
-#define zhttpd_show_log(httpd, fmt, args...)                       \
-    {                                                              \
-        zinfo("%s " fmt, zhttpd_get_prefix_log_msg(httpd), ##args) \
-    }
+#define zhttpd_show_log(httpd, fmt, args...) \
+    {                                        \
+        zinfo("%s " fmt, zhttpd_get_prefix_log_msg(httpd), ##args)}
 extern const char *(*zhttpd_get_prefix_log_msg)(zhttpd_t *httpd);
 const char *zhttpd_get_prefix_log_msg_default(zhttpd_t *httpd);
 zbuf_t *zhttpd_get_prefix_log_msg_buf(zhttpd_t *httpd);

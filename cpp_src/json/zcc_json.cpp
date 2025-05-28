@@ -1695,6 +1695,13 @@ json *json::serialize(std::string &result, int flags)
     return this;
 }
 
+std::string json::serialize(int flags)
+{
+    std::string result;
+    serialize(result, flags);
+    return result;
+}
+
 static json *_deep_copy_simple(json *js, bool &is_simple)
 {
     json *njs = new json();
@@ -1843,34 +1850,6 @@ json *json::deep_copy()
         return r;
     }
     return _deep_copy_complex(r, this);
-}
-
-json *json::mv_value(json &val)
-{
-    reset();
-    if (val.type_ == json_type_string)
-    {
-        std::swap(get_string_value(), val.get_string_value());
-    }
-    else
-    {
-        type_ = val.type_;
-        std::memcpy(&val_, &(val.val_), sizeof(val_));
-        val.type_ = json_type_null;
-    }
-    return this;
-}
-
-json *json::mv_value(json *val)
-{
-    reset();
-    if (!val)
-    {
-        return this;
-    }
-    mv_value(*val);
-    delete val;
-    return this;
 }
 
 json *json::debug_show()

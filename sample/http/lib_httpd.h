@@ -12,6 +12,7 @@
 #endif
 
 #include "../../zc.h"
+#include "../../zc_coroutine.h"
 #include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>

@@ -8,6 +8,7 @@
 
 #include <openssl/ssl.h>
 #include "zc.h"
+#include "zc_coroutine.h"
 #include <errno.h>
 #include <poll.h>
 

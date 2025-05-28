@@ -25,7 +25,7 @@ spamd_server = var/socket/spamd222
 
 ## 函数
 
-```c++
+```cpp
 // 线程, 读写不安全
 // 线程, 只有读是安全的
 namespace zcc {

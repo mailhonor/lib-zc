@@ -27,7 +27,7 @@ static void *slow_action(void *arg)
      *     io频繁切换, 如 操作本地数据库, sqlite3, bdb
      */
 
-    zprintf("my pthread:%ld\n", (long)my_gettid());
+    printf("my pthread:%ld\n", (long)my_gettid());
     sleep(1);
     return 0;
 }
@@ -60,9 +60,9 @@ int main(int argc, char **argv)
     }
     zcoroutine_go(timer_exit, 0, 0);
 
-    zprintf("exit after 100s\n");
-    zprintf("block do running in worker pthread\n");
-    zprintf("strace -p pthrad_id\n");
+    printf("exit after 100s\n");
+    printf("block do running in worker pthread\n");
+    printf("strace -p pthrad_id\n");
     zcoroutine_base_run();
     zcoroutine_base_fini();
     sleep(1);
