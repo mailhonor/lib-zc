@@ -238,7 +238,7 @@ int64_t get_long(const dict &dt, const char *key, int64_t def_val)
         return def_val;
     }
     // 将字符串转换为长整数
-    return std::atol(val);
+    return atol(val);
 }
 
 /**
@@ -261,7 +261,7 @@ int64_t get_long(const dict &dt, const std::string &key, int64_t def_val)
         return def_val;
     }
     // 将字符串转换为长整数
-    return std::atol(val);
+    return atol(val);
 }
 
 /**

@@ -970,6 +970,14 @@ int skip(const char *line, int len, const char *ignores_left, const char *ignore
  * @param def 转换失败时的默认值，默认为 false。
  * @return bool 转换后的布尔值。
  */
+
+inline int64_t atoi(const char *s) { return std::atoi(s); }
+#ifdef _WIN64
+inline int64_t atol(const char *s) { return std::atoll(s); }
+#else
+inline int64_t atol(const char *s) { return std::atol(s); }
+#endif
+
 bool str_to_bool(const char *s, bool def = false);
 /**
  * @brief 将 std::string 转换为布尔值，调用 str_to_bool(const char*, bool) 实现。
@@ -1818,6 +1826,18 @@ public:
     // 1b, 1k, 1m, 1g
     int64_t get_size(const char *key, int64_t def_val = 0);
     int64_t get_size(const std::string &key, int64_t def_val = 0);
+    //
+    std::list<int64_t> get_int64_list(const char *key, const char *sep = ",");
+    inline std::list<int64_t> get_int64_list(const std::string &key, const char *sep = ",")
+    {
+        return get_int64_list(key.c_str(), sep);
+    }
+    //
+    std::vector<int64_t> get_int64_vector(const char *key, const char *sep = ",");
+    inline std::vector<int64_t> get_int64_vector(const std::string &key, const char *sep = ",")
+    {
+        return get_int64_vector(key.c_str(), sep);
+    }
 
 private:
     void *unused_;
@@ -2599,11 +2619,10 @@ std::string path_concat(const char *path1, ...);
  * @param pathname 要处理的路径字符串。
  * @return std::string 父目录的名称，如果没有父目录则返回空字符串。
  */
-std::string get_dirname(const char *pathname);
-inline std::string get_dirname(const std::string &pathname)
-{
-    return get_dirname(pathname.c_str());
-}
+std::string get_dirname(const std::string &pathname);
+
+//
+std::string get_filename(const std::string &pathname);
 
 /**
  * @brief 从给定的路径名中提取目录名和文件名。
@@ -2615,11 +2634,7 @@ inline std::string get_dirname(const std::string &pathname)
  * @param dirname 用于存储提取出的目录名的引用。
  * @param filename 用于存储提取出的文件名的引用。
  */
-void get_dirname_and_filename(const char *pathname, std::string &dirname, std::string &filename);
-inline void get_dirname_and_filename(const std::string &pathname, std::string &dirname, std::string &filename)
-{
-    get_dirname_and_filename(pathname.c_str(), dirname, filename);
-}
+void get_dirname_and_filename(const std::string &pathname, std::string &dirname, std::string &filename);
 
 /**
  * @brief 生成用于转储文件的路径名。
@@ -2643,6 +2658,34 @@ inline std::string get_pathname_for_dump(const std::string &pathname, int max_lo
 {
     return get_pathname_for_dump(pathname.c_str(), max_loop);
 }
+
+// flock
+int flock(int fd, bool exclusive = true);
+int try_flock(int fd, bool exclusive = true);
+bool funlock(int fd);
+
+class flocker
+{
+public:
+    flocker();
+    ~flocker();
+
+public:
+    inline int lock(const std::string &pathname, bool exclusive = true)
+    {
+        return __lock(pathname, exclusive, false);
+    }
+    inline int try_lock(const std::string &pathname, bool exclusive = true)
+    {
+        return __lock(pathname, exclusive, true);
+    }
+    int unlock();
+
+private:
+    int __lock(const std::string &pathname, bool exclusive, bool try_mode);
+    std::string pathname_;
+    int fd_{-1};
+};
 
 /* io ############################################################### */
 static const int var_io_max_timeout = (3600 * 24 * 365 * 10);

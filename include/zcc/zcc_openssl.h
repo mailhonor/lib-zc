@@ -11,10 +11,13 @@
 #ifndef ZCC_LIB_INCLUDE_OPENSSL___
 #define ZCC_LIB_INCLUDE_OPENSSL___
 
+extern "C"
+{
 #ifndef HEADER_OPENSSL_TYPES_H
-typedef struct ssl_st SSL;
-typedef struct ssl_ctx_st SSL_CTX;
+    typedef struct ssl_st SSL;
+    typedef struct ssl_ctx_st SSL_CTX;
 #endif // HEADER_OPENSSL_TYPES_H
+}
 
 #include "./zcc_stdlib.h"
 

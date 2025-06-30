@@ -495,7 +495,7 @@ int64_t config::get_long(const char *key, int64_t def_val)
         return def_val;
     }
     // 将字符串转换为长整数
-    return std::atol(val->c_str());
+    return atol(val->c_str());
 }
 
 /**
@@ -515,7 +515,7 @@ int64_t config::get_long(const std::string &key, int64_t def_val)
         return def_val;
     }
     // 将字符串转换为长整数
-    return std::atol(val->c_str());
+    return atol(val->c_str());
 }
 
 /**
@@ -596,6 +596,46 @@ int64_t config::get_size(const std::string &key, int64_t def_val)
     }
     // 将字符串转换为大小值
     return str_to_size(val->c_str(), def_val);
+}
+
+std::list<int64_t> config::get_int64_list(const char *key, const char *sep)
+{
+    std::list<int64_t> ret;
+    std::string tmp = get_string(key, "");
+    if (!tmp.empty())
+    {
+        auto tmpids = zcc::split(tmp, sep);
+        for (auto &tmpid : tmpids)
+        {
+            auto id = std::atoi(tmpid.c_str());
+            if (id < 0)
+            {
+                continue;
+            }
+            ret.push_back(id);
+        }
+    }
+    return ret;
+}
+
+std::vector<int64_t> config::get_int64_vector(const char *key, const char *sep)
+{
+    std::vector<int64_t> ret;
+    std::string tmp = get_string(key, "");
+    if (!tmp.empty())
+    {
+        auto tmpids = zcc::split(tmp, sep);
+        for (auto &tmpid : tmpids)
+        {
+            auto id = std::atoi(tmpid.c_str());
+            if (id < 0)
+            {
+                continue;
+            }
+            ret.push_back(id);
+        }
+    }
+    return ret;
 }
 
 zcc_namespace_end;

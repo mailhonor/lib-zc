@@ -158,7 +158,7 @@ static int ___query_by_io_list_json(redis_client_basic_engine &rc, int list_coun
             }
             if (firstch == ':')
             {
-		uint64_t v = ((rlen < 1) ? -1 : std::atol(rp + 1));
+		uint64_t v = ((rlen < 1) ? -1 : atol(rp + 1));
                 jn->array_push(v);
                 continue;
             }
@@ -358,7 +358,7 @@ int redis_client_basic_engine::query_protocol_by_stream(int64_t *number_ret, std
     }
     if (firstch == ':')
     {
-        lret = std::atol(rp + 1);
+        lret = atol(rp + 1);
         if (json_ret)
         {
             json_ret->get_long_value() = lret;

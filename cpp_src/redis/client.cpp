@@ -177,7 +177,7 @@ int redis_client::_general_scan(std::list<std::string> &list_ret, int64_t &curso
             return redis_error;
         }
         std::string &cursor_str = list_ret.front();
-        cursor_ret = std::atol(cursor_str.c_str());
+        cursor_ret = atol(cursor_str.c_str());
         list_ret.pop_front();
     }
     return ret;

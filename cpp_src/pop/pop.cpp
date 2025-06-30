@@ -29,12 +29,36 @@ pop_client::~pop_client()
     }
 }
 
-void pop_client::set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bool tls_try_mode)
+void pop_client::set_ssl_mode(SSL_CTX *ssl_ctx)
+{
+    ssl_ctx_ = ssl_ctx;
+    ssl_mode_ = true;
+    tls_mode_ = false;
+    try_tls_mode_ = false;
+}
+
+void pop_client::set_tls_mode(SSL_CTX *ssl_ctx)
+{
+    ssl_ctx_ = ssl_ctx;
+    ssl_mode_ = false;
+    tls_mode_ = true;
+    try_tls_mode_ = false;
+}
+
+void pop_client::set_try_tls_mode(SSL_CTX *ssl_ctx)
+{
+    ssl_ctx_ = ssl_ctx;
+    ssl_mode_ = false;
+    tls_mode_ = true;
+    try_tls_mode_ = true;
+}
+
+void pop_client::set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bool try_tls_mode)
 {
     ssl_mode_ = ssl_mode;
     tls_mode_ = tls_mode;
     ssl_ctx_ = ssl_ctx;
-    tls_try_mode_ = tls_try_mode;
+    try_tls_mode_ = try_tls_mode;
 }
 
 void pop_client::set_timeout(int timeout)
@@ -302,7 +326,7 @@ int pop_client::connect(const char *destination, int times)
             {
                 return r;
             }
-            if (!tls_try_mode_)
+            if (!try_tls_mode_)
             {
                 return -1;
             }
@@ -394,7 +418,7 @@ int pop_client::auth_apop(const char *user, const char *password)
     return r;
 }
 
-int pop_client::auth_auto(const char *user, const char *password)
+int pop_client::do_auth(const char *user, const char *password)
 {
     int r = 0;
     if (banner_apop_id_.size() > 1)

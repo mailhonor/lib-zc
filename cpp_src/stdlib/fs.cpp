@@ -1558,9 +1558,9 @@ std::string path_concat(const char *path1, ...)
     return return_path;
 }
 
-std::string get_dirname(const char *pathname)
+std::string get_dirname(const std::string &pathname)
 {
-    std::string path = pathname;
+    auto &path = pathname;
     size_t pos = path.rfind('/');
 #ifdef _WIN64
     size_t pos2 = path.rfind('\\');
@@ -1576,9 +1576,30 @@ std::string get_dirname(const char *pathname)
     return "";
 }
 
-void get_dirname_and_filename(const char *pathname, std::string &dirname, std::string &filename)
+std::string get_filename(const std::string &pathname)
 {
-    std::string path = pathname;
+    auto &path = pathname;
+    size_t pos = path.rfind('/');
+#ifdef _WIN64
+    size_t pos2 = path.rfind('\\');
+    if ((pos2 != std::string::npos) && (pos2 != std::string::npos) && (pos2 > pos))
+    {
+        pos = pos2;
+    }
+#endif // _WIN64
+    if (pos != std::string::npos)
+    {
+        return path.substr(pos + 1);
+    }
+    else
+    {
+        return path;
+    }
+}
+
+void get_dirname_and_filename(const std::string &pathname, std::string &dirname, std::string &filename)
+{
+    auto &path = pathname;
     size_t pos = path.rfind('/');
 #ifdef _WIN64
     size_t pos2 = path.rfind('\\');

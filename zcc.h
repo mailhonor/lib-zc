@@ -26,6 +26,7 @@
 #include "./include/zcc/zcc_http.h"
 #include "./include/zcc/zcc_pop.h"
 #include "./include/zcc/zcc_imap.h"
+#include "./include/zcc/zcc_smtp.h"
 #include "./include/zcc/zcc_mime.h"
 #include "./include/zcc/zcc_memcache.h"
 #include "./include/zcc/zcc_redis.h"

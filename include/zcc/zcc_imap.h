@@ -171,18 +171,20 @@ public:
 
     void set_simple_line_length_limit(int limit);
     void set_timeout(int timeout);
-    void set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bool tls_try_mode = false);
-    virtual inline void set_ssl_tls(void *ssl_ctx, bool ssl_mode, bool tls_mode, bool tls_try_mode = false)
-    {
-        set_ssl_tls((SSL_CTX *)ssl_ctx, ssl_mode, tls_mode, tls_try_mode);
-    }
+    void set_ssl_mode(SSL_CTX *ssl_ctx);
+    void set_tls_mode(SSL_CTX *ssl_ctx);
+    void set_try_tls_mode(SSL_CTX *ssl_ctx);
+    void set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bool try_tls_mode = false);
     stream &get_stream() { return *fp_; }
     int connect(const char *destination, int times = 1);
+    inline int connect(const std::string &destination, int times = 1) { return connect(destination.c_str(), times); }
     void disconnect();
     int do_auth(const char *user, const char *password);
+    inline int do_auth(const std::string &user, const std::string &password) { return do_auth(user.c_str(), password.c_str()); }
     int cmd_logout();
     int cmd_capability(bool force = false);
     int cmd_id(const char *id = "");
+    inline int cmd_id(const std::string &id) { return cmd_id(id.c_str()); }
     int cmd_list(folder_list_result &folder_list);
     int cmd_lsub(folder_list_result &folder_list);
     int cmd_select(select_result &ser, const char *folder_name_imap);
@@ -284,7 +286,7 @@ protected:
     SSL_CTX *ssl_ctx_{NULL};
     bool ssl_mode_{false};
     bool tls_mode_{false};
-    bool tls_try_mode_{false};
+    bool try_tls_mode_{false};
     bool auto_release_third_stream_{false};
     std::string capability_;
     std::string last_selected_;

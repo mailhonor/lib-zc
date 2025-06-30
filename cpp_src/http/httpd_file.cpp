@@ -65,8 +65,8 @@ void http_response_file_ctx::parse_range()
             break;
         }
         p += 1;
-        int64_t o1 = std::atol(ps);
-        int64_t o2 = std::atol(p);
+        int64_t o1 = atol(ps);
+        int64_t o2 = atol(p);
         if (o1 >= o2)
         {
             return;

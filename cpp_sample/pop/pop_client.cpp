@@ -41,7 +41,7 @@ static void run_test()
         return;
     }
 
-    if (pc.auth_auto(user, pass) < 1)
+    if (pc.do_auth(user, pass) < 1)
     {
         return;
     }

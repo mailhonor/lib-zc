@@ -560,7 +560,7 @@ static bool master_lock_pfile(const char *lock_file)
     }
     close_on_exec(lock_fd);
 
-    if (flock(lock_fd, LOCK_EX | LOCK_NB) < 0)
+    if (::flock(lock_fd, LOCK_EX | LOCK_NB) < 0)
     {
         zcc_error("master: flock %s(%m)", lock_file);
         ::close(lock_fd);

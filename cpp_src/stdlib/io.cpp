@@ -63,7 +63,7 @@ int timed_read_write_wait_millisecond(int fd, int read_wait_timeout, int *readab
 {
     int ec;
     // 计算超时时间戳
-    int64_t stamp_timeout = millisecond(read_wait_timeout), left_timeout;
+    int64_t stamp_timeout = millisecond() + read_wait_timeout, left_timeout;
     int timeout;
 
     fd_set fds_r;
@@ -197,7 +197,7 @@ int timed_read_write_wait_millisecond(int fd, int read_wait_timeout, int *readab
 {
     struct pollfd pollfd;
     // 计算超时时间戳
-    int stamp_timeout = millisecond() + read_wait_timeout, left_timeout;
+    int64_t stamp_timeout = millisecond() + read_wait_timeout, left_timeout;
     int timeout;
     if (readable)
     {

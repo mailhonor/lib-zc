@@ -92,19 +92,19 @@ public:
         }
         // Content-Disposition, inline/attachment
         const std::string &get_disposition();
-        // name, 原始字段
+        // name_, 原始字段
         inline const std::string &get_name()
         {
             return name_;
         }
-        // name, 解码转码后
+        // name_, 解码转码后
         const std::string &get_name_utf8();
         // filename, 原始字段
         const std::string &get_filename();
         // filename, 解码转码后
         const std::string &get_filename_utf8();
         const std::string &get_filename2231(bool *with_charset_flag = 0);
-        // 应该显示的 name
+        // 应该显示的 name_
         const std::string &get_show_name();
         // 解码后的附件内容
         const std::string get_decoded_content();
@@ -264,7 +264,7 @@ public:
         return decode_date(str.c_str());
     }
 
-    // 反解邮件头逻逻辑行
+    // 反解邮件头逻辑行
     static std::string header_line_unescape(const char *in_line, int64_t in_len);
     inline static std::string header_line_unescape(const std::string &in)
     {
@@ -647,6 +647,157 @@ private:
     mmap_reader reader_;
     unsigned char fmmap_flag : 1;
     bool mmap_reader_mode_{false};
+};
+
+// 邮件生成
+/**
+ * @brief 邮件构建器类，用于构建符合MIME标准的邮件
+ */
+class mail_builder
+{
+public:
+    /**
+     * @brief 附件结构体定义
+     */
+    struct attachment
+    {
+        inline attachment() {}
+        inline ~attachment() {}
+        std::string filename;      // 附件文件名
+        std::string content_data;  // 附件内容数据
+        std::string content_type;  // 附件内容类型
+        std::string content_id;    // 附件内容ID
+        bool inline_image_{false}; // 是否为内联图片
+    };
+
+    /**
+     * @brief 邮件地址结构体定义
+     */
+    class mail_address
+    {
+    public:
+        static mail_address getFromCmdString(const std::string &str);
+        static mail_address getFromDefaultConfig(const std::string &arg, const std::string &defaultValue = "");
+        static std::vector<mail_address> getVectorFromDefaultConfig(const std::string &arg);
+        static std::vector<mail_address> getVectorFromString(const std::string &str);
+        static std::vector<mail_address> getVectorFromPlain(const std::string &text);
+        //
+        static std::string mime_encode(const std::string &name_, const std::string &mail_);
+        inline static std::string mime_encode(const mail_address &addr) { return mime_encode(addr.name_, addr.mail_); }
+        //
+        inline mail_address() {}
+        inline mail_address(const std::string &name_, const std::string &mail_)
+        {
+            this->name_ = name_;
+            this->mail_ = mail_;
+        }
+        inline ~mail_address() {}
+        std::string mime_encode();
+        std::string &getDisplayName();
+        json *toJson();
+        //
+        std::string name_; // 名称
+        std::string mail_; // 邮件地址
+    };
+
+    static std::string encode_header_line(const std::string &line);
+
+public:
+    mail_builder();
+    ~mail_builder();
+
+    // 邮件构建相关方法
+    std::string build();                                                  // 构建完整的邮件内容并返回
+    void set_priority(bool tf = true) { priority_ = (tf ? 1 : -1); }      // 设置邮件优先级
+    void set_message_id(const std::string &message_id);                   // 设置邮件Message-ID
+    void set_references(const std::string &references);                   // 设置邮件References头
+    void set_date(const std::string &date);                               // 设置邮件日期
+    void set_subject(const std::string &subject);                         // 设置邮件主题
+    void set_receipt(const std::string &name_, const std::string &mail_); // 设置回执地址
+    inline void set_receipt(const mail_address &addr) { set_receipt(addr.name_, addr.mail_); }
+    void set_sender(const std::string &name_, const std::string &mail_); // 设置发件人
+    inline void set_sender(const mail_address &addr) { set_sender(addr.name_, addr.mail_); }
+    void set_from(const std::string &name_, const std::string &mail_); // 设置From地址
+    inline void set_from(const mail_address &addr) { set_from(addr.name_, addr.mail_); }
+    void add_to(const std::string &name_, const std::string &mail_); // 添加收件人
+    inline void add_to(const mail_address &addr) { add_to(addr.name_, addr.mail_); }
+    void add_cc(const std::string &name_, const std::string &mail_); // 添加抄送人
+    inline void add_cc(const mail_address &addr) { add_cc(addr.name_, addr.mail_); }
+    void add_bcc(const std::string &name_, const std::string &mail_); // 添加密送人
+    inline void add_bcc(const mail_address &addr) { add_bcc(addr.name_, addr.mail_); }
+    void set_in_reply_to(const std::string &in_reply_to); // 设置In-Reply-To头
+    inline void set_reply_to(const mail_address &addr) { set_reply_to(addr.name_, addr.mail_); }
+    void set_reply_to(const std::string &name_, const std::string &mail_); // 设置Reply-To地址
+    inline void set_reply_to(const std::string &reply_to) { set_reply_to("", reply_to); }
+    void set_priority(int priority);                                   // 设置邮件优先级(数值)
+    void add_header(const std::string &key, const std::string &value); // 添加自定义邮件头
+    void add_header(const std::string &line);                          // 添加完整的邮件头行
+
+    // 邮件内容相关方法
+    void set_html_body(const char *html, int len = -1); // 设置HTML正文内容
+    inline void set_html_body(const std::string &html) { set_html_body(html.c_str(), (int)html.size()); }
+    void set_plain_body(const char *html, int len = -1); // 设置纯文本正文内容
+    inline void set_plain_body(const std::string &html) { set_plain_body(html.c_str(), (int)html.size()); }
+    void add_attachment(const attachment &info); // 添加附件
+
+public:
+    // 邮件头字段
+    std::string in_reply_to_;              // In-Reply-To头
+    std::string message_id_;               // Message-ID头
+    std::string references_;               // References头
+    std::string date_;                     // Date头
+    std::string subject_;                  // Subject头
+    mail_address reply_to_;                // Reply-To地址
+    mail_address receipt_;                 // 回执地址
+    mail_address sender_;                  // Sender地址
+    mail_address from_;                    // From地址
+    std::list<mail_address> tos_;          // To收件人列表
+    std::list<mail_address> ccs_;          // Cc抄送人列表
+    std::list<mail_address> bccs_;         // Bcc密送人列表
+    std::list<std::string> extra_headers_; // 额外自定义邮件头列表
+
+    // 邮件内容
+    std::string html_body_;               // HTML正文内容
+    std::string plain_body_;              // 纯文本正文内容
+    std::list<attachment> inline_images_; // 内联图片列表
+    std::list<attachment> atts_;          // 附件列表
+    int priority_{-1};                    // 邮件优先级
+
+protected:
+    // 构建邮件头的内部方法
+    void build_header_date();                                             // 构建Date头
+    void build_header_subject();                                          // 构建Subject头
+    void build_header_message_id();                                       // 构建Message-ID头
+    void build_header_references();                                       // 构建References头
+    void build_header_in_reply_to();                                      // 构建In-Reply-To头
+    void build_header_reply_to();                                         // 构建Reply-To头
+    void build_header_priority();                                         // 构建Priority头
+    void build_header_from();                                             // 构建From头
+    void build_header_tcb(const char *key, std::list<mail_address> &tcb); // 构建To/Cc/Bcc头
+    void build_header_sender();                                           // 构建Sender头
+    void build_header_receipt();                                          // 构建Receipt头
+    void build_header_extra();                                            // 构建额外自定义头
+    void build_header_mime();                                             // 构建MIME版本头
+    void build_header_mailer();                                           // 构建X-Mailer头
+    void build_header();                                                  // 构建完整的邮件头
+
+    // 构建邮件正文的内部方法
+    void build_body_mixed();                  // 构建混合类型正文
+    void build_body_related();                // 构建相关类型正文
+    void build_body_html();                   // 构建HTML正文
+    void build_body_att_one(attachment &att); // 构建单个附件
+    void build_body();                        // 构建完整的邮件正文
+
+    std::string boundaray_mixed_;   // 混合类型boundary
+    std::string boundaray_related_; // 相关类型boundary
+
+protected:
+    // 数据追加方法
+    mail_builder &append_data(const std::string &data);        // 追加字符串数据
+    mail_builder &append_data(const char *data, int len = -1); // 追加字符数据
+    mail_builder &append_data(int ch);                         // 追加单个字符
+
+    std::string result_string_; // 构建结果字符串
 };
 
 zcc_namespace_end;

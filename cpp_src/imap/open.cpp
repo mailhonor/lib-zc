@@ -10,12 +10,36 @@
 
 zcc_namespace_begin;
 
-void imap_client::set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bool tls_try_mode)
+void imap_client::set_ssl_mode(SSL_CTX *ssl_ctx)
+{
+    ssl_ctx_ = ssl_ctx;
+    ssl_mode_ = true;
+    tls_mode_ = false;
+    try_tls_mode_ = false;
+}
+
+void imap_client::set_tls_mode(SSL_CTX *ssl_ctx)
+{
+    ssl_ctx_ = ssl_ctx;
+    ssl_mode_ = false;
+    tls_mode_ = true;
+    try_tls_mode_ = false;
+}
+
+void imap_client::set_try_tls_mode(SSL_CTX *ssl_ctx)
+{
+    ssl_ctx_ = ssl_ctx;
+    ssl_mode_ = false;
+    tls_mode_ = true;
+    try_tls_mode_ = true;
+}
+
+void imap_client::set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bool try_tls_mode)
 {
     ssl_mode_ = ssl_mode;
     tls_mode_ = tls_mode;
     ssl_ctx_ = ssl_ctx;
-    tls_try_mode_ = tls_try_mode;
+    try_tls_mode_ = try_tls_mode;
 }
 
 void imap_client::set_timeout(int timeout)
@@ -146,7 +170,7 @@ int imap_client::connect(const char *destination, int times)
             {
                 return r;
             }
-            if (!tls_try_mode_)
+            if (!try_tls_mode_)
             {
                 return -1;
             }

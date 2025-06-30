@@ -7,6 +7,7 @@
  */
 
 #include "./mime.h"
+#include "zcc/zcc_json.h"
 
 zcc_namespace_begin;
 

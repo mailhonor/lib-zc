@@ -34,18 +34,21 @@ public:
     inline bool check_is_need_close() { return need_close_connection_; }
 
     void set_timeout(int timeout);
-    void set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bool tls_try_mode = false);
-    virtual inline void set_ssl_tls(void *ssl_ctx, bool ssl_mode, bool tls_mode, bool tls_try_mode = false)
-    {
-        set_ssl_tls((SSL_CTX *)ssl_ctx, ssl_mode, tls_mode, tls_try_mode);
-    }
+    void set_ssl_mode(SSL_CTX *ssl_ctx);
+    void set_tls_mode(SSL_CTX *ssl_ctx);
+    void set_try_tls_mode(SSL_CTX *ssl_ctx);
+    void set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bool try_tls_mode = false);
     stream &get_iostream() { return *fp_; }
     int connect(const char *destination, int times = 3);
+    inline int connect(const std::string &destination, int times = 3) { return connect(destination.c_str(), times); }
     void disconnect();
     void close();
     int auth_basic(const char *user, const char *password);
+    inline int auth_basic(const std::string &user, const std::string &password) { return auth_basic(user.c_str(), password.c_str()); }
     int auth_apop(const char *user, const char *password);
-    int auth_auto(const char *user, const char *password);
+    inline int auth_apop(const std::string &user, const std::string &password) { return auth_apop(user.c_str(), password.c_str()); }
+    int do_auth(const char *user, const char *password);
+    inline int do_auth(const std::string &user, const std::string &password) { return do_auth(user.c_str(), password.c_str()); }
     inline const std::string &get_banner_apop_id() { return banner_apop_id_; }
     int cmd_capa(std::vector<std::string> &capability);
     int cmd_capa();
@@ -90,7 +93,7 @@ protected:
     SSL_CTX *ssl_ctx_{NULL};
     bool ssl_mode_{false};
     bool tls_mode_{false};
-    bool tls_try_mode_{false};
+    bool try_tls_mode_{false};
     std::function<void(int, const char *, int)> debug_protocol_fn_{0};
 
 protected:
