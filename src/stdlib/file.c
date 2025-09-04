@@ -564,7 +564,7 @@ static int _zmmap_reader_init_utf8_or_multibyte(zmmap_reader_t *reader, const ch
         0,
         NULL);
 
-    if (NULL == INVALID_HANDLE_VALUE)
+    if (fm == INVALID_HANDLE_VALUE)
     {
         errno = zget_errno();
         CloseHandle(fd);

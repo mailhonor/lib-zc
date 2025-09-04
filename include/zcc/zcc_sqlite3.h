@@ -22,6 +22,8 @@ class sqlite3_mini_client;
 
 class sqlite3_mini_stmt
 {
+    friend class sqlite3_mini_client;
+
 public:
     sqlite3_mini_stmt();
     sqlite3_mini_stmt(sqlite3_mini_client *client);
@@ -111,11 +113,15 @@ public:
     bool commit();
     bool rollback();
     bool exec(const std::string &sql);
-    inline void set_debug_mode(bool tf = true) { debug_mode_ = tf; }
     bool transaction_exec(const char *sqls[]);
+    bool transaction_exec(const std::vector<std::string> &sqls);
+    bool transaction_exec(const std::list<std::string> &sqls);
     bool transaction_exec(const std::string &sql);
     //
+    inline void set_debug_mode(bool tf = true) { debug_mode_ = tf; }
+
 protected:
+    void check_not_released_stmt();
     sqlite3 *handler_{0};
     std::string last_exec_sql_debug_;
     std::string last_error_;

@@ -37,7 +37,6 @@ IF(MINGW OR ZCC_LINUX OR APPLE)
         "-g" "-ggdb"
         "-O2"
         "-Wall"
-        "-Winline"
         "-Wcast-align"
         "-Wno-long-long"
         "-Wno-format-zero-length"

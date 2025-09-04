@@ -49,23 +49,23 @@
  * @param exp 要执行的表达式
  * @return 表达式的返回值，如果出错则返回 -1
  */
-#define ROBUST_DO(exp)        \
-    int ret = -1;             \
-    while (1)                 \
-    {                         \
-        ret = exp;            \
-        if (ret > -1)         \
-        {                     \
-            return ret;       \
-        }                     \
-        int ec = get_errno(); \
-        if (ec == ZCC_EINTR)  \
-        {                     \
-            continue;         \
-        }                     \
-        set_errno(ec);        \
-        return ret;           \
-    }                         \
+#define ROBUST_DO(exp)                   \
+    int ret = -1;                        \
+    while (1)                            \
+    {                                    \
+        ret = exp;                       \
+        if (ret > -1)                    \
+        {                                \
+            return (ret == 0 ? 1 : ret); \
+        }                                \
+        int ec = get_errno();            \
+        if (ec == ZCC_EINTR)             \
+        {                                \
+            continue;                    \
+        }                                \
+        set_errno(ec);                   \
+        return ret;                      \
+    }                                    \
     return ret;
 
 /**
@@ -74,27 +74,27 @@
  * @param E 指定的错误码
  * @return 表达式的返回值，如果出错则返回 -1，遇到指定错误返回 0
  */
-#define ROBUST_DO_ONE_MORE(exp, E) \
-    int ret = -1;                  \
-    while (1)                      \
-    {                              \
-        ret = exp;                 \
-        if (ret > -1)              \
-        {                          \
-            return ret;            \
-        }                          \
-        int ec = get_errno();      \
-        if (ec == ZCC_EINTR)       \
-        {                          \
-            continue;              \
-        }                          \
-        if (ec == E)               \
-        {                          \
-            return 0;              \
-        }                          \
-        set_errno(ec);             \
-        return ret;                \
-    }                              \
+#define ROBUST_DO_ONE_MORE(exp, E)       \
+    int ret = -1;                        \
+    while (1)                            \
+    {                                    \
+        ret = exp;                       \
+        if (ret > -1)                    \
+        {                                \
+            return (ret == 0 ? 1 : ret); \
+        }                                \
+        int ec = get_errno();            \
+        if (ec == ZCC_EINTR)             \
+        {                                \
+            continue;                    \
+        }                                \
+        if (ec == E)                     \
+        {                                \
+            return 0;                    \
+        }                                \
+        set_errno(ec);                   \
+        return ret;                      \
+    }                                    \
     return ret;
 
 zcc_namespace_begin;
@@ -249,7 +249,7 @@ std::string realpath(const char *pathname)
  * @brief 获取文件的状态信息
  * @param pathname 要获取状态信息的文件路径
  * @param statbuf 指向存储状态信息的结构体指针
- * @return 如果成功，返回 0；否则返回 -1
+ * @return 如果成功，返回 1；否则返回 -1
  */
 int stat(const char *pathname, struct _stat64i32 *statbuf)
 {
@@ -258,7 +258,7 @@ int stat(const char *pathname, struct _stat64i32 *statbuf)
     // 将 UTF-8 编码的文件路径转换为宽字符
     if (Utf8ToWideChar(pathname, -1, pathnamew, Z_MAX_PATH) < 1)
     {
-        return 0;
+        return -1;
     }
     // 调用 Windows 宽字符版本的 stat 函数
     return ::_wstat(pathnamew, statbuf);
@@ -675,10 +675,10 @@ int mkdir(const char *pathname, int mode)
         return 0;
     }
     // 调用 Windows 宽字符版本的 mkdir 函数
-    return ::_wmkdir(pathnamew);
+    return ::_wmkdir(pathnamew) < 0 ? -1 : 1;
 #else  // _WIN64
     // 调用标准的 mkdir 函数
-    return ::mkdir(pathname, mode);
+    return ::mkdir(pathname, mode) < 0 ? -1 : 1;
 #endif // _WIN64
 }
 
@@ -835,7 +835,7 @@ int mkdir(std::vector<std::string> paths, int mode)
         }
 
         // 创建目录
-        if ((ret = mkdir(path, mode)) < 0)
+        if ((ret = mkdir(path, mode)) < 1)
         {
             {
                 int ec = get_errno();
@@ -884,7 +884,7 @@ int mkdir(int mode, const char *path1, ...)
  * @brief 重命名文件或目录
  * @param oldpath 旧的文件或目录路径
  * @param newpath 新的文件或目录路径
- * @return 如果成功，返回 0；否则返回 -1
+ * @return 如果成功，返回 1；否则返回 -1
  */
 int rename(const char *oldpath, const char *newpath)
 {
@@ -903,7 +903,7 @@ int rename(const char *oldpath, const char *newpath)
     {
         return -1;
     }
-    return 0;
+    return 1;
 #else  // _WIN64
     // 健壮地调用标准的 rename 函数
     ROBUST_DO(::rename(oldpath, newpath));
@@ -990,7 +990,7 @@ int link_force(const char *oldpath, const char *newpath, const char *tmpdir)
     int ret = link(oldpath, newpath);
     if (ret == 0)
     {
-        return 0;
+        return 1;
     }
     int ec = get_errno();
     // 如果目标文件不存在，返回 -1
@@ -1018,7 +1018,7 @@ int link_force(const char *oldpath, const char *newpath, const char *tmpdir)
     {
         return -1;
     }
-    return 0;
+    return 1;
 }
 
 /**
@@ -1070,9 +1070,9 @@ int symlink_force(const char *oldpath, const char *newpath, const char *tmpdir)
 {
     // 尝试创建符号链接
     int ret = symlink(oldpath, newpath);
-    if (ret == 0)
+    if (ret > -1)
     {
-        return 0;
+        return ret;
     }
     int ec = get_errno();
     // 如果目标文件不存在，返回 -1
@@ -1099,7 +1099,7 @@ int symlink_force(const char *oldpath, const char *newpath, const char *tmpdir)
         unlink(tmppath.c_str());
         return -1;
     }
-    return 0;
+    return 1;
 }
 
 /**
@@ -1118,7 +1118,7 @@ static int _rmdir_true_do(const char *pathname)
         return -1;
     }
     // 调用 Windows 宽字符版本的删除目录函数
-    if (_wrmdir(pathnamew) < 0)
+    if (::_wrmdir(pathnamew) < 0)
     {
         int ec = get_errno();
         // 如果目录不存在，返回 0
@@ -1129,7 +1129,7 @@ static int _rmdir_true_do(const char *pathname)
         set_errno(ec);
         return -1;
     }
-    return 0;
+    return 1;
 #else  // _WIN64
     // 健壮地调用标准的 rmdir 函数，处理目录不存在的情况
     ROBUST_DO_ONE_MORE(::rmdir(pathname), ENOENT);
@@ -1145,7 +1145,6 @@ static int _rmdir_true_do(const char *pathname)
 int rmdir(const char *pathname, bool recurse_mode)
 {
     std::string path;
-    std::string filename;
     std::vector<dir_item_info> items;
     int ret = -1;
 
@@ -1164,11 +1163,11 @@ int rmdir(const char *pathname, bool recurse_mode)
     for (auto it = items.begin(); it != items.end(); it++)
     {
         path.clear();
-        path.append(filename).append("/").append(it->filename);
+        path.append(pathname).append("/").append(it->filename);
         if (it->dir)
         {
             // 如果是目录，递归删除
-            if (_rmdir_true_do(path.c_str()) < 1)
+            if (rmdir(path.c_str(), recurse_mode) < 0)
             {
                 goto over;
             }
@@ -1176,16 +1175,40 @@ int rmdir(const char *pathname, bool recurse_mode)
         else
         {
             // 如果是文件，删除文件
-            if (unlink(path.c_str()) < 1)
+            if (unlink(path.c_str()) < 0)
             {
                 goto over;
             }
         }
     }
+    // 删除目录
+    ret = _rmdir_true_do(pathname);
+    if (ret < 0)
+    {
+        goto over;
+    }
     ret = 1;
 
 over:
     return ret;
+}
+
+int rmdir_by_system_cmd(const char *pathname)
+{
+    std::string cmdstr;
+#ifdef _WIN64
+    cmdstr.append("rmdir /S /Q \"").append(pathname).append("\"");
+    std::string tmp = Utf8ToMultiByte(cmdstr);
+    cmdstr = tmp;
+#else  // _WIN64
+    cmdstr.append("rm -rf '").append(pathname).append("'");
+#endif // _WIN64
+    if (::system(cmdstr.c_str()))
+    {
+        zcc_debug("执行命令出错: %s", cmdstr.c_str());
+        return -1;
+    }
+    return 1;
 }
 
 /**
@@ -1254,6 +1277,10 @@ int scandir(const char *dirname, std::vector<dir_item_info> &filenames)
 over:
     // 关闭查找句柄
     FindClose(hFind);
+    if (ret > -1)
+    {
+        return (int)filenames.size();
+    }
     return ret;
 #else  // _WIN64
     DIR *dir;
@@ -1315,7 +1342,7 @@ over:
     }
     // 关闭目录
     closedir(dir);
-    return 1;
+    return (int)filenames.size();
 #endif // _WIN64
 }
 
@@ -1721,6 +1748,75 @@ std::string get_pathname_for_dump(const char *pathname, int max_loop)
     std::string filename;
     get_dirname_and_filename(pathname, dirname, filename);
     return get_pathname_for_dump(dirname.c_str(), filename.c_str(), max_loop);
+}
+
+bool clear_expired_file_in_dir(std::string dirname, int64_t timeout)
+{
+    zcc_stat st;
+    std::vector<zcc::dir_item_info> items;
+
+    if (zcc::scandir(dirname, items) < 0)
+    {
+        zcc_error("system 读取文件夹");
+        return false;
+    }
+    if (items.empty())
+    {
+        return true;
+    }
+
+    for (auto it = items.begin(); it != items.end(); it++)
+    {
+        auto fn = dirname + "/" + it->filename;
+        if (zcc::stat(fn.c_str(), &st) < 0)
+        {
+            continue;
+        }
+        if (it->dir)
+        {
+            if (!clear_expired_file_in_dir(fn, timeout))
+            {
+                return false;
+            }
+            if (st.st_mtime + timeout < zcc::second())
+            {
+                std::vector<zcc::dir_item_info> items;
+                if (scandir(fn, items) == 0)
+                {
+                    if (zcc::rmdir(fn.c_str()) < 0)
+                    {
+                        zcc_error("system 删除文件夹失败(%m): %s", fn.c_str());
+                        return false;
+                    }
+                    else
+                    {
+                        zcc_debug("system 删除文件夹成功: %s", fn.c_str());
+                    }
+                }
+                else
+                {
+
+                    zcc_info("skip: %s, %d", fn.c_str(), items.size());
+                }
+            }
+        }
+        else
+        {
+            if (st.st_mtime + timeout < zcc::second())
+            {
+                if (unlink(fn.c_str()) < 0)
+                {
+                    zcc_error("system 删除文件失败(%m): %s", fn.c_str());
+                    return false;
+                }
+                else
+                {
+                    zcc_debug("system 删除文件成功: %s", fn.c_str());
+                }
+            }
+        }
+    }
+    return true;
 }
 
 zcc_namespace_end;

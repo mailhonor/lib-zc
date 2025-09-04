@@ -972,10 +972,13 @@ int skip(const char *line, int len, const char *ignores_left, const char *ignore
  */
 
 inline int64_t atoi(const char *s) { return std::atoi(s); }
+inline int64_t atoi(const std::string &s) { return std::atoi(s.c_str()); }
 #ifdef _WIN64
 inline int64_t atol(const char *s) { return std::atoll(s); }
+inline int64_t atol(const std::string &s) { return std::atoll(s.c_str()); }
 #else
 inline int64_t atol(const char *s) { return std::atol(s); }
+inline int64_t atol(const std::string &s) { return std::atol(s.c_str()); }
 #endif
 
 bool str_to_bool(const char *s, bool def = false);
@@ -1002,7 +1005,11 @@ inline bool str_to_bool(const std::string &s, bool def = false)
  * @param def 转换失败时的默认值。
  * @return int64_t 转换后的秒数。
  */
-int64_t str_to_second(const char *s, int64_t def);
+int64_t str_to_second(const char *s, int64_t def = 0);
+inline int64_t str_to_second(const std::string &s, int64_t def = 0)
+{
+    return str_to_second(s.c_str(), def);
+}
 
 // 转换字符串为大小, 支持 g(G), m(兆), k(千), b
 // 如 "9M" => 9 * 1024 * 1024
@@ -1015,7 +1022,11 @@ int64_t str_to_second(const char *s, int64_t def);
  * @param def 转换失败时的默认值。
  * @return int64_t 转换后的字节大小。
  */
-int64_t str_to_size(const char *s, int64_t def);
+int64_t str_to_size(const char *s, int64_t def = 0);
+inline int64_t str_to_size(const std::string &s, int64_t def = 0)
+{
+    return str_to_size(s.c_str(), def);
+}
 
 //
 /**
@@ -1369,7 +1380,9 @@ inline char *strcasestr(const char *haystack, const char *needle)
 
 std::string str_replace(const std::string &input, const std::string &from, const std::string &to);
 
-// debug
+std::string join(const std::vector<std::string> &strs, const std::string &delimiter);
+std::string join(const std::list<std::string> &strs, const std::string &delimiter);
+
 /**
  * @brief 显示词典的调试信息。
  *
@@ -1379,7 +1392,6 @@ std::string str_replace(const std::string &input, const std::string &from, const
  */
 void debug_show(const dict &dt);
 
-// 下面是词典 std::map<std::string,
 /**
  * @brief 从词典中获取指定键对应的 C 风格字符串值。
  *
@@ -1459,10 +1471,10 @@ bool get_bool(const dict &dt, const std::string &key, bool def_val = false);
  *
  * @param dt 词典对象。
  * @param key 要查找的键，C 风格字符串。
- * @param def_val 键不存在时返回的默认值，默认为 -1。
+ * @param def_val 键不存在时返回的默认值，默认为 0。
  * @return int 查找到的值转换后的整数或默认值。
  */
-int get_int(const dict &dt, const char *key, int def_val = -1);
+int get_int(const dict &dt, const char *key, int def_val = 0);
 
 /**
  * @brief 从词典中获取指定键对应的整数值。
@@ -1471,10 +1483,10 @@ int get_int(const dict &dt, const char *key, int def_val = -1);
  *
  * @param dt 词典对象。
  * @param key 要查找的键，std::string 类型。
- * @param def_val 键不存在时返回的默认值，默认为 -1。
+ * @param def_val 键不存在时返回的默认值，默认为 0。
  * @return int 查找到的值转换后的整数或默认值。
  */
-int get_int(const dict &dt, const std::string &key, int def_val = -1);
+int get_int(const dict &dt, const std::string &key, int def_val = 0);
 
 /**
  * @brief 从词典中获取指定键对应的长整数值。
@@ -1486,7 +1498,7 @@ int get_int(const dict &dt, const std::string &key, int def_val = -1);
  * @param def_val 键不存在时返回的默认值，默认为 -1。
  * @return int64_t 查找到的值转换后的长整数或默认值。
  */
-int64_t get_long(const dict &dt, const char *key, int64_t def_val = -1);
+int64_t get_long(const dict &dt, const char *key, int64_t def_val = 0);
 
 /**
  * @brief 从词典中获取指定键对应的长整数值。
@@ -1495,10 +1507,10 @@ int64_t get_long(const dict &dt, const char *key, int64_t def_val = -1);
  *
  * @param dt 词典对象。
  * @param key 要查找的键，std::string 类型。
- * @param def_val 键不存在时返回的默认值，默认为 -1。
+ * @param def_val 键不存在时返回的默认值，默认为 0。
  * @return int64_t 查找到的值转换后的长整数或默认值。
  */
-int64_t get_long(const dict &dt, const std::string &key, int64_t def_val = -1);
+int64_t get_long(const dict &dt, const std::string &key, int64_t def_val = 0);
 
 /**
  * @brief 从词典中获取指定键对应的秒数值。
@@ -1507,10 +1519,10 @@ int64_t get_long(const dict &dt, const std::string &key, int64_t def_val = -1);
  *
  * @param dt 词典对象。
  * @param key 要查找的键，C 风格字符串。
- * @param def_val 键不存在时返回的默认值，默认为 -1。
+ * @param def_val 键不存在时返回的默认值，默认为 0。
  * @return int64_t 查找到的值转换后的秒数或默认值。
  */
-int64_t get_second(const dict &dt, const char *key, int64_t def_val = -1);
+int64_t get_second(const dict &dt, const char *key, int64_t def_val = 0);
 
 /**
  * @brief 从词典中获取指定键对应的秒数值。
@@ -1519,10 +1531,10 @@ int64_t get_second(const dict &dt, const char *key, int64_t def_val = -1);
  *
  * @param dt 词典对象。
  * @param key 要查找的键，std::string 类型。
- * @param def_val 键不存在时返回的默认值，默认为 -1。
+ * @param def_val 键不存在时返回的默认值，默认为 0。
  * @return int64_t 查找到的值转换后的秒数或默认值。
  */
-int64_t get_second(const dict &dt, const std::string &key, int64_t def_val = -1);
+int64_t get_second(const dict &dt, const std::string &key, int64_t def_val = 0);
 
 /**
  * @brief 从词典中获取指定键对应的字节大小值。
@@ -1531,10 +1543,10 @@ int64_t get_second(const dict &dt, const std::string &key, int64_t def_val = -1)
  *
  * @param dt 词典对象。
  * @param key 要查找的键，C 风格字符串。
- * @param def_val 键不存在时返回的默认值，默认为 -1。
+ * @param def_val 键不存在时返回的默认值，默认为 0。
  * @return int64_t 查找到的值转换后的字节大小或默认值。
  */
-int64_t get_size(const dict &dt, const char *key, int64_t def_val = -1);
+int64_t get_size(const dict &dt, const char *key, int64_t def_val = 0);
 
 /**
  * @brief 从词典中获取指定键对应的字节大小值。
@@ -1543,10 +1555,10 @@ int64_t get_size(const dict &dt, const char *key, int64_t def_val = -1);
  *
  * @param dt 词典对象。
  * @param key 要查找的键，std::string 类型。
- * @param def_val 键不存在时返回的默认值，默认为 -1。
+ * @param def_val 键不存在时返回的默认值，默认为 0。
  * @return int64_t 查找到的值转换后的字节大小或默认值。
  */
-int64_t get_size(const dict &dt, const std::string &key, int64_t def_val = -1);
+int64_t get_size(const dict &dt, const std::string &key, int64_t def_val = 0);
 
 /**
  * @brief 生成一个唯一的 ID。
@@ -1566,6 +1578,10 @@ std::string build_unique_id();
  * @return std::string 转换后的人类可读的字符串。
  */
 std::string human_byte_size(int64_t a);
+inline std::string human_number(int64_t a)
+{
+    return human_byte_size(a);
+}
 
 std::string human_kmg_size(double size);
 
@@ -1943,6 +1959,9 @@ int64_t get_MemAvailable();
  */
 int get_cpu_core_count();
 
+// 是否是终端
+bool isatty();
+
 /**
  * @brief 改变进程的根目录并切换用户。
  *
@@ -1983,14 +2002,14 @@ public:
      * @brief 打开指定路径的文件并进行内存映射。
      *
      * @param pathname 文件的路径名。
-     * @return int 操作结果，成功返回 0，失败返回非零值。
+     * @return int 操作结果，成功返回 >= 0，失败返回 -1
      */
     int open(const char *pathname);
     /**
      * @brief 重载的 open 函数，接受 std::string 类型的路径名。
      *
      * @param pathname 文件的路径名。
-     * @return int 操作结果，成功返回 0，失败返回非零值。
+     * @return int 操作结果，成功返回 >= 0，失败返回 -1
      */
     inline int open(const std::string &pathname)
     {
@@ -1999,9 +2018,13 @@ public:
     /**
      * @brief 关闭内存映射文件，释放资源。
      *
-     * @return int 操作结果，成功返回 0，失败返回非零值。
+     * @return int 操作结果，成功返回 >= 0，失败返回 -1
      */
     int close();
+    //
+    inline int64_t get_size() { return size_; }
+    //
+    inline const char *get_data() { return data_; }
 
 protected:
 #ifdef _WIN64
@@ -2119,7 +2142,7 @@ inline std::string realpath(const std::string &pathname)
  *
  * @param pathname 文件的路径名。
  * @param statbuf 指向存储文件状态信息的结构体指针。
- * @return int 操作结果，成功返回 0，失败返回 -1。
+ * @return int 操作结果，成功返回 1，失败返回 -1。
  */
 int stat(const char *pathname, struct _stat64i32 *statbuf);
 #else // _WIN64
@@ -2157,7 +2180,7 @@ inline int64_t file_get_size(const std::string &pathname)
  * @brief 检查指定文件是否存在。
  *
  * @param pathname 文件的路径名。
- * @return int 0, -1, 1。
+ * @return int  1/0/-1, 存在/不存在/发生错误
  */
 int file_exists(const char *pathname);
 /**
@@ -2302,6 +2325,10 @@ int64_t file_get_contents_sample(const char *pathname, std::string &bf);
  * @return std::string 文件的部分内容。
  */
 std::string file_get_contents_sample(const char *pathname);
+inline std::string file_get_contents_sample(const std::string &pathname)
+{
+    return file_get_contents_sample(pathname.c_str());
+}
 
 /**
  * @brief 从标准输入读取全部内容到字符串缓冲区。
@@ -2355,14 +2382,14 @@ inline int open(const std::string &pathname, int flags, int mode)
  * @brief 创建一个空文件，如果文件已存在则更新其访问和修改时间。
  *
  * @param pathname 文件的路径名。
- * @return int 操作成功返回 0，失败返回 -1。
+ * @return int 操作成功返回 >= 0，失败返回 -1。
  */
 int touch(const char *pathname);
 /**
  * @brief 重载的 touch 函数，接受 std::string 类型的路径名。
  *
  * @param pathname 文件的路径名。
- * @return int 操作成功返回 0，失败返回 -1。
+ * @return int 操作成功返回 >= 0，失败返回 -1。
  */
 inline int touch(const std::string &pathname)
 {
@@ -2374,7 +2401,7 @@ inline int touch(const std::string &pathname)
  *
  * @param paths 存储目录路径的向量。
  * @param mode 目录的访问权限，默认为 0666。
- * @return int 操作成功返回 0，失败返回 -1。
+ * @return int 操作成功返回 1，失败返回 -1。
  */
 int mkdir(std::vector<std::string> paths, int mode = 0666);
 /**
@@ -2383,7 +2410,7 @@ int mkdir(std::vector<std::string> paths, int mode = 0666);
  * @param mode 目录的访问权限。
  * @param path1 第一个目录路径。
  * @param ... 可变参数，后续的目录路径。
- * @return int 操作成功返回 0，失败返回 -1。
+ * @return int 操作成功返回 >= 0，失败返回 -1。
  */
 int mkdir(int mode, const char *path1, ...);
 /**
@@ -2391,7 +2418,7 @@ int mkdir(int mode, const char *path1, ...);
  *
  * @param pathname 目录的路径名。
  * @param mode 目录的访问权限，默认为 0666。
- * @return int 操作成功返回 0，失败返回 -1。
+ * @return int 操作成功返回 >= 0，失败返回 -1。
  */
 int mkdir(const char *pathname, int mode = 0666);
 
@@ -2400,7 +2427,7 @@ int mkdir(const char *pathname, int mode = 0666);
  *
  * @param oldpath 旧的文件或目录路径名。
  * @param newpath 新的文件或目录路径名。
- * @return int 操作成功返回 0，失败返回 -1。
+ * @return int 操作成功返回 >= 0，失败返回 -1。
  */
 int rename(const char *oldpath, const char *newpath);
 inline int rename(const std::string &oldpath, const std::string &newpath)
@@ -2412,14 +2439,14 @@ inline int rename(const std::string &oldpath, const std::string &newpath)
  * @brief 删除指定文件。
  *
  * @param pathname 文件的路径名。
- * @return int 操作成功返回 0，失败返回 -1。
+ * @return int 操作成功返回 1/0(文件存在/不存在)，失败返回 -1。
  */
 int unlink(const char *pathname);
 /**
  * @brief 重载的 unlink 函数，接受 std::string 类型的路径名。
  *
  * @param pathname 文件的路径名。
- * @return int 操作成功返回 0，失败返回 -1。
+ * @return int 操作成功返回 >= 0，失败返回 -1。
  */
 inline int unlink(const std::string &pathname)
 {
@@ -2440,7 +2467,7 @@ int link(const char *oldpath, const char *newpath);
  * @param oldpath 源文件的路径名。
  * @param newpath 硬链接的路径名。
  * @param tmpdir 临时目录的路径名。
- * @return int 操作成功返回 0，失败返回 -1。
+ * @return int 操作成功返回 >= 0，失败返回 -1。
  */
 int link_force(const char *oldpath, const char *newpath, const char *tmpdir);
 
@@ -2449,7 +2476,7 @@ int link_force(const char *oldpath, const char *newpath, const char *tmpdir);
  *
  * @param oldpath 源文件的路径名。
  * @param newpath 符号链接的路径名。
- * @return int 操作成功返回 0，失败返回 -1。
+ * @return int 操作成功返回 >= 0，失败返回 -1。
  */
 int symlink(const char *oldpath, const char *newpath);
 /**
@@ -2458,7 +2485,7 @@ int symlink(const char *oldpath, const char *newpath);
  * @param oldpath 源文件的路径名。
  * @param newpath 符号链接的路径名。
  * @param tmpdir 临时目录的路径名。
- * @return int 操作成功返回 0，失败返回 -1。
+ * @return int 操作成功返回 >= 0，失败返回 -1。
  */
 int symlink_force(const char *oldpath, const char *newpath, const char *tmpdir);
 
@@ -2487,7 +2514,7 @@ inline bool create_shortcut_link(const std::string &from, const std::string &to)
  *
  * @param pathname 目录的路径名。
  * @param recurse_mode 是否递归删除，默认为 false。
- * @return int 操作成功返回 0，失败返回 -1。
+ * @return int 操作成功返回 1，失败返回 -1。
  */
 int rmdir(const char *pathname, bool recurse_mode = false);
 /**
@@ -2495,12 +2522,14 @@ int rmdir(const char *pathname, bool recurse_mode = false);
  *
  * @param pathname 目录的路径名。
  * @param recurse_mode 是否递归删除，默认为 false。
- * @return int 操作成功返回 0，失败返回 -1。
+ * @return int 操作成功返回 >= 0，失败返回 -1。
  */
 inline int rmdir(const std::string &pathname, bool recurse_mode = false)
 {
     return rmdir(pathname.c_str(), recurse_mode);
 }
+
+int rmdir_by_system_cmd(const char *pathname);
 
 /**
  * @brief 表示目录项信息的结构体。
@@ -2531,13 +2560,6 @@ struct dir_item_info
  * @return int 扫描到的目录项数量，失败时返回 -1。
  */
 int scandir(const char *dirname, std::vector<dir_item_info> &filenames);
-/**
- * @brief 重载的 scandir 函数，接受 std::string 类型的路径名。
- *
- * @param dirname 目录的路径名。
- * @param filenames 存储目录项信息的向量。
- * @return int 扫描到的目录项数量，失败时返回 -1。
- */
 inline int scandir(const std::string &dirname, std::vector<dir_item_info> &filenames)
 {
     return scandir(dirname.c_str(), filenames);
@@ -2658,6 +2680,18 @@ inline std::string get_pathname_for_dump(const std::string &pathname, int max_lo
 {
     return get_pathname_for_dump(pathname.c_str(), max_loop);
 }
+
+/**
+ * @brief 清理指定目录下过期的文件和子目录。
+ *
+ * 该函数会扫描指定目录下的所有文件和子目录，删除超过指定超时时间的文件和子目录。
+ * 超时时间以秒为单位，通过 `timeout` 参数指定。
+ *
+ * @param dirname 要清理的目录路径。
+ * @param timeout 文件的超时时间，单位为秒。
+ * @return bool 清理操作是否成功。
+ */
+bool clear_expired_file_in_dir(std::string dirname, int64_t timeout);
 
 // flock
 int flock(int fd, bool exclusive = true);
@@ -2929,6 +2963,7 @@ std::string get_ipstring(int ip);
 
 /* time ############################################################ */
 static const int64_t var_use_current_time = -20250428001;
+static const int64_t var_invalid_time = -202508221140;
 #ifdef _WIN64
 static const int64_t var_max_millisecond_duration(3600LL * 24 * 365 * 10 * 1000);
 #else  // _WIN64
@@ -2987,6 +3022,50 @@ inline std::string simple_date_time_with_second() { return simple_date_time_with
 
 // 类似GCC标准C库的 time_t timegm(struct tm *tm); windows平台没有
 int64_t timegm(struct tm *tm);
+
+/**
+ * 解析符合ISO 8601:2004标准的时间字符串
+ * @param s 时间字符串
+ * @return 对应的Unix时间戳，解析失败返回var_invalid_time
+ */
+//  102200
+//  1022
+//  10
+//  -2200
+//  --00
+//  102200Z
+//  102200-0800
+int64_t iso8601_2004_time_from_time(const std::string &s);
+
+/**
+ * 解析符合ISO 8601:2004标准的日期时间字符串
+ * @param s 日期时间字符串
+ * @param day_is_preferred 当只有年份时是否优先解析为年
+ * @return 对应的Unix时间戳，解析失败返回var_invalid_time
+ */
+//  19961022T140000
+//  --1022T1400
+//  ---22T14
+//  19961022T140000
+//  19961022T140000Z
+//  19961022T140000-05
+//  19961022T140000-0500
+//  19961022T140000
+//  --1022T1400
+//  ---22T14
+//  19850412
+//  1985-04
+//  1985          ### 如果day_is_preferred==true, 这个就应该解析为年
+//  --0412
+//  ---12
+//  T102200
+//  T1022
+//  T10
+//  T-2200
+//  T--00
+//  T102200Z
+//  T102200-0800
+int64_t iso8601_2004_time_from_date(const std::string &s, bool day_is_preferred);
 
 /* zcc end ######################################################### */
 zcc_namespace_end;

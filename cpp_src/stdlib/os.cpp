@@ -14,6 +14,7 @@
 #include <tlhelp32.h>
 #else // _WIN64
 #ifdef __linux__
+#include <syscall.h>
 #include <sys/resource.h>
 #endif // __linux__
 #include <unistd.h>
@@ -104,10 +105,6 @@ int get_thread_id()
     // 在 Windows 系统下，调用 GetCurrentThreadId 函数获取当前线程的 ID
     return ::GetCurrentThreadId();
 #else // _WIN64
-#if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 30)
-    // 在特定版本的 glibc 下，调用 gettid 函数获取线程 ID
-    return ::gettid();
-#else
 #if defined(SYS_gettid)
     // 调用系统调用获取线程 ID
     return (int)syscall(SYS_gettid);
@@ -122,7 +119,6 @@ int get_thread_id()
 #else
     // 无法获取线程 ID，返回 -1
     return -1;
-#endif
 #endif
 #endif // _WIN64
 }
@@ -374,5 +370,25 @@ int get_cpu_core_count()
     return count;
 }
 #endif // __linux__
+
+bool isatty()
+{
+#ifdef _WIN64
+    if (GetConsoleWindow())
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+#elif __linux__
+    return ::isatty(0) ? true : false;
+#elif __APPLE__
+    return ::isatty(0) ? true : false;
+#else
+    return false;
+#endif // _WIN64
+}
 
 zcc_namespace_end;

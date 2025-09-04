@@ -71,14 +71,9 @@ public:
 public:
     int simple_quick_cmd(const std::string &cmd);
     int simple_quick_cmd(const std::string &cmd, std::string &response);
-    pop_client &fp_append(const char *s, int slen = -1);
     pop_client &fp_append(const std::string &s);
-    int fp_readn(std::string &str, int strict_len);
-    int fp_readn(void *mem, int strict_len);
-    int fp_read_delimiter(void *mem, int delimiter, int max_len);
     int fp_read_delimiter(std::string &str, int delimiter, int max_len);
     inline int fp_gets(std::string &str, int max_len) { return fp_read_delimiter(str, '\n', max_len); }
-    inline int fp_gets(void *mem, int max_len) { return fp_read_delimiter(mem, '\n', max_len); }
 
 protected:
     int fp_connect(const char *destination, int times);
@@ -107,6 +102,10 @@ protected:
     bool authed_{false};
     bool ssl_flag_{false};
     bool third_stream_mode_{false};
+    bool get_msg_mode_{false};
+    bool get_msg_mode_first_{false};
+    int response_line_count_{0};
+    int get_msg_data_timeout_{-1};
     int capa_before_auth_{-1};
     int capa_after_auth_{-1};
 };

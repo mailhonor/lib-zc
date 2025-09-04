@@ -115,8 +115,8 @@ std::string &mail_builder::mail_address::getDisplayName()
 json *mail_builder::mail_address::toJson()
 {
     json *j = new json();
-    j->object_update("name_", name_);
-    j->object_update("mail_", mail_);
+    j->object_update("name", name_);
+    j->object_update("mail", mail_);
     return j;
 }
 
@@ -170,6 +170,40 @@ void mail_builder::set_message_id(const std::string &message_id)
 void mail_builder::set_references(const std::string &references)
 {
     references_ = references;
+}
+
+void mail_builder::set_references(const std::vector<std::string> &references, int maxCount)
+{
+    int size = (int)references.size();
+    if (maxCount <= 0)
+    {
+        maxCount = size;
+    }
+    if (maxCount > size)
+    {
+        maxCount = size;
+    }
+    references_.clear();
+    //
+    bool first = true;
+    for (int i = size - maxCount; i < size; i++)
+    {
+        if (first)
+        {
+            first = false;
+        }
+        else
+        {
+            references_.append(" ");
+        }
+        references_.append("<").append(references[i]).append(">,\r\n");
+    }
+    if (!references.empty())
+    {
+        references_.pop_back();
+        references_.pop_back();
+        references_.pop_back();
+    }
 }
 
 void mail_builder::set_in_reply_to(const std::string &in_reply_to)
@@ -440,7 +474,7 @@ void mail_builder::build_header_reply_to()
 
 void mail_builder::build_header_priority()
 {
-    if (priority_ > 0 || priority_ < 6)
+    if (priority_ > 0 && priority_ < 6)
     {
         append_data("X-Priority: ").append_data(std::to_string(priority_)).append_data("\r\n");
     }
@@ -494,7 +528,7 @@ void mail_builder::build_header_mime()
 
 void mail_builder::build_header_mailer()
 {
-    append_data("X-Mailer: ZCC mail_-builder 1.0\r\n");
+    append_data("X-Mailer: ZCC mail-builder 1.0\r\n");
 }
 
 void mail_builder::build_header()

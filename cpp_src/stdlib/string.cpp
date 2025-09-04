@@ -665,4 +665,42 @@ std::string str_replace(const std::string &input, const std::string &from, const
     return result;
 }
 
+std::string join(const std::vector<std::string> &strs, const std::string &delimiter)
+{
+    std::string result;
+    bool first_str = true;
+    for (size_t i = 0; i < strs.size(); ++i)
+    {
+        if (!first_str)
+        {
+            result += delimiter;
+        }
+        else
+        {
+            first_str = false;
+        }
+        result += strs[i];
+    }
+    return result;
+}
+
+std::string join(const std::list<std::string> &strs, const std::string &delimiter)
+{
+    std::string result;
+    bool first_str = true;
+    for (auto &s : strs)
+    {
+        if (!first_str)
+        {
+            result += delimiter;
+        }
+        else
+        {
+            first_str = false;
+        }
+        result += s;
+    }
+    return result;
+}
+
 zcc_namespace_end;

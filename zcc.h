@@ -6,6 +6,8 @@
  * ================================
  */
 
+// 这里是全部 include, 使用者可以按需 include
+
 #pragma once
 
 #ifndef ZCC_LIB_INCLUDE___
@@ -21,6 +23,8 @@
 #include "./include/zcc/zcc_errno.h"
 #include "./include/zcc/zcc_charset.h"
 #include "./include/zcc/zcc_json.h"
+#include "./include/zcc/zcc_vcf.h"
+#include "./include/zcc/zcc_ics.h"
 #include "./include/zcc/zcc_openssl.h"
 #include "./include/zcc/zcc_stream.h"
 #include "./include/zcc/zcc_http.h"

@@ -254,12 +254,14 @@ bool sqlite3_mini_client::close()
         {
             single->lock();
             int ret;
-            // 应该先关闭所有的 stmt 等
-            // 本实现, 是通过 js 主动调关闭stmt接口
             if ((ret = sqlite3_close(handler_)) != SQLITE_OK)
             {
                 r = false;
                 zcc_error("close sqlite3, ret:%d", ret);
+                if (ret == SQLITE_BUSY)
+                {
+                    zcc_error("sqlite3 is busy, maybe stmt not released");
+                }
             }
             close_lock_file(single->lock_fd);
             single->unlock();
@@ -416,6 +418,60 @@ bool sqlite3_mini_client::transaction_exec(const char *sqls[])
     for (const char **sql = sqls; *sql; sql++)
     {
         if (!exec(*sql))
+        {
+            rollback();
+            goto over;
+        }
+    }
+    if (!commit())
+    {
+        rollback();
+        goto over;
+    }
+
+    ok = true;
+over:
+    return ok;
+}
+
+bool sqlite3_mini_client::transaction_exec(const std::vector<std::string> &sqls)
+{
+    bool ok = false;
+
+    if (!begin())
+    {
+        goto over;
+    }
+    for (auto &sql : sqls)
+    {
+        if (!exec(sql))
+        {
+            rollback();
+            goto over;
+        }
+    }
+    if (!commit())
+    {
+        rollback();
+        goto over;
+    }
+
+    ok = true;
+over:
+    return ok;
+}
+
+bool sqlite3_mini_client::transaction_exec(const std::list<std::string> &sqls)
+{
+    bool ok = false;
+
+    if (!begin())
+    {
+        goto over;
+    }
+    for (auto &sql : sqls)
+    {
+        if (!exec(sql))
         {
             rollback();
             goto over;

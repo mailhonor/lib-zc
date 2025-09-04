@@ -66,83 +66,10 @@ void pop_client::set_timeout(int timeout)
     fp_->set_timeout(timeout);
 }
 
-pop_client &pop_client::fp_append(const char *s, int slen)
-{
-    if (slen < 0)
-    {
-        slen = std::strlen(s);
-    }
-    fp_->append(s, slen);
-    if (debug_protocol_fn_)
-    {
-        debug_protocol_fn_('C', s, slen);
-    }
-    return *this;
-}
-
 pop_client &pop_client::fp_append(const std::string &s)
 {
     fp_->append(s);
-    if (debug_protocol_fn_)
-    {
-        debug_protocol_fn_('C', s.c_str(), (int)s.size());
-    }
     return *this;
-}
-
-int pop_client::fp_readn(void *mem, int strict_len)
-{
-    int r = fp_->readn(mem, strict_len);
-    if (r < strict_len)
-    {
-        need_close_connection_ = true;
-        return -1;
-    }
-
-    if (r > 0)
-    {
-        if (debug_protocol_fn_)
-        {
-            debug_protocol_fn_('S', (const char *)mem, r);
-        }
-    }
-    return r;
-}
-
-int pop_client::fp_readn(std::string &str, int strict_len)
-{
-    int r = fp_->readn(str, strict_len);
-    if (r < strict_len)
-    {
-        need_close_connection_ = true;
-        return -1;
-    }
-    if (r > 0)
-    {
-        if (debug_protocol_fn_)
-        {
-            debug_protocol_fn_('S', str.c_str(), str.size());
-        }
-    }
-    return r;
-}
-
-int pop_client::fp_read_delimiter(void *mem, int delimiter, int max_len)
-{
-    int r = fp_->read_delimiter(mem, delimiter, max_len);
-    if (r < 0)
-    {
-        need_close_connection_ = true;
-        return -1;
-    }
-    if (r > 0)
-    {
-        if (debug_protocol_fn_)
-        {
-            debug_protocol_fn_('S', (const char *)mem, r);
-        }
-    }
-    return r;
 }
 
 int pop_client::fp_read_delimiter(std::string &str, int delimiter, int max_len)
@@ -150,12 +77,31 @@ int pop_client::fp_read_delimiter(std::string &str, int delimiter, int max_len)
     int r = fp_->read_delimiter(str, delimiter, max_len);
     if (r < 0)
     {
+        zcc_pop_client_debug("pop 读: 失败");
         need_close_connection_ = true;
         return -1;
     }
     if (r > 0)
     {
-        if (debug_protocol_fn_)
+        if (verbose_mode_ || (debug_mode_ && !get_msg_mode_))
+        {
+            if (verbose_mode_ || response_line_count_ < 4)
+            {
+                std::string ss(str);
+                trim_line_end_rn(ss);
+                zcc_info("pop 读: %s", ss.c_str());
+            }
+            if (!verbose_mode_ && response_line_count_ == 4)
+            {
+                zcc_info("pop 读: (太多数据, 忽略..., 或开启 verbose 模式)");
+            }
+        }
+        if (!verbose_mode_ && debug_mode_ && get_msg_mode_ && get_msg_mode_first_)
+        {
+            zcc_info("pop 读: (太多数据, 忽略..., 或开启 )");
+            get_msg_mode_first_ = false;
+        }
+        if (debug_protocol_fn_ && !get_msg_mode_)
         {
             debug_protocol_fn_('S', str.c_str(), str.size());
         }
@@ -174,6 +120,23 @@ int pop_client::simple_quick_cmd(const std::string &cmd, std::string &response)
     if (need_close_connection_)
     {
         return -1;
+    }
+    if (debug_mode_)
+    {
+        if (!cmd.empty() && cmd[0] == 'P' && cmd[1] == 'A')
+        {
+            zcc_info("pop 写: PASS ******");
+        }
+        else
+        {
+            zcc_info("pop 写: %s", cmd.c_str());
+        }
+    }
+    if (debug_protocol_fn_)
+    {
+        std::string ss(cmd);
+        ss.append("\r\n");
+        debug_protocol_fn_('C', ss.c_str(), ss.size());
     }
     fp_append(cmd).fp_append("\r\n");
     if (fp_gets(response, 1024) < 1)
@@ -209,6 +172,7 @@ int pop_client::do_STLS()
         zcc_pop_client_error("建立SSL");
         return -1;
     }
+    zcc_pop_client_debug("建立SSL: 成功");
     ssl_flag_ = true;
 
     return 1;
@@ -543,6 +507,7 @@ int pop_client::cmd_list(std::vector<std::pair<int, uint64_t>> &msg_number_sizes
     {
         return -1;
     }
+    response_line_count_ = 0;
     std::string line;
     int r = simple_quick_cmd("LIST");
     int mn;
@@ -553,6 +518,7 @@ int pop_client::cmd_list(std::vector<std::pair<int, uint64_t>> &msg_number_sizes
         line.clear();
         mn = 0;
         size = 0;
+        response_line_count_++;
         if (fp_gets(line, 1024) < 1)
         {
             r = -1;
@@ -571,6 +537,7 @@ int pop_client::cmd_list(std::vector<std::pair<int, uint64_t>> &msg_number_sizes
         }
         msg_number_sizes.push_back(std::make_pair(mn, size));
     }
+    response_line_count_ = 0;
     return r;
 }
 
@@ -580,6 +547,7 @@ int pop_client::cmd_list(std::vector<int> &msg_numbers)
     {
         return -1;
     }
+    response_line_count_ = 0;
     std::string line;
     int r = simple_quick_cmd("LIST");
     int mn;
@@ -588,6 +556,7 @@ int pop_client::cmd_list(std::vector<int> &msg_numbers)
     {
         line.clear();
         mn = 0;
+        response_line_count_++;
         if (fp_gets(line, 1024) < 1)
         {
             r = -1;
@@ -601,6 +570,7 @@ int pop_client::cmd_list(std::vector<int> &msg_numbers)
         mn = atoi(ps);
         msg_numbers.push_back(mn);
     }
+    response_line_count_ = 0;
     return r;
 }
 
@@ -634,6 +604,7 @@ int pop_client::cmd_uidl(std::map<std::string, int> &result)
     {
         return -1;
     }
+    response_line_count_ = 0;
     std::string line;
     int r = simple_quick_cmd("UIDL");
     int mn;
@@ -643,6 +614,7 @@ int pop_client::cmd_uidl(std::map<std::string, int> &result)
     {
         mn = 0;
         size = 0;
+        response_line_count_++;
         if (fp_gets(line, 1024) < 1)
         {
             r = -1;
@@ -660,6 +632,7 @@ int pop_client::cmd_uidl(std::map<std::string, int> &result)
         }
         result[ps + 1] = atoi(line.c_str());
     }
+    response_line_count_ = 0;
     return r;
 }
 
@@ -751,7 +724,11 @@ int pop_client::cmd_retr(int msg_number, std::string &data)
     }
     std::string cmd;
     cmd.append("RETR ").append(std::to_string(msg_number));
-    return _get_msg_data(cmd, 0, &data);
+    get_msg_mode_ = true;
+    get_msg_mode_first_ = true;
+    int r = _get_msg_data(cmd, 0, &data);
+    get_msg_mode_ = false;
+    return r;
 }
 
 int pop_client::cmd_retr(int msg_number, FILE *fp)
@@ -762,7 +739,11 @@ int pop_client::cmd_retr(int msg_number, FILE *fp)
     }
     std::string cmd;
     cmd.append("RETR ").append(std::to_string(msg_number));
-    return _get_msg_data(cmd, fp, 0);
+    get_msg_mode_ = true;
+    get_msg_mode_first_ = true;
+    int r = _get_msg_data(cmd, fp, 0);
+    get_msg_mode_ = false;
+    return r;
 }
 
 int pop_client::cmd_top(int msg_number, std::string &data, int extra_line_count)
@@ -773,7 +754,11 @@ int pop_client::cmd_top(int msg_number, std::string &data, int extra_line_count)
     }
     std::string cmd;
     cmd.append("TOP ").append(std::to_string(msg_number)).append(" ").append(std::to_string(extra_line_count));
-    return _get_msg_data(cmd, 0, &data);
+    get_msg_mode_ = true;
+    get_msg_mode_first_ = true;
+    int r = _get_msg_data(cmd, 0, &data);
+    get_msg_mode_ = false;
+    return r;
 }
 
 int pop_client::cmd_dele(int msg_number)
@@ -808,7 +793,6 @@ int pop_client::cmd_rset()
 void pop_client::close()
 {
     cmd_quit();
-    disconnect();
 }
 
 zcc_namespace_end;

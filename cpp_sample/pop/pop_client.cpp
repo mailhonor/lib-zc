@@ -18,14 +18,14 @@ static const char *pass = "";
 
 static void ___usage()
 {
-    zcc_fatal("%s -server pop3_server:port -user xxx@a.com -pass 123456 [--ssl ] [ --tls]", zcc::progname);
+    zcc_fatal("%s -server pop3_server:port -user xxx@a.com -pass 123456 [--ssl ] [ --tls] [ -debug yes/no] [ -verbose no/yes ]", zcc::progname);
 }
 
 static void run_test()
 {
     zcc::pop_client pc;
-    pc.set_debug_mode();
-    pc.set_verbose_mode();
+    pc.set_debug_mode(zcc::var_main_config.get_bool("debug", true));
+    pc.set_verbose_mode(zcc::var_main_config.get_bool("verbose", false));
     pc.set_debug_protocol_fn([](int rw, const void *mem, int len)
                              {
                                  std::string s;

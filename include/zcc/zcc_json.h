@@ -369,6 +369,12 @@ public:
         return object_delete((const char *)key, old);
     }
     bool object_delete(const std::string &key, json **old = nullptr);
+    inline json *object_detach(const std::string &key)
+    {
+        json *j = nullptr;
+        object_delete(key, &j);
+        return j;
+    }
 
 #define ___zcc_json_update(TTT)                                                                        \
     json *array_insert(int idx, TTT val, bool return_child = false)                                    \

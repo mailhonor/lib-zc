@@ -16,10 +16,10 @@ zcc_namespace_begin;
 
 /**
  * @brief 构建一个唯一标识符字符串
- * 
+ *
  * 该函数通过结合当前时间的纳秒数、线程 ID 和一个自增计数器来生成唯一标识符。
  * 生成的标识符是一个字符串，包含时间戳、线程 ID 和计数器的信息。
- * 
+ *
  * @return std::string 生成的唯一标识符字符串
  */
 std::string build_unique_id()

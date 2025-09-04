@@ -707,13 +707,14 @@ public:
     ~mail_builder();
 
     // 邮件构建相关方法
-    std::string build();                                                  // 构建完整的邮件内容并返回
-    void set_priority(bool tf = true) { priority_ = (tf ? 1 : -1); }      // 设置邮件优先级
-    void set_message_id(const std::string &message_id);                   // 设置邮件Message-ID
-    void set_references(const std::string &references);                   // 设置邮件References头
-    void set_date(const std::string &date);                               // 设置邮件日期
-    void set_subject(const std::string &subject);                         // 设置邮件主题
-    void set_receipt(const std::string &name_, const std::string &mail_); // 设置回执地址
+    std::string build();                                                                // 构建完整的邮件内容并返回
+    void set_priority(bool tf = true) { priority_ = (tf ? 1 : -1); }                    // 设置邮件优先级
+    void set_message_id(const std::string &message_id);                                 // 设置邮件Message-ID
+    void set_references(const std::string &references);                                 // 设置邮件References头
+    void set_references(const std::vector<std::string> &references, int maxCount = -1); // 设置邮件References头
+    void set_date(const std::string &date);                                             // 设置邮件日期
+    void set_subject(const std::string &subject);                                       // 设置邮件主题
+    void set_receipt(const std::string &name_, const std::string &mail_);               // 设置回执地址
     inline void set_receipt(const mail_address &addr) { set_receipt(addr.name_, addr.mail_); }
     void set_sender(const std::string &name_, const std::string &mail_); // 设置发件人
     inline void set_sender(const mail_address &addr) { set_sender(addr.name_, addr.mail_); }
