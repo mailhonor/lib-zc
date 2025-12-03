@@ -7,6 +7,7 @@
  */
 
 #include "./mime.h"
+#include <time.h>
 
 zcc_namespace_begin;
 

@@ -287,7 +287,17 @@ std::string imap_client::utf8_to_imap_utf7(const char *str, int slen)
         if (tmpr.size() > 0)
         {
             r.push_back('&');
-            r.append(tmpr.c_str() + 1);
+            for (const char *p = tmpr.c_str() + 1; *p; p++)
+            {
+                if (*p == '/')
+                {
+                    r.push_back(',');
+                }
+                else
+                {
+                    r.push_back(*p);
+                }
+            }
         }
     }
     return r;

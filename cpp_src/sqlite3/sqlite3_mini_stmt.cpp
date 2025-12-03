@@ -138,7 +138,7 @@ static void _bind_free(void *s)
 {
     if (s)
     {
-        delete (char *)s;
+        delete[] (char *)s;
     }
 }
 
@@ -156,7 +156,7 @@ bool sqlite3_mini_stmt::bind_blob(int sn, const void *data, uint64_t data_len)
     if (sqlite3_bind_blob64(stmt_, sn, new_data, data_len, _bind_free) != SQLITE_OK)
     {
         zcc_error("bind sqlite3(sn_%d): %s", sn, sqlite3_errmsg(client_->handler_));
-        delete new_data;
+        delete[] new_data;
         return false;
     }
     return true;
@@ -180,6 +180,7 @@ bool sqlite3_mini_stmt::bind(int sn, const char *str, int slen)
     if (sqlite3_bind_text(stmt_, sn, new_str, slen, _bind_free) != SQLITE_OK)
     {
         zcc_error("bind sqlite3(sn_%d): %s, %s", sn, sql_.c_str(), sqlite3_errmsg(client_->handler_));
+        delete[] new_str;
         return false;
     }
     return true;

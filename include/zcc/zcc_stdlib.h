@@ -3055,7 +3055,7 @@ int64_t iso8601_2004_time_from_time(const std::string &s);
 //  ---22T14
 //  19850412
 //  1985-04
-//  1985          ### 如果day_is_preferred==true, 这个就应该解析为年
+//  1935          ### 如果day_is_preferred==true, 这个就应该解析为年
 //  --0412
 //  ---12
 //  T102200

@@ -898,7 +898,7 @@ int tnef_parser_running_context::get_rtf_data_from_buf(tnef_parser::mime_node *m
         unsigned char *up = new unsigned char[uncompr_size + 2];
         if ((m->body_size_ = decompress_rtf_data(data + idx, len - idx, uncompr_size, up)) < 0)
         {
-            delete up;
+            delete[] up;
             return -1;
         }
         else
@@ -1240,7 +1240,7 @@ tnef_parser::mime_node::~mime_node()
 {
     if (body_need_delete_)
     {
-        delete body_data_;
+        delete[] body_data_;
     }
 }
 
