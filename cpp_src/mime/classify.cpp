@@ -15,7 +15,7 @@ zcc_namespace_begin;
 #define _ZPMT_PLAIN 3
 #define _ZPMT_HTML 4
 
-int64_t mail_parser::classify_mime_identify_type(mime_node *mime)
+char mail_parser::classify_mime_identify_type(mime_node *mime)
 {
     const char *type = mime->get_content_type().c_str();
     const char *disposition = mime->get_disposition().c_str();

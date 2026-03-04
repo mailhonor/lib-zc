@@ -11,6 +11,10 @@
 #ifndef ZCC_LIB_INCLUDE_STDLIB___
 #define ZCC_LIB_INCLUDE_STDLIB___
 
+#if defined(_WIN32) && !defined(_WIN64)
+#error "本库仅支持64位Windows系统, 不支持32位环境"
+#endif
+
 // 检查是否为64位Windows系统
 #ifdef _WIN64
 // 检查是否已经定义了 _WIN32_WINNT 宏，如果定义了则取消定义
@@ -33,7 +37,7 @@
 // 检查是否使用Microsoft Visual C++编译器
 #ifdef _MSC_VER
 // 禁用特定的编译器警告，4267: 从 'size_t' 转换到 '类型'，可能丢失数据；4244: 从 '类型1' 转换到 '类型2'，可能丢失数据；4996: 函数或变量已被标记为弃用
-#pragma warning(disable : 4267 4244 4996)
+#pragma warning(disable : 4267 4244 4996 4251)
 #endif // _MSC_VER
 // 检查是否已经定义了 NOMINMAX 宏，如果未定义则定义它，用于避免Windows头文件中定义的 min 和 max 宏与标准库冲突
 #ifndef NOMINMAX
@@ -56,6 +60,20 @@
 #define ZCC_DEPRECATED
 #endif
 
+#if _WIN64
+#ifdef ZCC_DEV_MODE___
+#define ZCC_LIB_API __declspec(dllexport)
+#else
+#ifdef ZCC_DLL_MODE
+#define ZCC_LIB_API __declspec(dllimport)
+#else
+#define ZCC_LIB_API
+#endif
+#endif
+#else
+#define ZCC_LIB_API
+#endif
+
 //
 #ifndef zcc_namespace_c_begin
 #define zcc_namespace_c_begin \
@@ -73,10 +91,10 @@
     {
 #define zcc_general_namespace_end(ns) }
 
-#define zcc_anonymous_namespace_begin() \
-    namespace                           \
+#define zcc_anonymous_namespace_begin \
+    namespace                         \
     {
-#define zcc_anonymous_namespace_end() }
+#define zcc_anonymous_namespace_end }
 
 #endif
 
@@ -157,6 +175,7 @@ zcc_namespace_c_end;
 #include <cstdarg>
 #include <cstddef>
 #include <cstdlib>
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <list>
@@ -169,7 +188,7 @@ zcc_namespace_c_end;
 #pragma pack(push, 4)
 zcc_namespace_begin;
 
-extern const char *progname;
+ZCC_LIB_API extern const char *progname;
 
 inline bool empty(const void *str)
 {
@@ -180,7 +199,7 @@ inline bool empty(const std::string &str)
     return str.empty();
 }
 
-void exit(int status);
+ZCC_LIB_API void exit(int status);
 
 struct size_data
 {
@@ -191,7 +210,7 @@ struct size_data
 class json;
 class stream;
 class iostream;
-class redis;
+class redis_client;
 class cdb_reader;
 class cdb_builder;
 class cdb_walker;
@@ -201,8 +220,20 @@ class msearch_walker;
 class aio;
 class aio_timer;
 class aio_base;
+class thread_pool;
 class httpd;
 class httpd_uploaded_file;
+class mail_account_checker;
+class smtp_account_checker;
+class imap_account_checker;
+class pop_account_checker;
+class imap_client;
+class pop_client;
+class smtp_client;
+class vcf_contact;
+class begin_end_text_node;
+class mail_parser;
+class mail_builder;
 
 /* auto_delete ###################################################### */
 template <class T>
@@ -258,19 +289,19 @@ enum level
 /**
  * @brief 标志位，指示是否捕获致命错误。
  */
-extern bool var_fatal_catch;
+ZCC_LIB_API extern bool var_fatal_catch;
 /**
  * @brief 标志位，指示是否启用调试级日志输出。
  */
-extern bool var_debug_enable;
+ZCC_LIB_API extern bool var_debug_enable;
 /**
  * @brief 标志位，指示是否启用详细级日志输出。
  */
-extern bool var_verbose_enable;
+ZCC_LIB_API extern bool var_verbose_enable;
 /**
  * @brief 标志位，指示是否禁用日志输出。
  */
-extern bool var_output_disable;
+ZCC_LIB_API extern bool var_output_disable;
 
 /**
  * @brief 可变参数形式的日志输出函数。
@@ -281,7 +312,7 @@ extern bool var_output_disable;
  * @param fmt 格式化字符串，类似于 printf 的格式。
  * @param ap 可变参数列表。
  */
-void vlog_output(const char *source_fn, uint64_t line_number, level ll, const char *fmt, va_list ap);
+ZCC_LIB_API void vlog_output(const char *source_fn, uint64_t line_number, level ll, const char *fmt, va_list ap);
 
 /**
  * @brief 普通形式的日志输出函数，支持可变参数。
@@ -292,7 +323,7 @@ void vlog_output(const char *source_fn, uint64_t line_number, level ll, const ch
  * @param fmt 格式化字符串，类似于 printf 的格式。
  * @param ... 可变参数。
  */
-void log_output(const char *source_fn, uint64_t line_number, level ll, const char *fmt, ...);
+ZCC_LIB_API void log_output(const char *source_fn, uint64_t line_number, level ll, const char *fmt, ...);
 
 /**
  * @brief 日志输出处理函数的类型定义。
@@ -308,7 +339,7 @@ typedef void (*output_handler_type)(const char *source_fn, uint64_t line_number,
 /**
  * @brief 外部定义的日志输出处理函数指针。
  */
-extern output_handler_type var_output_handler;
+ZCC_LIB_API extern output_handler_type var_output_handler;
 
 // syslog
 /**
@@ -316,7 +347,7 @@ extern output_handler_type var_output_handler;
  *
  * @param attr 配置属性，格式为 "facility[,identity]"。
  */
-void use_syslog_by_config(const char *attr /* facility[,identity */);
+ZCC_LIB_API void use_syslog_by_config(const char *attr /* facility[,identity */);
 
 /**
  * @brief 使用 syslog 进行日志输出。
@@ -324,7 +355,7 @@ void use_syslog_by_config(const char *attr /* facility[,identity */);
  * @param identity 日志标识，用于区分不同程序的日志。
  * @param facility syslog 的设备类型。
  */
-void use_syslog(const char *identity, int facility);
+ZCC_LIB_API void use_syslog(const char *identity, int facility);
 
 /**
  * @brief 使用 syslog 进行日志输出，重载函数，接受 std::string 类型的标识。
@@ -343,7 +374,7 @@ inline void use_syslog(const std::string &identity, int facility)
  * @param identity 日志标识，用于区分不同程序的日志。
  * @param facility syslog 的设备类型字符串。
  */
-void use_syslog(const char *identity, const char *facility);
+ZCC_LIB_API void use_syslog(const char *identity, const char *facility);
 
 /**
  * @brief 使用 syslog 进行日志输出，重载函数，接受 std::string 类型的标识和设备类型。
@@ -362,7 +393,7 @@ inline void use_syslog(const std::string &identity, const std::string &facility)
  * @param facility 设备类型字符串。
  * @return int syslog 设备类型值。
  */
-int get_facility(const char *facility);
+ZCC_LIB_API int get_facility(const char *facility);
 
 /**
  * @brief 根据设备类型字符串获取对应的 syslog 设备类型值，重载函数，接受 std::string 类型的设备类型。
@@ -378,11 +409,13 @@ inline int get_facility(const std::string &facility)
 /**
  * @brief 详细级日志输出宏，如果启用详细级日志，则输出日志信息。
  */
-#define zcc_verbose(...) (zcc::logger::var_verbose_enable ? zcc::logger::log_output(ZCC__FILE__, __LINE__, zcc::logger::verbose, __VA_ARGS__) : (void)0);
+#define zcc_verbose(...) (zcc::logger::var_verbose_enable ? zcc::logger::log_output(ZCC__FILE__, __LINE__, zcc::logger::verbose, __VA_ARGS__) : (void)0)
+#define zcc_verbose_output(...) zcc::logger::log_output(ZCC__FILE__, __LINE__, zcc::logger::verbose, __VA_ARGS__)
 /**
  * @brief 调试级日志输出宏，如果启用调试级日志，则输出日志信息。
  */
-#define zcc_debug(...) (zcc::logger::var_debug_enable ? zcc::logger::log_output(ZCC__FILE__, __LINE__, zcc::logger::debug, __VA_ARGS__) : (void)0);
+#define zcc_debug(...) (zcc::logger::var_debug_enable ? zcc::logger::log_output(ZCC__FILE__, __LINE__, zcc::logger::debug, __VA_ARGS__) : (void)0)
+#define zcc_debug_output(...) zcc::logger::log_output(ZCC__FILE__, __LINE__, zcc::logger::debug, __VA_ARGS__)
 /**
  * @brief 信息级日志输出宏，输出信息级日志信息。
  */
@@ -409,290 +442,23 @@ inline int get_facility(const std::string &facility)
 #define zcc_exit(status) zcc::exit(status)
 
 /**
- * @brief 日志类，用于流式输出日志信息。
+ * 通用的类内的debug/verbose宏
  */
-class LOG
-{
-public:
-    /**
-     * @brief 构造函数，初始化日志对象。
-     *
-     * @param ll 日志级别。
-     * @param sourcePathname 日志输出所在的源文件名。
-     * @param lineNumber 日志输出所在的代码行号。
-     */
-    LOG(level ll, const char *sourcePathname, uint64_t lineNumber);
-    /**
-     * @brief 析构函数，在对象销毁时输出日志信息。
-     */
-    ~LOG();
 
-    /**
-     * @brief 向日志缓冲区追加整数类型的信息。
-     *
-     * @param v 要追加的整数。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &append(int v)
-    {
-        buf_.append(std::to_string(v));
-        return *this;
-    };
-    /**
-     * @brief 重载 << 运算符，方便以流式方式追加整数类型的信息。
-     *
-     * @param v 要追加的整数。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &operator<<(int v) { return append(v); }
-
-    /**
-     * @brief 向日志缓冲区追加无符号整数类型的信息。
-     *
-     * @param v 要追加的无符号整数。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &append(unsigned int v)
-    {
-        buf_.append(std::to_string(v));
-        return *this;
-    };
-    /**
-     * @brief 重载 << 运算符，方便以流式方式追加无符号整数类型的信息。
-     *
-     * @param v 要追加的无符号整数。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &operator<<(unsigned int v) { return append(v); }
-
-    /**
-     * @brief 向日志缓冲区追加双精度浮点数类型的信息。
-     *
-     * @param v 要追加的双精度浮点数。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &append(double v)
-    {
-        buf_.append(std::to_string(v));
-        return *this;
-    };
-    /**
-     * @brief 重载 << 运算符，方便以流式方式追加双精度浮点数类型的信息。
-     *
-     * @param v 要追加的双精度浮点数。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &operator<<(double v) { return append(v); }
-
-    /**
-     * @brief 向日志缓冲区追加布尔类型的信息。
-     *
-     * @param v 要追加的布尔值。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &append(bool v)
-    {
-        buf_.append(v ? "true" : "false");
-        return *this;
-    };
-    /**
-     * @brief 重载 << 运算符，方便以流式方式追加布尔类型的信息。
-     *
-     * @param v 要追加的布尔值。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &operator<<(bool v) { return append(v); }
-
-    /**
-     * @brief 向日志缓冲区追加字符类型的信息。
-     *
-     * @param v 要追加的字符。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &append(char v)
-    {
-        buf_.push_back(v);
-        return *this;
-    };
-    /**
-     * @brief 重载 << 运算符，方便以流式方式追加字符类型的信息。
-     *
-     * @param v 要追加的字符。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &operator<<(char v) { return append(v); }
-
-    /**
-     * @brief 向日志缓冲区追加无符号字符类型的信息。
-     *
-     * @param v 要追加的无符号字符。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &append(unsigned char v)
-    {
-        buf_.push_back(v);
-        return *this;
-    };
-    /**
-     * @brief 重载 << 运算符，方便以流式方式追加无符号字符类型的信息。
-     *
-     * @param v 要追加的无符号字符。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &operator<<(unsigned char v) { return append(v); }
-
-    /**
-     * @brief 向日志缓冲区追加字符串类型的信息。
-     *
-     * @param v 要追加的字符串。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &append(const char *v)
-    {
-        buf_.append(v);
-        return *this;
-    };
-    /**
-     * @brief 重载 << 运算符，方便以流式方式追加字符串类型的信息。
-     *
-     * @param v 要追加的字符串。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &operator<<(const char *v) { return append(v); }
-
-    /**
-     * @brief 向日志缓冲区追加无符号字符串类型的信息。
-     *
-     * @param v 要追加的无符号字符串。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &append(const unsigned char *v)
-    {
-        buf_.append((const char *)v);
-        return *this;
-    };
-    /**
-     * @brief 重载 << 运算符，方便以流式方式追加无符号字符串类型的信息。
-     *
-     * @param v 要追加的无符号字符串。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &operator<<(const unsigned char *v) { return append(v); }
-
-    /**
-     * @brief 向日志缓冲区追加指定长度的字符串类型的信息。
-     *
-     * @param v 要追加的字符串。
-     * @param len 要追加的字符串长度。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &append(const char *v, int len)
-    {
-        buf_.append(v, len);
-        return *this;
-    };
-
-    /**
-     * @brief 向日志缓冲区追加指定长度的无符号字符串类型的信息。
-     *
-     * @param v 要追加的无符号字符串。
-     * @param len 要追加的无符号字符串长度。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &append(const unsigned char *v, int len)
-    {
-        buf_.append((const char *)v, len);
-        return *this;
-    };
-
-    /**
-     * @brief 向日志缓冲区追加 std::string 类型的信息。
-     *
-     * @param v 要追加的 std::string 对象。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &append(const std::string &v)
-    {
-        buf_.append(v);
-        return *this;
-    };
-    /**
-     * @brief 重载 << 运算符，方便以流式方式追加 std::string 类型的信息。
-     *
-     * @param v 要追加的 std::string 对象。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &operator<<(const std::string &v) { return append(v); }
-
-    /**
-     * @brief 向日志缓冲区追加 std::string 指针类型的信息。
-     *
-     * @param v 要追加的 std::string 指针。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &append(const std::string *v)
-    {
-        if (v)
-        {
-            buf_.append(*v);
-        }
-        return *this;
-    };
-    /**
-     * @brief 重载 << 运算符，方便以流式方式追加 std::string 指针类型的信息。
-     *
-     * @param v 要追加的 std::string 指针。
-     * @return LOG& 返回当前对象的引用，以便链式调用。
-     */
-    inline LOG &operator<<(const std::string *v) { return append(v); }
-
-public:
-    const char *sourcePathname_; ///< 日志输出所在的源文件名。
-    uint64_t lineNumber_;        ///< 日志输出所在的代码行号。
-    logger::level level_;        ///< 日志级别。
-    std::string buf_;            ///< 日志缓冲区，用于存储要输出的日志信息。
-};
-
-/**
- * @brief 详细级日志流式输出宏，如果启用详细级日志，则返回 LOG 对象以便流式输出。
- */
-#define zccVerbose()                     \
-    if (zcc::logger::var_verbose_enable) \
-    zcc::logger::LOG(zcc::logger::verbose, ZCC__FILE__, __LINE__)
-/**
- * @brief 调试级日志流式输出宏，如果启用详细级或调试级日志，则返回 LOG 对象以便流式输出。
- */
-#define zccDebug()                                                        \
-    if (zcc::logger::var_verbose_enable || zcc::logger::var_debug_enable) \
-    zcc::logger::LOG(zcc::logger::debug, ZCC__FILE__, __LINE__)
-/**
- * @brief 信息级日志流式输出宏，返回 LOG 对象以便流式输出信息级日志。
- */
-#define zccInfo() zcc::logger::LOG(zcc::logger::info, ZCC__FILE__, __LINE__)
-/**
- * @brief 警告级日志流式输出宏，返回 LOG 对象以便流式输出警告级日志。
- */
-#define zccWarning() zcc::logger::LOG(zcc::logger::warning, ZCC__FILE__, __LINE__)
-/**
- * @brief 错误级日志流式输出宏，返回 LOG 对象以便流式输出错误级日志。
- */
-#define zccError() zcc::logger::LOG(zcc::logger::error, ZCC__FILE__, __LINE__)
-/**
- * @brief 致命级日志流式输出宏，返回 LOG 对象以便流式输出致命级日志。
- */
-#define zccFatal() zcc::logger::LOG(zcc::logger::fatal, ZCC__FILE__, __LINE__)
+#define zcc_class_debug(...) ((debug_mode_ || verbose_mode_) ? zcc::logger::log_output(ZCC__FILE__, __LINE__, zcc::logger::debug, __VA_ARGS__) : void(0))
+#define zcc_class_verbose(...) (verbose_mode_ ? zcc::logger::log_output(ZCC__FILE__, __LINE__, zcc::logger::verbose, __VA_ARGS__) : void(0))
 
 zcc_general_namespace_end(logger);
 
 /* malloc ########################################################### */
-void *malloc(int64_t len);
-void *calloc(int64_t nmemb, int64_t size);
-void *realloc(const void *ptr, int64_t len);
-void free(const void *ptr);
-char *strdup(const char *ptr);
-char *strndup(const char *ptr, int64_t n);
-void *memdup(const void *ptr, int64_t n);
-void *memdupnull(const void *ptr, int64_t n);
+ZCC_LIB_API void *malloc(int64_t len);
+ZCC_LIB_API void *calloc(int64_t nmemb, int64_t size);
+ZCC_LIB_API void *realloc(const void *ptr, int64_t len);
+ZCC_LIB_API void free(const void *ptr);
+ZCC_LIB_API char *strdup(const char *ptr);
+ZCC_LIB_API char *strndup(const char *ptr, int64_t n);
+ZCC_LIB_API void *memdup(const void *ptr, int64_t n);
+ZCC_LIB_API void *memdupnull(const void *ptr, int64_t n);
 #define zcc_free(ptr)   \
     {                   \
         zcc::free(ptr); \
@@ -700,7 +466,7 @@ void *memdupnull(const void *ptr, int64_t n);
     }
 
 struct greedy_mpool_t;
-class greedy_mpool
+class ZCC_LIB_API greedy_mpool
 {
 public:
     greedy_mpool();
@@ -728,32 +494,32 @@ typedef std::map<std::string, std::string> dict;
 /**
  * @brief 外部声明一个字符数组，用于表示空白缓冲区。
  */
-extern char var_blank_buffer[];
+ZCC_LIB_API extern char var_blank_buffer[];
 
 /**
  * @brief 外部声明一个常量 std::string 对象，用于表示空白字符串。
  */
-extern const std::string var_blank_string;
+ZCC_LIB_API extern const std::string var_blank_string;
 
 /**
  * @brief 外部声明一个常量 std::list 对象，用于表示空白列表。
  */
-extern const std::list<std::string> var_blank_list;
+ZCC_LIB_API extern const std::list<std::string> var_blank_list;
 
 /**
  * @brief 外部声明一个常量 std::vector 对象，用于表示空白向量。
  */
-extern const std::vector<std::string> var_blank_vector;
+ZCC_LIB_API extern const std::vector<std::string> var_blank_vector;
 
 /**
  * @brief 外部声明一个常量字典对象，用于表示空白字典。
  */
-extern const dict var_blank_map;
+ZCC_LIB_API extern const dict var_blank_map;
 
 /**
  * @brief 外部声明一个无符号常量字符数组，用于存储十六进制字符对应的整数值。
  */
-extern unsigned const char var_char_xdigitval_vector[];
+ZCC_LIB_API extern unsigned const char var_char_xdigitval_vector[];
 
 /**
  * @brief 判断一个字符是否可被修剪。
@@ -897,21 +663,21 @@ inline int isblank(int c) { return std::isblank(c); }
  * @param str 待处理的字符串指针。
  * @return char* 处理后的字符串指针。
  */
-char *trim_left(char *str);
+ZCC_LIB_API char *trim_left(char *str);
 /**
  * @brief 去除字符串右侧的空白字符。
  *
  * @param str 待处理的字符串指针。
  * @return char* 处理后的字符串指针。
  */
-char *trim_right(char *str);
+ZCC_LIB_API char *trim_right(char *str);
 /**
  * @brief 去除字符串两侧的空白字符。
  *
  * @param str 待处理的字符串指针。
  * @return char* 处理后的字符串指针。
  */
-char *trim(char *str);
+ZCC_LIB_API char *trim(char *str);
 /**
  * @brief 去除 std::string 右侧指定的分隔字符。
  *
@@ -919,16 +685,16 @@ char *trim(char *str);
  * @param delims 可选参数，指定要去除的分隔字符，默认为 0。
  * @return std::string& 处理后的 std::string 对象引用。
  */
-std::string &trim_right(std::string &str, const char *delims = 0);
+ZCC_LIB_API std::string &trim_right(std::string &str, const char *delims = 0);
 /**
  * @brief 去除 std::string 末尾的换行符（\r 和 \n）。
  *
  * @param str 待处理的 std::string 对象引用。
  * @return std::string& 处理后的 std::string 对象引用。
  */
-std::string &trim_line_end_rn(std::string &str);
+ZCC_LIB_API std::string &trim_line_end_rn(std::string &str);
 
-std::string trim(const std::string &str);
+ZCC_LIB_API std::string trim(const std::string &str);
 
 // skip
 /**
@@ -938,7 +704,7 @@ std::string trim(const std::string &str);
  * @param ignores 要忽略的字符集合。
  * @return char* 跳过忽略字符后的字符串指针。
  */
-char *skip_left(const char *str, const char *ignores);
+ZCC_LIB_API char *skip_left(const char *str, const char *ignores);
 /**
  * @brief 从字符串右侧开始跳过指定的忽略字符，返回剩余字符串的长度。
  *
@@ -947,7 +713,7 @@ char *skip_left(const char *str, const char *ignores);
  * @param ignores 要忽略的字符集合。
  * @return int 跳过忽略字符后剩余字符串的长度。
  */
-int skip_right(const char *str, int len, const char *ignores);
+ZCC_LIB_API int skip_right(const char *str, int len, const char *ignores);
 /**
  * @brief 从字符串两侧跳过指定的忽略字符，返回剩余字符串的长度，并更新起始指针。
  *
@@ -958,7 +724,7 @@ int skip_right(const char *str, int len, const char *ignores);
  * @param start 用于存储跳过忽略字符后字符串的起始指针。
  * @return int 跳过忽略字符后剩余字符串的长度。
  */
-int skip(const char *line, int len, const char *ignores_left, const char *ignores_right, char **start);
+ZCC_LIB_API int skip(const char *line, int len, const char *ignores_left, const char *ignores_right, char **start);
 
 // s 是 "0", "n", "N", "no", "NO", "false", "FALSE" 返回 false
 // s 是 "1", "y", "Y", "yes", "YES", "true", "TRUE" 返回 true
@@ -971,8 +737,8 @@ int skip(const char *line, int len, const char *ignores_left, const char *ignore
  * @return bool 转换后的布尔值。
  */
 
-inline int64_t atoi(const char *s) { return std::atoi(s); }
-inline int64_t atoi(const std::string &s) { return std::atoi(s.c_str()); }
+inline int atoi(const char *s) { return std::atoi(s); }
+inline int atoi(const std::string &s) { return std::atoi(s.c_str()); }
 #ifdef _WIN64
 inline int64_t atol(const char *s) { return std::atoll(s); }
 inline int64_t atol(const std::string &s) { return std::atoll(s.c_str()); }
@@ -981,7 +747,7 @@ inline int64_t atol(const char *s) { return std::atol(s); }
 inline int64_t atol(const std::string &s) { return std::atol(s.c_str()); }
 #endif
 
-bool str_to_bool(const char *s, bool def = false);
+ZCC_LIB_API bool str_to_bool(const char *s, bool def = false);
 /**
  * @brief 将 std::string 转换为布尔值，调用 str_to_bool(const char*, bool) 实现。
  *
@@ -1005,7 +771,7 @@ inline bool str_to_bool(const std::string &s, bool def = false)
  * @param def 转换失败时的默认值。
  * @return int64_t 转换后的秒数。
  */
-int64_t str_to_second(const char *s, int64_t def = 0);
+ZCC_LIB_API int64_t str_to_second(const char *s, int64_t def = 0);
 inline int64_t str_to_second(const std::string &s, int64_t def = 0)
 {
     return str_to_second(s.c_str(), def);
@@ -1022,7 +788,7 @@ inline int64_t str_to_second(const std::string &s, int64_t def = 0)
  * @param def 转换失败时的默认值。
  * @return int64_t 转换后的字节大小。
  */
-int64_t str_to_size(const char *s, int64_t def = 0);
+ZCC_LIB_API int64_t str_to_size(const char *s, int64_t def = 0);
 inline int64_t str_to_size(const std::string &s, int64_t def = 0)
 {
     return str_to_size(s.c_str(), def);
@@ -1055,28 +821,28 @@ inline int toupper(int ch)
  * @param str 待处理的字符串指针。
  * @return char* 处理后的字符串指针。
  */
-char *tolower(char *str);
+ZCC_LIB_API char *tolower(char *str);
 /**
  * @brief 将字符串中的所有字符转换为大写。
  *
  * @param str 待处理的字符串指针。
  * @return char* 处理后的字符串指针。
  */
-char *toupper(char *str);
+ZCC_LIB_API char *toupper(char *str);
 /**
  * @brief 将 std::string 中的所有字符转换为小写。
  *
  * @param str 待处理的 std::string 对象引用。
  * @return std::string& 处理后的 std::string 对象引用。
  */
-std::string &tolower(std::string &str);
+ZCC_LIB_API std::string &tolower(std::string &str);
 /**
  * @brief 将 std::string 中的所有字符转换为大写。
  *
  * @param str 待处理的 std::string 对象引用。
  * @return std::string& 处理后的 std::string 对象引用。
  */
-std::string &toupper(std::string &str);
+ZCC_LIB_API std::string &toupper(std::string &str);
 
 //
 /**
@@ -1086,14 +852,14 @@ std::string &toupper(std::string &str);
  * @param size 处理的范围大小。
  * @return char* 处理后的字符串指针。
  */
-char *clear_null(char *data, int64_t size);
+ZCC_LIB_API char *clear_null(char *data, int64_t size);
 /**
  * @brief 清除 std::string 中的空字符（'\0'）。
  *
  * @param data 待处理的 std::string 对象引用。
  * @return std::string& 处理后的 std::string 对象引用。
  */
-std::string &clear_null(std::string &data);
+ZCC_LIB_API std::string &clear_null(std::string &data);
 
 // windows 没有
 /**
@@ -1105,7 +871,7 @@ std::string &clear_null(std::string &data);
  * @param b 第二个字符串指针。
  * @return int 比较结果：0 表示相等，小于 0 表示 a 小于 b，大于 0 表示 a 大于 b。
  */
-int strcasecmp(const char *a, const char *b);
+ZCC_LIB_API int strcasecmp(const char *a, const char *b);
 /**
  * @brief 不区分大小写比较两个字符串的前 c 个字符。
  *
@@ -1123,7 +889,7 @@ inline int strncasecmp(const char *a, const char *b, size_t c);
  * @param ap 可变参数列表。
  * @return std::string& 存储格式化结果的 std::string 对象引用。
  */
-std::string &vsprintf_1024(std::string &str, const char *format, va_list ap);
+ZCC_LIB_API std::string &vsprintf_1024(std::string &str, const char *format, va_list ap);
 
 #ifdef __linux__
 /**
@@ -1134,7 +900,7 @@ std::string &vsprintf_1024(std::string &str, const char *format, va_list ap);
  * @param ... 可变参数。
  * @return std::string& 存储格式化结果的 std::string 对象引用。
  */
-std::string __attribute__((format(gnu_printf, 2, 3))) & sprintf_1024(std::string &str, const char *format, ...);
+ZCC_LIB_API std::string __attribute__((format(gnu_printf, 2, 3))) & sprintf_1024(std::string &str, const char *format, ...);
 #else  // __linux__
 /**
  * @brief 在非 Linux 平台使用可变参数格式化字符串到 std::string 中，最多支持 1024 个字符。
@@ -1144,7 +910,7 @@ std::string __attribute__((format(gnu_printf, 2, 3))) & sprintf_1024(std::string
  * @param ... 可变参数。
  * @return std::string& 存储格式化结果的 std::string 对象引用。
  */
-std::string &sprintf_1024(std::string &str, const char *format, ...);
+ZCC_LIB_API std::string &sprintf_1024(std::string &str, const char *format, ...);
 #endif // __linux__
 
 /**
@@ -1156,7 +922,7 @@ std::string &sprintf_1024(std::string &str, const char *format, ...);
  * @param ignore_empty_token 是否忽略空的分割结果，默认为 false。
  * @return std::vector<std::string> 分割后的字符串向量。
  */
-std::vector<std::string> split(const char *s, int len, const char *delims, bool ignore_empty_token = false);
+ZCC_LIB_API std::vector<std::string> split(const char *s, int len, const char *delims, bool ignore_empty_token = false);
 /**
  * @brief 根据指定的分隔符分割字符串，自动计算字符串长度。
  *
@@ -1179,7 +945,7 @@ inline std::vector<std::string> split(const char *s, const char *delims, bool ig
  */
 inline std::vector<std::string> split(const std::string &s, const char *delims, bool ignore_empty_token = false)
 {
-    return split(s.c_str(), s.size(), delims, ignore_empty_token);
+    return split(s.c_str(), (int)s.size(), delims, ignore_empty_token);
 }
 
 /**
@@ -1191,7 +957,7 @@ inline std::vector<std::string> split(const std::string &s, const char *delims, 
  * @param ignore_empty_token 是否忽略空的分割结果，默认为 false。
  * @return std::vector<std::string> 分割后的字符串向量。
  */
-std::vector<std::string> split(const char *s, int len, int delim, bool ignore_empty_token = false);
+ZCC_LIB_API std::vector<std::string> split(const char *s, int len, int delim, bool ignore_empty_token = false);
 /**
  * @brief 根据指定的单个字符分隔符分割字符串，自动计算字符串长度。
  *
@@ -1214,7 +980,7 @@ inline std::vector<std::string> split(const char *s, int delim, bool ignore_empt
  */
 inline std::vector<std::string> split(const std::string &s, int delim, bool ignore_empty_token = false)
 {
-    return split(s.c_str(), s.size(), delim, ignore_empty_token);
+    return split(s.c_str(), (int)s.size(), delim, ignore_empty_token);
 }
 
 /**
@@ -1249,7 +1015,7 @@ inline std::vector<std::string> split_and_ignore_empty_token(const char *s, cons
  */
 inline std::vector<std::string> split_and_ignore_empty_token(const std::string &s, const char *delims)
 {
-    return split_and_ignore_empty_token(s.c_str(), s.size(), delims);
+    return split_and_ignore_empty_token(s.c_str(), (int)s.size(), delims);
 }
 
 /**
@@ -1285,8 +1051,12 @@ inline std::vector<std::string> split_and_ignore_empty_token(const char *s, int 
  */
 inline std::vector<std::string> split_and_ignore_empty_token(const std::string &s, int delim)
 {
-    return split_and_ignore_empty_token(s.c_str(), s.size(), delim);
+    return split_and_ignore_empty_token(s.c_str(), (int)s.size(), delim);
 }
+
+//
+ZCC_LIB_API bool ends_with(const std::string &str, const std::string &suffix);
+ZCC_LIB_API bool ends_case_with(const std::string &str, const std::string &suffix);
 
 // windows 没有 memmem
 /**
@@ -1298,7 +1068,7 @@ inline std::vector<std::string> split_and_ignore_empty_token(const std::string &
  * @param s_len 小字符串的长度。
  * @return void* 找到小字符串的起始指针，未找到返回 nullptr。
  */
-void *no_memmem(const void *l, int64_t l_len, const void *s, int64_t s_len);
+ZCC_LIB_API void *no_memmem(const void *l, int64_t l_len, const void *s, int64_t s_len);
 /**
  * @brief 根据平台选择使用系统的 memmem 函数或自定义的 no_memmem 函数。
  *
@@ -1363,7 +1133,7 @@ inline int strncasecmp(const char *a, const char *b, size_t c)
  * @param needle 小字符串指针。
  * @return char* 找到小字符串的起始指针，未找到返回 nullptr。
  */
-char *strcasestr(const char *haystack, const char *needle);
+ZCC_LIB_API char *strcasestr(const char *haystack, const char *needle);
 #else  // _WIN64
 /**
  * @brief 在非 Windows 平台调用系统的 strcasestr 函数，用于在大字符串中不区分大小写查找小字符串。
@@ -1378,10 +1148,10 @@ inline char *strcasestr(const char *haystack, const char *needle)
 }
 #endif // _WIN64
 
-std::string str_replace(const std::string &input, const std::string &from, const std::string &to);
+ZCC_LIB_API std::string str_replace(const std::string &input, const std::string &from, const std::string &to);
 
-std::string join(const std::vector<std::string> &strs, const std::string &delimiter);
-std::string join(const std::list<std::string> &strs, const std::string &delimiter);
+ZCC_LIB_API std::string join(const std::vector<std::string> &strs, const std::string &delimiter);
+ZCC_LIB_API std::string join(const std::list<std::string> &strs, const std::string &delimiter);
 
 /**
  * @brief 显示词典的调试信息。
@@ -1390,7 +1160,7 @@ std::string join(const std::list<std::string> &strs, const std::string &delimite
  *
  * @param dt 待显示调试信息的词典对象。
  */
-void debug_show(const dict &dt);
+ZCC_LIB_API void debug_show(const dict &dt);
 
 /**
  * @brief 从词典中获取指定键对应的 C 风格字符串值。
@@ -1402,7 +1172,7 @@ void debug_show(const dict &dt);
  * @param def_val 键不存在时返回的默认值，默认为空字符串。
  * @return const char* 查找到的值或默认值。
  */
-const char *get_cstring(const dict &dt, const char *key, const char *def_val = "");
+ZCC_LIB_API const char *get_cstring(const dict &dt, const char *key, const char *def_val = "");
 
 /**
  * @brief 从词典中获取指定键对应的 C 风格字符串值。
@@ -1414,7 +1184,7 @@ const char *get_cstring(const dict &dt, const char *key, const char *def_val = "
  * @param def_val 键不存在时返回的默认值，默认为空字符串。
  * @return const char* 查找到的值或默认值。
  */
-const char *get_cstring(const dict &dt, const std::string &key, const char *def_val = "");
+ZCC_LIB_API const char *get_cstring(const dict &dt, const std::string &key, const char *def_val = "");
 
 /**
  * @brief 从词典中获取指定键对应的 std::string 类型值。
@@ -1426,7 +1196,7 @@ const char *get_cstring(const dict &dt, const std::string &key, const char *def_
  * @param def_val 键不存在时返回的默认值，默认为空字符串。
  * @return std::string 查找到的值或默认值。
  */
-std::string get_string(const dict &dt, const char *key, const char *def_val = "");
+ZCC_LIB_API std::string get_string(const dict &dt, const char *key, const char *def_val = "");
 
 /**
  * @brief 从词典中获取指定键对应的 std::string 类型值的引用。
@@ -1438,7 +1208,7 @@ std::string get_string(const dict &dt, const char *key, const char *def_val = ""
  * @param def_val 键不存在时返回的默认值的引用，默认为 var_blank_string。
  * @return const std::string& 查找到的值或默认值的引用。
  */
-const std::string &get_string(const dict &dt, const std::string &key, const std::string &def_val = var_blank_string);
+ZCC_LIB_API const std::string &get_string(const dict &dt, const std::string &key, const std::string &def_val = var_blank_string);
 
 /**
  * @brief 从词典中获取指定键对应的布尔值。
@@ -1450,7 +1220,7 @@ const std::string &get_string(const dict &dt, const std::string &key, const std:
  * @param def_val 键不存在时返回的默认值，默认为 false。
  * @return bool 查找到的值转换后的布尔值或默认值。
  */
-bool get_bool(const dict &dt, const char *key, bool def_val = false);
+ZCC_LIB_API bool get_bool(const dict &dt, const char *key, bool def_val = false);
 
 /**
  * @brief 从词典中获取指定键对应的布尔值。
@@ -1462,7 +1232,7 @@ bool get_bool(const dict &dt, const char *key, bool def_val = false);
  * @param def_val 键不存在时返回的默认值，默认为 false。
  * @return bool 查找到的值转换后的布尔值或默认值。
  */
-bool get_bool(const dict &dt, const std::string &key, bool def_val = false);
+ZCC_LIB_API bool get_bool(const dict &dt, const std::string &key, bool def_val = false);
 
 /**
  * @brief 从词典中获取指定键对应的整数值。
@@ -1474,7 +1244,7 @@ bool get_bool(const dict &dt, const std::string &key, bool def_val = false);
  * @param def_val 键不存在时返回的默认值，默认为 0。
  * @return int 查找到的值转换后的整数或默认值。
  */
-int get_int(const dict &dt, const char *key, int def_val = 0);
+ZCC_LIB_API int get_int(const dict &dt, const char *key, int def_val = 0);
 
 /**
  * @brief 从词典中获取指定键对应的整数值。
@@ -1486,7 +1256,7 @@ int get_int(const dict &dt, const char *key, int def_val = 0);
  * @param def_val 键不存在时返回的默认值，默认为 0。
  * @return int 查找到的值转换后的整数或默认值。
  */
-int get_int(const dict &dt, const std::string &key, int def_val = 0);
+ZCC_LIB_API int get_int(const dict &dt, const std::string &key, int def_val = 0);
 
 /**
  * @brief 从词典中获取指定键对应的长整数值。
@@ -1498,7 +1268,7 @@ int get_int(const dict &dt, const std::string &key, int def_val = 0);
  * @param def_val 键不存在时返回的默认值，默认为 -1。
  * @return int64_t 查找到的值转换后的长整数或默认值。
  */
-int64_t get_long(const dict &dt, const char *key, int64_t def_val = 0);
+ZCC_LIB_API int64_t get_long(const dict &dt, const char *key, int64_t def_val = 0);
 
 /**
  * @brief 从词典中获取指定键对应的长整数值。
@@ -1510,7 +1280,7 @@ int64_t get_long(const dict &dt, const char *key, int64_t def_val = 0);
  * @param def_val 键不存在时返回的默认值，默认为 0。
  * @return int64_t 查找到的值转换后的长整数或默认值。
  */
-int64_t get_long(const dict &dt, const std::string &key, int64_t def_val = 0);
+ZCC_LIB_API int64_t get_long(const dict &dt, const std::string &key, int64_t def_val = 0);
 
 /**
  * @brief 从词典中获取指定键对应的秒数值。
@@ -1522,7 +1292,7 @@ int64_t get_long(const dict &dt, const std::string &key, int64_t def_val = 0);
  * @param def_val 键不存在时返回的默认值，默认为 0。
  * @return int64_t 查找到的值转换后的秒数或默认值。
  */
-int64_t get_second(const dict &dt, const char *key, int64_t def_val = 0);
+ZCC_LIB_API int64_t get_second(const dict &dt, const char *key, int64_t def_val = 0);
 
 /**
  * @brief 从词典中获取指定键对应的秒数值。
@@ -1534,7 +1304,7 @@ int64_t get_second(const dict &dt, const char *key, int64_t def_val = 0);
  * @param def_val 键不存在时返回的默认值，默认为 0。
  * @return int64_t 查找到的值转换后的秒数或默认值。
  */
-int64_t get_second(const dict &dt, const std::string &key, int64_t def_val = 0);
+ZCC_LIB_API int64_t get_second(const dict &dt, const std::string &key, int64_t def_val = 0);
 
 /**
  * @brief 从词典中获取指定键对应的字节大小值。
@@ -1546,7 +1316,7 @@ int64_t get_second(const dict &dt, const std::string &key, int64_t def_val = 0);
  * @param def_val 键不存在时返回的默认值，默认为 0。
  * @return int64_t 查找到的值转换后的字节大小或默认值。
  */
-int64_t get_size(const dict &dt, const char *key, int64_t def_val = 0);
+ZCC_LIB_API int64_t get_size(const dict &dt, const char *key, int64_t def_val = 0);
 
 /**
  * @brief 从词典中获取指定键对应的字节大小值。
@@ -1558,7 +1328,7 @@ int64_t get_size(const dict &dt, const char *key, int64_t def_val = 0);
  * @param def_val 键不存在时返回的默认值，默认为 0。
  * @return int64_t 查找到的值转换后的字节大小或默认值。
  */
-int64_t get_size(const dict &dt, const std::string &key, int64_t def_val = 0);
+ZCC_LIB_API int64_t get_size(const dict &dt, const std::string &key, int64_t def_val = 0);
 
 /**
  * @brief 生成一个唯一的 ID。
@@ -1567,7 +1337,21 @@ int64_t get_size(const dict &dt, const std::string &key, int64_t def_val = 0);
  *
  * @return std::string 生成的唯一 ID。
  */
-std::string build_unique_id();
+ZCC_LIB_API std::string build_unique_id();
+
+/**
+ * @brief 将字节大小转换为人类可读的字符串格式。
+ *
+ * 该函数将给定的字节大小转换为 "," 分隔的字符串格式，方便阅读。
+ *
+ * @param a 要转换的字节大小。
+ * @return std::string 转换后的人类可读的字符串。
+ */
+ZCC_LIB_API std::string human_byte_size(int64_t a);
+inline std::string human_number(int64_t a)
+{
+    return human_byte_size(a);
+}
 
 /**
  * @brief 将字节大小转换为人类可读的字符串格式。
@@ -1577,20 +1361,14 @@ std::string build_unique_id();
  * @param a 要转换的字节大小。
  * @return std::string 转换后的人类可读的字符串。
  */
-std::string human_byte_size(int64_t a);
-inline std::string human_number(int64_t a)
-{
-    return human_byte_size(a);
-}
-
-std::string human_kmg_size(double size);
+ZCC_LIB_API std::string human_kmg_size(double size);
 
 /**
  * @brief 外部声明的默认 MIME 类型字符串。
  *
  * 该变量存储了默认的 MIME 类型，可在获取 MIME 类型时作为默认值使用。
  */
-extern const char *var_default_mime_type;
+ZCC_LIB_API extern const char *var_default_mime_type;
 
 /**
  * @brief 根据文件路径名获取对应的 MIME 类型。
@@ -1601,7 +1379,15 @@ extern const char *var_default_mime_type;
  * @param def 找不到 MIME 类型时返回的默认值，默认为 nullptr。
  * @return const char* 查找到的 MIME 类型或默认值。
  */
-const char *get_mime_type(const char *pathname, const char *def = nullptr);
+ZCC_LIB_API const char *get_mime_type(const char *pathname, const char *def = nullptr);
+inline const char *get_mime_type_from_suffix(const char *suffix, const char *def = nullptr)
+{
+    return get_mime_type(suffix, def);
+}
+inline const char *get_mime_type_from_suffix(const std::string &suffix, const char *def = nullptr)
+{
+    return get_mime_type(suffix.c_str(), def);
+}
 
 /**
  * @brief 根据文件路径名获取对应的 MIME 类型。
@@ -1612,150 +1398,154 @@ const char *get_mime_type(const char *pathname, const char *def = nullptr);
  * @param def 找不到 MIME 类型时返回的默认值，默认为 nullptr。
  * @return const char* 查找到的 MIME 类型或默认值。
  */
-const char *get_mime_type_from_pathname(const char *pathname, const char *def = nullptr);
-
-template <typename T, typename Container = std::list<T *>>
-bool popup(Container &C, T *&r)
+ZCC_LIB_API const char *get_mime_type_from_pathname(const char *pathname, const char *def = nullptr);
+inline const char *get_mime_type_from_pathname(const std::string &pathname, const char *def = nullptr)
 {
-    if (C.empty())
-    {
-        return false;
-    }
-    r = C.back();
-    C.pop_back();
-    return true;
+    return get_mime_type_from_pathname(pathname.c_str(), def);
 }
 
-template <typename T, typename V, typename Container = std::map<T, V>>
-bool find(Container &C, const T &k, V &r)
+//
+enum file_category_t
 {
-    auto it = C.find(k);
-    if (it == C.end())
-    {
-        return false;
-    }
-    r = it->second;
-    return true;
+    unknown = 0, //
+    document = 1,
+    code = 2,
+    image = 3,
+    audio = 4,
+    video = 5,
+    archive = 6,
+    exe = 7,
+    none = 10001,
+};
+ZCC_LIB_API file_category_t get_file_category_from_suffix(const std::string &suffix);
+ZCC_LIB_API file_category_t get_file_category_from_filename(const std::string &filename);
+ZCC_LIB_API file_category_t convert_string_to_file_category(const std::string &str);
+ZCC_LIB_API const std::string &convert_file_category_to_string(file_category_t fc);
+inline const std::string &convert_file_category_to_string(int fc)
+{
+    return convert_file_category_to_string((file_category_t)fc);
 }
+ZCC_LIB_API void file_category_register(const std::string &suffix, file_category_t fc);
+ZCC_LIB_API const std::string get_suffix_from_filename(const std::string &filename);
 
 // 生成序列号, mac: mac地址
-std::string license_build(const char *salt, const char *mac);
+ZCC_LIB_API std::string license_build(const char *salt, const char *mac);
 // 验证序列号, -1: 错误, 0: 不匹配, 1: 匹配
-int license_check(const char *salt, const char *license);
+ZCC_LIB_API int license_check(const char *salt, const char *license);
 
 /* encode/decode, ################################################## */
 static const char var_encoding_type_base64 = 'B';
 static const char var_encoding_type_qp = 'Q';
 static const char var_encoding_type_none = '\0';
 // base64
-extern const unsigned char var_base64_decode_table[];
-void base64_encode(const void *src, int src_size, std::string &str, bool mime_flag = false);
+ZCC_LIB_API extern const unsigned char var_base64_decode_table[];
+ZCC_LIB_API void base64_encode(const void *src, int64_t src_size, std::string &str, bool mime_flag = false);
 inline void base64_encode(const std::string &src, std::string &str, bool mime_flag = false)
 {
-    base64_encode(src.c_str(), src.size(), str, mime_flag);
+    base64_encode(src.c_str(), (int64_t)src.size(), str, mime_flag);
 }
-std::string base64_encode(const void *src, int src_size, bool mime_flag = false);
+ZCC_LIB_API std::string base64_encode(const void *src, int64_t src_size, bool mime_flag = false);
 inline std::string base64_encode(const std::string &src, bool mime_flag = false)
 {
-    return base64_encode(src.c_str(), src.size(), mime_flag);
+    return base64_encode(src.c_str(), (int64_t)src.size(), mime_flag);
 }
 //
-void base64_decode(const void *src, int src_size, std::string &str);
+ZCC_LIB_API void base64_decode(const void *src, int64_t src_size, std::string &str);
 inline void base64_decode(const std::string &src, std::string &str)
 {
-    base64_decode(src.c_str(), src.size(), str);
+    base64_decode(src.c_str(), (int64_t)src.size(), str);
 }
-std::string base64_decode(const void *src, int src_size);
+ZCC_LIB_API std::string base64_decode(const void *src, int64_t src_size);
 inline std::string base64_decode(const std::string &src)
 {
-    return base64_decode(src.c_str(), src.size());
+    return base64_decode(src.c_str(), (int64_t)src.size());
 }
-int base64_decode_get_valid_len(const void *src, int src_size);
-int base64_encode_get_min_len(int in_len, bool mime_flag = false);
+ZCC_LIB_API int64_t base64_decode_get_valid_len(const void *src, int64_t src_size);
+ZCC_LIB_API int64_t base64_encode_get_min_len(int64_t in_len, bool mime_flag = false);
 // qp
-void qp_encode_2045(const void *src, int src_size, std::string &result, bool mime_flag = false);
+ZCC_LIB_API void qp_encode_2045(const void *src, int64_t src_size, std::string &result, bool mime_flag = false);
 inline void qp_encode_2045(const std::string &src, std::string &result, bool mime_flag = false)
 {
-    return qp_encode_2045(src.c_str(), src.size(), result, mime_flag);
+    return qp_encode_2045(src.c_str(), (int64_t)src.size(), result, mime_flag);
 }
-std::string qp_encode_2045(const void *src, int src_size, bool mime_flag = false);
+ZCC_LIB_API std::string qp_encode_2045(const void *src, int64_t src_size, bool mime_flag = false);
 inline std::string qp_encode_2045(const std::string &src, bool mime_flag = false)
 {
-    return qp_encode_2045(src.c_str(), src.size(), mime_flag);
+    return qp_encode_2045(src.c_str(), (int64_t)src.size(), mime_flag);
 }
-void qp_decode_2045(const void *src, int src_size, std::string &str);
+ZCC_LIB_API void qp_decode_2045(const void *src, int64_t src_size, std::string &str);
 inline void qp_decode_2045(const std::string &src, std::string &str)
 {
-    qp_decode_2045(src.c_str(), src.size(), str);
+    qp_decode_2045(src.c_str(), (int64_t)src.size(), str);
 }
-std::string qp_decode_2045(const void *src, int src_size);
+ZCC_LIB_API std::string qp_decode_2045(const void *src, int64_t src_size);
 inline std::string qp_decode_2045(const std::string &src)
 {
-    return qp_decode_2045(src.c_str(), src.size());
+    return qp_decode_2045(src.c_str(), (int64_t)src.size());
 }
 //
-void qp_encode_2047(const void *src, int src_size, std::string &result);
+ZCC_LIB_API void qp_encode_2047(const void *src, int64_t src_size, std::string &result);
 inline void qp_encode_2047(const std::string &src, std::string &result)
 {
-    return qp_encode_2047(src.c_str(), src.size(), result);
+    return qp_encode_2047(src.c_str(), (int64_t)src.size(), result);
 }
-std::string qp_encode_2047(const void *src, int src_size);
+ZCC_LIB_API std::string qp_encode_2047(const void *src, int64_t src_size);
 inline std::string qp_encode_2047(const std::string &src)
 {
-    return qp_encode_2047(src.c_str(), src.size());
+    return qp_encode_2047(src.c_str(), (int64_t)src.size());
 }
-void qp_decode_2047(const void *src, int src_size, std::string &str);
+ZCC_LIB_API void qp_decode_2047(const void *src, int64_t src_size, std::string &str);
 inline void qp_decode_2047(const std::string &src, std::string &str)
 {
-    qp_decode_2047(src.c_str(), src.size(), str);
+    qp_decode_2047(src.c_str(), (int64_t)src.size(), str);
 }
-std::string qp_decode_2047(const void *src, int src_size);
+ZCC_LIB_API std::string qp_decode_2047(const void *src, int64_t src_size);
 inline std::string qp_decode_2047(const std::string &src)
 {
-    return qp_decode_2047(src.c_str(), src.size());
+    return qp_decode_2047(src.c_str(), (int64_t)src.size());
 }
-int qp_decode_get_valid_len(const void *src, int src_size);
+ZCC_LIB_API int64_t qp_decode_get_valid_len(const void *src, int64_t src_size);
 // hex
-void hex_encode(const void *src, int src_size, std::string &str);
+ZCC_LIB_API void hex_encode(const void *src, int64_t src_size, std::string &str);
 inline void hex_encode(const std::string &src, std::string &str)
 {
-    hex_encode(src.c_str(), src.size(), str);
+    hex_encode(src.c_str(), (int64_t)src.size(), str);
 }
-std::string hex_encode(const void *src, int src_size);
+ZCC_LIB_API std::string hex_encode(const void *src, int64_t src_size);
 inline std::string hex_encode(const std::string &src)
 {
-    return hex_encode(src.c_str(), src.size());
+    return hex_encode(src.c_str(), (int64_t)src.size());
 }
-void hex_decode(const void *src, int src_size, std::string &str);
+ZCC_LIB_API void hex_decode(const void *src, int64_t src_size, std::string &str);
 inline void hex_decode(const std::string &src, std::string &str)
 {
-    hex_decode(src.c_str(), src.size(), str);
+    hex_decode(src.c_str(), (int64_t)src.size(), str);
 }
-std::string hex_decode(const void *src, int src_size);
+ZCC_LIB_API std::string hex_decode(const void *src, int64_t src_size);
 inline std::string hex_decode(const std::string &src)
 {
-    return hex_decode(src.c_str(), src.size());
+    return hex_decode(src.c_str(), (int64_t)src.size());
 }
 // xml
-void xml_unescape_string(const char *data, int len, std::string &content);
-inline void xml_unescape_string(std::string &content, const char *data, int len)
+ZCC_LIB_API void xml_unescape_string(const char *data, int64_t len, std::string &content);
+inline void xml_unescape_string(std::string &content, const char *data, int64_t len)
 {
     xml_unescape_string(data, len, content);
 }
-std::string xml_unescape_string(const char *data, int len);
+ZCC_LIB_API std::string xml_unescape_string(const char *data, int64_t len);
 // uu
-void uudecode(const void *src, int src_size, std::string &str);
+ZCC_LIB_API void uudecode(const void *src, int64_t src_size, std::string &str);
 // ncr
-int ncr_decode(int ins, char *wchar);
+ZCC_LIB_API int ncr_decode(int ins, char *wchar);
 // csv
 /**
  * 从 CSV 数据中反序列化一行数据.
  * 该函数根据 CSV 数据的格式,从给定的数据区间中反序列化一行数据,并将结果存储在 fields 向量中.
  * 返回下一行数据的起始位置.
  */
-const char *csv_unserialize_one_row(const char *data_start, const char *data_end, std::vector<std::string> &fields);
+ZCC_LIB_API const char *csv_unserialize_one_row(const char *data_start, const char *data_end, std::vector<std::string> &fields);
 //
-std::string csv_serialize_one_field(const std::string &field);
+ZCC_LIB_API std::string csv_serialize_one_field(const std::string &field);
 
 /* hash ############################################################# */
 /* 最经典的hash函数, 需要更高级的可以考虑 crc16, crc32, crc64, 甚至md5 等*/
@@ -1774,19 +1564,19 @@ inline unsigned hash_djb(const void *buf, int64_t len, unsigned int initial = 53
 unsigned short int crc16(const void *data, int len = -1, unsigned short int init_value = 0);
 inline unsigned short int crc16(const std::string &data, unsigned short int init_value = 0)
 {
-    return crc16(data.c_str(), data.size(), init_value);
+    return crc16(data.c_str(), (int)data.size(), init_value);
 }
 unsigned int crc32(const void *data, int size = -1, unsigned int init_value = 0);
 inline unsigned int crc32(const std::string &data, unsigned int init_value = 0)
 {
-    return crc32(data.c_str(), data.size(), init_value);
+    return crc32(data.c_str(), (int)data.size(), init_value);
 }
 uint64_t crc64(const void *data, int size = -1, uint64_t init_value = 0);
 inline uint64_t crc64(const std::string &data, uint64_t init_value = 0)
 {
-    return crc64(data.c_str(), data.size(), init_value);
+    return crc64(data.c_str(), (int)data.size(), init_value);
 }
-std::string md5(const void *data, int len = -1);
+ZCC_LIB_API std::string md5(const void *data, int len = -1);
 inline std::string md5(const std::string &data)
 {
     return md5(data.c_str(), (unsigned int)data.size());
@@ -1795,7 +1585,7 @@ inline std::string md5(const std::string &data)
 /* config ########################################################## */
 // 线程, 读写不安全
 // 线程, 只有读是安全的
-class config : public std::map<std::string, std::string>
+class ZCC_LIB_API config : public std::map<std::string, std::string>
 {
 public:
     config();
@@ -1858,11 +1648,11 @@ public:
 private:
     void *unused_;
 };
-extern config var_main_config;
+ZCC_LIB_API extern config var_main_config;
 
 /* main argument ################################################### */
-extern bool var_memleak_check_enable;
-extern bool var_sigint_flag;
+ZCC_LIB_API extern bool var_memleak_check_enable;
+ZCC_LIB_API extern bool var_sigint_flag;
 
 zcc_general_namespace_begin(main_argument);
 struct option
@@ -1871,32 +1661,32 @@ struct option
     const char *val;
 };
 
-extern int var_argc;
-extern char **var_argv;
-extern std::vector<option> var_options;
-extern std::vector<const char *> var_parameters;
-extern int var_parameter_argc;
-extern char **var_parameter_argv;
-void run(int argc, char **argv, bool cmd_mode = true);
+ZCC_LIB_API extern int var_argc;
+ZCC_LIB_API extern char **var_argv;
+ZCC_LIB_API extern std::vector<option> var_options;
+ZCC_LIB_API extern std::vector<const char *> var_parameters;
+ZCC_LIB_API extern int var_parameter_argc;
+ZCC_LIB_API extern char **var_parameter_argv;
+ZCC_LIB_API void run(int argc, char **argv, bool cmd_mode = true);
 zcc_general_namespace_end(main_argument);
 
 /* os ############################################################### */
 // 进程 ID
-int get_process_id();
+ZCC_LIB_API int get_process_id();
 inline int getpid() { return get_process_id(); }
 
 // 父进程ID
-int get_parent_process_id();
+ZCC_LIB_API int get_parent_process_id();
 inline int getppid() { return get_parent_process_id(); }
 
 // 线程ID
-int get_thread_id();
+ZCC_LIB_API int get_thread_id();
 inline int gettid() { return get_thread_id(); }
 
 // 程序真实的绝对路径名称
-std::string get_cmd_pathname();
+ZCC_LIB_API std::string get_cmd_pathname();
 // 程序真实的名字
-std::string get_cmd_name();
+ZCC_LIB_API std::string get_cmd_name();
 
 #ifdef __linux__
 /**
@@ -1909,7 +1699,7 @@ std::string get_cmd_name();
  * @param cur_val 当前要设置的资源限制值。
  * @return bool 如果设置成功返回 true，失败返回 false。
  */
-bool quick_setrlimit(int cmd, unsigned long cur_val);
+ZCC_LIB_API bool quick_setrlimit(int cmd, unsigned long cur_val);
 
 /**
  * @brief 设置核心转储文件的最大大小。
@@ -1919,7 +1709,7 @@ bool quick_setrlimit(int cmd, unsigned long cur_val);
  * @param megabyte 核心转储文件的最大大小，单位为兆字节。
  * @return bool 如果设置成功返回 true，失败返回 false。
  */
-bool set_core_file_size(int megabyte);
+ZCC_LIB_API bool set_core_file_size(int megabyte);
 
 /**
  * @brief 设置进程的最大内存使用量。
@@ -1929,7 +1719,7 @@ bool set_core_file_size(int megabyte);
  * @param megabyte 进程的最大内存使用量，单位为兆字节。
  * @return bool 如果设置成功返回 true，失败返回 false。
  */
-bool set_max_mem(int megabyte);
+ZCC_LIB_API bool set_max_mem(int megabyte);
 
 /**
  * @brief 设置控制组（cgroup）的名称。
@@ -1939,7 +1729,7 @@ bool set_max_mem(int megabyte);
  * @param name 要设置的控制组名称。
  * @return bool 如果设置成功返回 true，失败返回 false。
  */
-bool set_cgroup_name(const char *name);
+ZCC_LIB_API bool set_cgroup_name(const char *name);
 
 /**
  * @brief 获取系统可用内存的大小。
@@ -1948,7 +1738,7 @@ bool set_cgroup_name(const char *name);
  *
  * @return int64_t 系统可用内存的大小，单位为字节。
  */
-int64_t get_MemAvailable();
+ZCC_LIB_API int64_t get_MemAvailable();
 
 /**
  * @brief 获取系统的 CPU 核心数。
@@ -1957,10 +1747,7 @@ int64_t get_MemAvailable();
  *
  * @return int 系统的 CPU 核心数。
  */
-int get_cpu_core_count();
-
-// 是否是终端
-bool isatty();
+ZCC_LIB_API int get_cpu_core_count();
 
 /**
  * @brief 改变进程的根目录并切换用户。
@@ -1971,23 +1758,42 @@ bool isatty();
  * @param user_name 要切换到的用户名称。
  * @return int 如果操作成功返回 0，失败返回一个非零错误码。
  */
-int chroot_user(const char *root_dir, const char *user_name);
+ZCC_LIB_API int chroot_user(const char *root_dir, const char *user_name);
 #endif // __linux__
 
-// 获取本机mac地址
-int get_mac_address(std::vector<std::string> &mac_list);
+// 是否是终端
+ZCC_LIB_API bool isatty();
 
-void signal(int signum, void (*handler)(int));
-void signal_ignore(int signum);
+// 用户目录
+ZCC_LIB_API const std::string &get_home_directory();
+
+//
+
+ZCC_LIB_API bool chdir(const std::string &dir);
+inline bool chdir(const char *dir)
+{
+    return chdir(std::string(dir));
+}
+
+// 获取本机mac地址
+ZCC_LIB_API int get_mac_address(std::vector<std::string> &mac_list);
+
+ZCC_LIB_API void signal(int signum, void (*handler)(int));
+ZCC_LIB_API void signal_ignore(int signum);
 
 /* fs ############################################################### */
+// 如果未定义 Z_MAX_PATH，则定义其值为 10240
+#ifndef Z_MAX_PATH
+#define Z_MAX_PATH 10240
+#endif // Z_MAX_PATH
+
 /**
  * @brief 用于内存映射文件读取的类。
  *
  * 该类提供了打开、关闭内存映射文件的功能，
  * 并能获取映射文件的大小和数据指针。
  */
-class mmap_reader
+class ZCC_LIB_API mmap_reader
 {
 public:
     /**
@@ -2074,7 +1880,7 @@ inline FILE *fopen(const std::string &pathname, const char *mode)
  * @param stream 文件流指针。
  * @return int64_t 读取的字符数，失败时返回 -1。
  */
-int64_t getdelim(char **lineptr, int64_t *n, int delim, FILE *stream);
+ZCC_LIB_API int64_t getdelim(char **lineptr, int64_t *n, int delim, FILE *stream);
 /**
  * @brief 从文件流中读取一行，直到遇到换行符。
  *
@@ -2122,7 +1928,7 @@ inline int64_t getline(char **lineptr, int64_t *n, FILE *stream)
  * @param pathname 文件或目录的路径名。
  * @return std::string 绝对路径的字符串。
  */
-std::string realpath(const char *pathname);
+ZCC_LIB_API std::string realpath(const char *pathname);
 /**
  * @brief 重载的 realpath 函数，接受 std::string 类型的路径名。
  *
@@ -2144,7 +1950,7 @@ inline std::string realpath(const std::string &pathname)
  * @param statbuf 指向存储文件状态信息的结构体指针。
  * @return int 操作结果，成功返回 1，失败返回 -1。
  */
-int stat(const char *pathname, struct _stat64i32 *statbuf);
+ZCC_LIB_API int stat(const char *pathname, struct _stat64i32 *statbuf);
 #else // _WIN64
 // 非 Windows 平台下使用 stat 结构体进行文件状态查询
 #define zcc_stat struct stat
@@ -2155,7 +1961,7 @@ int stat(const char *pathname, struct _stat64i32 *statbuf);
  * @param statbuf 指向存储文件状态信息的结构体指针。
  * @return int 操作结果，成功返回 0，失败返回 -1。
  */
-int stat(const char *pathname, struct stat *statbuf);
+ZCC_LIB_API int stat(const char *pathname, struct stat *statbuf);
 #endif // _WIN64
 
 /**
@@ -2164,7 +1970,7 @@ int stat(const char *pathname, struct stat *statbuf);
  * @param pathname 文件的路径名。
  * @return int64_t 文件的大小，失败时返回 -1。
  */
-int64_t file_get_size(const char *pathname);
+ZCC_LIB_API int64_t file_get_size(const char *pathname);
 /**
  * @brief 重载的 file_get_size 函数，接受 std::string 类型的路径名。
  *
@@ -2182,7 +1988,7 @@ inline int64_t file_get_size(const std::string &pathname)
  * @param pathname 文件的路径名。
  * @return int  1/0/-1, 存在/不存在/发生错误
  */
-int file_exists(const char *pathname);
+ZCC_LIB_API int file_exists(const char *pathname);
 /**
  * @brief 重载的 file_exists 函数，接受 std::string 类型的路径名。
  *
@@ -2199,7 +2005,7 @@ inline int file_exists(const std::string &pathname)
  * @param pathname 文件路径(C字符串)
  * @return int 1:是普通文件, 0:不是普通文件, -1:发生错误
  */
-int file_is_regular(const char *pathname);
+ZCC_LIB_API int file_is_regular(const char *pathname);
 
 /**
  * @brief 检查指定路径是否为普通文件(std::string重载版本)
@@ -2216,7 +2022,7 @@ inline int file_is_regular(const std::string &pathname)
  * @param pathname 目录路径(C字符串)
  * @return int 1:是目录, 0:不是目录, -1:发生错误
  */
-int file_is_dir(const char *pathname);
+ZCC_LIB_API int file_is_dir(const char *pathname);
 
 /**
  * @brief 检查指定路径是否为目录(std::string重载版本)
@@ -2236,7 +2042,7 @@ inline int file_is_dir(const std::string &pathname)
  * @param len 要写入的数据长度。
  * @return int 失败返回 -1
  */
-int file_put_contents(const char *pathname, const void *data, int len);
+ZCC_LIB_API int file_put_contents(const char *pathname, const void *data, int len);
 /**
  * @brief 重载的 file_put_contents 函数，接受 std::string 类型的路径名。
  *
@@ -2258,7 +2064,7 @@ inline int file_put_contents(const std::string &pathname, const void *data, int 
  */
 inline int file_put_contents(const char *pathname, const std::string &data)
 {
-    return file_put_contents(pathname, data.c_str(), data.size());
+    return file_put_contents(pathname, data.c_str(), (int)data.size());
 }
 /**
  * @brief 重载的 file_put_contents 函数，接受 std::string 类型的路径名和数据。
@@ -2269,7 +2075,7 @@ inline int file_put_contents(const char *pathname, const std::string &data)
  */
 inline int file_put_contents(const std::string &pathname, const std::string &data)
 {
-    return file_put_contents(pathname.c_str(), data.c_str(), data.size());
+    return file_put_contents(pathname.c_str(), data.c_str(), (int)data.size());
 }
 
 /**
@@ -2278,7 +2084,7 @@ inline int file_put_contents(const std::string &pathname, const std::string &dat
  * @param pathname 文件的路径名。
  * @return std::string 文件的全部内容。
  */
-std::string file_get_contents(const char *pathname);
+ZCC_LIB_API std::string file_get_contents(const char *pathname);
 /**
  * @brief 重载的 file_get_contents 函数，接受 std::string 类型的路径名。
  *
@@ -2297,7 +2103,7 @@ inline std::string file_get_contents(const std::string &pathname)
  * @param bf 存储文件内容的字符串缓冲区。
  * @return int64_t 失败时返回 -1
  */
-int64_t file_get_contents(const char *pathname, std::string &bf);
+ZCC_LIB_API int64_t file_get_contents(const char *pathname, std::string &bf);
 /**
  * @brief 重载的 file_get_contents 函数，接受 std::string 类型的路径名。
  *
@@ -2317,14 +2123,14 @@ inline int64_t file_get_contents(const std::string &pathname, std::string &bf)
  * @param bf 存储文件部分内容的字符串缓冲区。
  * @return int64_t 失败时返回 -1。
  */
-int64_t file_get_contents_sample(const char *pathname, std::string &bf);
+ZCC_LIB_API int64_t file_get_contents_sample(const char *pathname, std::string &bf);
 /**
  * @brief 读取指定文件的部分内容。
  *
  * @param pathname 文件的路径名。
  * @return std::string 文件的部分内容。
  */
-std::string file_get_contents_sample(const char *pathname);
+ZCC_LIB_API std::string file_get_contents_sample(const char *pathname);
 inline std::string file_get_contents_sample(const std::string &pathname)
 {
     return file_get_contents_sample(pathname.c_str());
@@ -2336,13 +2142,13 @@ inline std::string file_get_contents_sample(const std::string &pathname)
  * @param bf 存储标准输入内容的字符串缓冲区。
  * @return int 失败返回 -1。
  */
-int stdin_get_contents(std::string &bf);
+ZCC_LIB_API int stdin_get_contents(std::string &bf);
 /**
  * @brief 从标准输入读取全部内容。
  *
  * @return std::string 标准输入的全部内容。
  */
-std::string stdin_get_contents();
+ZCC_LIB_API std::string stdin_get_contents();
 
 /**
  * @brief 复制文件
@@ -2350,7 +2156,7 @@ std::string stdin_get_contents();
  * @param destPathname 目标文件路径(C字符串)
  * @return int 成功返回1，失败返回-1
  */
-int file_copy(const char *sourcePathname, const char *destPathname);
+ZCC_LIB_API int file_copy(const char *sourcePathname, const char *destPathname);
 inline int file_copy(const std::string &sourcePathname, const std::string &destPathname)
 {
     return file_copy(sourcePathname.c_str(), destPathname.c_str());
@@ -2364,19 +2170,21 @@ inline int file_copy(const std::string &sourcePathname, const std::string &destP
  * @param mode 文件的访问权限。
  * @return int 文件描述符，失败时返回 -1。
  */
-int open(const char *pathname, int flags, int mode);
-/**
- * @brief 重载的 open 函数，接受 std::string 类型的路径名。
- *
- * @param pathname 文件的路径名。
- * @param flags 打开文件的标志。
- * @param mode 文件的访问权限。
- * @return int 文件描述符，失败时返回 -1。
- */
+ZCC_LIB_API int open(const char *pathname, int flags, int mode);
 inline int open(const std::string &pathname, int flags, int mode)
 {
     return open(pathname.c_str(), flags, mode);
 }
+
+// flags: r/r+, w/w+, a/a+
+ZCC_LIB_API int open(const char *pathname, const char *flags, int mode = 0644);
+inline int open(const std::string &pathname, const char *flags, int mode = 0644)
+{
+    return open(pathname.c_str(), flags, mode);
+}
+
+//
+ZCC_LIB_API int close_fd(int fd);
 
 /**
  * @brief 创建一个空文件，如果文件已存在则更新其访问和修改时间。
@@ -2384,7 +2192,8 @@ inline int open(const std::string &pathname, int flags, int mode)
  * @param pathname 文件的路径名。
  * @return int 操作成功返回 >= 0，失败返回 -1。
  */
-int touch(const char *pathname);
+ZCC_LIB_API int touch(const char *pathname);
+ZCC_LIB_API int touch(int fd);
 /**
  * @brief 重载的 touch 函数，接受 std::string 类型的路径名。
  *
@@ -2397,13 +2206,24 @@ inline int touch(const std::string &pathname)
 }
 
 /**
+ * @brief 更改文件或目录的访问权限。
+ */
+
+ZCC_LIB_API int chmod(const char *pathname, int mode);
+inline int chmod(const std::string &pathname, int mode)
+{
+    return chmod(pathname.c_str(), mode);
+}
+ZCC_LIB_API int fchmod(int fd, int mode);
+
+/**
  * @brief 创建多个目录。
  *
  * @param paths 存储目录路径的向量。
- * @param mode 目录的访问权限，默认为 0666。
+ * @param mode 目录的访问权限，默认为 0775。
  * @return int 操作成功返回 1，失败返回 -1。
  */
-int mkdir(std::vector<std::string> paths, int mode = 0666);
+ZCC_LIB_API int mkdir(std::vector<std::string> paths, int mode = 0775);
 /**
  * @brief 可变参数函数，创建多个目录。
  *
@@ -2412,15 +2232,19 @@ int mkdir(std::vector<std::string> paths, int mode = 0666);
  * @param ... 可变参数，后续的目录路径。
  * @return int 操作成功返回 >= 0，失败返回 -1。
  */
-int mkdir(int mode, const char *path1, ...);
+ZCC_LIB_API int mkdir(int mode, const char *path1, ...);
 /**
  * @brief 创建指定路径的目录。
  *
  * @param pathname 目录的路径名。
- * @param mode 目录的访问权限，默认为 0666。
+ * @param mode 目录的访问权限，默认为 0775。
  * @return int 操作成功返回 >= 0，失败返回 -1。
  */
-int mkdir(const char *pathname, int mode = 0666);
+ZCC_LIB_API int mkdir(const char *pathname, int mode = 0775);
+inline int mkdir(const std::string &pathname, int mode = 0775)
+{
+    return mkdir(pathname.c_str(), mode);
+}
 
 /**
  * @brief 重命名文件或目录。
@@ -2429,7 +2253,7 @@ int mkdir(const char *pathname, int mode = 0666);
  * @param newpath 新的文件或目录路径名。
  * @return int 操作成功返回 >= 0，失败返回 -1。
  */
-int rename(const char *oldpath, const char *newpath);
+ZCC_LIB_API int rename(const char *oldpath, const char *newpath);
 inline int rename(const std::string &oldpath, const std::string &newpath)
 {
     return rename(oldpath.c_str(), newpath.c_str());
@@ -2441,7 +2265,7 @@ inline int rename(const std::string &oldpath, const std::string &newpath)
  * @param pathname 文件的路径名。
  * @return int 操作成功返回 1/0(文件存在/不存在)，失败返回 -1。
  */
-int unlink(const char *pathname);
+ZCC_LIB_API int unlink(const char *pathname);
 /**
  * @brief 重载的 unlink 函数，接受 std::string 类型的路径名。
  *
@@ -2460,7 +2284,7 @@ inline int unlink(const std::string &pathname)
  * @param newpath 硬链接的路径名。
  * @return int 操作成功返回 0，失败返回 -1。
  */
-int link(const char *oldpath, const char *newpath);
+ZCC_LIB_API int link(const char *oldpath, const char *newpath);
 /**
  * @brief 强制创建一个硬链接，如果目标已存在则先删除。
  *
@@ -2469,7 +2293,7 @@ int link(const char *oldpath, const char *newpath);
  * @param tmpdir 临时目录的路径名。
  * @return int 操作成功返回 >= 0，失败返回 -1。
  */
-int link_force(const char *oldpath, const char *newpath, const char *tmpdir);
+ZCC_LIB_API int link_force(const char *oldpath, const char *newpath, const char *tmpdir);
 
 /**
  * @brief 创建一个符号链接。
@@ -2478,7 +2302,7 @@ int link_force(const char *oldpath, const char *newpath, const char *tmpdir);
  * @param newpath 符号链接的路径名。
  * @return int 操作成功返回 >= 0，失败返回 -1。
  */
-int symlink(const char *oldpath, const char *newpath);
+ZCC_LIB_API int symlink(const char *oldpath, const char *newpath);
 /**
  * @brief 强制创建一个符号链接，如果目标已存在则先删除。
  *
@@ -2487,7 +2311,7 @@ int symlink(const char *oldpath, const char *newpath);
  * @param tmpdir 临时目录的路径名。
  * @return int 操作成功返回 >= 0，失败返回 -1。
  */
-int symlink_force(const char *oldpath, const char *newpath, const char *tmpdir);
+ZCC_LIB_API int symlink_force(const char *oldpath, const char *newpath, const char *tmpdir);
 
 /**
  * @brief 创建一个快捷方式链接。
@@ -2496,7 +2320,7 @@ int symlink_force(const char *oldpath, const char *newpath, const char *tmpdir);
  * @param to 快捷方式的路径名。
  * @return bool 创建成功返回 true，失败返回 false。
  */
-bool create_shortcut_link(const char *from, const char *to);
+ZCC_LIB_API bool create_shortcut_link(const char *from, const char *to);
 /**
  * @brief 重载的 create_shortcut_link 函数，接受 std::string 类型的路径名。
  *
@@ -2516,7 +2340,7 @@ inline bool create_shortcut_link(const std::string &from, const std::string &to)
  * @param recurse_mode 是否递归删除，默认为 false。
  * @return int 操作成功返回 1，失败返回 -1。
  */
-int rmdir(const char *pathname, bool recurse_mode = false);
+ZCC_LIB_API int rmdir(const char *pathname, bool recurse_mode = false);
 /**
  * @brief 重载的 rmdir 函数，接受 std::string 类型的路径名。
  *
@@ -2529,7 +2353,11 @@ inline int rmdir(const std::string &pathname, bool recurse_mode = false)
     return rmdir(pathname.c_str(), recurse_mode);
 }
 
-int rmdir_by_system_cmd(const char *pathname);
+ZCC_LIB_API int rmdir_by_system_cmd(const char *pathname);
+
+/* 如果文件不存在返回 false*/
+/* 如果修改时间过期, 则 touch, 失败 返回 false */
+ZCC_LIB_API bool check_or_modify_file_mtime(const std::string &pathname, int64_t expire_seconds);
 
 /**
  * @brief 表示目录项信息的结构体。
@@ -2559,7 +2387,7 @@ struct dir_item_info
  * @param filenames 存储目录项信息的向量。
  * @return int 扫描到的目录项数量，失败时返回 -1。
  */
-int scandir(const char *dirname, std::vector<dir_item_info> &filenames);
+ZCC_LIB_API int scandir(const char *dirname, std::vector<dir_item_info> &filenames);
 inline int scandir(const std::string &dirname, std::vector<dir_item_info> &filenames)
 {
     return scandir(dirname.c_str(), filenames);
@@ -2571,7 +2399,7 @@ inline int scandir(const std::string &dirname, std::vector<dir_item_info> &filen
  * @param dirname 目录的路径名。
  * @return std::vector<dir_item_info> 包含目录项信息的向量。
  */
-std::vector<dir_item_info> scandir(const char *dirname);
+ZCC_LIB_API std::vector<dir_item_info> scandir(const char *dirname);
 /**
  * @brief 重载的 scandir 函数，接受 std::string 类型的路径名。
  *
@@ -2589,7 +2417,7 @@ inline std::vector<dir_item_info> scandir(const std::string &dirname)
  * @param filename 原始文件名。
  * @return std::string 格式化后的文件名。
  */
-std::string format_filename(const char *filename);
+ZCC_LIB_API std::string format_filename(const char *filename);
 /**
  * @brief 重载的 format_filename 函数，接受 std::string 类型的文件名。
  *
@@ -2608,7 +2436,7 @@ inline std::string format_filename(const std::string &filename)
  * @param pathname_match 文件名匹配模式，默认为 nullptr。
  * @return std::vector<std::string> 匹配的文件路径向量。
  */
-std::vector<std::string> find_file_sample(std::vector<const char *> dir_or_file, const char *pathname_match = nullptr);
+ZCC_LIB_API std::vector<std::string> find_file_sample(std::vector<const char *> dir_or_file, const char *pathname_match = nullptr);
 /**
  * @brief 在指定目录或文件中查找匹配的文件。
  *
@@ -2618,7 +2446,7 @@ std::vector<std::string> find_file_sample(std::vector<const char *> dir_or_file,
  * @return std::vector<std::string> 匹配的文件路径向量。
  */
 
-std::vector<std::string> find_file_sample(const char **dir_or_file, int item_count, const char *pathname_match = nullptr);
+ZCC_LIB_API std::vector<std::string> find_file_sample(const char **dir_or_file, int item_count, const char *pathname_match = nullptr);
 
 /**
  * @brief 拼接多个路径字符串为一个完整的路径。
@@ -2630,7 +2458,7 @@ std::vector<std::string> find_file_sample(const char **dir_or_file, int item_cou
  * @param ... 可变参数列表，包含后续的路径字符串。
  * @return std::string 拼接后的完整路径字符串。
  */
-std::string path_concat(const char *path1, ...);
+ZCC_LIB_API std::string path_concat(const char *path1, ...);
 
 /**
  * @brief 获取指定路径的父目录名称。
@@ -2641,10 +2469,10 @@ std::string path_concat(const char *path1, ...);
  * @param pathname 要处理的路径字符串。
  * @return std::string 父目录的名称，如果没有父目录则返回空字符串。
  */
-std::string get_dirname(const std::string &pathname);
+ZCC_LIB_API std::string get_dirname(const std::string &pathname);
 
 //
-std::string get_filename(const std::string &pathname);
+ZCC_LIB_API std::string get_filename(const std::string &pathname);
 
 /**
  * @brief 从给定的路径名中提取目录名和文件名。
@@ -2656,7 +2484,7 @@ std::string get_filename(const std::string &pathname);
  * @param dirname 用于存储提取出的目录名的引用。
  * @param filename 用于存储提取出的文件名的引用。
  */
-void get_dirname_and_filename(const std::string &pathname, std::string &dirname, std::string &filename);
+ZCC_LIB_API void get_dirname_and_filename(const std::string &pathname, std::string &dirname, std::string &filename);
 
 /**
  * @brief 生成用于转储文件的路径名。
@@ -2670,12 +2498,12 @@ void get_dirname_and_filename(const std::string &pathname, std::string &dirname,
  * @param max_loop 最大循环次数，用于生成唯一的文件名，默认为 -1。
  * @return 生成的用于转储文件的完整路径名。
  */
-std::string get_pathname_for_dump(const char *dirname, const char *filename, int max_loop = -1);
+ZCC_LIB_API std::string get_pathname_for_dump(const char *dirname, const char *filename, int max_loop = -1);
 inline std::string get_pathname_for_dump(const std::string &dirname, const std::string &filename, int max_loop = -1)
 {
     return get_pathname_for_dump(dirname.c_str(), filename.c_str(), max_loop);
 }
-std::string get_pathname_for_dump(const char *pathname, int max_loop = -1);
+ZCC_LIB_API std::string get_pathname_for_dump(const char *pathname, int max_loop = -1);
 inline std::string get_pathname_for_dump(const std::string &pathname, int max_loop = -1)
 {
     return get_pathname_for_dump(pathname.c_str(), max_loop);
@@ -2691,14 +2519,19 @@ inline std::string get_pathname_for_dump(const std::string &pathname, int max_lo
  * @param timeout 文件的超时时间，单位为秒。
  * @return bool 清理操作是否成功。
  */
-bool clear_expired_file_in_dir(std::string dirname, int64_t timeout);
+ZCC_LIB_API bool clear_expired_file_in_dir(std::string dirname, int64_t timeout);
 
 // flock
-int flock(int fd, bool exclusive = true);
-int try_flock(int fd, bool exclusive = true);
-bool funlock(int fd);
+ZCC_LIB_API int flock(int fd, bool exclusive = true);
+inline int flock_ex(int fd) { return flock(fd, true); }
+inline int flock_sh(int fd) { return flock(fd, false); }
+ZCC_LIB_API int try_flock(int fd, bool exclusive = true);
+inline int try_flock_ex(int fd) { return try_flock(fd, true); }
+inline int try_flock_sh(int fd) { return try_flock(fd, false); }
+ZCC_LIB_API bool funlock(int fd);
+inline bool flock_un(int fd) { return funlock(fd); }
 
-class flocker
+class ZCC_LIB_API flocker
 {
 public:
     flocker();
@@ -2721,44 +2554,64 @@ private:
     int fd_{-1};
 };
 
+//
+ZCC_LIB_API void global_low_level_mutex_lock();
+ZCC_LIB_API void global_low_level_mutex_unlock();
+
+//
+struct os_rwlocker_t;
+class ZCC_LIB_API rwlocker
+{
+public:
+    rwlocker();
+    ~rwlocker();
+    void read_lock();
+    void write_lock();
+    void unlock();
+
+private:
+    os_rwlocker_t *rwlocker_{nullptr};
+};
+
+/* dlopen ########################################################### */
+ZCC_LIB_API void *dlopen_auto(const std::string &lib_pathname_or_name, const std::string &symbol_to_check);
+ZCC_LIB_API void *dlopen(const std::string &lib_name);
+ZCC_LIB_API void *dlsym(void *handle, const std::string &symbol_name);
+ZCC_LIB_API bool dlclose(void *handle);
+
 /* io ############################################################### */
 static const int var_io_max_timeout = (3600 * 24 * 365 * 10);
 
 // 是否可读/可写
-int timed_read_write_wait_millisecond(int fd, int read_wait_timeout, int *readable, int *writeable);
-int timed_read_write_wait(int fd, int read_wait_timeout, int *readable, int *writeable);
+ZCC_LIB_API int timed_read_write_wait_millisecond(int fd, int read_wait_timeout, int *readable, int *writeable);
+ZCC_LIB_API int timed_read_write_wait(int fd, int read_wait_timeout, int *readable, int *writeable);
 // 带超时, 是否可读
-int timed_read_wait_millisecond(int fd, int wait_timeout);
-int timed_read_wait(int fd, int wait_timeout);
+ZCC_LIB_API int timed_read_wait_millisecond(int fd, int wait_timeout);
+ZCC_LIB_API int timed_read_wait(int fd, int wait_timeout);
 // 超时读
-int timed_read(int fd, void *buf, int size, int wait_timeout);
+ZCC_LIB_API int timed_read(int fd, void *buf, int size, int wait_timeout);
 // 带超时, 是否可写
-int timed_write_wait_millisecond(int fd, int wait_timeout);
-int timed_write_wait(int fd, int wait_timeout);
+ZCC_LIB_API int timed_write_wait_millisecond(int fd, int wait_timeout);
+ZCC_LIB_API int timed_write_wait(int fd, int wait_timeout);
 // 超时写
-int timed_write(int fd, const void *buf, int size, int wait_timeout);
+ZCC_LIB_API int timed_write(int fd, const void *buf, int size, int wait_timeout);
 // 是否可读写
-int rwable(int fd);
+ZCC_LIB_API int rwable(int fd);
 // 是否可读
-int readable(int fd);
+ZCC_LIB_API int readable(int fd);
 // 是否可写
-int writeable(int fd);
+ZCC_LIB_API int writeable(int fd);
 // 设置fd阻塞
-int nonblocking(int fd, bool tf = true);
-#ifdef _WIN64
-int close(HANDLE fd);
-#else  // _WIN64
-int close(int fd);
-#endif // _WIN64
+ZCC_LIB_API int nonblocking(int fd, bool tf = true);
 // close_on_exec
-int close_on_exec(int fd, bool tf = true);
+ZCC_LIB_API int close_on_exec(int fd, bool tf = true);
 // 获取真实可读字节数
-int get_readable_count(int fd);
+ZCC_LIB_API int get_readable_count(int fd);
 #ifdef __linux__
 // 跨父子进程接收 fd
-int recv_fd(int fd);
+ZCC_LIB_API int recv_fd(int fd);
 // 跨父子进程发送 fd
-int send_fd(int fd, int sendfd);
+ZCC_LIB_API int send_fd(int fd, int sendfd);
 #endif // __linux__
 
 /* socket ########################################################### */
@@ -2776,7 +2629,7 @@ static const char var_tcp_listen_type_fifo = 'f';
  *
  * @return int 成功时返回0，失败时返回非零错误码。
  */
-int WSAStartup();
+ZCC_LIB_API int WSAStartup();
 
 /**
  * @brief 关闭指定的套接字描述符。
@@ -2786,7 +2639,7 @@ int WSAStartup();
  * @param fd 要关闭的套接字描述符。
  * @return int 成功时返回0，失败时返回非零错误码。
  */
-int close_socket(int fd);
+ZCC_LIB_API int close_socket(int fd);
 
 /**
  * @brief 接受一个Unix域套接字的连接请求。
@@ -2796,7 +2649,7 @@ int close_socket(int fd);
  * @param fd 监听的Unix域套接字描述符。
  * @return int 成功时返回新的套接字描述符，失败时返回-1。
  */
-int unix_accept(int fd);
+ZCC_LIB_API int unix_accept(int fd);
 
 /**
  * @brief 接受一个Internet域套接字的连接请求。
@@ -2806,7 +2659,7 @@ int unix_accept(int fd);
  * @param fd 监听的Internet域套接字描述符。
  * @return int 成功时返回新的套接字描述符，失败时返回-1。
  */
-int inet_accept(int fd);
+ZCC_LIB_API int inet_accept(int fd);
 
 /**
  * @brief 根据指定的套接字类型接受连接请求。
@@ -2817,7 +2670,7 @@ int inet_accept(int fd);
  * @param type 套接字类型，用于指定是Unix域还是Internet域。
  * @return int 成功时返回新的套接字描述符，失败时返回-1。
  */
-int socket_accept(int fd, int type);
+ZCC_LIB_API int socket_accept(int fd, int type);
 
 /**
  * @brief 创建并监听一个Unix域套接字。
@@ -2828,7 +2681,7 @@ int socket_accept(int fd, int type);
  * @param backlog 监听队列的最大长度，默认为128。
  * @return int 成功时返回监听的套接字描述符，失败时返回-1。
  */
-int unix_listen(char *addr, int backlog = 128);
+ZCC_LIB_API int unix_listen(char *addr, int backlog = 128);
 
 /**
  * @brief 创建并监听一个Internet域套接字。
@@ -2840,7 +2693,7 @@ int unix_listen(char *addr, int backlog = 128);
  * @param backlog 监听队列的最大长度，默认为128。
  * @return int 成功时返回监听的套接字描述符，失败时返回-1。
  */
-int inet_listen(const char *sip, int port, int backlog = 128);
+ZCC_LIB_API int inet_listen(const char *sip, int port, int backlog = 128);
 
 /**
  * @brief 创建并监听一个命名管道（FIFO）。
@@ -2850,7 +2703,7 @@ int inet_listen(const char *sip, int port, int backlog = 128);
  * @param path 命名管道的路径。
  * @return int 成功时返回监听的文件描述符，失败时返回-1。
  */
-int fifo_listen(const char *path);
+ZCC_LIB_API int fifo_listen(const char *path);
 
 /**
  * @brief 根据网络路径创建并监听套接字。
@@ -2862,7 +2715,17 @@ int fifo_listen(const char *path);
  * @param type 可选参数，用于返回监听的套接字类型。
  * @return int 成功时返回监听的套接字描述符，失败时返回-1。
  */
-int netpath_listen(const char *netpath, int backlog = 128, int *type = nullptr);
+ZCC_LIB_API int netpath_listen(const char *netpath, int backlog = 128, int *type = nullptr);
+
+/**
+ * @brief 获取最后连接的目标地址。
+ *
+ * 该函数用于获取最后连接的目标地址字符串。
+ * 线程安全, 协程不安全。
+ *
+ * @return const std::string& 最后连接的目标地址字符串引用。
+ */
+ZCC_LIB_API const std::string &get_last_connected_destination();
 
 /**
  * @brief 连接到指定的Unix域套接字。
@@ -2873,7 +2736,7 @@ int netpath_listen(const char *netpath, int backlog = 128, int *type = nullptr);
  * @param timeout 连接超时时间（毫秒）。
  * @return int 成功时返回连接的套接字描述符，失败时返回-1。
  */
-int unix_connect(const char *addr, int timeout);
+ZCC_LIB_API int unix_connect(const char *addr, int timeout);
 
 /**
  * @brief 连接到指定的Internet域套接字。
@@ -2885,7 +2748,7 @@ int unix_connect(const char *addr, int timeout);
  * @param timeout 连接超时时间（毫秒）。
  * @return int 成功时返回连接的套接字描述符，失败时返回-1。
  */
-int inet_connect(const char *dip, int port, int timeout);
+ZCC_LIB_API int inet_connect(const char *dip, int port, int timeout);
 
 /**
  * @brief 连接到指定主机的指定端口。
@@ -2897,7 +2760,7 @@ int inet_connect(const char *dip, int port, int timeout);
  * @param timeout 连接超时时间（毫秒）。
  * @return int 成功时返回连接的套接字描述符，失败时返回-1。
  */
-int host_connect(const char *host, int port, int timeout);
+ZCC_LIB_API int host_connect(const char *host, int port, int timeout);
 
 /**
  * @brief 根据网络路径连接到目标套接字。
@@ -2908,7 +2771,7 @@ int host_connect(const char *host, int port, int timeout);
  * @param timeout 连接超时时间（毫秒）。
  * @return int 成功时返回连接的套接字描述符，失败时返回-1。
  */
-int netpath_connect(const char *netpath, int timeout);
+ZCC_LIB_API int netpath_connect(const char *netpath, int timeout);
 
 /**
  * @brief 获取与指定套接字连接的对端地址和端口。
@@ -2921,45 +2784,45 @@ int netpath_connect(const char *netpath, int timeout);
  * @return int 成功时返回0，失败时返回非零错误码。
  */
 
-int get_peername(int sockfd, int *host, int *port);
+ZCC_LIB_API int get_peername(int sockfd, int *host, int *port);
 
 /* dns ############################################################## */
 // 获取域名/主机名的ip地址, 存储到addrs
-int get_hostaddr(const char *host, std::vector<std::string> &addrs);
+ZCC_LIB_API int get_hostaddr(const char *host, std::vector<std::string> &addrs);
 inline int get_hostaddr(const std::string &host, std::vector<std::string> &addrs)
 {
     return get_hostaddr(host.c_str(), addrs);
 }
 // 获取本机ip地址
-int get_localaddr(std::vector<std::string> &addrs);
+ZCC_LIB_API int get_localaddr(std::vector<std::string> &addrs);
 // ip 地址转 int
-int get_ipint(const char *ipstr);
+ZCC_LIB_API int get_ipint(const char *ipstr);
 inline int get_ipint(const std::string &ipstr)
 {
     return get_ipint(ipstr.c_str());
 }
 // 获得ip地址的网段地址
-int get_network(int ip, int masklen);
+ZCC_LIB_API int get_network(int ip, int masklen);
 // 获得ip地址的掩码
-int get_netmask(int masklen);
+ZCC_LIB_API int get_netmask(int masklen);
 // 获得ip地址的广播地址
-int get_broadcast(int ip, int masklen);
+ZCC_LIB_API int get_broadcast(int ip, int masklen);
 // 指定掩码, 最小的ip
-int get_ip_min(int ip, int masklen);
+ZCC_LIB_API int get_ip_min(int ip, int masklen);
 // 指定掩码, 最大的ip
-int get_ip_max(int ip, int masklen);
+ZCC_LIB_API int get_ip_max(int ip, int masklen);
 // 是不是 ip
-bool is_ip(const char *ip);
+ZCC_LIB_API bool is_ip(const char *ip);
 inline bool is_ip(const std::string &ip)
 {
     return is_ip(ip.c_str());
 }
 // 是否保留地址
-int is_intranet(int ip);
-int is_intranet2(const char *ip);
+ZCC_LIB_API int is_intranet(int ip);
+ZCC_LIB_API int is_intranet2(const char *ip);
 // ip 转字符串
-char *get_ipstring(int ip, char *ipstr);
-std::string get_ipstring(int ip);
+ZCC_LIB_API char *get_ipstring(int ip, char *ipstr);
+ZCC_LIB_API std::string get_ipstring(int ip);
 
 /* time ############################################################ */
 static const int64_t var_use_current_time = -20250428001;
@@ -2969,7 +2832,7 @@ static const int64_t var_max_millisecond_duration(3600LL * 24 * 365 * 10 * 1000)
 #else  // _WIN64
 static const int64_t var_max_millisecond_duration(3600L * 24 * 365 * 10 * 1000);
 #endif // _WIN64
-struct timeofday
+struct ZCC_LIB_API timeofday
 {
     int64_t tv_sec;  /* seconds */
     int64_t tv_usec; /* microseconds */
@@ -2977,27 +2840,27 @@ struct timeofday
 // MSVC 没类似函数
 struct timeofday gettimeofday();
 // 毫秒
-int64_t millisecond();
+ZCC_LIB_API int64_t millisecond();
 // 睡眠毫秒
-void sleep_millisecond(int64_t delay);
+ZCC_LIB_API void sleep_millisecond(int64_t delay);
 // 睡眠直到
-int64_t millisecond_to(int64_t stamp);
+ZCC_LIB_API int64_t millisecond_to(int64_t stamp);
 // 秒
-int64_t second();
+ZCC_LIB_API int64_t second();
 // 睡眠
-void sleep(int64_t delay);
+ZCC_LIB_API void sleep(int64_t delay);
 // 微秒
-int64_t microsecond();
+ZCC_LIB_API int64_t microsecond();
 
 // 获取 week day 的简称, 从 0 开始
 // {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-const char *get_day_abbr_of_week(int day);
+ZCC_LIB_API const char *get_day_abbr_of_week(int day);
 // 获 月份的简称, 从 0 开始
 // const char *months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-const char *get_month_abbr(int month);
+ZCC_LIB_API const char *get_month_abbr(int month);
 
 // http time
-std::string rfc7231_time(int64_t t);
+ZCC_LIB_API std::string rfc7231_time(int64_t t);
 inline std::string rfc7231_time()
 {
     return rfc7231_time(var_use_current_time);
@@ -3007,21 +2870,21 @@ ZCC_DEPRECATED inline std::string rfc1123_time() { return rfc7231_time(); }
 inline std::string http_time(int64_t t = 0) { return rfc7231_time(t); }
 
 // mime time
-std::string rfc822_time(int64_t t);
+ZCC_LIB_API std::string rfc822_time(int64_t t);
 inline std::string rfc822_time() { return rfc822_time(var_use_current_time); }
 inline std::string mail_time(int64_t t) { return rfc822_time(t); }
 inline std::string mail_time() { return rfc822_time(); }
 
 // 形如 xxxx-xx-xx xx:xx
-std::string simple_date_time(int64_t t);
+ZCC_LIB_API std::string simple_date_time(int64_t t);
 inline std::string simple_date_time() { return simple_date_time(var_use_current_time); }
 
 // 形如 xxxx-xx-xx xx:xx:xx
-std::string simple_date_time_with_second(int64_t t);
+ZCC_LIB_API std::string simple_date_time_with_second(int64_t t);
 inline std::string simple_date_time_with_second() { return simple_date_time_with_second(var_use_current_time); }
 
 // 类似GCC标准C库的 time_t timegm(struct tm *tm); windows平台没有
-int64_t timegm(struct tm *tm);
+ZCC_LIB_API int64_t timegm(struct tm *tm);
 
 /**
  * 解析符合ISO 8601:2004标准的时间字符串
@@ -3035,7 +2898,7 @@ int64_t timegm(struct tm *tm);
 //  --00
 //  102200Z
 //  102200-0800
-int64_t iso8601_2004_time_from_time(const std::string &s);
+ZCC_LIB_API int64_t iso8601_2004_time_from_time(const std::string &s);
 
 /**
  * 解析符合ISO 8601:2004标准的日期时间字符串
@@ -3065,7 +2928,7 @@ int64_t iso8601_2004_time_from_time(const std::string &s);
 //  T--00
 //  T102200Z
 //  T102200-0800
-int64_t iso8601_2004_time_from_date(const std::string &s, bool day_is_preferred);
+ZCC_LIB_API int64_t iso8601_2004_time_from_date(const std::string &s, bool day_is_preferred);
 
 /* zcc end ######################################################### */
 zcc_namespace_end;

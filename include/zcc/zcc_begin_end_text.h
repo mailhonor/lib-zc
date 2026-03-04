@@ -25,7 +25,7 @@ struct begin_end_text_node_param
     std::string value;
 };
 
-class begin_end_text_node
+class ZCC_LIB_API begin_end_text_node
 {
 public:
     static begin_end_text_node *parse(const char *text, int text_len);

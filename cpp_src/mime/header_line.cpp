@@ -13,8 +13,8 @@ zcc_namespace_begin;
 std::string mail_parser::header_line_unescape(const char *in_line, int64_t in_len)
 {
     std::string result;
-    int64_t ch, i;
-    char *src = (char *)(void *)(in_line);
+    int ch, i;
+    unsigned char *src = (unsigned char *)(void *)(in_line);
 
     for (i = 0; i < in_len; i++)
     {
@@ -45,7 +45,7 @@ std::string mail_parser::header_line_unescape(const char *in_line, int64_t in_le
             }
             result.push_back('\n');
         }
-        result.push_back(ch);
+        result.push_back((char)ch);
     }
     return result;
 }
@@ -115,7 +115,7 @@ std::vector<mail_parser::header_line_node> mail_parser::header_line_to_node_vect
     std::vector<header_line_node> node_vec;
     if (in_len < 0)
     {
-        in_len = std::strlen(in_line);
+        in_len = (int)std::strlen(in_line);
     }
     if (in_len < 1)
     {
@@ -217,7 +217,7 @@ std::string mail_parser::header_line_get_utf8(const char *src_charset_def, const
     std::string result;
     if (in_len == -1)
     {
-        in_len = strlen(in_line);
+        in_len = (int)strlen(in_line);
     }
     if (in_len < 1)
     {

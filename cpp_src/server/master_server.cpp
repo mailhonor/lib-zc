@@ -28,13 +28,9 @@
 #include <time.h>
 #include <unistd.h>
 
-#define mydebug(fmt, args...)      \
-    {                              \
-        if (_log_debug_enable)     \
-        {                          \
-            zcc_info(fmt, ##args); \
-        }                          \
-    }
+#define mydebug            \
+    if (_log_debug_enable) \
+    zcc_debug_output
 
 zcc_namespace_begin;
 
@@ -643,7 +639,7 @@ static void init_all(int argc, char **argv)
         exit(0);
     }
 
-    _log_debug_enable = var_main_config.get_bool("DEBUG");
+    _log_debug_enable = var_main_config.get_bool("master-server-debug");
     try_lock = var_main_config.get_bool("try-lock");
     lock_file = var_main_config.get_cstring("pid-file");
     config_path = var_main_config.get_string("C");

@@ -40,7 +40,7 @@ int imap_client::parse_imap_result(const char *key_line)
     }
 }
 
-int imap_client::parse_imap_result(char tag, const char *line)
+int imap_client::parse_imap_result(int tag, const char *line)
 {
     if ((line[0] != tag) && (line[0] != '*'))
     {
@@ -74,7 +74,7 @@ int imap_client::parse_imap_result(char tag, const char *line)
     }
 }
 
-int imap_client::parse_imap_result(char tag, const response_tokens &response_tokens)
+int imap_client::parse_imap_result(int tag, const response_tokens &response_tokens)
 {
     auto &token_vector = response_tokens.token_vector_;
     if (token_vector.size() < 2)
@@ -125,7 +125,7 @@ std::string imap_client::escape_string(const char *s, int slen)
     int ch, i;
     if (slen < 0)
     {
-        slen = std::strlen(s);
+        slen = (int)std::strlen(s);
     }
     r.push_back('"');
     for (i = 0; i < slen; i++)
@@ -153,7 +153,7 @@ std::string imap_client::escape_string(const char *s, int slen)
             r.push_back('\\');
             break;
         }
-        r.push_back(ch);
+        r.push_back((char)ch);
     }
     r.push_back('"');
     if (flag_size)
@@ -161,7 +161,7 @@ std::string imap_client::escape_string(const char *s, int slen)
         r.clear();
         if (slen < 0)
         {
-            slen = std::strlen(s);
+            slen = (int)std::strlen(s);
         }
         zcc::sprintf_1024(r, "{%d}\r\n", slen);
         r.append(s, slen);
@@ -182,7 +182,7 @@ std::string imap_client::imap_utf7_to_utf8(const char *str, int slen)
     std::string r, tmpr, tmps;
     if (slen < 0)
     {
-        slen = std::strlen(str);
+        slen = (int)std::strlen(str);
     }
     const unsigned char *ps = (const unsigned char *)str, *end = ps + slen;
     const unsigned char *p;
@@ -248,7 +248,7 @@ std::string imap_client::utf8_to_imap_utf7(const char *str, int slen)
     std::string r, tmpr, tmps;
     if (slen < 0)
     {
-        slen = std::strlen(str);
+        slen = (int)std::strlen(str);
     }
     const unsigned char *ps = (const unsigned char *)str, *end = ps + slen;
 
@@ -306,4 +306,41 @@ err:
     return r;
 }
 
+std::string imap_client::leaf_name_utf7_to_utf8(const std::string &pathname, char seperator)
+{
+    std::string tmpstr = imap_client::imap_utf7_to_utf8(pathname);
+
+    if ((!tmpstr.empty()) && (tmpstr.back() == seperator))
+    {
+        tmpstr.pop_back();
+    }
+    auto spos = tmpstr.find_last_of(seperator);
+    if (spos == std::string::npos)
+    {
+        return tmpstr;
+    }
+    else
+    {
+        return tmpstr.substr(spos + 1);
+    }
+}
+
+std::string imap_client::parent_name_utf7_to_utf8(const std::string &pathname, char seperator)
+{
+    std::string tmpstr = imap_client::imap_utf7_to_utf8(pathname);
+
+    if ((!tmpstr.empty()) && (tmpstr.back() == seperator))
+    {
+        tmpstr.pop_back();
+    }
+    auto spos = tmpstr.find_last_of(seperator);
+    if ((spos == std::string::npos) || (spos < 1))
+    {
+        return "";
+    }
+    else
+    {
+        return tmpstr.substr(0, spos - 1);
+    }
+}
 zcc_namespace_end;

@@ -14,7 +14,7 @@ uint64_t crc64(const void *data, int size, uint64_t init_value)
 {
     if (size < 0)
     {
-        size = std::strlen((const char *)(void *)data);
+        size = (int)std::strlen((const char *)(void *)data);
     }
     int i;
     uint64_t crc = init_value;

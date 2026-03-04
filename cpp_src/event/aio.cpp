@@ -8,8 +8,6 @@
 
 #ifdef __linux__
 
-#pragma GCC diagnostic ignored "-Wpacked-not-aligned"
-
 #include "zcc/zcc_aio.h"
 #include "zcc/zcc_openssl.h"
 #include "zcc/zcc_rbtree.h"
@@ -275,7 +273,11 @@ static void ___aio_cache_shift(aio_engine *engine_, aio_rwbuf_list_t *ioc, const
         }
         else
         {
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
             rwb->p1 += len;
+#pragma GCC diagnostic pop
             len = 0;
         }
     }
@@ -339,7 +341,10 @@ static void ___aio_cache_append(aio_engine *engine_, aio_rwbuf_list_t *ioc, cons
             if (ioc->tail)
             {
                 ioc->tail->next = rwb;
-                ioc->tail->p2 = p2;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+                ioc->tail->p1 = p2;
+#pragma GCC diagnostic pop
             }
             else
             {
@@ -355,7 +360,10 @@ static void ___aio_cache_append(aio_engine *engine_, aio_rwbuf_list_t *ioc, cons
         }
         cdata[p2] = buf[i];
     }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
     rwb->p2 = p2;
+#pragma GCC diagnostic pop
     ioc->len += len;
 }
 
@@ -462,7 +470,10 @@ static void _aio_event_monitor(aio_engine *engine_, int monitor_cmd)
             zcc_fatal("epoll_ctl %s fd=%d(%m)", (old_input_events ? "mod" : "add"), engine_->fd);
         }
     }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
     engine_->old_input_events = new_input_events;
+#pragma GCC diagnostic pop
 }
 
 static inline aio_engine *get_aio_engine_by_rbnode_time(rbtree_node_t *n)
@@ -554,7 +565,7 @@ static int _aio_io_read(aio_engine *engine_, void *buf, int len)
     {
         while (1)
         {
-            if ((ret = read(engine_->fd, buf, len)) > 0)
+            if ((ret = (int)read(engine_->fd, buf, len)) > 0)
             {
                 engine_->is_io_ok_once = 1;
                 return ret;
@@ -616,7 +627,7 @@ int _aio_io_write(aio_engine *engine_, const void *buf, int len)
     {
         while (1)
         {
-            if ((ret = write(engine_->fd, buf, len)) >= 0)
+            if ((ret = (int)write(engine_->fd, buf, len)) >= 0)
             {
                 if (ret > 0)
                 {
@@ -926,7 +937,7 @@ static void _active_read_delimiter(aio_engine *engine_)
         rlen = -1;
         if ((data = (char *)memchr(buf, delimiter, ret)))
         {
-            rlen = engine_->read_cache.len - ret + (data - buf + 1);
+            rlen = engine_->read_cache.len - ret + (int)(data - buf + 1);
             if (rlen > max_len)
             {
                 rlen = max_len;
@@ -1363,7 +1374,7 @@ void aio::readn(int strict_len, std::function<void()> callback)
 void aio::read_delimiter(int delimiter, int max_len, std::function<void()> callback)
 {
     engine_->action_type = action_read_delimiter;
-    engine_->delimiter = delimiter;
+    engine_->delimiter = (char)delimiter;
     engine_->is_delimiter_checked = 0;
     engine_->want_read_len = max_len;
     engine_->callback = callback;
@@ -1392,7 +1403,7 @@ int aio::cache_write(const void *buf, int len)
 {
     if (len < 0)
     {
-        len = std::strlen((const char *)buf);
+        len = (int)std::strlen((const char *)buf);
     }
     ___aio_cache_append(engine_, &(engine_->write_cache), buf, len);
     return len;
@@ -1415,7 +1426,7 @@ void aio::cache_write_direct(const void *buf, int len)
 {
     if (len < 0)
     {
-        len = std::strlen((const char *)buf);
+        len = (int)std::strlen((const char *)buf);
     }
 
     aio_rwbuf_t *rwb = (aio_rwbuf_t *)calloc(1, sizeof(aio_rwbuf_t));
@@ -1452,7 +1463,7 @@ void aio::cache_write_cint_and_data(const void *data, int len)
 {
     if (len < 0)
     {
-        len = strlen((char *)(void *)data);
+        len = (int)strlen((char *)(void *)data);
     }
     char sbuf[32];
     int ret = cint_put(len, sbuf);
@@ -1623,7 +1634,7 @@ static int _base_check_timeout(aio_base_engine *eb)
         int64_t delay = millisecond_to(engine_->cutoff_time);
         if (delay > 0)
         {
-            return (delay > 1000 ? 1000 : delay);
+            return (int)(delay > 1000 ? 1000 : delay);
         }
         rbtree_detach(timer_tree, rn);
         engine_->in_timeout_tree = 0;

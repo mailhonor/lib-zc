@@ -52,7 +52,7 @@ static int64_t find_value(char *buf, int64_t len, std::string &value, char **nbu
 {
     value.clear();
     char *ps = buf, *pend = ps + len, *p;
-    int64_t ch;
+    int ch;
 
     ps = ignore_chs(ps, pend - ps, " \t", 2);
     if (ps == pend)
@@ -79,13 +79,13 @@ static int64_t find_value(char *buf, int64_t len, std::string &value, char **nbu
                 if ((ch2 != '*') && (ch2 != '\\'))
                 {
                     // 兼容 Foxmail 较早的版本
-                    value.push_back(ch);
+                    value.push_back((char)ch);
                 }
-                value.push_back(ch2);
+                value.push_back((char)ch2);
             }
             else
             {
-                value.push_back(ch);
+                value.push_back((char)ch);
             }
         }
     }
@@ -166,7 +166,7 @@ static int64_t find_next_kv(char *buf, int64_t len, std::string &key, std::strin
     return 0;
 }
 
-void mail_parser::header_line_get_params(const char *in_line, int64_t in_len, std::string &val, std::vector<std::tuple<std::string, std::string>> &params)
+void mail_parser::header_line_get_params(const char *in_line, int64_t in_len, std::string &val, std::vector<param_node> &params)
 {
     char *ps = (char *)(void *)in_line, *pend = ps + in_len;
     if (find_value(ps, pend - ps, val, &ps, 0))
@@ -182,7 +182,10 @@ void mail_parser::header_line_get_params(const char *in_line, int64_t in_len, st
         {
             break;
         }
-        params.push_back(std::make_tuple(param_key, param_value));
+        param_node kv;
+        kv.key_ = param_key;
+        kv.value_ = param_value;
+        params.push_back(kv);
     }
 }
 

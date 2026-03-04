@@ -23,7 +23,7 @@ int imap_client::cmd_search(std::vector<int> &uid_vector, const std::string &sea
     linebuf.clear();
     linebuf.append("S UID SEARCH ").append(search_string);
     fp_append(linebuf).fp_append("\r\n");
-    zcc_imap_client_debug_write_line(linebuf);
+    zcc_imap_client_debug_protocol_write(linebuf);
 
     while (1)
     {
@@ -31,15 +31,15 @@ int imap_client::cmd_search(std::vector<int> &uid_vector, const std::string &sea
         int len = fp_gets(linebuf, 1024 * 1024 * 100);
         if (len < 1024)
         {
-            zcc_imap_client_debug_read_line(linebuf);
+            zcc_imap_client_debug_protocol_read(linebuf);
         }
         else
         {
-            if (debug_mode_)
+            if (debug_protocol_mode_)
             {
                 intbuf = linebuf.substr(0, 1024);
                 intbuf.append(" ...");
-                zcc_imap_client_debug_read_line(intbuf);
+                zcc_imap_client_debug_protocol_read(intbuf);
             }
         }
         if (len < 6)
@@ -52,7 +52,7 @@ int imap_client::cmd_search(std::vector<int> &uid_vector, const std::string &sea
             if (uid_vector.size() > 1024 * 1024 * 10)
             {
                 need_close_connection_ = true;
-                zcc_imap_client_error("imap  返回结果太多 > %zd", uid_vector.size());
+                zcc_imap_client_debug("imap  返回结果太多 > %zd", uid_vector.size());
                 goto over;
             }
             if (linebuf[len - 1] != '\n')
@@ -60,11 +60,11 @@ int imap_client::cmd_search(std::vector<int> &uid_vector, const std::string &sea
                 need_close_connection_ = true;
                 if (len > 1024 * 1024 * 100 - 1)
                 {
-                    zcc_imap_client_error("imap 搜索结果返回太长 > %d", len);
+                    zcc_imap_client_debug("imap 搜索结果返回太长 > %d", len);
                 }
                 else
                 {
-                    zcc_imap_client_error("imap 返回结果没有换行符 > %d", len);
+                    zcc_imap_client_debug("imap 返回结果没有换行符 > %d", len);
                 }
                 goto over;
             }
@@ -112,10 +112,10 @@ over:
         {
             if ((!verbose_mode_) && (count++ > 1))
             {
-                zcc_imap_client_debug("搜索结果: %d (后面忽略; 显示全部结果, 用参数 --verbose)", *it);
+                zcc_imap_client_verbose("搜索结果: %d (后面忽略; 显示全部结果, 用参数 --verbose)", *it);
                 break;
             }
-            zcc_imap_client_debug("搜索结果: %d", *it);
+            zcc_imap_client_verbose("搜索结果: %d", *it);
         }
     }
     return r;
@@ -169,7 +169,7 @@ int imap_client::get_mail_list(mail_list_result &mail_list)
     linebuf.clear();
     linebuf.append("F FETCH 1:* (UID FLAGS)");
     fp_->append(linebuf).append("\r\n");
-    zcc_imap_client_debug_write_line(linebuf);
+    zcc_imap_client_debug_protocol_write(linebuf);
 
     tmp_verbose_mode_ = true;
     tmp_verbose_line_ = 0;
@@ -180,8 +180,7 @@ int imap_client::get_mail_list(mail_list_result &mail_list)
         {
             if ((token_vector.size() < 6) || (token_vector[3] != "(UID"))
             {
-                need_close_connection_ = true;
-                break;
+                continue;
             }
 
             mail_flags flags;
@@ -204,17 +203,23 @@ int imap_client::get_mail_list(mail_list_result &mail_list)
     return r;
 
 debug:
-    if (debug_mode_)
+    if (verbose_mode_)
     {
         int count = 0;
+        bool need_warning = false;
+        if (mail_list.size() > 5)
+        {
+            need_warning = true;
+        }
         for (auto it = mail_list.begin(); it != mail_list.end(); it++)
         {
-            if ((!verbose_mode_) && (count++ > 1))
+            zcc_imap_client_verbose("邮件列表结果: UID: % 6d, a: %d, s: %d, d: %d, f: %d, D: %d, R: %d", it->first, it->second.answered_, it->second.seen_, it->second.draft_, it->second.flagged_, it->second.deleted_, it->second.recent_);
+            count++;
+            if (need_warning && (!verbose_mode_) && (count > 1))
             {
-                zcc_imap_client_debug("邮件列表结果: UID: % 6d, a: %d, s: %d, d: %d, f: %d, D: %d, R: %d (后面忽略; 显示全部结果, 用参数 --verbose)", it->first, it->second.answered_, it->second.seen_, it->second.draft_, it->second.flagged_, it->second.deleted_, it->second.recent_);
+                zcc_imap_client_verbose("(后面忽略; 显示全部结果, 需要激活 verbose 模式)");
                 break;
             }
-            zcc_imap_client_debug("邮件列表结果: UID: % 6d, a: %d, s: %d, d: %d, f: %d, D: %d, R: %d", it->first, it->second.answered_, it->second.seen_, it->second.draft_, it->second.flagged_, it->second.deleted_, it->second.recent_);
         }
     }
     return r;

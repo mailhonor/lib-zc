@@ -28,7 +28,7 @@ int imap_client::cmd_capability(bool force)
 
     linebuf = "C capability";
     fp_append(linebuf).fp_append("\r\n");
-    zcc_imap_client_debug_write_line(linebuf);
+    zcc_imap_client_debug_protocol_write(linebuf);
     while (1)
     {
         zcc_imap_client_read_token_vecotr_one_loop();
@@ -36,7 +36,7 @@ int imap_client::cmd_capability(bool force)
         {
             if (!response_tokens.first_line_.compare(0, 13, "* CAPABILITY "))
             {
-                capability_ =  response_tokens.first_line_.c_str() + 12;
+                capability_ = response_tokens.first_line_.c_str() + 12;
                 capability_clear_flag_ = false;
             }
         }
@@ -70,7 +70,7 @@ int imap_client::get_capability(const char *key)
             {
                 ch = ' ';
             }
-            capability_[i] = ch;
+            capability_[i] = (char)ch;
         }
     }
     char keybuf[64 + 1];

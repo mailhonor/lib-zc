@@ -12,7 +12,7 @@ zcc_namespace_begin;
 
 static const char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
-void qp_encode_2045(const void *src, int src_size, std::string &result, bool mime_flag)
+void qp_encode_2045(const void *src, int64_t src_size, std::string &result, bool mime_flag)
 {
     int col_count = 0, i, byte;
     const char *ptr = (const char *)src;
@@ -25,7 +25,7 @@ void qp_encode_2045(const void *src, int src_size, std::string &result, bool mim
         byte = ptr[i];
         if ((byte == ' ') || ((byte >= 33) && (byte <= 126) && (byte != '=')))
         {
-            result.push_back(byte);
+            result.push_back((char)byte);
             col_count++;
         }
         else
@@ -46,7 +46,7 @@ void qp_encode_2045(const void *src, int src_size, std::string &result, bool mim
     }
 }
 
-void qp_encode_2047(const void *src, int src_size, std::string &result)
+void qp_encode_2047(const void *src, int64_t src_size, std::string &result)
 {
     const char *ptr = (const char *)src;
     int i, byte;
@@ -59,12 +59,12 @@ void qp_encode_2047(const void *src, int src_size, std::string &result)
         byte = ptr[i];
         if (byte == ' ')
         {
-            result.push_back(byte);
+            result.push_back((char)byte);
             result.push_back('_');
         }
         else if (((byte >= 33) && (byte <= 126) && (byte != '=')))
         {
-            result.push_back(byte);
+            result.push_back((char)byte);
         }
         else
         {
@@ -75,7 +75,7 @@ void qp_encode_2047(const void *src, int src_size, std::string &result)
     }
 }
 
-std::string qp_encode_2045(const void *src, int src_size, bool mime_flag)
+std::string qp_encode_2045(const void *src, int64_t src_size, bool mime_flag)
 {
     std::string result;
     qp_encode_2045(src, src_size, result, mime_flag);
@@ -83,9 +83,9 @@ std::string qp_encode_2045(const void *src, int src_size, bool mime_flag)
 }
 
 /* should check c1 and c2 are hex */
-#define ___hex_val(ccc)             \
-    {                               \
-        ccc = hex_char_to_int(ccc); \
+#define ___hex_val(ccc)                   \
+    {                                     \
+        ccc = (char)hex_char_to_int(ccc); \
     }
 
 #define ___get_next_ch(c0123)     \
@@ -99,7 +99,7 @@ std::string qp_encode_2045(const void *src, int src_size, bool mime_flag)
         break;                    \
     }
 
-void qp_decode_2045(const void *src, int src_size, std::string &str)
+void qp_decode_2045(const void *src, int64_t src_size, std::string &str)
 {
     unsigned char *src_c = (unsigned char *)src;
     int src_pos = 0;
@@ -132,23 +132,23 @@ void qp_decode_2045(const void *src, int src_size, std::string &str)
         ___get_next_ch(c2);
         ___hex_val(c1);
         ___hex_val(c2);
-        addch = ((c1 << 4) | c2);
+        addch = (char)((c1 << 4) | c2);
     append:
-        str.push_back(addch);
+        str.push_back((char)addch);
     }
 
 over:
     return;
 }
 
-std::string qp_decode_2045(const void *src, int src_size)
+std::string qp_decode_2045(const void *src, int64_t src_size)
 {
     std::string result;
     qp_decode_2045(src, src_size, result);
     return result;
 }
 
-void qp_decode_2047(const void *src, int src_size, std::string &str)
+void qp_decode_2047(const void *src, int64_t src_size, std::string &str)
 {
     unsigned char *src_c = (unsigned char *)src;
     int src_pos = 0;
@@ -177,7 +177,7 @@ void qp_decode_2047(const void *src, int src_size, std::string &str)
             ___get_next_ch(c2);
             ___hex_val(c1);
             ___hex_val(c2);
-            addch = (c1 << 4 | c2);
+            addch = (char)(c1 << 4 | c2);
         }
         str.push_back(addch);
     }
@@ -187,14 +187,14 @@ over:
 }
 #undef ___get_next_ch
 
-std::string qp_decode_2047(const void *src, int src_size)
+std::string qp_decode_2047(const void *src, int64_t src_size)
 {
     std::string result;
     qp_decode_2047(src, src_size, result);
     return result;
 }
 
-int qp_decode_get_valid_len(const void *src, int src_size)
+int64_t qp_decode_get_valid_len(const void *src, int64_t src_size)
 {
     unsigned char *src_c = (unsigned char *)src;
     int i;
@@ -202,7 +202,7 @@ int qp_decode_get_valid_len(const void *src, int src_size)
 
     if (src_size < 0)
     {
-        src_size = std::strlen((const char *)src);
+        src_size = (int)std::strlen((const char *)src);
     }
 
     for (i = 0; i < src_size; i++)

@@ -25,30 +25,6 @@
 
 zcc_namespace_begin;
 
-/**
- * @brief 关闭文件描述符（Windows 64位系统版本）
- * @param fd 文件句柄
- * @return 成功返回1，失败返回-1
- */
-#ifdef _WIN64
-int close(HANDLE fd)
-{
-    // 调用Windows API关闭句柄
-    return CloseHandle(fd) ? 1 : -1;
-}
-#else  // _WIN64
-/**
- * @brief 关闭文件描述符（非Windows 64位系统版本）
- * @param fd 文件描述符
- * @return 系统调用close的返回值
- */
-int close(int fd)
-{
-    // 调用系统的close函数
-    return ::close(fd);
-}
-#endif // _WIN64
-
 /* timed read/write wait */
 /**
  * @brief 定时等待文件描述符可读或可写（Windows 64位系统版本）
@@ -248,7 +224,7 @@ int timed_read_write_wait_millisecond(int fd, int read_wait_timeout, int *readab
             }
             else
             {
-                timeout = left_timeout;
+                timeout = (int)left_timeout;
             }
         }
         // 调用poll函数进行等待
@@ -338,7 +314,7 @@ int timed_read_wait(int fd, int wait_timeout)
 {
     int want_read;
     // 将秒转换为毫秒并调用timed_read_write_wait_millisecond等待可读
-    int ret = timed_read_write_wait_millisecond(fd, 1000L * wait_timeout, &want_read, 0);
+    int ret = timed_read_write_wait_millisecond(fd, 1000 * wait_timeout, &want_read, 0);
     if (ret < 1)
     {
         return ret;
@@ -368,7 +344,7 @@ int timed_read(int fd, void *buf, int size, int wait_timeout)
             ret = recv(fd, (char *)buf, size, 0);
 #else  // _WIN64
        // 调用系统read函数读取数据
-            ret = ::read(fd, buf, size);
+            ret = (int)::read(fd, buf, size);
 #endif // _WIN64
             if (ret < 0)
             {
@@ -386,7 +362,7 @@ int timed_read(int fd, void *buf, int size, int wait_timeout)
     for (;;)
     {
         // 等待可读
-        if ((ret = timed_read_wait_millisecond(fd, 1000L * wait_timeout)) == 0)
+        if ((ret = timed_read_wait_millisecond(fd, 1000 * wait_timeout)) == 0)
         {
             return -1;
         }
@@ -396,7 +372,7 @@ int timed_read(int fd, void *buf, int size, int wait_timeout)
         ret = recv(fd, (char *)buf, size, 0);
 #else  // _WIN64
        // 调用系统read函数读取数据
-        ret = read(fd, buf, size);
+        ret = (int)read(fd, buf, size);
 #endif // _WIN64
         if (ret < 0)
         {
@@ -445,7 +421,7 @@ int timed_write_wait(int fd, int wait_timeout)
 {
     int want_write;
     // 将秒转换为毫秒并调用timed_read_write_wait_millisecond等待可写
-    int ret = timed_read_write_wait_millisecond(fd, 1000L * wait_timeout, 0, &want_write);
+    int ret = timed_read_write_wait_millisecond(fd, 1000 * wait_timeout, 0, &want_write);
     if (ret < 1)
     {
         return ret;
@@ -475,7 +451,7 @@ int timed_write(int fd, const void *buf, int size, int wait_timeout)
             ret = send(fd, (const char *)buf, size, 0);
 #else  // _WIN64
        // 调用系统write函数写入数据
-            ret = write(fd, buf, size);
+            ret = (int)::write(fd, buf, size);
 #endif // _WIN64
             if (ret < 0)
             {
@@ -492,7 +468,7 @@ int timed_write(int fd, const void *buf, int size, int wait_timeout)
     for (;;)
     {
         // 等待可写
-        if (timed_write_wait_millisecond(fd, 1000L * wait_timeout) == 0)
+        if (timed_write_wait_millisecond(fd, 1000 * wait_timeout) == 0)
         {
             return -1;
         }
@@ -501,7 +477,7 @@ int timed_write(int fd, const void *buf, int size, int wait_timeout)
         ret = send(fd, (const char *)buf, size, 0);
 #else  // _WIN64
        // 调用系统write函数写入数据
-        ret = write(fd, buf, size);
+        ret = (int)::write(fd, buf, size);
 #endif // _WIN64
         if (ret < 0)
         {
@@ -596,7 +572,7 @@ static int rwable_true_do(int fd, int read_flag, int write_flag)
 static int rwable_true_do(int fd, int read_flag, int write_flag)
 {
     struct pollfd pollfd;
-    int flags = 0, revs;
+    short int flags = 0, revs;
 
     if (read_flag)
     {

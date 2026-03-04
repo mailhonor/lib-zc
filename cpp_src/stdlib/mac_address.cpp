@@ -171,7 +171,7 @@ int get_mac_address(std::vector<std::string> &mac_list)
         return -1;
     }
     // 计算网络接口的数量
-    interface_num = ifc.ifc_len / sizeof(struct ifreq);
+    interface_num = ifc.ifc_len / (int)sizeof(struct ifreq);
     // 遍历所有网络接口
     for (int ii = 0; ii < interface_num; ii++)
     {

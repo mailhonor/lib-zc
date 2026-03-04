@@ -73,7 +73,7 @@ int imap_client::cmd_select(select_result &ser, const char *folder_name_imap)
     linebuf.clear();
     linebuf.append("S SELECT ").append(escape_string(folder_name_imap));
     fp_append(linebuf).fp_append("\r\n");
-    zcc_imap_client_debug_write_line(linebuf);
+    zcc_imap_client_debug_protocol_write(linebuf);
 
     while (1)
     {
@@ -89,19 +89,19 @@ int imap_client::cmd_select(select_result &ser, const char *folder_name_imap)
             if (tmp == "EXISTS")
             {
                 ser.exists_ = atoi(token_vector[1].c_str());
-                zcc_imap_client_debug("EXISTS: %d", ser.exists_);
+                zcc_imap_client_verbose("EXISTS: %d", ser.exists_);
             }
             else if (tmp == "RECENT")
             {
                 ser.recent_ = atoi(token_vector[1].c_str());
-                zcc_imap_client_debug("RECETN: %d", ser.recent_);
+                zcc_imap_client_verbose("RECETN: %d", ser.recent_);
             }
             else if (tmp == "[UIDVALIDITY")
             {
                 if (token_vector.size() > 3)
                 {
                     ser.uidvalidity_ = atoi(token_vector[3].c_str());
-                    zcc_imap_client_debug("UIDVALIDITY: %d", ser.uidvalidity_);
+                    zcc_imap_client_verbose("UIDVALIDITY: %d", ser.uidvalidity_);
                 }
             }
             else if (tmp == "[UIDNEXT")
@@ -109,7 +109,7 @@ int imap_client::cmd_select(select_result &ser, const char *folder_name_imap)
                 if (token_vector.size() > 3)
                 {
                     ser.uidnext_ = atoi(token_vector[3].c_str());
-                    zcc_imap_client_debug("UIDNEXT: %d", ser.uidnext_);
+                    zcc_imap_client_verbose("UIDNEXT: %d", ser.uidnext_);
                 }
             }
         }
@@ -124,7 +124,6 @@ int imap_client::cmd_select(select_result &ser, const char *folder_name_imap)
             return r;
         }
     }
-
     return -1;
 }
 
@@ -168,7 +167,7 @@ int imap_client::cmd_status(status_result &ser, const char *folder_name_imap)
     linebuf.append("S STATUS ").append(escape_string(folder_name_imap));
     linebuf.append(" (MESSAGES RECENT UIDNEXT UIDVALIDITY UNSEEN)");
     fp_append(linebuf).fp_append("\r\n");
-    zcc_imap_client_debug_write_line(linebuf);
+    zcc_imap_client_debug_protocol_write(linebuf);
 
     while (1)
     {
@@ -193,7 +192,7 @@ int imap_client::cmd_status(status_result &ser, const char *folder_name_imap)
                     break;
                 }
                 int v = atoi(it->c_str());
-                zcc_imap_client_debug("得到 status: %s => %d", k, v);
+                zcc_imap_client_verbose("得到 status: %s => %d", k, v);
                 if (ZCC_STR_EQ(k, "MESSAGES"))
                 {
                     ser.messages_ = v;

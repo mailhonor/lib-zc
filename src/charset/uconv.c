@@ -7,13 +7,9 @@
  */
 
 #include "zc.h"
-#ifdef ZCC_USE_UCONV__
 #include <ctype.h>
 #include <unicode/utypes.h>
 #include <unicode/ucnv.h>
-#endif
-
-#ifdef ZCC_USE_UCONV__
 
 #define mydebug(fmt, args...) \
     if (zvar_charset_debug)   \
@@ -167,20 +163,3 @@ void zcharset_convert_use_uconv()
     zvar_charset_uconv_mode = 1;
     zcharset_convert = zcharset_uconv;
 }
-
-#else /* ZCC_USE_UCONV__ */
-#include "zc.h"
-static void ___fatal_uconv()
-{
-    zfatal("unsupported; cmake ../ -DENABLE_ICU_UCONV=yes");
-}
-int zcharset_uconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
-{
-    ___fatal_uconv();
-    return -1;
-}
-void zcharset_convert_use_uconv()
-{
-    ___fatal_uconv();
-}
-#endif /* ZCC_USE_UCONV__ */

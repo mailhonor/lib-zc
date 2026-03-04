@@ -18,11 +18,11 @@ bool var_debug_mode = false;
 
 /**
  * @brief 修正字符集名称为标准格式。
- * 
+ *
  * 该函数接收一个字符集名称作为输入，将其转换为大写，
  * 然后在预定义的映射表中查找标准名称。如果找到匹配项，
  * 则返回标准名称；否则，返回原始名称。
- * 
+ *
  * @param charset 输入的字符集名称。
  * @return 指向修正后的字符集名称的指针，如果无需修正则返回原始名称。
  */
@@ -36,7 +36,7 @@ const char *correct_name(const char *charset)
     // 用于存储复制和处理后的字符集名称的缓冲区
     char tmpcharset[32];
     // 获取输入字符集名称的长度
-    int charsetlen = std::strlen(charset);
+    int charsetlen = (int)std::strlen(charset);
     // 如果长度过长，直接返回原始名称
     if (charsetlen > 30)
     {
@@ -277,7 +277,7 @@ static void _clear_null_inner(std::string &bf)
     }
 }
 
-static bool check_is_7bit(const unsigned char *str, int len)
+static bool check_is_7bit(const unsigned char *str, int64_t len)
 {
     for (int i = 0; i < len; i++)
     {
@@ -290,7 +290,7 @@ static bool check_is_7bit(const unsigned char *str, int len)
     return true;
 }
 
-static void _convert_to_utf8(const char *from_charset, const char *data, int size, std::string &result)
+static void _convert_to_utf8(const char *from_charset, const char *data, int64_t size, std::string &result)
 {
     result.clear();
     if (size < 0)
@@ -380,14 +380,18 @@ static void _convert_to_utf8(const char *from_charset, const char *data, int siz
     return;
 }
 
-std::string convert_to_utf8(const char *from_charset, const char *data, int size)
+std::string convert_to_utf8(const char *from_charset, const char *data, int64_t size)
 {
     std::string r;
     _convert_to_utf8(from_charset, data, size, r);
     return r;
 }
 
-std::string (*convert_engine)(const char *from_charset, const char *src, int src_len, const char *to_charset, int *invalid_bytes) = iconv_convert;
+std::string (*convert_engine)(const char *from_charset, const char *src, int64_t src_len, const char *to_charset, int64_t *invalid_bytes) = iconv_convert;
 
+void use_convert_engine(convert_engine_t engine)
+{
+    convert_engine = engine;
+}
 zcc_general_namespace_end(charset);
 zcc_namespace_end;

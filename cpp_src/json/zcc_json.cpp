@@ -122,7 +122,7 @@ json::json(const char *val, int len)
     type_ = json_type_string;
     if (len < 0)
     {
-        len = std::strlen(val);
+        len = (int)std::strlen(val);
     }
     if (len == 0)
     {
@@ -1050,7 +1050,7 @@ bool json::load_from_file(const char *pathname)
 
     while ((ch = fgetc(fp)) != EOF)
     {
-        con.push_back(ch);
+        con.push_back((char)ch);
     }
     if (ferror(fp))
     {
@@ -1082,28 +1082,28 @@ static inline int ___ncr_decode(int ins, char *wchar)
 {
     if (ins < 128)
     {
-        *wchar = ins;
+        *wchar = (char)ins;
         return 1;
     }
     if (ins < 2048)
     {
-        *wchar++ = (ins >> 6) + 192;
-        *wchar++ = (ins & 63) + 128;
+        *wchar++ = (char)((ins >> 6) + 192);
+        *wchar++ = (char)((ins & 63) + 128);
         return 2;
     }
     if (ins < 65536)
     {
-        *wchar++ = (ins >> 12) + 224;
-        *wchar++ = ((ins >> 6) & 63) + 128;
-        *wchar++ = (ins & 63) + 128;
+        *wchar++ = (char)((ins >> 12) + 224);
+        *wchar++ = (char)(((ins >> 6) & 63) + 128);
+        *wchar++ = (char)((ins & 63) + 128);
         return 3;
     }
     if (ins < 2097152)
     {
-        *wchar++ = (ins >> 18) + 240;
-        *wchar++ = ((ins >> 12) & 63) + 128;
-        *wchar++ = ((ins >> 6) & 63) + 128;
-        *wchar++ = (ins & 63) + 128;
+        *wchar++ = (char)((ins >> 18) + 240);
+        *wchar++ = (char)(((ins >> 12) & 63) + 128);
+        *wchar++ = (char)(((ins >> 6) & 63) + 128);
+        *wchar++ = (char)((ins & 63) + 128);
         return 4;
     }
 
@@ -1240,7 +1240,7 @@ bool json::unserialize(const char *jstr, int jlen)
 {
     if (jlen < 0)
     {
-        jlen = std::strlen(jstr);
+        jlen = (int)std::strlen(jstr);
     }
 
     reset();
@@ -1407,7 +1407,7 @@ bool json::unserialize(const char *jstr, int jlen)
                 {
                     is_double = true;
                 }
-                tmpkey.push_back(ch);
+                tmpkey.push_back((char)ch);
                 ps++;
             }
             if (is_double)
@@ -1428,7 +1428,7 @@ bool json::unserialize(const char *jstr, int jlen)
             {
                 break;
             }
-            tmpkey.push_back(tolower(ch));
+            tmpkey.push_back((char)tolower(ch));
             ps++;
             if (tmpkey.size() > 10)
             {
@@ -1513,7 +1513,7 @@ static void ___serialize_string(std::string &result, const char *data, int size)
             }
             else
             {
-                result.push_back(ch);
+                result.push_back((char)ch);
             }
             break;
         }
@@ -1749,7 +1749,7 @@ static json *_deep_copy_complex(json *r, json *current_json)
     {
         new_json = wnode.new_json;
         current_json = wnode.current_json;
-        unsigned char type = current_json->get_type();
+        int type = current_json->get_type();
         if (type == json_type_array)
         {
             int length = current_json->array_size();

@@ -83,7 +83,7 @@ public:
     {
         return memcat(s.c_str(), s.size());
     }
-    inline buffer &append(const char *s, int len = -1)
+    inline buffer &append(const char *s, int64_t len = -1)
     {
         return memcat(s, len);
     }

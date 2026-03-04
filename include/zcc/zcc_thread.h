@@ -21,7 +21,7 @@ zcc_namespace_begin;
 
 struct thread_pool_engine;
 
-class thread_pool
+class ZCC_LIB_API thread_pool
 {
 public:
     static thread_pool *get_current_thread_pool();
@@ -59,19 +59,19 @@ protected:
 };
 
 #ifndef __APPLE__
-void set_thread_name(std::thread &t, const char *name);
+ZCC_LIB_API void set_thread_name(std::thread &t, const char *name);
 inline void set_thread_name(std::thread &t, const std::string &name)
 {
     set_thread_name(t, name.c_str());
 }
 #endif // __APPLE__
-void set_thread_name(const char *name);
+ZCC_LIB_API void set_thread_name(const char *name);
 inline void set_thread_name(const std::string &name)
 {
     set_thread_name(name.c_str());
 }
-std::string get_thread_name(std::thread &t);
-std::string get_thread_name();
+ZCC_LIB_API std::string get_thread_name(std::thread &t);
+ZCC_LIB_API std::string get_thread_name();
 
 zcc_namespace_end;
 #pragma pack(pop)

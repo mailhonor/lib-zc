@@ -82,7 +82,7 @@ void httpd::request_read_first_header_line()
         }
     }
 
-    ret = fp_->gets(linebuf, header_line_max_size_);
+    ret = (int)fp_->gets(linebuf, header_line_max_size_);
     if (ret < 0)
     {
         exception_ = true;
@@ -195,7 +195,7 @@ void httpd::request_read_other_header_line(bool &header_over)
     {
         if (key == "content-length")
         {
-            request_content_length_ = std::atoi(ps);
+            request_content_length_ = std::atol(ps);
         }
         else if (key == "connection")
         {
@@ -247,7 +247,7 @@ bool httpd::request_read_body_prepare()
 void httpd::request_read_body_x_www_form_urlencoded()
 {
     std::string linebuf;
-    if (fp_->readn(linebuf, request_content_length_) < request_content_length_)
+    if (fp_->readn(linebuf, (int)request_content_length_) < request_content_length_)
     {
         exception_ = true;
         log_error("exception: read");
@@ -304,12 +304,12 @@ std::string httpd::request_read_body_save_tmpfile(const char *content_type)
     int64_t left = request_content_length_;
     while (left > 0)
     {
-        int rlen = left;
+        int64_t rlen = left;
         if (rlen > 4096)
         {
             rlen = 4096;
         }
-        rlen = fp_->readn(linebuf, rlen);
+        rlen = fp_->readn(linebuf, (int)rlen);
         if (rlen < 1)
         {
             exception_ = true;
@@ -344,7 +344,7 @@ std::string httpd::request_read_body_save_tmpfile(const char *content_type)
 
 void httpd::request_read_body_uploaded_dump_file(mail_parser::mime_node *mime, const std::string &name, const std::string &pathname)
 {
-    int wlen = 0, raw_len = 0;
+    int64_t wlen = 0, raw_len = 0;
     const std::string &encoding = mime->get_encoding();
     raw_len = mime->get_body_size();
     if (encoding.empty())
@@ -356,7 +356,7 @@ void httpd::request_read_body_uploaded_dump_file(mail_parser::mime_node *mime, c
         wlen = -1;
     }
 
-    httpd_uploaded_file fo(*this);
+    httpd_uploaded_file fo(this);
     fo.name_ = name;
     fo.pathname_ = pathname;
     fo.size_ = wlen;

@@ -170,7 +170,7 @@ bool cdb_reader::open_file(const char *pathname)
     }
     int len, file_len;
     data_ = file_reader_.data_;
-    len = file_reader_.size_;
+    len = (int)file_reader_.size_;
     if (len < 12)
     {
         goto err;
@@ -215,7 +215,7 @@ int cdb_reader::find(const void *key, int klen, void **val, int *vlen)
     }
     if (klen < 0)
     {
-        klen = std::strlen((const char *)key);
+        klen = (int)std::strlen((const char *)key);
     }
     if (klen > max_key_length_)
     {

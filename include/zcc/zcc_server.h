@@ -24,7 +24,7 @@ static const int master_server_status_fd = 3;
 static const int worker_server_status_fd = 4;
 static const int worker_server_listen_fd = 5;
 
-class master_server
+class ZCC_LIB_API master_server
 {
 public:
     static master_server *get_instance();
@@ -43,7 +43,7 @@ protected:
     void *unused_;
 };
 
-class aio_worker_server
+class ZCC_LIB_API aio_worker_server
 {
 public:
     static aio_worker_server *get_instance();
@@ -68,7 +68,7 @@ public:
     void *unused_;
 };
 
-class simple_line_aio_worker_server : public aio_worker_server
+class ZCC_LIB_API simple_line_aio_worker_server : public aio_worker_server
 {
 public:
     class simple_line_aio : public aio
@@ -105,7 +105,7 @@ public:
     virtual void enter_timer(std::function<void()> task, int timeout);
 };
 
-class coroutine_worker_server
+class ZCC_LIB_API coroutine_worker_server
 {
 public:
     static coroutine_worker_server *get_instance();

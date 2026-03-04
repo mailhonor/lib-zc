@@ -18,13 +18,16 @@ int imap_client::do_auth(const char *user, const char *password)
     }
     int r;
     std::string linebuf;
+    std::string linebuf_debug;
     response_tokens response_tokens;
 
     linebuf.clear();
     linebuf.append("L login ").append(escape_string(user));
+    linebuf_debug = linebuf;
     linebuf.append(" ").append(escape_string(password));
     fp_append(linebuf).fp_append("\r\n");
-    zcc_imap_client_debug_write_line(linebuf);
+    linebuf_debug.append(" ********");
+    zcc_imap_client_debug_protocol_write(linebuf_debug);
     while (1)
     {
         zcc_imap_client_read_token_vecotr_one_loop();
@@ -37,7 +40,7 @@ int imap_client::do_auth(const char *user, const char *password)
         {
             if (r == 0)
             {
-                zcc_imap_client_info("imap 登录(LOGIN)失败");
+                zcc_imap_client_debug("imap 登录(LOGIN)失败");
             }
             return r;
         }

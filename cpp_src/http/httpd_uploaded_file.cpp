@@ -18,7 +18,7 @@ int64_t httpd_uploaded_file::get_size()
         return size_;
     }
 
-    auto &httpd = this->httpd_;
+    auto &httpd = *this->httpd_;
     std::string data;
 
     if (encoding_ == var_encoding_type_base64)
@@ -41,7 +41,7 @@ int64_t httpd_uploaded_file::get_size()
 
 std::string httpd_uploaded_file::get_data()
 {
-    auto &httpd = this->httpd_;
+    auto &httpd = *this->httpd_;
     std::string data;
 
     if (encoding_ == var_encoding_type_base64)

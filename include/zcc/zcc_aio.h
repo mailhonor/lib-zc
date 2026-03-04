@@ -78,7 +78,7 @@ public:
     void get_cint_and_data(std::function<void()> callback);
     // 向缓存写数据
     int cache_write(const void *buf, int len = -1);
-    inline int cache_write(const std::string &bf) { return cache_write(bf.c_str(), bf.size()); }
+    inline int cache_write(const std::string &bf) { return cache_write(bf.c_str(), (int)bf.size()); }
     inline int cache_append(const std::string &bf) { return cache_write(bf); }
     inline int cache_append(const char *s) { return cache_write(s); }
     inline int cache_puts(const char *s) { return cache_write(s); }

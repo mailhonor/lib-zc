@@ -21,13 +21,13 @@ zcc_namespace_begin;
 struct rbtree_t;
 struct rbtree_node_t;
 typedef int (*rbtree_cmp_t)(rbtree_node_t *node1, rbtree_node_t *node2);
-struct rbtree_t
+struct ZCC_LIB_API rbtree_t
 {
     rbtree_node_t *rbtree_node;
     rbtree_cmp_t cmp_fn;
 };
 
-struct rbtree_node_t
+struct ZCC_LIB_API rbtree_node_t
 {
     int64_t __rbtree_parent_color;
     rbtree_node_t *rbtree_right;
@@ -44,21 +44,21 @@ inline int rbtree_have_data(rbtree_t *tree)
 {
     return ZCC_RBTREE_HAVE_DATA(tree);
 }
-void rbtree_init(rbtree_t *tree, rbtree_cmp_t cmp_fn);
-void rbtree_insert_color(rbtree_t *, rbtree_node_t *);
-void rbtree_erase(rbtree_t *tree, rbtree_node_t *node);
-void rbtree_replace_node(rbtree_t *tree, rbtree_node_t *victim, rbtree_node_t *_new);
-rbtree_node_t *rbtree_prev(const rbtree_node_t *tree);
-rbtree_node_t *rbtree_next(const rbtree_node_t *tree);
-rbtree_node_t *rbtree_first(const rbtree_t *node);
-rbtree_node_t *rbtree_last(const rbtree_t *node);
-rbtree_node_t *rbtree_near_prev(const rbtree_t *tree, rbtree_node_t *vnode);
-rbtree_node_t *rbtree_near_next(const rbtree_t *tree, rbtree_node_t *vnode);
-rbtree_node_t *rbtree_parent(const rbtree_node_t *node);
-rbtree_node_t *rbtree_attach(rbtree_t *tree, rbtree_node_t *node);
-rbtree_node_t *rbtree_find(const rbtree_t *tree, rbtree_node_t *vnode);
-rbtree_node_t *rbtree_detach(rbtree_t *tree, rbtree_node_t *node);
-void rbtree_link_node(rbtree_node_t *node, rbtree_node_t *parent, rbtree_node_t **rbtree_link);
+ZCC_LIB_API void rbtree_init(rbtree_t *tree, rbtree_cmp_t cmp_fn);
+ZCC_LIB_API void rbtree_insert_color(rbtree_t *, rbtree_node_t *);
+ZCC_LIB_API void rbtree_erase(rbtree_t *tree, rbtree_node_t *node);
+ZCC_LIB_API void rbtree_replace_node(rbtree_t *tree, rbtree_node_t *victim, rbtree_node_t *_new);
+ZCC_LIB_API rbtree_node_t *rbtree_prev(const rbtree_node_t *tree);
+ZCC_LIB_API rbtree_node_t *rbtree_next(const rbtree_node_t *tree);
+ZCC_LIB_API rbtree_node_t *rbtree_first(const rbtree_t *node);
+ZCC_LIB_API rbtree_node_t *rbtree_last(const rbtree_t *node);
+ZCC_LIB_API rbtree_node_t *rbtree_near_prev(const rbtree_t *tree, rbtree_node_t *vnode);
+ZCC_LIB_API rbtree_node_t *rbtree_near_next(const rbtree_t *tree, rbtree_node_t *vnode);
+ZCC_LIB_API rbtree_node_t *rbtree_parent(const rbtree_node_t *node);
+ZCC_LIB_API rbtree_node_t *rbtree_attach(rbtree_t *tree, rbtree_node_t *node);
+ZCC_LIB_API rbtree_node_t *rbtree_find(const rbtree_t *tree, rbtree_node_t *vnode);
+ZCC_LIB_API rbtree_node_t *rbtree_detach(rbtree_t *tree, rbtree_node_t *node);
+ZCC_LIB_API void rbtree_link_node(rbtree_node_t *node, rbtree_node_t *parent, rbtree_node_t **rbtree_link);
 
 #define ZCC_RBTREE_INIT(tree, _cmp_fn) ((tree)->rbtree_node = 0, (tree)->cmp_fn = _cmp_fn)
 #define ZCC_RBTREE_PARENT(node) ((rbtree_node_t *)((node)->__rbtree_parent_color & ~3))

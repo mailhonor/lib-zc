@@ -19,7 +19,7 @@
 #pragma pack(push, 4)
 zcc_namespace_begin;
 
-struct vcf_contact_tel
+struct ZCC_LIB_API vcf_contact_tel
 {
     std::string number;
     bool is_pref{false};
@@ -31,7 +31,7 @@ struct vcf_contact_tel
     bool is_video{false};
 };
 
-struct vcf_contact_email
+struct ZCC_LIB_API vcf_contact_email
 {
     std::string email;
     bool is_pref{false};
@@ -39,7 +39,7 @@ struct vcf_contact_email
     bool is_home{false};
 };
 
-class vcf_contact
+class ZCC_LIB_API vcf_contact
 {
 public:
     vcf_contact();

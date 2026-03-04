@@ -17,7 +17,7 @@ std::string mail_parser::decode_2231(const char *src_charset_def, const char *in
     std::string result;
     if (in_len < 0)
     {
-        in_len = std::strlen(in_line);
+        in_len = (int)std::strlen(in_line);
     }
     if (in_len < 1)
     {
@@ -68,7 +68,7 @@ std::string mail_parser::decode_2231(const char *src_charset_def, const char *in
             ch = start[i];
             if (ch != '%')
             {
-                tmps.push_back(ch);
+                tmps.push_back((char)ch);
                 continue;
             }
             if (i + 1 > start_len)
@@ -76,7 +76,7 @@ std::string mail_parser::decode_2231(const char *src_charset_def, const char *in
                 break;
             }
             ch = (var_char_xdigitval_vector[(int64_t)(start[i + 1])] << 4) | (var_char_xdigitval_vector[(int64_t)(start[i + 2])]);
-            tmps.push_back(ch);
+            tmps.push_back((char)ch);
             i += 2;
         }
         result = mail_parser::charset_convert(charset, tmps.c_str(), tmps.size());

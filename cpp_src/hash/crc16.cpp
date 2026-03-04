@@ -91,13 +91,13 @@ unsigned short int crc16(const void *data, int len, unsigned short int init_valu
 {
     if (len < 0)
     {
-        len = std::strlen((const char *)(void *)data);
+        len = (int)std::strlen((const char *)(void *)data);
     }
     const char *buf = (const char *)data;
     int counter;
     unsigned short int crc = init_value;
     for (counter = 0; counter < len; counter++)
-        crc = (crc << 8) ^ crc16tab[((crc >> 8) ^ *buf++) & 0x00FF];
+        crc = (unsigned short int)((crc << 8) ^ crc16tab[((crc >> 8) ^ *buf++) & 0x00FF]);
     return crc;
 }
 

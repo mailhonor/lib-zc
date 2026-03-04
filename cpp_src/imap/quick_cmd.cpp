@@ -22,7 +22,7 @@ int imap_client::do_quick_cmd(const std::string &cmd)
     }
     int first_ch = cmd[0];
     fp_append(cmd).fp_append("\r\n");
-    zcc_imap_client_debug_write_line(cmd);
+    zcc_imap_client_debug_protocol_write(cmd);
 
     if (simple_line_mode_)
     {
@@ -34,7 +34,7 @@ int imap_client::do_quick_cmd(const std::string &cmd)
             {
                 return -1;
             }
-            zcc_imap_client_debug_read_line(linebuf);
+            zcc_imap_client_debug_protocol_read(linebuf);
             if (linebuf[0] == '*')
             {
                 continue;

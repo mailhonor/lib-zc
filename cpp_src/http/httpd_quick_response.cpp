@@ -14,12 +14,12 @@ void httpd::response_200(const char *data, int64_t size, const response_options 
 {
     if (size < 0)
     {
-        size = std::strlen(data);
+        size = (int)std::strlen(data);
     }
     log_info("200 %d", size);
     if (size < 0)
     {
-        size = std::strlen(data);
+        size = (int)std::strlen(data);
     }
     response_header_initialization("200 content");
     response_header("Server", "LIBZC HTTPD");
@@ -54,7 +54,7 @@ void httpd::response_200(const char *data, int64_t size, const response_options 
     response_header_over();
     if (size > 0)
     {
-        fp_->append(data, size);
+        fp_->append(data, (int)size);
     }
     response_flush();
 }

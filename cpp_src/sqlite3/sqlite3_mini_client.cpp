@@ -6,15 +6,15 @@
  * ================================
  */
 
-#ifdef ZCC_USE_SQLITE3__
-
-#include "zcc/zcc_sqlite3.h"
-#include "zcc/zcc_win64.h"
+#include "./sqlite3_mini_client.h"
 #include <cstdlib>
 #include <cstdio>
 #include <mutex>
 #include <thread>
 #ifdef _WIN64
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <io.h>
 #else // _WIN64
 #include <sys/types.h>
@@ -22,7 +22,6 @@
 #include <sys/file.h>
 #include <fcntl.h>
 #include <unistd.h>
-#define HANDLE int
 #endif // _WIN64
 
 zcc_namespace_begin;
@@ -30,66 +29,16 @@ zcc_namespace_begin;
 class sqlite3_min_single
 {
 public:
-    void lock();
-    void unlock();
-    sqlite3 *db_p{0};
+    zcc_sqlite3 *db_p{0};
     int used{0};
-    std::recursive_mutex mtx;
-    HANDLE lock_fd;
+
+    //
+public:
+    rwlocker thread_locker_;
+    std::recursive_mutex lock_file_locker_;
+    int lock_file_fd_{-1};
+    int lock_file_count_{0};
 };
-
-static HANDLE open_lock_file(const std::string pathname)
-{
-#ifdef _WIN64
-    std::wstring fn = Utf8ToWideChar(pathname);
-#ifdef _MSC_VER
-    HANDLE fd = ::CreateFileW(fn.c_str(), GENERIC_READ | GENERIC_WRITE, NULL, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-#else
-    HANDLE fd = ::CreateFileW(fn.c_str(), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-#endif
-    if (fd == INVALID_HANDLE_VALUE)
-    {
-        CloseHandle(fd);
-    }
-    return fd;
-#else  // _WIN64
-    int fd = ::open(pathname.c_str(), O_RDWR | O_CREAT, 0600);
-    if (fd < 0)
-    {
-        zcc_fatal("open lock file %s", pathname.c_str());
-    }
-    return fd;
-#endif // _WIN64
-}
-
-static void close_lock_file(HANDLE fd)
-{
-#ifdef _WIN64
-    ::CloseHandle(fd);
-#else  // _WIN64
-    ::close(fd);
-#endif // _WIN64
-}
-
-static void lock_file(HANDLE fd)
-{
-#ifdef _WIN64
-    DWORD dwLow = 0;
-    BOOL retLockFile = LockFile(fd, 0, 0, dwLow, 0);
-#else  // _WIN64
-    ::flock(fd, LOCK_EX);
-#endif // _WIN64
-}
-
-static void unlock_file(HANDLE fd)
-{
-#ifdef _WIN64
-    DWORD dwLow = 0;
-    UnlockFile(fd, 0, 0, dwLow, 0);
-#else  // _WIN64
-    ::flock(fd, LOCK_UN);
-#endif // _WIN64
-}
 
 static std::recursive_mutex _env_locker;
 
@@ -145,16 +94,6 @@ std::string sqlite3_mini_client::escape_string_DONOT_USE(const char *data)
     return r;
 }
 
-void sqlite3_min_single::lock()
-{
-    mtx.lock();
-}
-
-void sqlite3_min_single::unlock()
-{
-    mtx.unlock();
-}
-
 sqlite3_mini_client::sqlite3_mini_client()
 {
     handler_ = 0;
@@ -164,6 +103,7 @@ sqlite3_mini_client::~sqlite3_mini_client()
 {
     close();
 }
+
 static std::map<std::string, sqlite3_min_single *> _var_all_sqlite3_dbs;
 
 static int my_busy_handler(void *ptr, int count)
@@ -179,8 +119,8 @@ bool sqlite3_mini_client::open(const std::string &db_pathname)
 {
     env_init();
     sqlite3_min_single *single;
-    sqlite3 *db_p = 0;
-    int64_t db_flags = 0;
+    zcc_sqlite3 *db_p = 0;
+    int db_flags = 0;
     int ret;
     bool ok = false;
 
@@ -211,9 +151,13 @@ bool sqlite3_mini_client::open(const std::string &db_pathname)
         single = new sqlite3_min_single();
         single->db_p = db_p;
         single->used = 0;
-        std::string lock_fn = pathname;
-        lock_fn.append(".flock.tmp");
-        single->lock_fd = open_lock_file(lock_fn);
+        single->lock_file_fd_ = zcc::open(pathname, O_RDWR, 0);
+        if (single->lock_file_fd_ == -1)
+        {
+            zcc_error("open lock file failed, %s", pathname.c_str());
+            delete single;
+            goto over;
+        }
         _var_all_sqlite3_dbs[pathname] = single;
     }
     single = _var_all_sqlite3_dbs[pathname];
@@ -252,7 +196,7 @@ bool sqlite3_mini_client::close()
         single->used--;
         if (single->used == 0)
         {
-            single->lock();
+            global_low_level_mutex_lock();
             int ret;
             if ((ret = sqlite3_close(handler_)) != SQLITE_OK)
             {
@@ -263,8 +207,8 @@ bool sqlite3_mini_client::close()
                     zcc_error("sqlite3 is busy, maybe stmt not released");
                 }
             }
-            close_lock_file(single->lock_fd);
-            single->unlock();
+            global_low_level_mutex_unlock();
+            zcc::close_fd(single->lock_file_fd_);
             delete single;
             _var_all_sqlite3_dbs.erase(it);
         }
@@ -282,18 +226,17 @@ bool sqlite3_mini_client::begin_with_type(const char *type)
         return false;
     }
     char sql[128];
-    ((sqlite3_min_single *)single_open_)->lock();
     char *errmsg = 0;
     if (begin_depth_ == 0)
     {
         // BEGIN;
-        lock_file(((sqlite3_min_single *)single_open_)->lock_fd);
+        lock_for_transaction();
         sprintf(sql, "BEGIN %s;", type);
         if (sqlite3_exec(handler_, sql, NULL, NULL, &errmsg) != SQLITE_OK)
         {
             last_error_ = errmsg;
             zcc_error("exec sqlite3(BEGIN), %s%s", errmsg, last_exec_sql_debug_.c_str());
-            ((sqlite3_min_single *)single_open_)->unlock();
+            unlock_for_transaction();
             return false;
         }
     }
@@ -304,7 +247,6 @@ bool sqlite3_mini_client::begin_with_type(const char *type)
         {
             last_error_ = errmsg;
             zcc_error("exec sqlite3(SAVEPOINT), %s%s", errmsg, last_exec_sql_debug_.c_str());
-            ((sqlite3_min_single *)single_open_)->unlock();
             return false;
         }
     }
@@ -338,12 +280,11 @@ bool sqlite3_mini_client::commit()
             return false;
         }
     }
-    if (begin_depth_ == 1)
-    {
-        unlock_file(((sqlite3_min_single *)single_open_)->lock_fd);
-    }
     begin_depth_--;
-    ((sqlite3_min_single *)single_open_)->unlock();
+    if (begin_depth_ == 0)
+    {
+        unlock_for_transaction();
+    }
 
     return true;
 }
@@ -362,12 +303,10 @@ bool sqlite3_mini_client::rollback()
         {
             last_error_ = errmsg;
             zcc_error("exec sqlite3(ROLLBACK), %s", errmsg);
-            unlock_file(((sqlite3_min_single *)single_open_)->lock_fd);
-            ((sqlite3_min_single *)single_open_)->unlock();
+            unlock_for_transaction();
             return false;
         }
-        unlock_file(((sqlite3_min_single *)single_open_)->lock_fd);
-        ((sqlite3_min_single *)single_open_)->unlock();
+        unlock_for_transaction();
         return true;
     }
     else
@@ -378,10 +317,8 @@ bool sqlite3_mini_client::rollback()
         {
             last_error_ = errmsg;
             zcc_error("exec sqlite3(ROLLBACK SAVEPOINT), %s", errmsg);
-            ((sqlite3_min_single *)single_open_)->unlock();
             return false;
         }
-        ((sqlite3_min_single *)single_open_)->unlock();
         return true;
     }
 }
@@ -398,12 +335,15 @@ bool sqlite3_mini_client::exec(const std::string &sql)
         last_exec_sql_debug_ = ", last_sql: ";
         last_exec_sql_debug_.append(sql);
     }
+    lock_for_execute();
     if (sqlite3_exec(handler_, sql.c_str(), NULL, NULL, &errmsg) != SQLITE_OK)
     {
+        unlock_for_execute();
         last_error_ = errmsg;
         zcc_error("exec sqlite3(%s), %s", sql.c_str(), errmsg);
         return false;
     }
+    unlock_for_execute();
     return true;
 }
 
@@ -512,6 +452,50 @@ over:
     return ok;
 }
 
-zcc_namespace_end;
+void sqlite3_mini_client::lock_for_execute()
+{
+    if (transaction_lock_mode_)
+    {
+        return;
+    }
+    single_open_->thread_locker_.read_lock();
+    single_open_->lock_file_locker_.lock();
+    single_open_->lock_file_count_++;
+    if (single_open_->lock_file_count_ == 1)
+    {
+        flock_sh(single_open_->lock_file_fd_);
+    }
+    single_open_->lock_file_locker_.unlock();
+}
 
-#endif // ZCC_USE_SQLITE3__
+void sqlite3_mini_client::unlock_for_execute()
+{
+    if (transaction_lock_mode_)
+    {
+        return;
+    }
+    single_open_->lock_file_locker_.lock();
+    single_open_->lock_file_count_--;
+    if (single_open_->lock_file_count_ == 0)
+    {
+        flock_un(single_open_->lock_file_fd_);
+    }
+    single_open_->lock_file_locker_.unlock();
+    single_open_->thread_locker_.unlock();
+}
+
+void sqlite3_mini_client::lock_for_transaction()
+{
+    single_open_->thread_locker_.write_lock();
+    flock_ex(single_open_->lock_file_fd_);
+    transaction_lock_mode_ = true;
+}
+
+void sqlite3_mini_client::unlock_for_transaction()
+{
+    transaction_lock_mode_ = false;
+    flock_un(single_open_->lock_file_fd_);
+    single_open_->thread_locker_.unlock();
+}
+
+zcc_namespace_end;

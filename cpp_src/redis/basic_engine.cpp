@@ -34,7 +34,7 @@ static int ___query_by_io_list(redis_client_basic_engine &rc, int list_count, st
             return redis_fatal;
         }
         rp = rstr.c_str();
-        rlen = rstr.size() - 2;
+        rlen = (int)rstr.size() - 2;
         rstr.resize(rlen);
         firstch = rp[0];
         if (firstch == '*')
@@ -137,7 +137,7 @@ static int ___query_by_io_list_json(redis_client_basic_engine &rc, int list_coun
                 goto over;
             }
             rp = rstr.c_str();
-            rlen = rstr.size() - 2;
+            rlen = (int)rstr.size() - 2;
             rstr.resize(rlen);
             firstch = rp[0];
             if (firstch == '*')
@@ -158,7 +158,7 @@ static int ___query_by_io_list_json(redis_client_basic_engine &rc, int list_coun
             }
             if (firstch == ':')
             {
-		uint64_t v = ((rlen < 1) ? -1 : atol(rp + 1));
+                uint64_t v = ((rlen < 1) ? -1 : atol(rp + 1));
                 jn->array_push(v);
                 continue;
             }
@@ -321,7 +321,7 @@ int redis_client_basic_engine::query_protocol_by_stream(int64_t *number_ret, std
         goto over;
     }
     rp = rstr.c_str();
-    rlen = rstr.size() - 2;
+    rlen = (int)rstr.size() - 2;
     rstr.resize(rlen);
     firstch = rp[0];
     if (firstch == '-')

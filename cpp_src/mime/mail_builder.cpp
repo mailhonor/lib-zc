@@ -698,7 +698,7 @@ mail_builder &mail_builder::append_data(const char *data, int len)
 {
     if (len < 0)
     {
-        len = strlen(data);
+        len = (int)strlen(data);
     }
     result_string_.append(data, len);
     return *this;
@@ -706,7 +706,7 @@ mail_builder &mail_builder::append_data(const char *data, int len)
 
 mail_builder &mail_builder::append_data(int ch)
 {
-    result_string_.push_back(ch);
+    result_string_.push_back((char)ch);
     return *this;
 }
 

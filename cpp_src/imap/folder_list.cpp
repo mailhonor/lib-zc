@@ -63,7 +63,7 @@ void imap_client::folder_result::debug_show()
     {
         zcc::sprintf_1024(tmpbuf, "\n        STATUS 命令结果: RECENT: %d, UIDNEXT: %d, UIDVALIDITY: %d, UNSEEN: %d", status_->recent_, status_->uidnext_, status_->uidvalidity_, status_->unseen_);
     }
-    zcc_info("%s\n", tmpbuf.c_str());
+    zcc_debug_output("%s\n", tmpbuf.c_str());
 }
 
 const char *imap_client::folder_result::get_special_use()
@@ -213,7 +213,7 @@ int imap_client::_cmd_list(folder_list_result &folder_list, bool list_or_lsub)
     linebuf.clear();
     linebuf.append("L ").append(cmd).append(" \"\" *");
     fp_append(linebuf).fp_append("\r\n");
-    zcc_imap_client_debug_write_line(linebuf);
+    zcc_imap_client_debug_protocol_write(linebuf);
 
     while (1)
     {
@@ -223,7 +223,7 @@ int imap_client::_cmd_list(folder_list_result &folder_list, bool list_or_lsub)
             folder_result folder;
             _parse_folder_list(folder, response_tokens);
             folder_list[folder.name_] = folder;
-            zcc_imap_client_debug("文件夹: %s", folder.name_.c_str());
+            zcc_imap_client_verbose("文件夹: %s", folder.name_.c_str());
         }
         else
         {

@@ -19,7 +19,7 @@
 zcc_namespace_begin;
 
 // 流
-class stream
+class ZCC_LIB_API stream
 {
 public:
     static const int rbuf_size = 4096;
@@ -112,28 +112,28 @@ public:
     // 退回一个字节
     stream &ungetc();
     // 读最多max_len的字节
-    int read(void *mem, int max_len);
-    int read(std::string &str, int max_len);
+    int64_t read(void *mem, int64_t max_len);
+    int64_t read(std::string &str, int64_t max_len);
     // 严格读取strict_len个字节
-    inline int readn(int strict_len) { return readn((void *)0, strict_len); }
-    int readn(void *mem, int strict_len);
-    int readn(std::string &str, int strict_len);
+    inline int64_t readn(int64_t strict_len) { return readn((void *)0, strict_len); }
+    int64_t readn(void *mem, int64_t strict_len);
+    int64_t readn(std::string &str, int64_t strict_len);
     // 读取到分隔符delimiter为止, 最多 max_len 个字节
-    int read_delimiter(void *mem, int delimiter, int max_len);
-    int read_delimiter(std::string &str, int delimiter, int max_len);
+    int64_t read_delimiter(void *mem, int delimiter, int64_t max_len);
+    int64_t read_delimiter(std::string &str, int delimiter, int64_t max_len);
     // 读行
-    inline int gets(void *mem, int max_len) { return read_delimiter(mem, '\n', max_len); }
-    inline int gets(std::string &str, int max_len) { return read_delimiter(str, '\n', max_len); }
+    inline int64_t gets(void *mem, int64_t max_len) { return read_delimiter(mem, '\n', max_len); }
+    inline int64_t gets(std::string &str, int64_t max_len) { return read_delimiter(str, '\n', max_len); }
 
     // 写一个字节
     inline int putc(int c)
     {
-        return ((engine_->write_buf_len < wbuf_size) ? (engine_->write_buf[engine_->write_buf_len++] = (int)(c), (int)(c)) : (putc_do(c)));
+        return ((engine_->write_buf_len < wbuf_size) ? (engine_->write_buf[engine_->write_buf_len++] = (unsigned char)(c), c) : (putc_do(c)));
     }
     // 刷写缓存
     int flush();
     // 写
-    int write(const void *buf, int len);
+    int64_t write(const void *buf, int64_t len);
     inline stream &puts(const char *s, int64_t len = -1)
     {
         write(s, len);
@@ -144,7 +144,7 @@ public:
         write(str.c_str(), (int)str.size());
         return *this;
     }
-    inline stream &append(const char *s, int slen = -1)
+    inline stream &append(const char *s, int64_t slen = -1)
     {
         write(s, slen);
         return *this;
@@ -154,7 +154,7 @@ public:
         write(str.c_str(), (int)str.size());
         return *this;
     }
-    // 类似fprintf, 最多 1024 字节 
+    // 类似fprintf, 最多 1024 字节
 #ifdef __linux__
     int __attribute__((format(gnu_printf, 2, 3))) printf_1024(const char *format, ...);
 #else  // __linux__
@@ -184,14 +184,14 @@ protected:
 };
 
 // io类stream, 主要用于socket
-class iostream : public stream
+class ZCC_LIB_API iostream : public stream
 {
 public:
     iostream();
     iostream(int fd);
     iostream(SSL *ssl);
     virtual ~iostream();
- 
+
     // open socket
     iostream &open_socket(int fd);
     // open ssl
@@ -238,15 +238,11 @@ protected:
 
 // 本地文件stream, 类似 FILE, 尽量别用, 推荐用 FILE
 // 本类存在的意义是: 协程内使用. FILE 在本框架的携程库下还是阻塞执行
-class fstream : public stream
+class ZCC_LIB_API fstream : public stream
 {
 public:
     fstream();
-#ifdef _WIN64
-    fstream(HANDLE fd);
-#else  // _WIN64
     fstream(int fd);
-#endif // _WIN64
     virtual ~fstream();
 
 public:
@@ -255,26 +251,18 @@ public:
     {
         return open(fn.c_str());
     }
-#ifdef _WIN64
-    fstream &open(HANDLE fd);
-    virtual inline HANDLE get_fd() { return fd_; }
-    virtual inline HANDLE get_handle() { return fd_; }
-#else  // _WIN64
     fstream &open(int fd);
-    virtual inline int get_fd() { return fd_; }
-    virtual inline int get_handle() { return fd_; }
-#endif // _WIN64
+    inline int get_fd() { return fd_; }
     int close(bool close_fd_or_release_ssl = true);
 
 protected:
-    virtual int engine_read(void *buf, int len);
-    virtual int engine_write(const void *buf, int len);
+    int engine_read(void *buf, int len);
+    int engine_write(const void *buf, int len);
 
 protected:
-#ifdef _WIN64
-    HANDLE fd_{INVALID_HANDLE_VALUE};
-#else  // _WIN64
     int fd_{-1};
+#ifdef _WIN64
+    HANDLE handle_{INVALID_HANDLE_VALUE};
 #endif // _WIN64
 };
 

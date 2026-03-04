@@ -8,11 +8,10 @@
 
 #pragma once
 
-#ifndef ZCC_LIB_INCLUDE_MAIL___
-#define ZCC_LIB_INCLUDE_MAIL___
+#ifndef ZCC_LIB_INCLUDE_MIME___
+#define ZCC_LIB_INCLUDE_MIME___
 
 #include <functional>
-#include <tuple>
 #include "./zcc_stdlib.h"
 
 #ifdef __cplusplus
@@ -29,12 +28,12 @@ enum mail_header_encode_type
 };
 
 // 邮件解析
-class mail_parser
+class ZCC_LIB_API mail_parser
 {
     friend mail_parser_running_context;
 
 public:
-    class header_line_node
+    class ZCC_LIB_API header_line_node
     {
     public:
         inline header_line_node() {}
@@ -47,8 +46,15 @@ public:
         mail_header_encode_type encode_type_{mail_header_encode_none};
     };
 
+    class ZCC_LIB_API param_node
+    {
+    public:
+        std::string key_;
+        std::string value_;
+    };
+
     // 邮件地址
-    class mail_address
+    class ZCC_LIB_API mail_address
     {
     public:
         inline mail_address() {}
@@ -64,7 +70,7 @@ public:
     };
 
     // 邮件解析后的节点(附件/正文等等)
-    class mime_node
+    class ZCC_LIB_API mime_node
     {
         friend mail_parser_running_context;
         friend mail_parser;
@@ -306,8 +312,8 @@ public:
     }
 
     // 获取 邮件头行的值的参数
-    static void header_line_get_params(const char *in_line, int64_t in_len, std::string &val, std::vector<std::tuple<std::string, std::string>> &params);
-    inline static void header_line_get_params(const std::string &line, std::string &val, std::vector<std::tuple<std::string, std::string>> &params)
+    static void header_line_get_params(const char *in_line, int64_t in_len, std::string &val, std::vector<param_node> &params);
+    inline static void header_line_get_params(const std::string &line, std::string &val, std::vector<param_node> &params)
     {
         header_line_get_params(line.c_str(), line.size(), val, params);
     }
@@ -482,7 +488,7 @@ public:
     //
 private:
     void classify();
-    int64_t classify_mime_identify_type(mime_node *mime);
+    char classify_mime_identify_type(mime_node *mime);
     void classify_mime_identify_view_part(mime_node *mime, void *view_list, int64_t *view_len);
     void imap_section();
 
@@ -535,7 +541,7 @@ private:
 
 // tnef/winmail.dat 类型文件的解析
 // 常见于outlook发送的信件
-class tnef_parser
+class ZCC_LIB_API tnef_parser
 {
     friend class tnef_parser_running_context;
 
@@ -653,7 +659,7 @@ private:
 /**
  * @brief 邮件构建器类，用于构建符合MIME标准的邮件
  */
-class mail_builder
+class ZCC_LIB_API mail_builder
 {
 public:
     /**
@@ -805,4 +811,4 @@ zcc_namespace_end;
 #pragma pack(pop)
 #endif // __cplusplus
 
-#endif // ZCC_LIB_INCLUDE_MAIL___
+#endif // ZCC_LIB_INCLUDE_MIME___

@@ -73,7 +73,7 @@ int64_t mail_parser::mime_node::get_raw_header_line_ptr(const char *header_name,
     }
     else
     {
-        name_len = std::strlen(header_name);
+        name_len = (int)std::strlen(header_name);
         if (name_len == 0)
         {
             return -1;
@@ -152,7 +152,7 @@ std::string mail_parser::mime_node::get_raw_header_line(const char *header_name,
 int64_t mail_parser::mime_node::get_header_line_value(const char *header_name, std::string &result, int64_t n)
 {
     result.clear();
-    int64_t len = strlen(header_name);
+    int64_t len = (int)strlen(header_name);
     if (len < 1)
     {
         return -1;
@@ -175,7 +175,7 @@ int64_t mail_parser::mime_node::get_header_line_value(const char *header_name, s
     {
         std::string r = header_line_unescape(vp + (len + 1), vlen - (len + 1));
         char *start;
-        int64_t rlen = skip(r.c_str(), r.size(), " \t\r\n", 0, &start);
+        int64_t rlen = skip(r.c_str(), (int)r.size(), " \t\r\n", 0, &start);
         if (rlen > 0)
         {
             result.append(start, rlen);
@@ -203,7 +203,7 @@ const std::string &mail_parser::mime_node::get_encoding()
     if (!tmpbf.empty())
     {
         std::string val;
-        std::vector<std::tuple<std::string, std::string>> params;
+        std::vector<param_node> params;
         header_line_get_params(tmpbf, val, params);
         encoding_ = val;
         tolower(encoding_);
@@ -245,7 +245,7 @@ const std::string &mail_parser::mime_node::get_disposition()
         return disposition_;
     }
     std::string val;
-    std::vector<std::tuple<std::string, std::string>> params;
+    std::vector<param_node> params;
     header_line_get_params(tmpbf, val, params);
     disposition_ = val;
     tolower(disposition_);
@@ -254,8 +254,8 @@ const std::string &mail_parser::mime_node::get_disposition()
     for (auto it = params.begin(); it != params.end(); it++)
     {
         auto a = *it;
-        const std::string &key = std::get<0>(*it);
-        const std::string &val = std::get<1>(*it);
+        const std::string &key = it->key_;
+        const std::string &val = it->value_;
         int64_t key_len = key.size();
         int64_t value_len = val.size();
         if (key == "filename")

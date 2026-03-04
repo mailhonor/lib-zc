@@ -216,7 +216,7 @@ connection_info_node *redis_client_cluster_engine::find_node_random()
     node_idx_plus_++;
     for (size_t i = 0; i < connection_info_vector_.size(); i++)
     {
-        int idx = (i + node_idx_plus_) % connection_info_vector_.size();
+        int idx = (int)((i + node_idx_plus_) % connection_info_vector_.size());
         node = connection_info_vector_[idx];
         if (node)
         {
@@ -236,7 +236,7 @@ connection_info_node *redis_client_cluster_engine::find_node_random()
 int redis_client_cluster_engine::find_node_by_query_tokens(const std::list<std::string> &query_tokens, connection_info_node *&node)
 {
     node = nullptr;
-    int count = query_tokens.size();
+    int count = (int)query_tokens.size();
     if (count < 1)
     {
         return redis_fatal;
@@ -272,7 +272,7 @@ int redis_client_cluster_engine::find_node_by_query_tokens(const std::list<std::
         return redis_error;
     }
 
-    int slot_id = crc16(it2->c_str(), it2->size(), 0) % slot_count;
+    int slot_id = (int)((int)crc16(it2->c_str(), (int)it2->size(), 0) % (int)slot_count);
     int idx = slot_vector_[slot_id];
     if (idx == -1)
     {
@@ -346,7 +346,7 @@ int redis_client_cluster_engine::deal_moved(connection_info_node *&node)
         }
         if (!have_space)
         {
-            node->idx = connection_info_vector_.size();
+            node->idx = (short)connection_info_vector_.size();
             connection_info_vector_.push_back(node);
         }
     }

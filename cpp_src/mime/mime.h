@@ -14,17 +14,9 @@
 #pragma pack(push, 4)
 zcc_namespace_begin;
 
-#define zcc_mime_info(...) zcc_info(__VA_ARGS__)
-#define zcc_mime_error(...) zcc_error(__VA_ARGS__)
-#define zcc_mime_debug(...) \
-    if (mime_debug_mode_)   \
-    zcc_info(__VA_ARGS__)
-#define zcc_mime_debug_read_line(s) \
-    if (mime_debug_mode_)           \
-    zcc_info("imap 读: %s", s.c_str())
-#define zcc_mime_debug_write_line(s) \
-    if (mime_debug_mode_)            \
-    zcc_info("imap 写: %s", s.c_str())
+#define zcc_mime_info zcc_info
+#define zcc_mime_error zcc_error
+#define zcc_mime_debug(...) ((mime_debug_mode_) ? zcc_debug_output(__VA_ARGS__) : (void)0)
 
 zcc_namespace_end;
 #pragma pack(pop)

@@ -19,28 +19,32 @@
 zcc_namespace_begin;
 
 /* win32 ########################################################### */
-int Utf8ToWideChar(const char *in, int in_len, wchar_t *result_ptr, int result_size);
-int Utf8ToWideChar(const std::string &in, std::wstring &result);
-std::wstring Utf8ToWideChar(const std::string &in);
-int MultiByteToWideChar(const char *in, int in_len, wchar_t *result_ptr, int result_size);
-int MultiByteToWideChar(const std::string &in, std::wstring &result);
-std::wstring MultiByteToWideChar(const std::string &in);
-int WideCharToUTF8(const wchar_t *in, int in_size, char *result_ptr, int result_size);
-int WideCharToUTF8(const std::wstring &in, std::string &result);
-std::string WideCharToUTF8(const std::wstring &in);
-int WideCharToUTF8(const wchar_t *in, int in_len, std::string &result);
-std::string WideCharToUTF8(const wchar_t *in, int in_len = -1);
-int MultiByteToUTF8(const char *in, int in_len, char *result_ptr, int result_size);
-int MultiByteToUTF8(const std::string &in, std::string &result);
-int MultiByteToUTF8(const char *in, int in_len, std::string &result);
-std::string MultiByteToUTF8(const std::string &in);
-std::string MultiByteToUTF8(const char *in, int in_len);
-int WideCharToMultiByte(const wchar_t *in, int in_len, char *result_ptr, int result_size);
-int WideCharToMultiByte(const std::wstring &in, std::string &result);
-std::string WideCharToMultiByte(const std::wstring &in);
-int Utf8ToMultiByte(const char *in, int in_len, char *result_ptr, int result_size);
-int Utf8ToMultiByte(const std::string &in, std::string &result);
-std::string Utf8ToMultiByte(const std::string &in);
+ZCC_LIB_API int Utf8ToWideChar(const char *in, int in_len, wchar_t *result_ptr, int result_size);
+inline int Utf8ToWideChar(const std::string &in, wchar_t *result_ptr, int result_size)
+{
+    return Utf8ToWideChar(in.c_str(), (int)in.size(), result_ptr, result_size);
+}
+ZCC_LIB_API int Utf8ToWideChar(const std::string &in, std::wstring &result);
+ZCC_LIB_API std::wstring Utf8ToWideChar(const std::string &in);
+ZCC_LIB_API int MultiByteToWideChar(const char *in, int in_len, wchar_t *result_ptr, int result_size);
+ZCC_LIB_API int MultiByteToWideChar(const std::string &in, std::wstring &result);
+ZCC_LIB_API std::wstring MultiByteToWideChar(const std::string &in);
+ZCC_LIB_API int WideCharToUTF8(const wchar_t *in, int in_size, char *result_ptr, int result_size);
+ZCC_LIB_API int WideCharToUTF8(const std::wstring &in, std::string &result);
+ZCC_LIB_API std::string WideCharToUTF8(const std::wstring &in);
+ZCC_LIB_API int WideCharToUTF8(const wchar_t *in, int in_len, std::string &result);
+ZCC_LIB_API std::string WideCharToUTF8(const wchar_t *in, int in_len = -1);
+ZCC_LIB_API int MultiByteToUTF8(const char *in, int in_len, char *result_ptr, int result_size);
+ZCC_LIB_API int MultiByteToUTF8(const std::string &in, std::string &result);
+ZCC_LIB_API int MultiByteToUTF8(const char *in, int in_len, std::string &result);
+ZCC_LIB_API std::string MultiByteToUTF8(const std::string &in);
+ZCC_LIB_API std::string MultiByteToUTF8(const char *in, int in_len);
+ZCC_LIB_API int WideCharToMultiByte(const wchar_t *in, int in_len, char *result_ptr, int result_size);
+ZCC_LIB_API int WideCharToMultiByte(const std::wstring &in, std::string &result);
+ZCC_LIB_API std::string WideCharToMultiByte(const std::wstring &in);
+ZCC_LIB_API int Utf8ToMultiByte(const char *in, int in_len, char *result_ptr, int result_size);
+ZCC_LIB_API int Utf8ToMultiByte(const std::string &in, std::string &result);
+ZCC_LIB_API std::string Utf8ToMultiByte(const std::string &in);
 
 zcc_namespace_end;
 #pragma pack(pop)

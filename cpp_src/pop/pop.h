@@ -11,10 +11,14 @@
 #pragma pack(push, 4)
 zcc_namespace_begin;
 
-#define zcc_pop_client_info(...) zcc_info(__VA_ARGS__)
-#define zcc_pop_client_error(...) zcc_error(__VA_ARGS__)
-#define zcc_pop_client_debug(...) \
-    if (debug_mode_)              \
-    zcc_info(__VA_ARGS__)
+#define zcc_pop_client_debug zcc_class_debug
+#define zcc_pop_client_verbose zcc_class_verbose
+#define zcc_pop_client_debug_protocol_read(s) \
+    if (debug_protocol_mode_)                 \
+    zcc_debug_output("pop 读: %s", s.c_str())
+#define zcc_pop_client_debug_protocol_write(s) \
+    if (debug_protocol_mode_)                  \
+    zcc_debug_output("pop 写: %s", s.c_str())
+
 zcc_namespace_end;
 #pragma pack(pop)

@@ -40,9 +40,9 @@ int main(int argc, char **argv)
         content = zcc::stdin_get_contents();
     }
 
-    int invalid_types = 0;
+    int64_t invalid_types = 0;
     std::string result = zcc::charset::convert(from_charset, content.c_str(), content.size(), to_charset, &invalid_types);
-    zcc_info("invalid_types: %d", invalid_types);
+    zcc_info("invalid_types: %zd", invalid_types);
     if (result.size())
     {
         fwrite(result.c_str(), 1, result.size(), stdout);

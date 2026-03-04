@@ -408,7 +408,7 @@ int SSL_get_fd(SSL *ssl)
             }                                                                                \
             if (var_debug_mode)                                                              \
             {                                                                                \
-                zcc_info("openssl: found error ret=%d, status=%d", ret, err);                \
+                zcc_debug_output("openssl: found error ret=%d, status=%d", ret, err);        \
             }                                                                                \
             {                                                                                \
                 ret = -1;                                                                    \

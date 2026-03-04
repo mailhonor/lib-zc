@@ -49,7 +49,7 @@ static void do_test_one()
     char buf[128 + 1];
     ::write(fd, (const void *)"GET a\r\n", 7);
     ::read(fd, buf, 128);
-    zcc::close(fd);
+    zcc::close_socket(fd);
     r_success++;
 }
 

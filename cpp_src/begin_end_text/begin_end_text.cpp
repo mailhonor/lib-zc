@@ -115,7 +115,7 @@ begin_end_text_node *begin_end_text_parser::parse_one_line(const char *text, int
     bool quoted = false;
     for (i = 0; i < text_len; i++)
     {
-        int ch = text[i];
+        int ch = ((unsigned char *)text)[i];
         if (quoted)
         {
             if (ch == '"')
@@ -123,7 +123,7 @@ begin_end_text_node *begin_end_text_parser::parse_one_line(const char *text, int
                 quoted = false;
                 continue;
             }
-            token += ch;
+            token += (char)ch;
             continue;
         }
         if (ch == '"')
@@ -153,7 +153,7 @@ begin_end_text_node *begin_end_text_parser::parse_one_line(const char *text, int
         }
         else
         {
-            token += ch;
+            token += (char)ch;
         }
     }
     if (!token.empty())
@@ -173,7 +173,7 @@ begin_end_text_node *begin_end_text_parser::parse_one_line(const char *text, int
     for (; i < text_len; i++)
     {
         // 转义 \r\n\t
-        int ch = text[i];
+        int ch = ((unsigned char *)text)[i];
         if (ch == '\\')
         {
             i += 1;
@@ -194,11 +194,11 @@ begin_end_text_node *begin_end_text_parser::parse_one_line(const char *text, int
             {
                 ch = '\t';
             }
-            token += ch;
+            token += (char)ch;
         }
         else
         {
-            token += ch;
+            token += (char)ch;
         }
     }
     node->value_ = token;

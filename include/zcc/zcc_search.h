@@ -19,14 +19,14 @@ zcc_namespace_begin;
 
 // 多关键字匹配
 
-extern bool var_msearch_debug_mode;
+ZCC_LIB_API extern bool var_msearch_debug_mode;
 
 struct zcc_msearch_reader_t;
 struct zcc_msearch_builder_t;
 struct zcc_msearch_walker_t;
 
 // 构造器
-class msearch_builder
+class ZCC_LIB_API msearch_builder
 {
 public:
     msearch_builder();
@@ -35,7 +35,7 @@ public:
     void add_token(const void *word, int len = -1);
     inline void add_token(const std::string &word)
     {
-        add_token(word.c_str(), word.size());
+        add_token(word.c_str(), (int)word.size());
     }
     // 从文件加载条目
     // 忽略空行, 忽略 ### 开头的行
@@ -58,7 +58,7 @@ protected:
 };
 
 // 搜索
-class msearch_reader : public msearch_builder
+class ZCC_LIB_API msearch_reader : public msearch_builder
 {
     friend msearch_walker;
 
@@ -105,7 +105,7 @@ protected:
 };
 
 // 遍历器
-class msearch_walker
+class ZCC_LIB_API msearch_walker
 {
 public:
     msearch_walker(msearch_reader &reader);

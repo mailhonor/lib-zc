@@ -8,6 +8,7 @@
 
 #include "zcc/zcc_win64.h"
 #include "zcc/zcc_errno.h"
+#include "zcc/zcc_charset.h"
 #include <stdio.h>
 #ifdef _WIN64
 #include <winbase.h>
@@ -30,11 +31,6 @@
 #include <stdarg.h>
 #include <dirent.h>
 #endif // _WIN64
-
-// 如果未定义 Z_MAX_PATH，则定义其值为 10240
-#ifndef Z_MAX_PATH
-#define Z_MAX_PATH 10240
-#endif // Z_MAX_PATH
 
 #ifdef _WIN64
 // 定义 Windows 64 位系统下的路径分隔符
@@ -113,7 +109,7 @@ FILE *fopen(const char *pathname, const char *mode)
     // 用于存储宽字符版本的打开模式
     wchar_t modew[64 + 1];
     // 计算打开模式的长度
-    int mlen = std::strlen(mode);
+    int mlen = (int)std::strlen(mode);
     // 如果打开模式长度超过 10，返回 0
     if (mlen > 10)
     {
@@ -450,7 +446,7 @@ int64_t file_get_contents(const char *pathname, std::string &bf)
             break;
         }
         // 将字符添加到字符串中
-        bf.push_back(ch);
+        bf.push_back((char)ch);
     }
     // 检查文件是否出错
     int ret = ferror(fp);
@@ -525,9 +521,9 @@ int stdin_get_contents(std::string &bf)
             break;
         }
         // 将字符添加到字符串中
-        bf.push_back(ch);
+        bf.push_back((char)ch);
     }
-    return bf.size();
+    return (int)bf.size();
 }
 
 /**
@@ -597,7 +593,8 @@ static int _open_win64(const char *pathname, int flags, int mode)
     // 将 UTF-8 编码的文件路径转换为宽字符
     if (Utf8ToWideChar(pathname, -1, pathnamew, Z_MAX_PATH) < 1)
     {
-        return 0;
+        set_errno(ZCC_ENOENT);
+        return -1;
     }
     // 调用 Windows 宽字符版本的 open 函数
     return ::_wopen(pathnamew, flags, mode);
@@ -621,6 +618,71 @@ int open(const char *pathname, int flags, int mode)
     ROBUST_DO(::open(pathname, flags, mode));
 #endif // _WIN64
 }
+
+int open(const char *pathname, const char *flags, int mode)
+{
+    int f = 0;
+    if (empty(flags))
+    {
+        return -1;
+    }
+    int ch1 = flags[0];
+    int ch2 = flags[1];
+
+    if (ch2 == '+')
+    {
+        if (ch1 == 'r')
+        {
+            f = O_RDWR;
+        }
+        else if (ch1 == 'w')
+        {
+            f = O_RDWR | O_CREAT | O_TRUNC;
+        }
+        else if (ch1 == 'a')
+        {
+            f = O_RDWR | O_CREAT | O_APPEND;
+        }
+    }
+    else
+    {
+        if (ch1 == 'r')
+        {
+            f = O_RDONLY;
+        }
+        else if (ch1 == 'w')
+        {
+            f = O_WRONLY | O_CREAT | O_TRUNC;
+        }
+        else if (ch1 == 'a')
+        {
+            f = O_WRONLY | O_CREAT | O_APPEND;
+        }
+    }
+    if (f == 0)
+    {
+        return -1;
+    }
+
+    return open(pathname, f, mode);
+}
+
+/**
+ * @brief 关闭文件描述符
+ * @param fd 文件句柄
+ * @return 成功返回1，失败返回-1
+ */
+#ifdef _WIN64
+int close_fd(int fd)
+{
+    return ::_close(fd);
+}
+#else
+int close_fd(int fd)
+{
+    return ::close(fd);
+}
+#endif // _WIN64
 
 /**
  * @brief 创建或更新文件的访问和修改时间
@@ -655,6 +717,87 @@ int touch(const char *pathname)
     // 关闭文件
     ::close(fd);
     return 1;
+#endif // _WIN64
+}
+
+int touch(int fd)
+{
+#ifdef _WIN64
+    return 1;
+#else  // _WIN64
+    if (futimens(fd, 0) < 0)
+    {
+        return -1;
+    }
+    return 1;
+#endif // _WIN64
+}
+
+int chmod(const char *pathname, int mode)
+{
+#ifdef _WIN64
+    wchar_t pathnamew[Z_MAX_PATH + 1];
+    if (Utf8ToWideChar(pathname, -1, pathnamew, Z_MAX_PATH) < 1)
+    {
+        set_errno(ZCC_ENOENT);
+        return -1;
+    }
+    DWORD attrs = GetFileAttributesW(pathnamew);
+    if (attrs == INVALID_FILE_ATTRIBUTES)
+    {
+        return -1;
+    }
+
+    if (mode & _S_IWRITE)
+    {
+        attrs &= ~FILE_ATTRIBUTE_READONLY;
+    }
+    else
+    {
+        attrs |= FILE_ATTRIBUTE_READONLY;
+    }
+
+    if (!SetFileAttributesW(pathnamew, attrs))
+    {
+        return -1;
+    }
+    return 0;
+#else  // _WIN64
+    return ::chmod(pathname, mode);
+#endif // _WIN64
+}
+
+int fchmod(int fd, int mode)
+{
+#ifdef _WIN64
+    HANDLE hFile = (HANDLE)_get_osfhandle(fd);
+    if (hFile == INVALID_HANDLE_VALUE)
+    {
+        return -1;
+    }
+
+    DWORD attrs = GetFileAttributesW(reinterpret_cast<LPCWSTR>(hFile));
+    if (attrs == INVALID_FILE_ATTRIBUTES)
+    {
+        return -1;
+    }
+
+    if (mode & _S_IWRITE)
+    {
+        attrs &= ~FILE_ATTRIBUTE_READONLY;
+    }
+    else
+    {
+        attrs |= FILE_ATTRIBUTE_READONLY;
+    }
+
+    if (!SetFileAttributesW(reinterpret_cast<LPCWSTR>(hFile), attrs))
+    {
+        return -1;
+    }
+    return 0;
+#else  // _WIN64
+    return fchmod(fd, mode);
 #endif // _WIN64
 }
 
@@ -793,7 +936,7 @@ int mkdir(std::vector<std::string> paths, int mode)
     {
         if (saved_ch > -1)
         {
-            ps[0] = saved_ch;
+            ps[0] = (unsigned char)saved_ch;
         }
         p = (unsigned char *)std::strchr((char *)ps, path_splitor);
         if (p)
@@ -1387,8 +1530,27 @@ std::string format_filename(const char *filename)
                 ch = '_';
             }
         }
-        path.push_back(ch);
+        path.push_back((char)ch);
     }
+    if (path.size() < 256)
+    {
+        return path;
+    }
+    int len;
+    auto pos = path.find_last_of('.');
+    if (pos == std::string::npos || (pos + 1) >= path.size() || (path.size() - pos) > 128)
+    {
+        len = (int)zcc::charset::utf8_tail_complete(path);
+        path.resize(len);
+        return path;
+    }
+    // 截取文件名和扩展名
+    std::string name = path.substr(0, pos);
+    std::string ext = path.substr(pos);
+    // 格式化文件名和扩展名
+    len = (int)zcc::charset::utf8_tail_complete(name, (255 - (int)ext.size()));
+    name.resize(len);
+    path = name + ext;
     return path;
 }
 
@@ -1444,7 +1606,7 @@ std::vector<std::string> find_file_sample(const char **dir_or_file, int item_cou
         }
         else if (!S_ISDIR(st.st_mode))
         {
-            zcc_debug("WARNING file must be regular file or directory %s", pathname);
+            zcc_debug("file must be regular file or directory %s", pathname);
             continue;
         }
         if (zcc::empty(pathname_match))
@@ -1461,7 +1623,7 @@ std::vector<std::string> find_file_sample(const char **dir_or_file, int item_cou
         FILE *fp = popen(buf, "r");
         if (!fp)
         {
-            zcc_debug("ERROR popen: find \"%s\" -type f", pathname);
+            zcc_debug("popen error: find \"%s\" -type f", pathname);
         }
         while (fgets(buf, 4096, fp))
         {
@@ -1785,18 +1947,18 @@ bool clear_expired_file_in_dir(std::string dirname, int64_t timeout)
                 {
                     if (zcc::rmdir(fn.c_str()) < 0)
                     {
-                        zcc_error("system 删除文件夹失败(%m): %s", fn.c_str());
+                        zcc_error("删除文件夹失败(%m): %s", fn.c_str());
                         return false;
                     }
                     else
                     {
-                        zcc_debug("system 删除文件夹成功: %s", fn.c_str());
+                        zcc_debug("删除文件夹成功: %s", fn.c_str());
                     }
                 }
                 else
                 {
 
-                    zcc_info("skip: %s, %d", fn.c_str(), items.size());
+                    zcc_debug("skip: %s, %d", fn.c_str(), items.size());
                 }
             }
         }
@@ -1811,12 +1973,49 @@ bool clear_expired_file_in_dir(std::string dirname, int64_t timeout)
                 }
                 else
                 {
-                    zcc_debug("system 删除文件成功: %s", fn.c_str());
+                    zcc_debug("删除文件成功: %s", fn.c_str());
                 }
             }
         }
     }
     return true;
+}
+
+bool check_or_modify_file_mtime(const std::string &pathname, int64_t expire_seconds)
+{
+    int fd = -1;
+    struct stat st;
+    bool ok = false;
+    if ((fd = open(pathname, O_RDWR, 0)) < 0)
+    {
+        goto over;
+    }
+    if (fstat(fd, &st) < 0)
+    {
+        goto over;
+    }
+    if (st.st_mtime + expire_seconds > second())
+    {
+        ok = true;
+        goto over;
+    }
+    if (touch(fd) < 0)
+    {
+        goto over;
+    }
+    ::close(fd);
+    fd = -1;
+    if ((fd = open(pathname, O_RDONLY, 0)) < 0)
+    {
+        goto over;
+    }
+    ok = true;
+over:
+    if (fd > -1)
+    {
+        ::close(fd);
+    }
+    return ok;
 }
 
 zcc_namespace_end;

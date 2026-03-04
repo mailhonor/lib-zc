@@ -12,15 +12,20 @@
 #define ZCC_LIB_INCLUDE_SQLITE3___
 
 #include "./zcc_stdlib.h"
-#include <sqlite3.h>
-
 #pragma pack(push, 4)
 #ifdef __cplusplus
+
+extern "C"
+{
+    struct zcc_sqlite3;
+    struct zcc_sqlite3_stmt;
+};
+
 zcc_namespace_begin;
 
+class sqlite3_min_single;
 class sqlite3_mini_client;
-
-class sqlite3_mini_stmt
+class ZCC_LIB_API sqlite3_mini_stmt
 {
     friend class sqlite3_mini_client;
 
@@ -48,7 +53,6 @@ public:
     bool bind(int sn, int64_t val);
     bool bind(int sn, int val);
     bool bind(int sn, double val);
-    bool bind_blob(const char *name, const void *data, uint64_t data_len);
     bool bind_blob(const std::string &name, const void *data, uint64_t data_len);
     bool bind(const std::string &name, const char *str, int slen = -1);
     bool bind(const std::string &name, const std::string &str);
@@ -58,9 +62,13 @@ public:
     bool step();
     bool step(bool &row_flag);
     std::string column_string(int sn);
-    const char *column_text(int sn);
-    const void *column_blob(int sn);
-    int column_bytes(int sn);
+    ZCC_DEPRECATED inline const char *column_text(int sn) { return column_text_inner(sn); }
+    ZCC_DEPRECATED inline const void *column_blob(int sn) { return column_blob_inner(sn); }
+    ZCC_DEPRECATED inline int column_bytes(int sn) { return column_bytes_inner(sn); }
+    inline const char *column_text_data(int sn) { return column_text_inner(sn); }
+    inline int column_text_length(int sn) { return column_bytes_inner(sn); }
+    inline const void *column_blob_data(int sn) { return column_blob_inner(sn); }
+    inline int column_blob_length(int sn) { return column_bytes_inner(sn); }
     int column_int(int sn);
     int64_t column_long(int sn);
     double column_double(int sn);
@@ -68,13 +76,18 @@ public:
 
 protected:
     sqlite3_mini_client *client_{0};
-    sqlite3_stmt *stmt_{0};
+    struct zcc_sqlite3_stmt *stmt_{0};
     std::string sql_;
     std::map<std::string, int> parameters_;
     bool need_reset_{false};
+
+private:
+    const char *column_text_inner(int sn);
+    const void *column_blob_inner(int sn);
+    int column_bytes_inner(int sn);
 };
 
-class sqlite3_mini_client
+class ZCC_LIB_API sqlite3_mini_client
 {
     friend sqlite3_mini_stmt;
 
@@ -122,15 +135,22 @@ public:
 
 protected:
     void check_not_released_stmt();
-    sqlite3 *handler_{0};
+    std::string db_pathname_;
+    struct zcc_sqlite3 *handler_{0};
     std::string last_exec_sql_debug_;
     std::string last_error_;
     bool debug_mode_{false};
 
+protected:
+    void lock_for_execute();
+    void unlock_for_execute();
+    void lock_for_transaction();
+    void unlock_for_transaction();
+
 private:
-    std::string db_pathname_;
-    void *single_open_{0};
+    sqlite3_min_single *single_open_{nullptr};
     int begin_depth_{0};
+    bool transaction_lock_mode_{false};
 };
 
 zcc_namespace_end;

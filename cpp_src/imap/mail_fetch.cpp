@@ -135,7 +135,7 @@ int imap_client::get_message(FILE *dest_fp, mail_flags &flags, int uid)
     linebuf.clear();
     zcc::sprintf_1024(linebuf, "F UID FETCH %d (UID FLAGS BODY.PEEK[])", uid);
     fp_append(linebuf).fp_append("\r\n");
-    zcc_imap_client_debug_write_line(linebuf);
+    zcc_imap_client_debug_protocol_write(linebuf);
 
     while (1)
     {
@@ -163,7 +163,7 @@ int imap_client::get_message(FILE *dest_fp, mail_flags &flags, int uid)
                     r = -1;
                     break;
                 }
-                zcc_imap_client_debug("获取一封信件, (Answered:%d, Seen: %d, Draft:%d, Flagged: %d, Deleted: %d, Recent: %d)", flags.answered_, flags.seen_, flags.draft_, flags.flagged_, flags.deleted_, flags.recent_);
+                zcc_imap_client_verbose("获取一封信件, (Answered:%d, Seen: %d, Draft:%d, Flagged: %d, Deleted: %d, Recent: %d)", flags.answered_, flags.seen_, flags.draft_, flags.flagged_, flags.deleted_, flags.recent_);
                 if (extra_length > -1)
                 {
                     if ((r = ignore_left_token(-1)) < 1)

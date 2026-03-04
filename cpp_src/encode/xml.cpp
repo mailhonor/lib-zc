@@ -14,7 +14,7 @@ void xml_unescape_string(const char *data, int len, std::string &content)
 {
     if (len < 0)
     {
-        len = std::strlen(data);
+        len = (int)std::strlen(data);
     }
     char *ps = (char *)data, *end = ps + len;
     for (; ps < end;)
@@ -84,13 +84,13 @@ void xml_unescape_string(const char *data, int len, std::string &content)
                 }
                 if (ch)
                 {
-                    content.push_back(ch);
+                    content.push_back((char)ch);
                 }
             }
         }
         else
         {
-            content.push_back(ch);
+            content.push_back((char)ch);
         }
     }
 }

@@ -160,7 +160,7 @@ static void _config_core_file_size()
         // 将字节数转换为MB
         v = (vv / (1024 * 1024));
     }
-    if (!set_core_file_size(v))
+    if (!set_core_file_size((int)v))
     {
         // 设置失败，输出警告信息
         zcc_warning("set core-file-size error");
@@ -189,7 +189,7 @@ static void _config_max_mem()
         // 将字节数转换为MB
         v = (int)(vv / (1024 * 1024));
     }
-    if (!set_max_mem(v))
+    if (!set_max_mem((int)v))
     {
         // 设置失败，输出警告信息
         zcc_warning("set max-memory error");
@@ -246,7 +246,7 @@ static void _config_path_user()
     const char *dir = var_main_config.get_cstring("run-chdir", 0);
     if (!empty(dir))
     {
-        if (chdir(dir) == -1)
+        if (::chdir(dir) == -1)
         {
             // 切换工作目录失败，输出致命错误信息并退出程序
             zcc_fatal("chdir(%s): %m", dir);
@@ -329,7 +329,7 @@ static const char *optval_charset_deal(const char *optval, bool cmd_mode)
     {
         return optval;
     }
-    int len = std::strlen(optval);
+    int len = (int)std::strlen(optval);
     int result_size = len * 4 + 16;
     char *result_ptr = (char *)zcc::malloc(result_size + 16);
     // 将多字节字符串转换为UTF-8编码

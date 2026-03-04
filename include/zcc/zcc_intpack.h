@@ -80,14 +80,14 @@ inline void int_pack2(unsigned int num, void *buf)
     p[0] = num & 255;
 }
 
-int cint_data_unescape(const void *src_data, int src_size, void **result_data, int *result_len);
-int cint_data_unescape_all(const void *src_data, int src_size, size_data *vec, int vec_size);
+ZCC_LIB_API int cint_data_unescape(const void *src_data, int src_size, void **result_data, int *result_len);
+ZCC_LIB_API int cint_data_unescape_all(const void *src_data, int src_size, size_data *vec, int vec_size);
 
-void cint_data_escape(std::string &bf, const void *data, int len);
-void cint_data_escape_int(std::string &bf, int i);
-void cint_data_escape_long(std::string &bf, int64_t i);
-void cint_data_escape_pp(std::string &bf, const char **pp, int size);
-int cint_put(int size, char *buf);
+ZCC_LIB_API void cint_data_escape(std::string &bf, const void *data, int len);
+ZCC_LIB_API void cint_data_escape_int(std::string &bf, int i);
+ZCC_LIB_API void cint_data_escape_long(std::string &bf, int64_t i);
+ZCC_LIB_API void cint_data_escape_pp(std::string &bf, const char **pp, int size);
+ZCC_LIB_API int cint_put(int size, char *buf);
 
 zcc_namespace_end;
 #pragma pack(pop)

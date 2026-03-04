@@ -46,7 +46,7 @@ dict http_url::parse_query(const char *query, bool lowercase_mode)
             }
             value.clear();
             q++;
-            http_token_decode(q, p - q, value);
+            http_token_decode(q, (int)(p - q), value);
         } while (0);
         r[name] = value;
         if (*p == '\0')
@@ -103,7 +103,7 @@ void http_url::parse_url(const char *url, int len)
     buffer bf;
     if (len < 0)
     {
-        len = std::strlen(url);
+        len = (int)std::strlen(url);
     }
     bf.append(url, len);
     url = bf.c_str();
@@ -228,7 +228,7 @@ path:
         if ((*p == '?') || (*p == '#') || (*p == '\0'))
         {
             path_.clear();
-            http_token_decode(ps, p - ps, path_);
+            http_token_decode(ps, (int)(p - ps), path_);
             break;
         }
         p++;

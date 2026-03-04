@@ -15,7 +15,7 @@ std::string md5(const void *data, int len)
 {
     if (len < 0)
     {
-        len = std::strlen((const char *)(void *)data);
+        len = (int)std::strlen((const char *)(void *)data);
     }
     std::string result;
     char buf[16 + 1];

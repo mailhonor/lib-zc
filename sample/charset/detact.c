@@ -11,7 +11,7 @@
 static int windows_1252_flag = 0;
 static void ___usage()
 {
-    zprintf("USAGE: %s [ --uconv ] [ --windows_1252 ] filename1 [filename2 ...]\n", zvar_progname);
+    zprintf("USAGE: %s [ --windows_1252 ] filename1 [filename2 ...]\n", zvar_progname);
     exit(1);
 }
 
@@ -53,10 +53,6 @@ int main(int argc, char **argv)
 {
     zvar_charset_debug = 1;
     zmain_argument_run(argc, argv);
-    if (zconfig_get_bool(zvar_default_config, "uconv", 0))
-    {
-        zcharset_convert_use_uconv();
-    }
     windows_1252_flag = zconfig_get_bool(zvar_default_config, "windows_1252", 0);
 
     if (zvar_main_redundant_argc == 0)

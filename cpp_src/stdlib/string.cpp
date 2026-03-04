@@ -104,7 +104,7 @@ int skip_right(const char *str, int len, const char *ignores)
     int i = 0;
     if (len < 0)
     {
-        len = std::strlen(str);
+        len = (int)std::strlen(str);
     }
     for (i = len - 1; i >= 0; i--)
     {
@@ -132,7 +132,7 @@ int skip(const char *line,
 
     if (len < 0)
     {
-        len = std::strlen(line);
+        len = (int)std::strlen(line);
     }
     pend = line + len;
 
@@ -155,7 +155,7 @@ int skip(const char *line,
         ignores_right = ignores_left;
     }
     ps = line + i;
-    len = pend - ps;
+    len = (int)(pend - ps);
     for (i = len - 1; i >= 0; i--)
     {
         ch = ps[i];
@@ -283,7 +283,7 @@ std::string human_byte_size(int64_t a)
     int len, m, i;
 
     std::sprintf(buf, "%zd", a);
-    len = strlen(buf);
+    len = (int)strlen(buf);
     m = len % 3;
 
     while (1)
@@ -352,7 +352,7 @@ char *tolower(char *str)
     unsigned char *ps = (unsigned char *)str;
     while (*ps)
     {
-        *ps = tolower(*ps);
+        *ps = (unsigned char)tolower(*ps);
         ps++;
     }
     return str;
@@ -367,7 +367,7 @@ char *toupper(char *str)
     unsigned char *ps = (unsigned char *)str;
     while (*ps)
     {
-        *ps = toupper(*ps);
+        *ps = (unsigned char)toupper(*ps);
         ps++;
     }
     return str;
@@ -383,7 +383,7 @@ char *clear_null(char *data, int64_t size)
     }
     if (size < 0)
     {
-        size = std::strlen(p);
+        size = (int)std::strlen(p);
     }
     for (i = 0; i < size; i++)
     {
@@ -462,7 +462,7 @@ std::string &tolower(std::string &str)
     size_t size = str.size();
     for (i = 0; i < size; i++)
     {
-        str[i] = tolower(str[i]);
+        str[i] = (char)tolower(str[i]);
     }
     return str;
 }
@@ -473,7 +473,7 @@ std::string &toupper(std::string &str)
     size_t size = str.size();
     for (i = 0; i < size; i++)
     {
-        str[i] = toupper(str[i]);
+        str[i] = (char)toupper(str[i]);
     }
     return str;
 }
@@ -541,7 +541,7 @@ std::vector<std::string> split(const char *s, int len, const char *delims, bool 
 
     if (len < 0)
     {
-        len = std::strlen(s);
+        len = (int)std::strlen(s);
     }
 
     if (empty(delims))
@@ -569,7 +569,7 @@ std::vector<std::string> split(const char *s, int len, const char *delims, bool 
             }
             continue;
         }
-        stmp.push_back(ch);
+        stmp.push_back((char)ch);
         added = false;
     }
     if ((!ignore_empty_token) || (!stmp.empty()))
@@ -591,7 +591,7 @@ std::vector<std::string> split(const char *s, int len, int delim, bool ignore_em
 
     if (len < 0)
     {
-        len = std::strlen(s);
+        len = (int)std::strlen(s);
     }
 
     int ch;
@@ -613,7 +613,7 @@ std::vector<std::string> split(const char *s, int len, int delim, bool ignore_em
             }
             continue;
         }
-        stmp.push_back(ch);
+        stmp.push_back((char)ch);
         added = false;
     }
     if ((!ignore_empty_token) || (!stmp.empty()))
@@ -631,8 +631,8 @@ std::vector<std::string> split(const char *s, int len, int delim, bool ignore_em
 #ifdef _WIN64
 char *strcasestr(const char *haystack, const char *needle)
 {
-    int hl = strlen(haystack);
-    int nl = strlen(needle);
+    int hl = (int)strlen(haystack);
+    int nl = (int)strlen(needle);
     int clen = hl - nl;
     if (clen < 0)
     {
@@ -701,6 +701,50 @@ std::string join(const std::list<std::string> &strs, const std::string &delimite
         result += s;
     }
     return result;
+}
+
+bool ends_with(const std::string &str, const std::string &suffix)
+{
+    if (suffix.empty())
+    {
+        return true;
+    }
+    const size_t strLen = str.length();
+    const size_t suffixLen = suffix.length();
+    if (suffixLen > strLen)
+    {
+        return false;
+    }
+    for (size_t i = 0; i < suffixLen; ++i)
+    {
+        if (str[strLen - 1 - i] != suffix[suffixLen - 1 - i])
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool ends_case_with(const std::string &str, const std::string &suffix)
+{
+    if (suffix.empty())
+    {
+        return true;
+    }
+    const size_t strLen = str.length();
+    const size_t suffixLen = suffix.length();
+    if (suffixLen > strLen)
+    {
+        return false;
+    }
+    for (size_t i = 0; i < suffixLen; ++i)
+    {
+        if (tolower(str[strLen - 1 - i]) != tolower(suffix[suffixLen - 1 - i]))
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 zcc_namespace_end;

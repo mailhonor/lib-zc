@@ -15,7 +15,7 @@ void uudecode(const void *src, int src_size, std::string &str)
     const unsigned char *s = (const unsigned char *)src;
     if (src_size < 0)
     {
-        src_size = std::strlen((const char *)s);
+        src_size = (int)std::strlen((const char *)s);
     }
     const unsigned char *e = s + src_size;
 
@@ -31,14 +31,14 @@ void uudecode(const void *src, int src_size, std::string &str)
         for (i = 2; i >= 0; i -= 1)
         {
             int c = (v & 0xFF);
-            str.push_back(c);
+            str.push_back((char)c);
             v = v >> 8;
         }
     }
     while (s < e)
     {
         int c = *s++;
-        str.push_back(c);
+        str.push_back((char)c);
     }
 }
 

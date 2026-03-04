@@ -14,10 +14,6 @@
 #define _CODE_ID "ZMSH"
 #define _CODE_VERSION "\x00\x01\x00\x01"
 
-#define zcc_msearch_debug(...)  \
-    if (var_msearch_debug_mode) \
-    zcc_info(__VA_ARGS__)
-
 zcc_namespace_begin;
 
 bool var_msearch_debug_mode = false;
@@ -192,14 +188,14 @@ static void zcc_msearch_builder_add_over_2(zcc_msearch_builder_t *builder_engine
     unsigned char **data = &(builder_engine_->mem_data);
     zcc_msearch_reader_t **engine = (zcc_msearch_reader_t **)data;
 
-    int size = builder_engine_->ab_data_tmp->size();
+    int size = (int)builder_engine_->ab_data_tmp->size();
     if (!size)
     {
         return;
     }
     size = 2 * size + 1;
     (*engine)->ab_size = size;
-    (*engine)->ab_data_offset = _mem_malloc(builder_engine_, sizeof(int) * size);
+    (*engine)->ab_data_offset = _mem_malloc(builder_engine_, (int)sizeof(int) * size);
     for (auto it = builder_engine_->ab_data_tmp->begin(); it != builder_engine_->ab_data_tmp->end(); it++)
     {
         const std::string &word = *it;
@@ -213,7 +209,7 @@ static void zcc_msearch_builder_add_over_2(zcc_msearch_builder_t *builder_engine
         int *ab_data_ptr = (int *)((*data) + (*engine)->ab_data_offset);
         if (ab_data_ptr[i])
         {
-            ab_data_ptr[i] = _mem_malloc(builder_engine_, sizeof(_short_t) + 2 * ab_data_ptr[i]);
+            ab_data_ptr[i] = _mem_malloc(builder_engine_, (int)sizeof(_short_t) + 2 * ab_data_ptr[i]);
             _short_t *_s = (_short_t *)((*data) + ab_data_ptr[i]);
             _s->i = 0;
         }
@@ -226,7 +222,7 @@ static void zcc_msearch_builder_add_over_2(zcc_msearch_builder_t *builder_engine
         hv = (hv << 8) + (unsigned char)word[1];
         int *ab_data_ptr = (int *)((*data) + (*engine)->ab_data_offset);
         _short_t *_s = (_short_t *)((*data) + ab_data_ptr[hv % size]);
-        unsigned char *p12 = ((unsigned char *)_s) + sizeof(_short_t) + 2 * _s->i;
+        unsigned char *p12 = ((unsigned char *)_s) + (int)sizeof(_short_t) + 2 * _s->i;
         p12[0] = (unsigned char)word[0];
         p12[1] = (unsigned char)word[1];
         _s->i++;
@@ -235,7 +231,7 @@ static void zcc_msearch_builder_add_over_2(zcc_msearch_builder_t *builder_engine
 
 static void zcc_msearch_builder_add_over_3_clear(zcc_msearch_builder_t *builder_engine_)
 {
-    int size = builder_engine_->abc_data_tmp->size();
+    int size = (int)builder_engine_->abc_data_tmp->size();
     if (!size)
     {
         return;
@@ -249,7 +245,7 @@ static void zcc_msearch_builder_add_over_3_clear(zcc_msearch_builder_t *builder_
         if (last == 0)
         {
             last = word.c_str();
-            llen = strlen(last);
+            llen = (int)std::strlen(last);
         }
         else
         {
@@ -260,7 +256,7 @@ static void zcc_msearch_builder_add_over_3_clear(zcc_msearch_builder_t *builder_
             else
             {
                 last = word.c_str();
-                llen = std::strlen(last);
+                llen = (int)std::strlen(last);
             }
         }
     }
@@ -278,14 +274,14 @@ static void zcc_msearch_builder_add_over_3(zcc_msearch_builder_t *builder_engine
     unsigned char **data = &(builder_engine_->mem_data);
     zcc_msearch_reader_t **engine = (zcc_msearch_reader_t **)data;
 
-    int size = builder_engine_->abc_data_tmp->size();
+    int size = (int)builder_engine_->abc_data_tmp->size();
     if (!size)
     {
         return;
     }
     size = 2 * size + 1;
     (*engine)->abc_size = size;
-    tmpoffset = _mem_malloc(builder_engine_, sizeof(int) * size);
+    tmpoffset = _mem_malloc(builder_engine_, (int)sizeof(int) * size);
     (*engine)->abc_data_offset = tmpoffset;
     for (auto it = builder_engine_->abc_data_tmp->begin(); it != builder_engine_->abc_data_tmp->end(); it++)
     {
@@ -301,7 +297,7 @@ static void zcc_msearch_builder_add_over_3(zcc_msearch_builder_t *builder_engine
         int *abc_data_ptr = (int *)((*data) + (*engine)->abc_data_offset);
         if (abc_data_ptr[i])
         {
-            tmpoffset = _mem_malloc(builder_engine_, sizeof(_int_t) + sizeof(int) * abc_data_ptr[i]);
+            tmpoffset = _mem_malloc(builder_engine_, (int)sizeof(_int_t) + (int)sizeof(int) * abc_data_ptr[i]);
             abc_data_ptr[i] = tmpoffset;
             _int_t *_i = (_int_t *)((*data) + abc_data_ptr[i]);
             _i->i = 0;
@@ -313,14 +309,14 @@ static void zcc_msearch_builder_add_over_3(zcc_msearch_builder_t *builder_engine
         int hv = (unsigned char)word[0];
         hv = (hv << 8) + (unsigned char)word[1];
         hv = (hv << 8) + (unsigned char)word[2];
-        int len = word.size();
-        int offset = _mem_malloc(builder_engine_, sizeof(zcc_msearch_token_t) + len);
+        int len = (int)word.size();
+        int offset = _mem_malloc(builder_engine_, (int)sizeof(zcc_msearch_token_t) + len);
         int *abc_data_ptr = (int *)((*data) + (*engine)->abc_data_offset);
         _int_t *_i = (_int_t *)((*data) + abc_data_ptr[hv % size]);
-        *((int *)(((char *)_i) + sizeof(_int_t) + sizeof(int) * (_i->i))) = offset;
+        *((int *)(((char *)_i) + (int)sizeof(_int_t) + (int)sizeof(int) * (_i->i))) = offset;
         zcc_msearch_token_t *token = (zcc_msearch_token_t *)((*data) + offset);
-        token->len = len;
-        std::memcpy(((char *)token) + sizeof(zcc_msearch_token_t), word.c_str(), len);
+        token->len = (short int)len;
+        std::memcpy(((char *)token) + (int)sizeof(zcc_msearch_token_t), word.c_str(), len);
         _i = (_int_t *)((*data) + abc_data_ptr[hv % size]);
         _i->i++;
     }
@@ -537,7 +533,7 @@ int msearch_reader::match(const char *str, int len, const char **matched_ptr, in
 {
     if (len < 0)
     {
-        len = std::strlen(str);
+        len = (int)std::strlen(str);
     }
     if (len < 1)
     {
@@ -717,7 +713,7 @@ void msearch_walker::reset()
     walker_engine_->idx = 0;
     for (int i = 0; i < 256; i++)
     {
-        walker_engine_->abc[i] = i;
+        walker_engine_->abc[i] = (unsigned char)i;
     }
 }
 

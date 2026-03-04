@@ -281,7 +281,7 @@ static void _server_init(aio_worker_server *aws, int argc, char **argv)
     if (exit_after > 0)
     {
         alarm(0);
-        var_main_aio_base->enter_timer(enter_stop, exit_after);
+        var_main_aio_base->enter_timer(enter_stop, (int)exit_after);
     }
 }
 

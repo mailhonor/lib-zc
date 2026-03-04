@@ -78,19 +78,32 @@ int main(int argc, char **argv)
         goto over;
     }
 
-    if (ic.idle_beign("INBOX") < 1)
+    if (ic.cmd_select("INBOX") < 1)
     {
         goto over;
     }
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 5; i++)
     {
         zcc_info("start check, 10s");
-        bool r = ic.idle_check_new_message(10);
-        zcc_info("end check result: %s", r ? "new" : "none");
-    }
-    if (ic.idle_end() < 1)
-    {
-        goto over;
+        int r = ic.check_new_message_by_idle(10);
+        const char *str = "none";
+        if (r < 0)
+        {
+            str = "error";
+        }
+        else if (r == 1)
+        {
+            str = "new";
+        }
+        else if (r > 1)
+        {
+            str = "other untagged response";
+        }
+        zcc_info("end check result: %s", str);
+        if (r < 0)
+        {
+            break;
+        }
     }
     ic.cmd_logout();
     ic.disconnect();

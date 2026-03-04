@@ -126,13 +126,13 @@ void mail_parser_running_context::deal_content_type(mail_parser::mime_node *cmim
     }
     cmime->content_type_flag_ = true;
     std::string val;
-    std::vector<std::tuple<std::string, std::string>> params;
+    std::vector<mail_parser::param_node> params;
     mail_parser::header_line_get_params(line, cmime->content_type_, params);
     tolower(cmime->content_type_);
     for (auto it = params.begin(); it != params.end(); it++)
     {
-        std::string &key = std::get<0>(*it);
-        std::string &val = std::get<1>(*it);
+        std::string &key = it->key_;
+        std::string &val = it->value_;
         if (key == "boundary")
         {
             cmime->boundary_ = val;

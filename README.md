@@ -47,9 +47,14 @@ LIB-ZC 是一个Linux平台通用C/C++扩展库.
 
 ## 编译
 
-cmake 环境, 推荐 vscode 开发和编译
+cmake 环境, 推荐 vscode 开发和编译, 得到:
 
-得到: libzc.a(基础库) 和 libzc_coroutine.a(协程库)
+* libzc.a  C库, 仅Linux平台
+* libzc_coroutine.a/libzc_coroutine_static.a 协程库, 仅Linux平台
+* libzcc.so/libzcc_static.a C++ 通用库
+* libzcc.so C++ 通用基础库
+* libzcc_icu.so C++ ICU库封装
+* libzcc_sqlite3.so C++ sqlite3库封装
 
 // Linux平台 make 亦可
 
@@ -60,7 +65,7 @@ cmake 环境, 推荐 vscode 开发和编译
 ## 使用
 源码 cpp_sample/, sample/ 下有大量例子,可供参考
 
-libzc.a 在源码目录下, include 文件 在 include/zcc/*.h
+上面提到的*.so/.a 在源码目录下, include 文件 在 include/zcc/*.h
 
 ```shell
 $ cat a.cpp 
@@ -70,5 +75,5 @@ int main(int argc, char **argv)
   /* foo(); */
   return 0;
 }
-$ gcc a.cpp ./libzc.a
+$ gcc a.cpp ./libzcc.a
 ```

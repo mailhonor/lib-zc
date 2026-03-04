@@ -81,7 +81,7 @@ bool httpd::websocket_shakehand()
     char rawkey[20 + 1];
     SHA_CTX ctx;
     SHA1_Init(&ctx);
-    SHA1_Update(&ctx, v, strlen(v));
+    SHA1_Update(&ctx, v, (int)strlen(v));
     SHA1_Update(&ctx, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11", 36);
     SHA1_Final((unsigned char *)rawkey, &ctx);
 
@@ -205,10 +205,10 @@ int websocketd::read_frame_data(void *data, int len)
     }
     if (payload_len_ - readed_len_ < len)
     {
-        len = payload_len_ - readed_len_;
+        len = (int)(payload_len_ - readed_len_);
     }
 
-    int r = fp_->readn(data, len);
+    int r = (int)fp_->readn(data, len);
     if (r > 0)
     {
         if (mask_)
@@ -235,10 +235,10 @@ int websocketd::read_frame_data(std::string &data, int len)
     }
     if (payload_len_ - readed_len_ < len)
     {
-        len = payload_len_ - readed_len_;
+        len = (int)(payload_len_ - readed_len_);
     }
 
-    int r = fp_->readn(data, len);
+    int r = (int)fp_->readn(data, len);
     if (r > 0)
     {
         if (mask_)
@@ -247,7 +247,7 @@ int websocketd::read_frame_data(std::string &data, int len)
             unsigned char *mk = (unsigned char *)(&(masking_key_));
             for (int i = 0; i < r; i++)
             {
-                data[i] = ((unsigned char )data[i]) ^ mk[(readed_len_ + i) % 4];
+                data[i] = ((unsigned char)data[i]) ^ mk[(readed_len_ + i) % 4];
             }
         }
         readed_len_ += r;
@@ -271,7 +271,7 @@ bool websocketd::write_frame_head_with_flags(int len, bool fin_flag, int opcode)
     // fin
     header[0] = header[0] | 0X80;
     // opcode
-    header[0] = header[0] | (opcode & 0X0F);
+    header[0] = (unsigned char)(header[0] | (opcode & 0X0F));
 
     if (len < 126)
     {
@@ -323,7 +323,7 @@ bool websocketd::write_frame_data(const void *data, int len)
 {
     if (len < 0)
     {
-        len = strlen((const char *)data);
+        len = (int)strlen((const char *)data);
     }
     return fp_->write(data, len) > 0;
 }
@@ -337,7 +337,7 @@ bool websocketd::send_data_with_opcode(const void *data, int len, int opcode)
 {
     if (len < 0)
     {
-        len = std::strlen((const char *)data);
+        len = (int)std::strlen((const char *)data);
     }
     if (len > 125)
     {

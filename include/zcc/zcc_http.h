@@ -20,7 +20,7 @@
 #pragma pack(push, 4)
 zcc_namespace_begin;
 
-class http_url
+class ZCC_LIB_API http_url
 {
 public:
     static dict parse_query(const char *query, bool lowercase_mode = false);
@@ -56,60 +56,60 @@ public:
 };
 
 // token
-void http_token_encode(const void *src, int src_size, std::string &result, bool strict_flag = false);
+ZCC_LIB_API void http_token_encode(const void *src, int src_size, std::string &result, bool strict_flag = false);
 inline void http_token_encode(const void *src, std::string &result, bool strict_flag = false)
 {
     http_token_encode(src, -1, result, strict_flag);
 }
 inline void http_token_encode(const std::string &src, std::string &result, bool strict_flag = false)
 {
-    http_token_encode(src.c_str(), src.size(), result, strict_flag);
+    http_token_encode(src.c_str(), (int)src.size(), result, strict_flag);
 }
-std::string http_token_encode(const void *src, int src_size, bool strict_flag = false);
+ZCC_LIB_API std::string http_token_encode(const void *src, int src_size, bool strict_flag = false);
 inline std::string http_token_encode(const void *src, bool strict_flag = false)
 {
     return http_token_encode(src, -1, strict_flag);
 }
 inline std::string http_token_encode(const std::string &src, bool strict_flag = false)
 {
-    return http_token_encode(src.c_str(), src.size(), strict_flag);
+    return http_token_encode(src.c_str(), (int)src.size(), strict_flag);
 }
 
-void http_token_decode(const void *src, int src_size, std::string &result);
+ZCC_LIB_API void http_token_decode(const void *src, int src_size, std::string &result);
 inline void http_token_decode(const void *src, std::string &result)
 {
     http_token_decode(src, -1, result);
 }
 inline void http_token_decode(const std::string &src, std::string &result)
 {
-    http_token_decode(src.c_str(), src.size(), result);
+    http_token_decode(src.c_str(), (int)src.size(), result);
 }
-std::string http_token_decode(const void *src, int src_size = -1);
+ZCC_LIB_API std::string http_token_decode(const void *src, int src_size = -1);
 inline std::string http_token_decode(const std::string &src)
 {
-    return http_token_decode(src.c_str(), src.size());
+    return http_token_decode(src.c_str(), (int)src.size());
 }
 
 // cookie
-dict http_cookie_parse(const char *raw_cookie);
+ZCC_LIB_API dict http_cookie_parse(const char *raw_cookie);
 inline dict http_cookie_parse(const std::string &raw_cookie)
 {
     return http_cookie_parse(raw_cookie.c_str());
 }
 
-std::string http_cookie_build_item(const char *name, const char *value = nullptr, int64_t expires = 0, const char *path = nullptr, const char *domain = nullptr, bool secure = false, bool httponly = false);
+ZCC_LIB_API std::string http_cookie_build_item(const char *name, const char *value = nullptr, int64_t expires = 0, const char *path = nullptr, const char *domain = nullptr, bool secure = false, bool httponly = false);
 inline std::string http_cookie_build_item(const std::string &name, const std::string &value, int64_t expires, std::string &path, std::string &domain, bool secure, bool httponly)
 {
     return http_cookie_build_item(name.c_str(), value.c_str(), expires, path.c_str(), domain.c_str(), secure, httponly);
 }
 
 // httpd uploaded file
-class httpd_uploaded_file
+class ZCC_LIB_API httpd_uploaded_file
 {
     friend class httpd;
 
 public:
-    inline httpd_uploaded_file(httpd &hd) : httpd_(hd) {}
+    inline httpd_uploaded_file(httpd *hd) : httpd_(hd) {}
     inline ~httpd_uploaded_file() {}
     // 上传文件名称
     inline const std::string &get_name() { return name_; }
@@ -127,7 +127,7 @@ public:
     }
 
 public:
-    httpd &httpd_;
+    httpd *httpd_{nullptr};
     std::string name_;
     std::string pathname_;
     int64_t size_{-1};
@@ -138,7 +138,7 @@ protected:
     int encoding_{0};
 };
 // httpd
-class httpd
+class ZCC_LIB_API httpd
 {
     friend class httpd_uploaded_file;
 
@@ -402,7 +402,7 @@ public:
     }
     inline httpd &response_append(const std::string &bf)
     {
-        return response_write(bf.c_str(), bf.size());
+        return response_write(bf.c_str(), (int)bf.size());
     }
     inline httpd &response_append(const char *data)
     {
@@ -495,7 +495,7 @@ protected:
     std::string tmp_path_;
 };
 
-class websocketd
+class ZCC_LIB_API websocketd
 {
 public:
     static char opcode_continue;
@@ -530,7 +530,7 @@ public:
     bool write_frame_data(const void *data, int len = -1);
     inline bool write_frame_data(const std::string &data)
     {
-        return write_frame_data((const void *)data.c_str(), data.size());
+        return write_frame_data((const void *)data.c_str(), (int)data.size());
     }
     bool write_frame_flush();
     //
@@ -538,22 +538,22 @@ public:
     bool send_ping(const void *data, int len = -1);
     inline bool send_ping(const std::string &data)
     {
-        return send_ping((const char *)data.c_str(), data.size());
+        return send_ping((const char *)data.c_str(), (int)data.size());
     }
     bool send_pong(const void *data, int len = -1);
     inline bool send_pong(const std::string &data)
     {
-        return send_pong((const char *)data.c_str(), data.size());
+        return send_pong((const char *)data.c_str(), (int)data.size());
     }
     bool send_text(const void *data, int len = -1);
     inline bool send_text(const std::string &data)
     {
-        return send_text((const char *)data.c_str(), data.size());
+        return send_text((const char *)data.c_str(), (int)data.size());
     }
     bool send_binary(const void *data, int len = -1);
     inline bool send_binary(const std::string &data)
     {
-        return send_binary((const char *)data.c_str(), data.size());
+        return send_binary((const char *)data.c_str(), (int)data.size());
     }
     bool send_text_printf_1024(const char *format, ...);
 

@@ -6,9 +6,7 @@
  * ================================
  */
 
-#ifdef ZCC_USE_SQLITE3__
-
-#include "zcc/zcc_sqlite3.h"
+#include "./sqlite3_mini_client.h"
 
 #define _client_stmt_null_warning()         \
     if (!client_)                           \
@@ -90,7 +88,7 @@ bool sqlite3_mini_stmt::prepare(const char *sql, int slen)
     }
     if (slen < 0)
     {
-        slen = std::strlen(sql);
+        slen = (int)std::strlen(sql);
     }
     if (stmt_)
     {
@@ -172,7 +170,7 @@ bool sqlite3_mini_stmt::bind(int sn, const char *str, int slen)
     }
     if (slen < 0)
     {
-        slen = strlen(str);
+        slen = (int)strlen(str);
     }
     char *new_str = new char[slen + 1];
     std::memcpy(new_str, str, slen);
@@ -315,7 +313,10 @@ bool sqlite3_mini_stmt::step(bool &row_flag)
 {
     row_flag = false;
     _client_stmt_null_warning();
-    int ret = sqlite3_step(stmt_);
+    int ret;
+    client_->lock_for_execute();
+    ret = sqlite3_step(stmt_);
+    client_->unlock_for_execute();
     need_reset_ = true;
     if (ret == SQLITE_DONE)
     {
@@ -342,17 +343,17 @@ std::string sqlite3_mini_stmt::column_string(int sn)
     return r;
 }
 
-const char *sqlite3_mini_stmt::column_text(int sn)
+const char *sqlite3_mini_stmt::column_text_inner(int sn)
 {
     return (const char *)sqlite3_column_text(stmt_, sn);
 }
 
-const void *sqlite3_mini_stmt::column_blob(int sn)
+const void *sqlite3_mini_stmt::column_blob_inner(int sn)
 {
     return (const void *)sqlite3_column_blob(stmt_, sn);
 }
 
-int sqlite3_mini_stmt::column_bytes(int sn)
+int sqlite3_mini_stmt::column_bytes_inner(int sn)
 {
     return sqlite3_column_bytes(stmt_, sn);
 }
@@ -391,5 +392,3 @@ bool sqlite3_mini_stmt::column_bool(int sn, bool def)
 }
 
 zcc_namespace_end;
-
-#endif // ZCC_USE_SQLITE3__

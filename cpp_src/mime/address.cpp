@@ -16,15 +16,15 @@ static std::vector<mail_parser::mail_address> _line_get_address_vector(const cha
 static int64_t _line_address_tok(char **str, int64_t *len, char **rname, char **raddress, char *tmp_cache, int64_t tmp_cache_size)
 {
     char *pstr = *str;
-    int64_t c;
+    int c;
     int64_t plen = *len, i, inquote = 0, find_lt = 0;
     char *name = 0, *mail = 0, last = 0;
     int64_t tmp_cache_idx = 0;
-#define ___put(ch)                          \
-    {                                       \
-        if (tmp_cache_idx > tmp_cache_size) \
-            return -1;                      \
-        tmp_cache[tmp_cache_idx++] = (ch);  \
+#define ___put(ch)                               \
+    {                                            \
+        if (tmp_cache_idx > tmp_cache_size)      \
+            return -1;                           \
+        tmp_cache[tmp_cache_idx++] = ((char)ch); \
     }
 
     if (plen <= 0)
@@ -42,7 +42,7 @@ static int64_t _line_address_tok(char **str, int64_t *len, char **rname, char **
         }
         if (c == '\\')
         {
-            last = c;
+            last = (char)c;
             continue;
         }
         if (c == '"')
@@ -98,7 +98,7 @@ static int64_t _line_address_tok(char **str, int64_t *len, char **rname, char **
     while (1)
     {
         pstr = zcc::trim(pstr);
-        plen = std::strlen(pstr);
+        plen = (int)std::strlen(pstr);
         if (plen < 1)
         {
             return -2;
@@ -158,7 +158,7 @@ static int64_t _line_address_tok(char **str, int64_t *len, char **rname, char **
     }
     if (name_bak)
     {
-        int64_t slen = zcc::skip(name_bak, std::strlen(name_bak), " \t\"'\r\n", 0, rname);
+        int64_t slen = zcc::skip(name_bak, (int)std::strlen(name_bak), " \t\"'\r\n", 0, rname);
         if (slen > 0)
         {
             (*rname)[slen] = 0;
@@ -227,7 +227,7 @@ static std::vector<mail_parser::mail_address> _line_get_address_vector(const cha
 
     if (in_len == -1)
     {
-        in_len = std::strlen(in_str);
+        in_len = (int)std::strlen(in_str);
     }
     if (in_len < 1)
     {

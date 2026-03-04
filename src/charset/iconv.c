@@ -11,7 +11,6 @@
 #include <iconv.h>
 #include <errno.h>
 int zvar_charset_debug = 0;
-int zvar_charset_uconv_mode = 0;
 
 #define mydebug(fmt, args...) \
     if (zvar_charset_debug)   \
@@ -390,10 +389,6 @@ static inline int charset_iconv_base(charset_iconv_t *ic, char *_in_str, int _in
 
 int zcharset_iconv(const char *from_charset, const char *src, int src_len, const char *to_charset, zbuf_t *dest, int *src_converted_len, int omit_invalid_bytes_limit, int *omit_invalid_bytes_count)
 {
-    if (zvar_charset_uconv_mode)
-    {
-        zfatal("run zcharset_convert_use_uconv first");
-    }
     charset_iconv_t ic_buf, *ic = &ic_buf;
     char buf[4910];
     int len;

@@ -46,22 +46,22 @@ int imap_client::read_response_tokens_oneline(response_tokens &response_tokens, 
     }
 
     trim_line_end_rn(linebuf);
-    if (response_tokens.first_line_.empty()) {
+    if (response_tokens.first_line_.empty())
+    {
         response_tokens.first_line_ = linebuf;
     }
     if (tmp_verbose_mode_)
     {
         tmp_verbose_line_++;
     }
-    if ((tmp_verbose_line_ < 3) || (verbose_mode_))
+    if (tmp_verbose_line_ < 4)
     {
-        zcc_imap_client_debug_read_line(linebuf);
+        zcc_imap_client_debug_protocol_read(linebuf);
     }
-    if ((tmp_verbose_line_ == 3) && (!verbose_mode_))
+    if ((tmp_verbose_line_ == 4) && (!verbose_mode_))
     {
-        std::string tmpline = linebuf;
-        tmpline.append(" (后面忽略; 显示全部结果, 用参数 --verbose)");
-        zcc_imap_client_debug_read_line(tmpline);
+        std::string tmpline = "(后面忽略; 显示全部结果, 需要激活 verbose 模式)";
+        zcc_imap_client_debug_protocol_read(tmpline);
     }
 
     ps = linebuf.c_str();
@@ -102,18 +102,18 @@ int imap_client::read_response_tokens_oneline(response_tokens &response_tokens, 
                         goto over;
                     }
                     ch = *ps++;
-                    tmp_token.push_back(ch);
+                    tmp_token.push_back((char)ch);
                 }
                 else
                 {
-                    tmp_token.push_back(ch);
+                    tmp_token.push_back((char)ch);
                 }
             }
         }
         else
         {
             last_quoted = false;
-            tmp_token.push_back(ch);
+            tmp_token.push_back((char)ch);
             while (ps < end)
             {
                 ch = *ps++;
@@ -123,7 +123,7 @@ int imap_client::read_response_tokens_oneline(response_tokens &response_tokens, 
                 }
                 else
                 {
-                    tmp_token.push_back(ch);
+                    tmp_token.push_back((char)ch);
                 }
             }
             token_vector.push_back(tmp_token);
@@ -188,6 +188,13 @@ int imap_client::read_response_tokens(response_tokens &response_tokens)
             }
         }
         token_vector.back() = sizecon;
+    }
+    if (token_vector.size() > 2)
+    {
+        if ((token_vector[2] == "EXISTS") || (token_vector[2] == "RECENT"))
+        {
+            maybeHaveNewMessage_ = true;
+        }
     }
     return r;
 }

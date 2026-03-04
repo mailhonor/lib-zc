@@ -110,7 +110,7 @@ int chroot_user(const char *root_dir, const char *user_name)
             return -1;
         }
         // 将当前进程的工作目录切换到新根目录的根路径
-        if (chdir("/"))
+        if (::chdir("/"))
         {
             // 记录工作目录切换失败的警告信息
             ___zwarning("chdir (/): %m");

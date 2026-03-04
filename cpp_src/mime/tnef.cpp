@@ -667,14 +667,14 @@ static std::string tnef_unicode_to_utf8(int type, char *_buf, int64_t len)
             }
             else if (c < 0x07ff)
             {
-                r.push_back(0xc0 | ((c & 0x07c0) >> 6));
-                r.push_back(0x80 | ((c & 0x003f) >> 0));
+                r.push_back((char)(0xc0 | ((c & 0x07c0) >> 6)));
+                r.push_back((char)(0x80 | ((c & 0x003f) >> 0)));
             }
             else
             {
-                r.push_back(0xe0 | ((c & 0xf000) >> 12));
-                r.push_back(0x80 | ((c & 0x0fc0) >> 6));
-                r.push_back(0x80 | ((c & 0x003f) >> 0));
+                r.push_back((char)(0xe0 | ((c & 0xf000) >> 12)));
+                r.push_back((char)(0x80 | ((c & 0x0fc0) >> 6)));
+                r.push_back((char)(0x80 | ((c & 0x003f) >> 0)));
             }
         }
     }
@@ -753,7 +753,7 @@ static const unsigned int rtf_compressed_magic = 0x75465a4c;
 int tnef_parser_running_context::decompress_rtf_data(unsigned char *src, int lenc, int lenu, unsigned char *dest)
 {
     char rtf_prebuf[] = "{\\rtf1\\ansi\\mac\\deff0\\deftab720{\\fonttbl;}{\\f0\\fnil \\froman \\fswiss \\fmodern \\fscript \\fdecor MS Sans SerifSymbolArialTimes New RomanCourier{\\colortbl\\red0\\green0\\blue0\r\n\\par \\pard\\plain\\f0\\fs20\\b\\i\\u\\tab\\tx";
-    uint64_t rtf_prebuf_len = sizeof(rtf_prebuf) - 1;
+    int rtf_prebuf_len = (int)sizeof(rtf_prebuf) - 1;
 
     int woff, eoff, roff, rlen;
     int control, cin, cout, i, j, endflag;
@@ -896,7 +896,7 @@ int tnef_parser_running_context::get_rtf_data_from_buf(tnef_parser::mime_node *m
             return -1;
         }
         unsigned char *up = new unsigned char[uncompr_size + 2];
-        if ((m->body_size_ = decompress_rtf_data(data + idx, len - idx, uncompr_size, up)) < 0)
+        if ((m->body_size_ = decompress_rtf_data(data + idx, (int)(len - idx), (int)uncompr_size, up)) < 0)
         {
             delete[] up;
             return -1;

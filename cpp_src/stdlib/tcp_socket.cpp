@@ -40,7 +40,7 @@ zcc_namespace_begin;
 
 /**
  * @brief 初始化 Windows 套接字库（仅在 Windows 系统下有效）
- * 
+ *
  * 该函数使用静态变量确保 Windows 套接字库只初始化一次。
  * @return 初始化成功返回 1，失败返回 -1，非 Windows 系统返回 0。
  */
@@ -84,7 +84,7 @@ int WSAStartup()
 #else  // _WIN64
 /**
  * @brief 非 Windows 系统下的 WSAStartup 函数，直接返回 0
- * 
+ *
  * 非 Windows 系统不需要初始化 Windows 套接字库，所以直接返回 0。
  * @return 始终返回 0。
  */
@@ -96,7 +96,7 @@ int WSAStartup()
 
 /**
  * @brief 关闭套接字描述符，根据不同系统调用不同的关闭函数
- * 
+ *
  * 在 Windows 系统下调用 closesocket 函数，在非 Windows 系统下调用 close 函数。
  * @param fd 要关闭的套接字描述符。
  * @return 关闭成功返回 0，失败返回 -1。
@@ -116,7 +116,7 @@ int close_socket(int fd)
 
 /**
  * @brief 安全的 accept 函数，处理各种可能的错误
- * 
+ *
  * 该函数会处理信号中断和一些可接受的错误，并在必要时设置 keep-alive 选项。
  * @param sock 监听套接字描述符。
  * @param sa 用于存储客户端地址信息的结构体指针。
@@ -205,7 +205,7 @@ static int sane_accept(int sock, struct sockaddr *sa, socklen_t *len)
 
 /**
  * @brief 用于 Unix 域套接字的 accept 函数
- * 
+ *
  * 调用 sane_accept 函数，不传递地址信息。
  * @param fd 监听套接字描述符。
  * @return 成功返回新的客户端套接字描述符，失败返回 -1。
@@ -217,7 +217,7 @@ int unix_accept(int fd)
 
 /**
  * @brief 用于网络套接字的 accept 函数
- * 
+ *
  * 调用 sane_accept 函数，传递地址信息。
  * @param fd 监听套接字描述符。
  * @return 成功返回新的客户端套接字描述符，失败返回 -1。
@@ -231,7 +231,7 @@ int inet_accept(int fd)
 
 /**
  * @brief 根据监听类型调用不同的 accept 函数
- * 
+ *
  * 根据传入的监听类型调用相应的 accept 函数。
  * @param fd 监听套接字描述符。
  * @param type 监听类型，如 var_tcp_listen_type_inet、var_tcp_listen_type_unix 等。
@@ -255,7 +255,7 @@ int socket_accept(int fd, int type)
 
 /**
  * @brief 创建并监听 Unix 域套接字
- * 
+ *
  * 在 Linux 系统下创建并监听 Unix 域套接字，处理文件删除、绑定和监听等操作。
  * @param addr Unix 域套接字的路径。
  * @param backlog 监听队列的最大长度。
@@ -266,7 +266,7 @@ int unix_listen(char *addr, int backlog)
 {
 #ifdef __linux__
     struct sockaddr_un sun;
-    int len = strlen(addr);
+    int len = (int)strlen(addr);
     // 监听套接字描述符
     int sock = -1;
     int errno2;
@@ -327,7 +327,7 @@ err:
 
 /**
  * @brief 创建并监听网络套接字
- * 
+ *
  * 创建并监听 IPv4 网络套接字，处理套接字创建、选项设置、绑定和监听等操作。
  * @param sip 监听的 IP 地址，为空表示监听所有地址。
  * @param port 监听的端口号。
@@ -350,7 +350,7 @@ int inet_listen(const char *sip, int port, int backlog)
     // 设置地址族为 IPv4
     addr.sin_family = AF_INET;
     // 转换端口号为网络字节序
-    addr.sin_port = htons(port);
+    addr.sin_port = htons((uint16_t)port);
     // 设置 IP 地址
     addr.sin_addr.s_addr = (empty(sip) ? INADDR_ANY : inet_addr(sip));
 
@@ -401,7 +401,7 @@ err:
 
 /**
  * @brief 根据网络路径创建并监听套接字
- * 
+ *
  * 根据传入的网络路径判断监听类型（网络套接字、Unix 域套接字或 FIFO），并调用相应的监听函数。
  * @param netpath 网络路径，如 "127.0.0.1:8080" 或 "/tmp/socket"。
  * @param backlog 监听队列的最大长度。
@@ -491,7 +491,7 @@ int netpath_listen(const char *netpath, int backlog, int *type)
 
 /**
  * @brief 创建并监听 FIFO 文件
- * 
+ *
  * 在 Linux 系统下创建并打开 FIFO 文件进行监听。
  * @param path FIFO 文件的路径。
  * @return 成功返回文件描述符，失败返回 -1。
@@ -532,8 +532,20 @@ err:
 }
 
 /**
+ * @brief 获取最后连接的 IP 地址
+ *
+ * 返回一个静态字符串，表示最后成功连接的地址。
+ * @return 最后连接的 IP 地址字符串引用。
+ */
+static thread_local std::string _last_connected_destination;
+const std::string &get_last_connected_destination()
+{
+    return _last_connected_destination;
+}
+
+/**
  * @brief 安全的 connect 函数，处理各种可能的错误
- * 
+ *
  * 该函数会设置 keep-alive 选项，并处理连接过程中的中断和可接受的错误。
  * @param sock 套接字描述符。
  * @param sa 目标地址信息结构体指针。
@@ -577,7 +589,7 @@ static int sane_connect(int sock, struct sockaddr *sa, int len)
 
 /**
  * @brief 连接并等待连接成功
- * 
+ *
  * 调用 sane_connect 函数进行连接，并等待套接字可写表示连接成功。
  * @param sock 套接字描述符。
  * @param sa 目标地址信息结构体指针。
@@ -647,7 +659,7 @@ static int connect_and_wait_ok(int sock, struct sockaddr *sa, int len, int timeo
 
 /**
  * @brief 连接到 Unix 域套接字
- * 
+ *
  * 在 Linux 系统下创建并连接到 Unix 域套接字，支持超时设置。
  * @param addr Unix 域套接字的路径。
  * @param timeout 超时时间，单位为毫秒，小于 0 表示使用默认超时时间。
@@ -655,11 +667,12 @@ static int connect_and_wait_ok(int sock, struct sockaddr *sa, int len, int timeo
  */
 int unix_connect(const char *addr, int timeout)
 {
+    _last_connected_destination = addr;
     // 套接字描述符
     int sock = -1;
 #ifdef __linux__
     struct sockaddr_un sun;
-    int len = std::strlen(addr);
+    int len = (int)std::strlen(addr);
     int errno2;
 
     if (len >= (int)sizeof(sun.sun_path))
@@ -720,7 +733,7 @@ int unix_connect(const char *addr, int timeout)
 
 /**
  * @brief 连接到网络套接字
- * 
+ *
  * 创建并连接到 IPv4 网络套接字，支持超时设置。
  * @param dip 目标 IP 地址。
  * @param port 目标端口号。
@@ -729,6 +742,7 @@ int unix_connect(const char *addr, int timeout)
  */
 int inet_connect(const char *dip, int port, int timeout)
 {
+    _last_connected_destination = std::string(dip) + ":" + std::to_string(port);
     // 套接字描述符
     int sock;
     struct sockaddr_in addr;
@@ -754,7 +768,7 @@ int inet_connect(const char *dip, int port, int timeout)
     // 设置地址族为 IPv4
     addr.sin_family = AF_INET;
     // 转换端口号为网络字节序
-    addr.sin_port = htons(port);
+    addr.sin_port = htons((uint16_t)port);
     // 设置目标 IP 地址
     addr.sin_addr.s_addr = inet_addr(dip);
 
@@ -790,7 +804,7 @@ int inet_connect(const char *dip, int port, int timeout)
 
 /**
  * @brief 根据主机名或 IP 地址连接到网络套接字
- * 
+ *
  * 如果传入的是 IP 地址，直接调用 inet_connect 函数；如果是主机名，解析主机名得到 IP 地址列表并尝试连接。
  * @param host 主机名或 IP 地址。
  * @param port 目标端口号。
@@ -829,7 +843,7 @@ int host_connect(const char *host, int port, int timeout)
 
 /**
  * @brief 根据网络路径连接到套接字
- * 
+ *
  * 支持多个网络路径，尝试连接每个路径直到成功。
  * @param netpath 网络路径，多个路径可以用 ";, \t\r\n" 分隔。
  * @param timeout 超时时间，单位为毫秒，小于 0 表示使用默认超时时间。
@@ -877,7 +891,7 @@ int netpath_connect(const char *netpath, int timeout)
 
 /**
  * @brief 获取对端的 IP 地址和端口号
- * 
+ *
  * 获取指定套接字的对端 IP 地址和端口号。
  * @param sockfd 套接字描述符。
  * @param host 用于存储对端 IP 地址的指针，可以为 NULL。

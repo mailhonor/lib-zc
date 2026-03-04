@@ -62,7 +62,7 @@ int imap_client::do_startTLS()
     if (fp_->tls_connect(ssl_ctx_) < 0)
     {
         need_close_connection_ = true;
-        zcc_imap_client_error("建立SSL");
+        zcc_imap_client_debug("SSL连接失败");
         return -1;
     }
     ssl_flag_ = true;
@@ -91,7 +91,7 @@ int imap_client::fp_connect(const char *destination, int times)
     if (!fp_->connect(destination))
     {
         need_close_connection_ = true;
-        zcc_imap_client_error("连接(%s)", destination);
+        zcc_imap_client_debug("连接(%s)", destination);
         return -1;
     }
     if (ssl_mode_)
@@ -100,7 +100,7 @@ int imap_client::fp_connect(const char *destination, int times)
         {
             disconnect();
             need_close_connection_ = true;
-            zcc_imap_client_error("建立SSL(%s)", destination);
+            zcc_imap_client_debug("SSL连接失败(%s)", destination);
             return -1;
         }
         ssl_flag_ = true;
@@ -125,11 +125,11 @@ int imap_client::welcome()
     if (fp_gets(linebuf, 10240) < 0)
     {
         need_close_connection_ = true;
-        zcc_imap_client_info("错误: imap 读取 welcome 失败");
+        zcc_imap_client_debug("错误: imap 读取 welcome 失败");
         return -1;
     }
     trim_line_end_rn(linebuf);
-    zcc_imap_client_debug("imap 读: %s", linebuf.c_str());
+    zcc_imap_client_verbose("imap 读: %s", linebuf.c_str());
     if (ZCC_STR_N_EQ(linebuf.c_str(), "* OK ", 5))
     {
         return 1;

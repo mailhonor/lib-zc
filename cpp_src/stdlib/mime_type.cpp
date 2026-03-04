@@ -14,7 +14,7 @@ zcc_namespace_begin;
 
 const char *var_default_mime_type = "application/octet-stream";
 
-static const int mt_count = 538;
+static const short int mt_count = 538;
 static const char *mt_vector = "%\x00"
                                "application/x-trash\x00"
                                "3gp\x00"
@@ -1096,9 +1096,9 @@ static const unsigned short int mt_offsets[] = {0, 22, 37, 68, 94, 120, 137, 155
 const char *get_mime_type(const char *suffix, const char *def)
 {
     def = (empty(def) ? var_default_mime_type : def);
-    unsigned short int start = 0, end = mt_count - 1, middle = 0;
+    short int start = 0, end = mt_count - 1, middle = 0;
     unsigned char sufbuf[32];
-    int slen = std::strlen(suffix);
+    int slen = (int)std::strlen(suffix);
     if (slen < 1 || slen > 10)
     {
         return def;
@@ -1112,7 +1112,7 @@ const char *get_mime_type(const char *suffix, const char *def)
 
     while (start <= end)
     {
-        middle = (start + end) / 2;
+        middle = (short)((start + end) / 2);
         unsigned char *mmm = (unsigned char *)mt_vector + mt_offsets[middle];
         int mint = mmm[0];
         mint = (mint << 8) + mmm[1];
@@ -1131,15 +1131,15 @@ const char *get_mime_type(const char *suffix, const char *def)
         }
         if (r == 0)
         {
-            return (char *)mmm + std::strlen((char *)mmm) + 1;
+            return (char *)mmm + (int)std::strlen((char *)mmm) + 1;
         }
         else if (r < 0)
         {
-            end = middle - 1;
+            end = (short)(middle - 1);
         }
         else
         {
-            start = middle + 1;
+            start = (short)(middle + 1);
         }
     }
     return def;

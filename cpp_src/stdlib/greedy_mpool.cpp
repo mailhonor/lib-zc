@@ -28,7 +28,7 @@ struct greedy_one_t
 {
     greedy_one_t *prev;
     greedy_one_t *next;
-    int used;
+    int64_t used;
 };
 
 struct greedy_direct_t
@@ -142,13 +142,13 @@ void *greedy_mpool::calloc(int64_t nmemb, int64_t size)
 
 char *greedy_mpool::strdup(const char *ptr)
 {
-    int n = strlen(ptr);
+    int64_t n = strlen(ptr);
     return (char *)memdupnull(ptr, n);
 }
 
 char *greedy_mpool::strndup(const char *ptr, int64_t n)
 {
-    int tn = strlen(ptr);
+    int64_t tn = strlen(ptr);
     if (tn > n)
     {
         tn = n;

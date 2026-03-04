@@ -7,7 +7,6 @@
  */
 
 #pragma GCC diagnostic ignored "-Wredundant-decls"
-#pragma GCC diagnostic ignored "-Wpacked-not-aligned"
 
 #include "./coroutine.h"
 

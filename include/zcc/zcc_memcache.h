@@ -20,7 +20,7 @@ zcc_namespace_begin;
 
 // memcache 客户端
 class memcache_engine;
-class memcache
+class ZCC_LIB_API memcache
 {
 public:
     memcache();
@@ -52,27 +52,27 @@ public:
     int cmd_add(const char *key, int flag, int64_t timeout, const void *data, int len);
     inline int cmd_add(const std::string &key, int flag, int64_t timeout, const std::string &data)
     {
-        return cmd_add(key.c_str(), flag, timeout, data.c_str(), data.size());
+        return cmd_add(key.c_str(), flag, timeout, data.c_str(), (int)data.size());
     }
     int cmd_set(const char *key, int flag, int64_t timeout, const void *data, int len);
     inline int cmd_set(const std::string &key, int flag, int64_t timeout, const std::string &data)
     {
-        return cmd_set(key.c_str(), flag, timeout, data.c_str(), data.size());
+        return cmd_set(key.c_str(), flag, timeout, data.c_str(), (int)data.size());
     }
     int cmd_replace(const char *key, int flag, int64_t timeout, const void *data, int len);
     inline int rcmd_eplace(const std::string &key, int flag, int64_t timeout, const std::string &data)
     {
-        return cmd_replace(key.c_str(), flag, timeout, data.c_str(), data.size());
+        return cmd_replace(key.c_str(), flag, timeout, data.c_str(), (int)data.size());
     }
     int cmd_append(const char *key, int flag, int64_t timeout, const void *data, int len);
     inline int cmd_append(const std::string &key, int flag, int64_t timeout, const std::string &data)
     {
-        return cmd_append(key.c_str(), flag, timeout, data.c_str(), data.size());
+        return cmd_append(key.c_str(), flag, timeout, data.c_str(), (int)data.size());
     }
     int cmd_prepend(const char *key, int flag, int64_t timeout, const void *data, int len);
     inline int cmd_prepend(const std::string &key, int flag, int64_t timeout, const std::string &data)
     {
-        return cmd_prepend(key.c_str(), flag, timeout, data.c_str(), data.size());
+        return cmd_prepend(key.c_str(), flag, timeout, data.c_str(), (int)data.size());
     }
 
     // INCR命令, 返回 -1: 错; >= 0: incr的结果

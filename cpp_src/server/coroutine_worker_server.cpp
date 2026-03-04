@@ -49,7 +49,7 @@ static void *monitor_reload_signal(void *arg)
     }
 
     int need_stop_coroutine = 0;
-    int exit_after = var_main_config.get_second("server-stop-on-softstop-after", 0);
+    int exit_after = (int)var_main_config.get_second("server-stop-on-softstop-after", 0);
     if (exit_after > 0)
     {
         coroutine_worker_server_instance->stop_notify(exit_after);
@@ -72,7 +72,7 @@ static void *detach_monitor(void *arg)
             break;
         }
     }
-    int exit_after = var_main_config.get_second("server-stop-on-softstop-after", 0);
+    int exit_after = (int)var_main_config.get_second("server-stop-on-softstop-after", 0);
     if (exit_after < 1)
     {
         exit_after = 3600;

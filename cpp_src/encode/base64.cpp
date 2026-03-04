@@ -272,7 +272,7 @@ const unsigned char var_base64_decode_table[256] = {
     0xff,
 };
 
-void base64_encode(const void *src, int src_size, std::string &str, bool mime_flag)
+void base64_encode(const void *src, int64_t src_size, std::string &str, bool mime_flag)
 {
     unsigned char *src_c = (unsigned char *)src;
     char tmp[5] = {0, 0, 0, 0, 0};
@@ -327,14 +327,14 @@ void base64_encode(const void *src, int src_size, std::string &str, bool mime_fl
     }
 }
 
-std::string base64_encode(const void *src, int src_size, bool mime_flag)
+std::string base64_encode(const void *src, int64_t src_size, bool mime_flag)
 {
     std::string str;
     base64_encode(src, src_size, str, mime_flag);
     return str;
 }
 
-void base64_decode(const void *src, int src_size, std::string &str)
+void base64_decode(const void *src, int64_t src_size, std::string &str)
 {
     unsigned char *src_c = (unsigned char *)src;
     int src_pos = 0;
@@ -401,7 +401,7 @@ retry:
 #endif
             break;
         }
-        output[0] = (input[0] << 2) | (input[1] >> 4);
+        output[0] = (unsigned char)((input[0] << 2) | (input[1] >> 4));
 
         input[2] = var_base64_decode_table[c2];
         if (input[2] == 0xff)
@@ -418,7 +418,7 @@ retry:
             break;
         }
 
-        output[1] = (input[1] << 4) | (input[2] >> 2);
+        output[1] = (unsigned char)((input[1] << 4) | (input[2] >> 2));
         input[3] = var_base64_decode_table[c3];
         if (input[3] == 0xff)
         {
@@ -435,7 +435,7 @@ retry:
             break;
         }
 
-        output[2] = ((input[2] << 6) & 0xc0) | input[3];
+        output[2] = (unsigned char)(((input[2] << 6) & 0xc0) | input[3]);
         str.push_back(output[0]);
         str.push_back(output[1]);
         str.push_back(output[2]);
@@ -450,14 +450,14 @@ over:
 #undef ___get_next_ch
 }
 
-std::string base64_decode(const void *src, int src_size)
+std::string base64_decode(const void *src, int64_t src_size)
 {
     std::string str;
     base64_decode(src, src_size, str);
     return str;
 }
 
-int base64_decode_get_valid_len(const void *src, int src_size)
+int64_t base64_decode_get_valid_len(const void *src, int64_t src_size)
 {
     unsigned char *src_c = (unsigned char *)src, ch;
     int i;
@@ -483,9 +483,9 @@ int base64_decode_get_valid_len(const void *src, int src_size)
     return src_size;
 }
 
-int base64_encode_get_min_len(int in_len, bool mime_flag)
+int64_t base64_encode_get_min_len(int64_t in_len, bool mime_flag)
 {
-    int ret;
+    int64_t ret;
 
     ret = in_len * 4 / 3 + 4;
     if (mime_flag)

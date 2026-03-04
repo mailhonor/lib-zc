@@ -11,7 +11,7 @@
 
 #define mydebug         \
     if (var_debug_mode) \
-    zcc_info
+    zcc_debug_output
 
 zcc_namespace_begin;
 zcc_general_namespace_begin(charset);
@@ -76,7 +76,7 @@ static inline int chinese_word_score(detect_data *dd, unsigned char *word, int u
     return 0;
 }
 
-static void _check_info(unsigned char *str, int len, int *is_7bit)
+static void _check_info(unsigned char *str, int64_t len, int *is_7bit)
 {
     *is_7bit = 0;
     int i = 0, c, have_plus = 0;
@@ -96,7 +96,7 @@ static void _check_info(unsigned char *str, int len, int *is_7bit)
     }
 }
 
-static int _check_is_not_1252(unsigned char *str, int len)
+static int _check_is_not_1252(unsigned char *str, int64_t len)
 {
     if (len < 4)
     {
@@ -122,11 +122,11 @@ static int _check_is_not_1252(unsigned char *str, int len)
     return 0;
 }
 
-static double chinese_get_score(detect_data *dd, const char *fromcode, const char *str, int len, int *valid_count, int invalid_bytes)
+static double chinese_get_score(detect_data *dd, const char *fromcode, const char *str, int64_t len, int64_t *valid_count, int64_t invalid_bytes)
 {
     int i = 0, ulen;
     uint64_t score = 0, token_score;
-    uint64_t count = 0;
+    int count = 0;
     if (valid_count)
     {
         *valid_count = 0;
@@ -157,7 +157,7 @@ static double chinese_get_score(detect_data *dd, const char *fromcode, const cha
 
     auto r = 0.0;
 
-    uint16_t a = count;
+    uint64_t a = count;
     if (invalid_bytes > 100)
     {
         a += invalid_bytes * 10;
@@ -180,10 +180,10 @@ static double chinese_get_score(detect_data *dd, const char *fromcode, const cha
     }
     if (a > 0)
     {
-        r = ((double)score / a);
+        r = ((double)score / (double)a);
     }
 
-    mydebug("        # %-20s, score:%lu(%f), count:%lu, invalid_bytes:%d", fromcode, score, r, count, invalid_bytes);
+    mydebug("        # %-20s, score:%lu(%f), count:%d, invalid_bytes:%d", fromcode, score, r, count, invalid_bytes);
     if (count == 0)
     {
         return 0;
@@ -196,19 +196,19 @@ static double chinese_get_score(detect_data *dd, const char *fromcode, const cha
     return r;
 }
 
-std::string detect(detect_data *dd, const char **charset_list, const char *data, int size)
+std::string detect(detect_data *dd, const char **charset_list, const char *data, int64_t size)
 {
     if (!dd)
     {
         dd = var_default_detect_data;
     }
     int i;
-    int ret, max_i_invalid, max_i_no_invalid, min_invalid_bytes_i, min_invalid_bytes;
+    int64_t ret, max_i_invalid, max_i_no_invalid, min_invalid_bytes_i, min_invalid_bytes;
     const char **csp, *fromcode;
-    int len_to_use, list_len;
+    int64_t len_to_use, list_len;
     double result_score, max_score_invalid, max_score_no_invalid;
-    int max_count, tmp_count, invalid_count;
-    int invalid_bytes;
+    int64_t max_count, tmp_count, invalid_count;
+    int64_t invalid_bytes;
     int is_7bit = 0;
     int is_not_windows1252 = 0;
 
@@ -325,7 +325,7 @@ std::string detect(detect_data *dd, const char **charset_list, const char *data,
     return charset_list[min_invalid_bytes_i];
 }
 
-std::string detect_cjk(const char *data, int size)
+std::string detect_cjk(const char *data, int64_t size)
 {
     return detect(nullptr, cjk, data, size);
 }

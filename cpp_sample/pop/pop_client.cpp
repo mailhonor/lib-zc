@@ -18,7 +18,7 @@ static const char *pass = "";
 
 static void ___usage()
 {
-    zcc_fatal("%s -server pop3_server:port -user xxx@a.com -pass 123456 [--ssl ] [ --tls] [ -debug yes/no] [ -verbose no/yes ]", zcc::progname);
+    zcc_fatal("%s -server pop3_server:port -user xxx@a.com -pass 123456 [--ssl ] [ --tls] [ -debug yes/no] [ -verbose no/yes ]  [ -debug_protocol yes/no]", zcc::progname);
 }
 
 static void run_test()
@@ -26,11 +26,12 @@ static void run_test()
     zcc::pop_client pc;
     pc.set_debug_mode(zcc::var_main_config.get_bool("debug", true));
     pc.set_verbose_mode(zcc::var_main_config.get_bool("verbose", false));
-    pc.set_debug_protocol_fn([](int rw, const void *mem, int len)
+    pc.set_debug_protocol_mode(zcc::var_main_config.get_bool("debug_protocol", false));
+    pc.set_debug_protocol_fn([](zcc::mail_protocol_client_or_server cs, const void *mem, int len)
                              {
                                  std::string s;
                                  s.append((const char *)mem, len);
-                                 zcc_info("debug_protocol_fn, %c: %s", rw, s.c_str());
+                                 zcc_info("debug_protocol by callback, %c: %s", cs, s.c_str());
                                  //
                              });
     pc.set_timeout(10);

@@ -7,7 +7,16 @@
  */
 
 #include "zcc/zcc_stream.h"
-#ifndef _WIN64
+#ifdef _WIN64
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <io.h>
+#else // _WIN64
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/file.h>
+#include <fcntl.h>
 #include <unistd.h>
 #endif // _WIN64
 
@@ -18,25 +27,21 @@ fstream::fstream()
     close(true);
 }
 
-#ifdef _WIN64
-fstream::fstream(HANDLE fd)
+fstream::fstream(int fd)
 {
     open(fd);
 }
 
-fstream &fstream::open(HANDLE fd)
+bool fstream::open(const char *fn)
 {
-    if (fd_ != fd)
+    close(true);
+    fd_ = zcc::open(fn, O_RDWR | O_CREAT, 0644);
+    if (fd_ < 0)
     {
-        close(true);
-        fd_ = fd;
+        return false;
     }
-    return *this;
-}
-#else  // _WIN64
-fstream::fstream(int fd)
-{
-    open(fd);
+    open(fd_);
+    return true;
 }
 
 fstream &fstream::open(int fd)
@@ -46,9 +51,14 @@ fstream &fstream::open(int fd)
         close(true);
         fd_ = fd;
     }
+#ifdef _WIN64
+    if (fd_ > -1)
+    {
+        handle_ = (HANDLE)_get_osfhandle(fd_);
+    }
+#endif
     return *this;
 }
-#endif // _WIN64
 
 fstream::~fstream()
 {
@@ -64,23 +74,13 @@ int fstream::close(bool close_fd_or_release_ssl)
 
     if (close_fd_or_release_ssl)
     {
-#ifdef _WIN64
-        bool ret = true;
-        if (fd_ != INVALID_HANDLE_VALUE)
-        {
-            ret = CloseHandle(fd_);
-            fd_ = INVALID_HANDLE_VALUE;
-        }
-        return (ret ? 1 : -1);
-#else  // _WIN64
         int ret = 1;
         if (fd_ > -1)
         {
-            ret = ::close(fd_);
+            ret = close_fd(fd_);
         }
         fd_ = -1;
         return ret;
-#endif // _WIN64
     }
     return 1;
 }
@@ -89,16 +89,16 @@ int fstream::engine_read(void *buf, int len)
 {
 #ifdef _WIN64
     DWORD rlen;
-    if (ReadFile(fd_, buf, len, &rlen, 0))
+    if (ReadFile(handle_, buf, len, &rlen, 0))
     {
-        return rlen;
+        return (int)rlen;
     }
     else
     {
         return -1;
     }
 #else  // _WIN64
-    return ::read(fd_, buf, len);
+    return (int)::read(fd_, buf, len);
 #endif // _WIN64
 }
 
@@ -106,16 +106,16 @@ int fstream::engine_write(const void *buf, int len)
 {
 #ifdef _WIN64
     DWORD rlen;
-    if (WriteFile(fd_, buf, len, &rlen, 0))
+    if (WriteFile(handle_, buf, len, &rlen, 0))
     {
-        return rlen;
+        return (int)rlen;
     }
     else
     {
         return -1;
     }
 #else  // _WIN64
-    return ::write(fd_, buf, len);
+    return (int)::write(fd_, buf, len);
 #endif // _WIN64
 }
 

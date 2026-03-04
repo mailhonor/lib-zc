@@ -99,8 +99,8 @@ zcc_namespace_begin;
 #define ZCC_ETXTBSY 139
 #define ZCC_EWOULDBLOCK 140
 
-int get_errno(int code = 0);
-void set_errno(int code);
+ZCC_LIB_API int get_errno(int code = 0);
+ZCC_LIB_API void set_errno(int code);
 
 zcc_namespace_end;
 #pragma pack(pop)

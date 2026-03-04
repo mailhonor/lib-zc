@@ -12,14 +12,16 @@
 #define ZCC_LIB_INCLUDE_SMTP___
 
 #include <functional>
+#include <set>
 #include "./zcc_stdlib.h"
 #include "./zcc_stream.h"
+#include "./zcc_mail.h"
 
 #ifdef __cplusplus
 #pragma pack(push, 4)
 zcc_namespace_begin;
 
-class smtp_client
+class ZCC_LIB_API smtp_client
 {
 public:
     smtp_client();
@@ -27,7 +29,8 @@ public:
     virtual ~smtp_client();
     inline void set_debug_mode(bool tf = true) { debug_mode_ = tf; }
     inline void set_verbose_mode(bool tf = true) { verbose_mode_ = tf; }
-    inline void set_debug_protocol_fn(std::function<void(int /* S/C */, const char *, int)> fn)
+    inline void set_debug_protocol_mode(bool tf = true) { debug_protocol_mode_ = tf; }
+    inline void set_debug_protocol_fn(std::function<void(mail_protocol_client_or_server, const char *, int)> fn)
     {
         debug_protocol_fn_ = fn;
     }
@@ -71,7 +74,8 @@ public:
     {
         return do_quick_send_raw_data_once(data.c_str(), data.size(), process_callback);
     }
-    int do_quick_send_file_once(const std::string &filename, std::function<void(int64_t send_bytes)> process_callback = nullptr);
+    int do_quick_send_file_once(const std::string &pathname, std::function<void(int64_t send_bytes)> process_callback = nullptr);
+    int do_quick_send_once(const char *raw_data, size_t size, const std::string &pathname, std::function<void(int64_t send_bytes)> process_callback = nullptr);
     int cmd_data_end();
     int cmd_rset();
     int cmd_noop();
@@ -104,7 +108,7 @@ protected:
     bool ssl_mode_{false};
     bool tls_mode_{false};
     bool try_tls_mode_{false};
-    std::function<void(int, const char *, int)> debug_protocol_fn_{0};
+    std::function<void(mail_protocol_client_or_server, const char *, int)> debug_protocol_fn_{0};
     std::vector<std::string> ehlo_response_lines_;
     std::string last_response_line_;
     std::string ehlo_key_{"zcc-smtp"};
@@ -112,11 +116,85 @@ protected:
 protected:
     bool debug_mode_{false};
     bool verbose_mode_{false};
+    bool debug_protocol_mode_{false};
     bool need_close_connection_{false};
     bool connected_{false};
     bool opened_{false};
     bool authed_{false};
     bool ssl_flag_{false};
+};
+
+enum smtp_client_stage
+{
+    smtp_client_stage_init,
+    smtp_client_stage_connect,
+    smtp_client_stage_auth,
+    smtp_client_stage_mail_from,
+    smtp_client_stage_rcpt_to,
+    smtp_client_stage_data,
+    smtp_client_stage_quit,
+    smtp_client_stage_done,
+};
+
+class ZCC_LIB_API smtp_client_quick_send
+{
+public:
+    smtp_client_quick_send();
+    virtual ~smtp_client_quick_send();
+    inline smtp_client_stage &get_stage() { return stage_; }
+    inline const std::string &get_last_response_line() { return last_response_line_; }
+    inline const std::vector<mail_protocol_line_record> &get_protocol_logs() { return protocol_logs_; }
+    inline const std::string get_error_rcpt() { return error_rcpt_; }
+
+public:
+    bool send_once_by_data(const char *data, int len = -1);
+    inline bool send_once_by_data(const std::string &data)
+    {
+        return send_once_by_data(data.c_str(), (int)data.size());
+    }
+    bool send_once_by_file(const std::string &pathname);
+    inline void set_debug_mode(bool tf = true) { debug_mode_ = tf; }
+    inline void set_verbose_mode(bool tf = true) { verbose_mode_ = tf; }
+    inline void set_debug_protocol_mode(bool tf = true) { debug_protocol_mode_ = tf; }
+    inline void set_record_protocol_logs(bool tf = true) { record_protocol_logs_ = tf; }
+    void set_connect_times(int times);
+    void set_timeout(int timeout);
+    void set_ssl_mode(SSL_CTX *ssl_ctx);
+    void set_tls_mode(SSL_CTX *ssl_ctx);
+    void set_try_tls_mode(SSL_CTX *ssl_ctx);
+    void set_ssl_tls(SSL_CTX *ssl_ctx, bool ssl_mode, bool tls_mode, bool try_tls_mode = false);
+    void set_process_callback(std::function<void(smtp_client_stage stage, int process_percentage_value)> callback);
+    void set_server(const std::string &server, int port = 25);
+    void set_username_password(const std::string &username, const std::string &password);
+    void set_mail_from(const std::string &mail_from);
+    void add_rcpt_to(const std::string &rcpt_to);
+    void add_rcpt_to(const std::set<std::string> &rcpt_tos);
+
+protected:
+    bool send_once_inner(const char *data, int len, const std::string &pathname);
+    //
+    smtp_client_stage stage_{smtp_client_stage_init};
+    std::string last_response_line_;
+    std::vector<mail_protocol_line_record> protocol_logs_;
+    //
+    bool debug_mode_{false};
+    bool verbose_mode_{false};
+    bool debug_protocol_mode_{false};
+    bool record_protocol_logs_{false};
+    bool ssl_mode_{false};
+    bool tls_mode_{false};
+    bool try_tls_mode_{false};
+    SSL_CTX *ssl_ctx_{NULL};
+    int timeout_{10};
+    int connect_times_{3};
+    std::function<void(smtp_client_stage tage, int process_percentage_value)> process_callback_{nullptr};
+    std::string destination_;
+    std::string username_;
+    std::string password_;
+    std::string mail_from_;
+    std::vector<std::string> rcpt_to_;
+    std::set<std::string> rcpt_to_unique_;
+    std::string error_rcpt_;
 };
 
 zcc_namespace_end;

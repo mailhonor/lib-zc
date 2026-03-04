@@ -17,9 +17,9 @@
 #pragma pack(push, 4)
 zcc_namespace_begin;
 
-extern const char *cdb_code_version;
+ZCC_LIB_API extern const char *cdb_code_version;
 
-class cdb_reader
+class ZCC_LIB_API cdb_reader
 {
 public:
     static bool is_my_data(const void *data, int64_t size);
@@ -61,7 +61,7 @@ protected:
     bool file_flag_{false};
 };
 
-class cdb_walker
+class ZCC_LIB_API cdb_walker
 {
 public:
     cdb_walker(cdb_reader &reader);
@@ -85,7 +85,7 @@ protected:
 };
 
 struct cdb_builder_engine_t;
-class cdb_builder
+class ZCC_LIB_API cdb_builder
 {
 public:
     cdb_builder();
@@ -94,7 +94,7 @@ public:
     void update(const void *key, int klen, const void *val, int vlen);
     inline void update(const std::string &key, const std::string &val)
     {
-        update(key.c_str(), key.size(), val.c_str(), val.size());
+        update(key.c_str(), (int)key.size(), val.c_str(), (int)val.size());
     }
     bool compile();
     const void *get_compiled_data();

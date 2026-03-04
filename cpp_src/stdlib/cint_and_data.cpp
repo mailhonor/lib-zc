@@ -84,7 +84,7 @@ void cint_data_escape(std::string &bf, const void *data, int len)
 
     if (len < 0)
     {
-        len = std::strlen((const char *)data);
+        len = (int)std::strlen((const char *)data);
     }
     do
     {
@@ -94,7 +94,7 @@ void cint_data_escape(std::string &bf, const void *data, int len)
         {
             ch |= 0200;
         }
-        bf.push_back(ch);
+        bf.push_back((char)ch);
     } while (left);
     if (len > 0)
     {
@@ -137,7 +137,7 @@ int cint_put(int size, char *buf)
         {
             ch |= 0200;
         }
-        ((unsigned char *)buf)[len++] = ch;
+        ((unsigned char *)buf)[len++] = (unsigned char)ch;
     } while (left);
     return len;
 }

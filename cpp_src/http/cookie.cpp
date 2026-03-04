@@ -52,7 +52,7 @@ std::map<std::string, std::string> http_cookie_parse(const char *raw_cookie)
             name.append(ps, q - ps);
             value.clear();
             q++;
-            http_token_decode(q, p - q, value);
+            http_token_decode(q, (int)(p - q), value);
         } while (0);
         r[name] = value;
 
@@ -97,7 +97,7 @@ std::string http_cookie_build_item(const char *name, const char *value, int64_t 
         {
             if (std::isalnum(ch) || (ch == '/'))
             {
-                r.push_back(ch);
+                r.push_back((char)ch);
             }
             else
             {

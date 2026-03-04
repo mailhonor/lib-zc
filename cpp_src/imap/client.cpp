@@ -52,12 +52,12 @@ imap_client &imap_client::fp_append(const char *s, int slen)
 {
     if (slen < 0)
     {
-        slen = std::strlen(s);
+        slen = (int)std::strlen(s);
     }
     fp_->append(s, slen);
     if (debug_protocol_fn_)
     {
-        debug_protocol_fn_('C', s, slen);
+        debug_protocol_fn_(mail_protocol_client, s, slen);
     }
     return *this;
 }
@@ -67,14 +67,14 @@ imap_client &imap_client::fp_append(const std::string &s)
     fp_->append(s);
     if (debug_protocol_fn_)
     {
-        debug_protocol_fn_('C', s.c_str(), (int)s.size());
+        debug_protocol_fn_(mail_protocol_client, s.c_str(), (int)s.size());
     }
     return *this;
 }
 
 int imap_client::fp_readn(void *mem, int strict_len)
 {
-    int r = fp_->readn(mem, strict_len);
+    int r = (int)fp_->readn(mem, strict_len);
     if (r < strict_len)
     {
         need_close_connection_ = true;
@@ -84,7 +84,7 @@ int imap_client::fp_readn(void *mem, int strict_len)
     {
         if (debug_protocol_fn_)
         {
-            debug_protocol_fn_('S', (const char *)mem, r);
+            debug_protocol_fn_(mail_protocol_server, (const char *)mem, r);
         }
     }
     return r;
@@ -92,7 +92,7 @@ int imap_client::fp_readn(void *mem, int strict_len)
 
 int imap_client::fp_readn(std::string &str, int strict_len)
 {
-    int r = fp_->readn(str, strict_len);
+    int r = (int)fp_->readn(str, strict_len);
     if (r < strict_len)
     {
         need_close_connection_ = true;
@@ -101,7 +101,7 @@ int imap_client::fp_readn(std::string &str, int strict_len)
     {
         if (debug_protocol_fn_)
         {
-            debug_protocol_fn_('S', str.c_str(), str.size());
+            debug_protocol_fn_(mail_protocol_server, str.c_str(), (int)str.size());
         }
     }
     return r;
@@ -109,7 +109,7 @@ int imap_client::fp_readn(std::string &str, int strict_len)
 
 int imap_client::fp_read_delimiter(void *mem, int delimiter, int max_len)
 {
-    int r = fp_->read_delimiter(mem, delimiter, max_len);
+    int r = (int)fp_->read_delimiter(mem, delimiter, max_len);
     if (r < 0)
     {
         need_close_connection_ = true;
@@ -118,14 +118,14 @@ int imap_client::fp_read_delimiter(void *mem, int delimiter, int max_len)
     {
         if (debug_protocol_fn_)
         {
-            debug_protocol_fn_('S', (const char *)mem, r);
+            debug_protocol_fn_(mail_protocol_server, (const char *)mem, r);
         }
     }
     return r;
 }
 int imap_client::fp_read_delimiter(std::string &str, int delimiter, int max_len)
 {
-    int r = fp_->read_delimiter(str, delimiter, max_len);
+    int r = (int)fp_->read_delimiter(str, delimiter, max_len);
     if (r < 0)
     {
         need_close_connection_ = true;
@@ -134,8 +134,10 @@ int imap_client::fp_read_delimiter(std::string &str, int delimiter, int max_len)
     {
         if (debug_protocol_fn_)
         {
-            debug_protocol_fn_('S', str.c_str(), str.size());
+            debug_protocol_fn_(mail_protocol_server, str.c_str(), (int)str.size());
         }
+        last_response_line_ = str;
+        zcc::trim_line_end_rn(last_response_line_);
     }
     return r;
 }

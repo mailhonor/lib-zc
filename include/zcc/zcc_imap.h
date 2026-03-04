@@ -15,12 +15,13 @@
 #include <set>
 #include "./zcc_stdlib.h"
 #include "./zcc_stream.h"
+#include "./zcc_mail.h"
 
 #ifdef __cplusplus
 #pragma pack(push, 4)
 zcc_namespace_begin;
 
-class imap_client
+class ZCC_LIB_API imap_client
 {
 public:
     enum result_onb
@@ -30,7 +31,7 @@ public:
         bad
     };
 
-    class response_tokens
+    class ZCC_LIB_API response_tokens
     {
     public:
         response_tokens();
@@ -40,7 +41,7 @@ public:
         std::string first_line_;
     };
 
-    class uidplus_result
+    class ZCC_LIB_API uidplus_result
     {
     public:
         uidplus_result();
@@ -50,7 +51,7 @@ public:
         int uid_;
     };
 
-    class status_result
+    class ZCC_LIB_API status_result
     {
     public:
         status_result();
@@ -63,7 +64,7 @@ public:
         int unseen_;
     };
 
-    class folder_result
+    class ZCC_LIB_API folder_result
     {
     public:
         folder_result();
@@ -91,7 +92,7 @@ public:
 
     typedef std::map<std::string /* imap pahtname */, folder_result> folder_list_result;
 
-    class select_result
+    class ZCC_LIB_API select_result
     {
     public:
         select_result();
@@ -107,7 +108,7 @@ public:
         bool readonly_;
     };
 
-    class mail_flags
+    class ZCC_LIB_API mail_flags
     {
     public:
         mail_flags();
@@ -125,7 +126,7 @@ public:
 
     typedef std::map<int, mail_flags> mail_list_result;
 
-    class append_session
+    class ZCC_LIB_API append_session
     {
     public:
         append_session();
@@ -154,6 +155,9 @@ public:
         return escape_string(s.c_str(), (int)(s.size()));
     }
 
+    static std::string leaf_name_utf7_to_utf8(const std::string &pathname, char seperator = '/');
+    static std::string parent_name_utf7_to_utf8(const std::string &pathname, char seperator = '/');
+
 public:
     imap_client();
     imap_client(stream *third_stream, bool auto_release_third_stream = true);
@@ -162,13 +166,15 @@ public:
     inline bool is_bad() { return (ok_no_bad_ == result_onb::bad); }
     inline void set_debug_mode(bool tf = true) { debug_mode_ = tf; }
     inline void set_verbose_mode(bool tf = true) { verbose_mode_ = tf; }
+    inline void set_debug_protocol_mode(bool tf = true) { debug_protocol_mode_ = tf; }
     inline void set_simple_line_mode(bool tf = true) { simple_line_mode_ = tf; }
-    inline void set_debug_protocol_fn(std::function<void(int /* S/C */, const char *, int)> fn)
+    inline void set_debug_protocol_fn(std::function<void(mail_protocol_client_or_server, const char *, int)> fn)
     {
         debug_protocol_fn_ = fn;
     }
     inline bool check_is_need_close() { return need_close_connection_; }
 
+    //
     void set_simple_line_length_limit(int limit);
     void set_timeout(int timeout);
     void set_ssl_mode(SSL_CTX *ssl_ctx);
@@ -182,6 +188,7 @@ public:
     int do_auth(const char *user, const char *password);
     inline int do_auth(const std::string &user, const std::string &password) { return do_auth(user.c_str(), password.c_str()); }
     int cmd_logout();
+    inline int cmd_quit() { return cmd_logout(); }
     int cmd_capability(bool force = false);
     int cmd_id(const char *id = "");
     inline int cmd_id(const std::string &id) { return cmd_id(id.c_str()); }
@@ -248,10 +255,18 @@ public:
     inline int get_capability_uidplus() { return get_capability_cached("uidplus", &capability_move_); }
     inline int get_capability_idle() { return get_capability_cached("idle", &capability_idle_); }
     std::string &get_capability() { return capability_; }
-    int check_new_message_by_noop(const std::string &mbox = "INBOX");
-    int idle_beign(const std::string &mbox = "INBOX");
-    bool idle_check_new_message(int wait_second = 0);
-    int idle_end();
+    // -1: error, 0: no new message, 1: new message, >1 other untagged response
+    int check_new_message_by_noop();
+    int check_new_message_by_noop(const std::string &folder_name);
+    // -1: error, 0: no new message, 1: new message, >1 other untagged response
+    int check_new_message_by_idle(int wait_second = 1200);
+    int check_new_message_by_idle(const std::string &folder_name, int wait_second = 1200);
+    inline const std::string &get_last_response_line()
+    {
+        return last_response_line_;
+    }
+    inline bool maybeHaveNewMessage() { return maybeHaveNewMessage_; }
+    inline void unsetMaybeHaveNewMessage() { maybeHaveNewMessage_ = false; }
 
 public:
     imap_client &fp_append(const char *s, int slen = -1);
@@ -263,15 +278,21 @@ public:
     inline int fp_gets(std::string &str, int max_len) { return fp_read_delimiter(str, '\n', max_len); }
     inline int fp_gets(void *mem, int max_len) { return fp_read_delimiter(mem, '\n', max_len); }
     int parse_imap_result(const char *key_line);
-    int parse_imap_result(char tag, const char *line);
-    inline bool parse_imap_result(char tag, const std::string &line) { return parse_imap_result(tag, line.c_str()); }
-    int parse_imap_result(char tag, const response_tokens &tokens);
+    int parse_imap_result(int tag, const char *line);
+    inline bool parse_imap_result(int tag, const std::string &line) { return parse_imap_result(tag, line.c_str()); }
+    int parse_imap_result(int tag, const response_tokens &tokens);
     int read_big_data(FILE *dest_fp, std::string &raw_content, int extra_length);
     int read_response_tokens_oneline(response_tokens &tokens, int &extra_length);
     int read_response_tokens(response_tokens &tokens);
     int ignore_left_token(int extra_length);
 
 protected:
+    int idle_begin();
+    int idle_begin(const std::string &folder_name);
+    // -1: error, 0: no new message, 1: new message, >1 other untagged response
+    int idle_check_new_message(int wait_second = 1200);
+    int idle_end();
+    //
     int fp_connect(const char *destination, int times);
     int welcome();
     int do_quick_cmd(const std::string &cmd);
@@ -291,12 +312,14 @@ protected:
     std::string capability_;
     std::string last_selected_;
     int simple_line_length_limit_{102400};
-    std::function<void(int, const char *, int)> debug_protocol_fn_{0};
+    std::function<void(mail_protocol_client_or_server, const char *, int)> debug_protocol_fn_{0};
+    std::string last_response_line_;
 
 protected:
     result_onb ok_no_bad_{ok};
     bool debug_mode_{false};
     bool verbose_mode_{false};
+    bool debug_protocol_mode_{false};
     bool simple_line_mode_{false};
     bool opened_{false};
     bool connected_{false};
@@ -305,6 +328,7 @@ protected:
     bool need_close_connection_{false};
     bool tmp_verbose_mode_{false};
     bool third_stream_mode_{false};
+    bool maybeHaveNewMessage_{false};
     int tmp_verbose_line_{0};
     bool auth_capability_{false};
     bool capability_clear_flag_{false};

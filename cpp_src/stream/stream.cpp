@@ -71,7 +71,7 @@ int stream::getc_do()
         return -1;
     }
     engine_->read_buf_p1 = 1;
-    engine_->read_buf_p2 = ret;
+    engine_->read_buf_p2 = (short)ret;
 
     return engine_->read_buf[0];
 }
@@ -89,7 +89,7 @@ stream &stream::ungetc()
     return *this;
 }
 
-int stream::read(void *mem, int max_len)
+int64_t stream::read(void *mem, int64_t max_len)
 {
     if (max_len < 1)
     {
@@ -97,7 +97,7 @@ int stream::read(void *mem, int max_len)
     }
 
     char *ps = (char *)mem;
-    int left_len = max_len, ret_len = 0;
+    int64_t left_len = max_len, ret_len = 0;
     int ch;
     int have_len = engine_->read_buf_p2 - engine_->read_buf_p1;
     if (have_len == 0)
@@ -111,7 +111,7 @@ int stream::read(void *mem, int max_len)
             }
             return -1;
         }
-        *ps++ = ch;
+        *ps++ = (char)ch;
         have_len = engine_->read_buf_p2 - engine_->read_buf_p1;
         left_len--;
         ret_len++;
@@ -123,11 +123,11 @@ int stream::read(void *mem, int max_len)
     }
     ret_len += left_len;
     std::memcpy(ps, engine_->read_buf + engine_->read_buf_p1, left_len);
-    engine_->read_buf_p1 += left_len;
+    engine_->read_buf_p1 = (short)(engine_->read_buf_p1 + left_len);
     return ret_len;
 }
 
-int stream::read(std::string &str, int max_len)
+int64_t stream::read(std::string &str, int64_t max_len)
 {
     if (max_len < 1)
     {
@@ -135,7 +135,7 @@ int stream::read(std::string &str, int max_len)
     }
 
     str.clear();
-    int left_len = max_len, ret_len = 0;
+    int64_t left_len = max_len, ret_len = 0;
     int ch;
     int have_len = engine_->read_buf_p2 - engine_->read_buf_p1;
     if (have_len == 0)
@@ -149,7 +149,7 @@ int stream::read(std::string &str, int max_len)
             }
             return -1;
         }
-        str.push_back(ch);
+        str.push_back((char)ch);
         have_len = engine_->read_buf_p2 - engine_->read_buf_p1;
         left_len--;
         ret_len++;
@@ -161,11 +161,11 @@ int stream::read(std::string &str, int max_len)
     }
     ret_len += left_len;
     str.append((char *)(engine_->read_buf) + engine_->read_buf_p1, left_len);
-    engine_->read_buf_p1 += left_len;
+    engine_->read_buf_p1 = (short)(engine_->read_buf_p1 + (short)left_len);
     return ret_len;
 }
 
-int stream::readn(void *mem, int strict_len)
+int64_t stream::readn(void *mem, int64_t strict_len)
 {
     if (strict_len < 1)
     {
@@ -173,7 +173,7 @@ int stream::readn(void *mem, int strict_len)
     }
 
     char *ps = (char *)mem;
-    int left_len = strict_len;
+    int64_t left_len = strict_len;
     int ch;
 
     if (mem)
@@ -185,7 +185,7 @@ int stream::readn(void *mem, int strict_len)
             {
                 break;
             }
-            *ps++ = ch;
+            *ps++ = (char)ch;
             left_len--;
         }
     }
@@ -213,7 +213,7 @@ int stream::readn(void *mem, int strict_len)
     return -1;
 }
 
-int stream::readn(std::string &str, int strict_len)
+int64_t stream::readn(std::string &str, int64_t strict_len)
 {
     if (strict_len < 1)
     {
@@ -221,7 +221,7 @@ int stream::readn(std::string &str, int strict_len)
     }
 
     str.clear();
-    int left_len = strict_len;
+    int64_t left_len = strict_len;
     int ch;
 
     while (left_len > 0)
@@ -231,7 +231,7 @@ int stream::readn(std::string &str, int strict_len)
         {
             break;
         }
-        str.push_back(ch);
+        str.push_back((char)ch);
         left_len--;
     }
 
@@ -246,7 +246,7 @@ int stream::readn(std::string &str, int strict_len)
     return -1;
 }
 
-int stream::read_delimiter(void *mem, int delimiter, int max_len)
+int64_t stream::read_delimiter(void *mem, int delimiter, int64_t max_len)
 {
     if (max_len < 1)
     {
@@ -254,7 +254,7 @@ int stream::read_delimiter(void *mem, int delimiter, int max_len)
     }
 
     char *ps = (char *)mem;
-    int left_len = max_len;
+    int64_t left_len = max_len;
     int ch;
 
     if (ps)
@@ -266,7 +266,7 @@ int stream::read_delimiter(void *mem, int delimiter, int max_len)
             {
                 break;
             }
-            *ps++ = ch;
+            *ps++ = (char)ch;
             left_len--;
             if (ch == delimiter)
             {
@@ -303,7 +303,7 @@ int stream::read_delimiter(void *mem, int delimiter, int max_len)
     return -1;
 }
 
-int stream::read_delimiter(std::string &str, int delimiter, int max_len)
+int64_t stream::read_delimiter(std::string &str, int delimiter, int64_t max_len)
 {
     if (max_len < 1)
     {
@@ -311,7 +311,7 @@ int stream::read_delimiter(std::string &str, int delimiter, int max_len)
     }
 
     str.clear();
-    int left_len = max_len;
+    int64_t left_len = max_len;
     int ch;
 
     while (left_len > 0)
@@ -321,7 +321,7 @@ int stream::read_delimiter(std::string &str, int delimiter, int max_len)
         {
             break;
         }
-        str.push_back(ch);
+        str.push_back((char)ch);
         left_len--;
         if (ch == delimiter)
         {
@@ -340,17 +340,17 @@ int stream::read_delimiter(std::string &str, int delimiter, int max_len)
     return -1;
 }
 
-int stream::write(const void *buf, int len)
+int64_t stream::write(const void *buf, int64_t len)
 {
     if (len < 0)
     {
-        len = std::strlen((const char *)buf);
+        len = (int)std::strlen((const char *)buf);
     }
     if (len < 1)
     {
         return 0;
     }
-    int left_len = len;
+    int64_t left_len = len;
     int ch;
     const char *str = (const char *)buf;
     if (str == 0)
@@ -384,7 +384,7 @@ int stream::printf_1024(const char *format, ...)
     len = ((len < 1024) ? len : (1024 - 1));
     va_end(ap);
 
-    return write(buf, len);
+    return (int)write(buf, len);
 }
 
 int stream::flush()
@@ -432,7 +432,7 @@ int stream::putc_do(int ch)
             return -1;
         }
     }
-    engine_->write_buf[engine_->write_buf_len++] = ch;
+    engine_->write_buf[engine_->write_buf_len++] = (unsigned char)ch;
     return ch;
 }
 
@@ -487,7 +487,7 @@ int stream::write_cint_and_data(const void *buf, int len)
 {
     if (len < 0)
     {
-        len = std::strlen((char *)(void *)buf);
+        len = (int)std::strlen((char *)(void *)buf);
     }
     write_cint(len);
     write(buf, len);

@@ -252,7 +252,7 @@ static void cdb_builder_update(cdb_builder_engine_t *builder, const void *key, i
 {
     if (klen < 0)
     {
-        klen = std::strlen((const char *)key);
+        klen = (int)std::strlen((const char *)key);
     }
     if (klen > max_key_len)
     {
@@ -269,7 +269,7 @@ static void cdb_builder_update(cdb_builder_engine_t *builder, const void *key, i
     builder->count -= builder->table_vector[klen]->count;
     if (vlen < 0)
     {
-        vlen = std::strlen((const char *)val);
+        vlen = (int)std::strlen((const char *)val);
     }
     if (vlen != 0)
     {
@@ -305,7 +305,7 @@ static int _cint_put(int size, char *buf)
         {
             ch |= 0200;
         }
-        ((unsigned char *)buf)[len++] = ch;
+        ((unsigned char *)buf)[len++] = (unsigned char)ch;
     } while (left);
     return len;
 }
@@ -415,7 +415,7 @@ static int cdb_builder_compile(cdb_builder_engine_t *builder)
                 int ni = 0;
                 for (node = ht->hash_node_vector[hi]; node; node = node->next, ni++)
                 {
-                    int vlen = node->val.size();
+                    int vlen = (int)node->val.size();
                     if (vlen == 0)
                     {
                         continue;

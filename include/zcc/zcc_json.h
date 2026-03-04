@@ -42,7 +42,7 @@ const unsigned char json_type_bool = 6;
 const unsigned char json_type_unknown = 7;
 const int json_serialize_strict = 0X01;
 const int json_serialize_pretty = 0X02;
-class json
+class ZCC_LIB_API json
 {
 public:
     static inline json *create_object()
@@ -286,11 +286,11 @@ public:
     {
         return array_update(idx, j, 0, return_child);
     }
-    inline json *array_update(uint64_t idx, const char *val, int len, bool return_child = false)
+    inline json *array_update(int idx, const char *val, int len, bool return_child = false)
     {
         return array_update(idx, new json(val, len), return_child);
     }
-    inline json *array_update(uint64_t idx, const char *val, int len, json **old, bool return_child = false)
+    inline json *array_update(int idx, const char *val, int len, json **old, bool return_child = false)
     {
         return array_update(idx, new json(val, len), old, return_child);
     }

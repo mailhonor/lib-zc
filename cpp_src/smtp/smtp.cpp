@@ -70,15 +70,20 @@ int smtp_client::simple_quick_cmd(const std::string &cmd, const std::string &deb
     }
     ehlo_response_lines_.clear();
     fp_->append(cmd).append("\r\n");
-    if (debug_protocol_fn_)
+    if (debug_protocol_fn_ || debug_protocol_mode_)
     {
-        if (debug_info.empty())
+        auto debug_line = debug_info;
+        if (debug_line.empty())
         {
-            debug_protocol_fn_('C', cmd.c_str(), cmd.size());
+            debug_line = cmd;
         }
-        else
+        if (debug_protocol_fn_)
         {
-            debug_protocol_fn_('C', debug_info.c_str(), debug_info.size());
+            debug_protocol_fn_(zcc::mail_protocol_client, debug_line.c_str(), (int)debug_line.size());
+        }
+        if (debug_protocol_mode_)
+        {
+            zcc_smtp_client_debug_protocol_write(debug_line);
         }
     }
     if (fp_->gets(last_response_line_, 10240) < 1)
@@ -89,8 +94,9 @@ int smtp_client::simple_quick_cmd(const std::string &cmd, const std::string &deb
     zcc::trim_line_end_rn(last_response_line_);
     if (debug_protocol_fn_)
     {
-        debug_protocol_fn_('S', last_response_line_.c_str(), last_response_line_.size());
+        debug_protocol_fn_(mail_protocol_server, last_response_line_.c_str(), (int)last_response_line_.size());
     }
+    zcc_smtp_client_debug_protocol_write(last_response_line_);
     if (last_response_line_[0] == '2' || last_response_line_[0] == '3')
     {
         return 1;
@@ -117,7 +123,7 @@ int smtp_client::do_STARTTLS()
 
     if (fp_->tls_connect(ssl_ctx_) < 0)
     {
-        zcc_smtp_client_error("建立SSL");
+        zcc_smtp_client_debug("SSL连接失败");
         return -1;
     }
     ssl_flag_ = true;
@@ -148,7 +154,7 @@ int smtp_client::fp_connect(const char *destination, int times)
     }
     if (!fp_->connect(destination))
     {
-        zcc_smtp_client_error("连接(%s)", destination);
+        zcc_smtp_client_debug("连接失败(%s)", destination);
         need_close_connection_ = true;
         return -1;
     }
@@ -158,7 +164,7 @@ int smtp_client::fp_connect(const char *destination, int times)
         {
             disconnect();
             need_close_connection_ = true;
-            zcc_smtp_client_error("建立SSL(%s)", destination);
+            zcc_smtp_client_debug("SSL连接失败(%s)", destination);
             return -1;
         }
         ssl_flag_ = true;
@@ -188,8 +194,9 @@ int smtp_client::welcome()
     zcc::trim_line_end_rn(last_response_line_);
     if (debug_protocol_fn_)
     {
-        debug_protocol_fn_('S', last_response_line_.c_str(), last_response_line_.size());
+        debug_protocol_fn_(mail_protocol_server, last_response_line_.c_str(), (int)last_response_line_.size());
     }
+    zcc_smtp_client_debug_protocol_read(last_response_line_);
     if (last_response_line_[0] == '2' || last_response_line_[0] == '3')
     {
         return 1;
@@ -331,11 +338,19 @@ int smtp_client::cmd_ehlo(const char *key)
     }
     ehlo_response_lines_.clear();
     fp_->append("EHLO ").append(key).append("\r\n");
-    if (debug_protocol_fn_)
+    if (debug_protocol_fn_ || debug_protocol_mode_)
     {
         std::string debug_line = "EHLO " + std::string(key);
-        debug_protocol_fn_('C', debug_line.c_str(), debug_line.size());
+        if (debug_protocol_fn_)
+        {
+            debug_protocol_fn_(mail_protocol_client, debug_line.c_str(), (int)debug_line.size());
+        }
+        if (debug_protocol_mode_)
+        {
+            zcc_smtp_client_debug_protocol_write(debug_line);
+        }
     }
+
     for (int i = 0; i < 100; i++)
     {
         if (fp_->gets(last_response_line_, 10240) < 1)
@@ -346,8 +361,9 @@ int smtp_client::cmd_ehlo(const char *key)
         zcc::trim_line_end_rn(last_response_line_);
         if (debug_protocol_fn_)
         {
-            debug_protocol_fn_('S', last_response_line_.c_str(), last_response_line_.size());
+            debug_protocol_fn_(mail_protocol_server, last_response_line_.c_str(), (int)last_response_line_.size());
         }
+        zcc_smtp_client_debug_protocol_read(last_response_line_);
         ehlo_response_lines_.push_back(last_response_line_);
         if (last_response_line_.size() < 3)
         {
@@ -412,7 +428,7 @@ static int smtp_client_do_send_raw_data_once(smtp_client *smtp, const char *ps, 
         {
             write_size = 10240;
         }
-        if (smtp->get_iostream().write(ps, write_size) < 1)
+        if (smtp->get_iostream().write(ps, (int)write_size) < 1)
         {
             return -1;
         }
@@ -435,10 +451,17 @@ int smtp_client::do_quick_send_raw_data_once(const char *data, size_t size, std:
     {
         return r;
     }
-    if (debug_protocol_fn_)
+    if (debug_protocol_fn_ || debug_protocol_mode_)
     {
         std::string debug_line = "(send data: " + std::to_string(size) + " bytes)";
-        debug_protocol_fn_('C', debug_line.c_str(), (int)debug_line.size());
+        if (debug_protocol_fn_)
+        {
+            debug_protocol_fn_(mail_protocol_client, debug_line.c_str(), (int)debug_line.size());
+        }
+        if (debug_protocol_mode_)
+        {
+            zcc_smtp_client_debug_protocol_write(debug_line);
+        }
     }
     if (size < 1)
     {
@@ -501,20 +524,39 @@ int smtp_client::do_quick_send_file_once(const std::string &filename, std::funct
     zcc::mmap_reader reader;
     if (reader.open(filename.c_str()) < 1)
     {
-        zcc_smtp_client_error("打开文件(%s)", filename.c_str());
+        zcc_smtp_client_debug("打开文件(%s)", filename.c_str());
         return -1;
     }
     size_t size = reader.size_;
-    if (debug_protocol_fn_)
+    if (debug_protocol_fn_ || debug_protocol_mode_)
     {
         std::string debug_line = "(send file: " + filename + ")";
-        debug_protocol_fn_('C', debug_line.c_str(), (int)debug_line.size());
+        if (debug_protocol_fn_)
+        {
+            debug_protocol_fn_(mail_protocol_client, debug_line.c_str(), (int)debug_line.size());
+        }
+        if (debug_protocol_mode_)
+        {
+            zcc_smtp_client_debug_protocol_write(debug_line);
+        }
     }
     if (size < 1)
     {
         return 1;
     }
     return do_quick_send_raw_data_once((const char *)reader.data_, size, process_callback);
+}
+
+int smtp_client::do_quick_send_once(const char *raw_data, size_t size, const std::string &pathname, std::function<void(int64_t send_bytes)> process_callback)
+{
+    if (raw_data)
+    {
+        return do_quick_send_raw_data_once(raw_data, size, process_callback);
+    }
+    else
+    {
+        return do_quick_send_file_once(pathname, process_callback);
+    }
 }
 
 int smtp_client::cmd_data_end()

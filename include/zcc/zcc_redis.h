@@ -17,7 +17,7 @@
 #pragma pack(push, 4)
 zcc_namespace_begin;
 
-class redis_client_basic_engine
+class ZCC_LIB_API redis_client_basic_engine
 {
 public:
     redis_client_basic_engine();
@@ -53,7 +53,7 @@ public:
 
 // 作者也写过几个版本的客户端, 都不满意. 其中有一版有600多个方法.
 // 封装的东西很难满足使用者包括本人的需求. 哪怕仅仅是 GET 协议也是如此.
-class redis_client
+class ZCC_LIB_API redis_client
 {
 public:
     redis_client();

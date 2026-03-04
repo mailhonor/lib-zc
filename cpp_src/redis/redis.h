@@ -21,17 +21,17 @@ static const int redis_none = 0;
 static const int redis_error = -1;
 static const int redis_fatal = -2;
 
-#define zcc_redis_info(...) zcc_info(__VA_ARGS__)
-#define zcc_redis_error(...) zcc_error(__VA_ARGS__)
-#define zcc_redis_debug(...) \
-    if (redis_debug_mode_)   \
-    zcc_info(__VA_ARGS__)
+#define zcc_redis_info zcc_info
+#define zcc_redis_error zcc_error
+#define zcc_redis_debug    \
+    if (redis_debug_mode_) \
+    zcc_debug_output
 #define zcc_redis_debug_read_line(s) \
     if (redis_debug_mode_)           \
-    zcc_info("redis 读: %s", s.c_str())
+    zcc_debug_output("redis 读: %s", s.c_str())
 #define zcc_redis_debug_write_line(s) \
     if (redis_debug_mode_)            \
-    zcc_info("redis 写: %s", s.c_str())
+    zcc_debug_output("redis 写: %s", s.c_str())
 
 zcc_namespace_end;
 #pragma pack(pop)

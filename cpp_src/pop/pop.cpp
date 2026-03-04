@@ -74,7 +74,7 @@ pop_client &pop_client::fp_append(const std::string &s)
 
 int pop_client::fp_read_delimiter(std::string &str, int delimiter, int max_len)
 {
-    int r = fp_->read_delimiter(str, delimiter, max_len);
+    int r = (int) fp_->read_delimiter(str, delimiter, max_len);
     if (r < 0)
     {
         zcc_pop_client_debug("pop 读: 失败");
@@ -83,27 +83,35 @@ int pop_client::fp_read_delimiter(std::string &str, int delimiter, int max_len)
     }
     if (r > 0)
     {
-        if (verbose_mode_ || (debug_mode_ && !get_msg_mode_))
+        if (debug_protocol_mode_)
         {
-            if (verbose_mode_ || response_line_count_ < 4)
+            std::string ss;
+            if (!get_msg_mode_)
             {
-                std::string ss(str);
-                trim_line_end_rn(ss);
-                zcc_info("pop 读: %s", ss.c_str());
+                if (verbose_mode_ || response_line_count_ < 4)
+                {
+                    ss = str;
+                    trim_line_end_rn(ss);
+                    zcc_pop_client_debug_protocol_read(ss);
+                }
+                if (!verbose_mode_ && response_line_count_ == 4)
+                {
+                    ss = "(太多数据, 忽略..., 或开启 verbose 模式)";
+                    zcc_pop_client_debug_protocol_read(ss);
+                }
             }
-            if (!verbose_mode_ && response_line_count_ == 4)
+            if (!verbose_mode_ && get_msg_mode_ && get_msg_mode_first_)
             {
-                zcc_info("pop 读: (太多数据, 忽略..., 或开启 verbose 模式)");
+                ss = "(太多数据, 忽略..., 或开启 verbose 模式)";
+                zcc_pop_client_debug_protocol_read(ss);
+                get_msg_mode_first_ = false;
             }
         }
-        if (!verbose_mode_ && debug_mode_ && get_msg_mode_ && get_msg_mode_first_)
-        {
-            zcc_info("pop 读: (太多数据, 忽略..., 或开启 )");
-            get_msg_mode_first_ = false;
-        }
+        last_response_line_ = str;
+        zcc::trim_line_end_rn(last_response_line_);
         if (debug_protocol_fn_ && !get_msg_mode_)
         {
-            debug_protocol_fn_('S', str.c_str(), str.size());
+            debug_protocol_fn_(mail_protocol_server, last_response_line_.c_str(), (int)last_response_line_.size());
         }
     }
     return r;
@@ -121,22 +129,22 @@ int pop_client::simple_quick_cmd(const std::string &cmd, std::string &response)
     {
         return -1;
     }
-    if (debug_mode_)
+    if (debug_protocol_mode_)
     {
+        std::string ss;
         if (!cmd.empty() && cmd[0] == 'P' && cmd[1] == 'A')
         {
-            zcc_info("pop 写: PASS ******");
+            ss = "PASS ******";
+            zcc_pop_client_debug_protocol_write(ss);
         }
         else
         {
-            zcc_info("pop 写: %s", cmd.c_str());
+            zcc_pop_client_debug_protocol_write(cmd);
         }
     }
     if (debug_protocol_fn_)
     {
-        std::string ss(cmd);
-        ss.append("\r\n");
-        debug_protocol_fn_('C', ss.c_str(), ss.size());
+        debug_protocol_fn_(mail_protocol_client, cmd.c_str(), (int)cmd.size());
     }
     fp_append(cmd).fp_append("\r\n");
     if (fp_gets(response, 1024) < 1)
@@ -169,10 +177,10 @@ int pop_client::do_STLS()
 
     if (fp_->tls_connect(ssl_ctx_) < 0)
     {
-        zcc_pop_client_error("建立SSL");
+        zcc_pop_client_debug("SSL连接失败");
         return -1;
     }
-    zcc_pop_client_debug("建立SSL: 成功");
+    zcc_pop_client_debug("SSL连接成功");
     ssl_flag_ = true;
 
     return 1;
@@ -201,7 +209,7 @@ int pop_client::fp_connect(const char *destination, int times)
     }
     if (!fp_->connect(destination))
     {
-        zcc_pop_client_error("连接(%s)", destination);
+        zcc_pop_client_debug("连接(%s)", destination);
         need_close_connection_ = true;
         return -1;
     }
@@ -211,7 +219,7 @@ int pop_client::fp_connect(const char *destination, int times)
         {
             disconnect();
             need_close_connection_ = true;
-            zcc_pop_client_error("建立SSL(%s)", destination);
+            zcc_pop_client_debug("SSL连接失败(%s)", destination);
             return -1;
         }
         ssl_flag_ = true;
@@ -239,10 +247,10 @@ int pop_client::welcome()
     std::string line;
     if (fp_gets(line, 1024) < 1)
     {
-        zcc_pop_client_info("错误: pop 读取 welcome 失败");
+        zcc_pop_client_debug("错误: pop 读取 welcome 失败");
         return -1;
     }
-    zcc_pop_client_debug("pop 读: %s", line.c_str());
+    zcc_pop_client_debug_protocol_read(line);
     if (line[0] != '+')
     {
         return 0;
@@ -667,6 +675,7 @@ int pop_client::_get_msg_data(const std::string &cmd, FILE *fp, std::string *dat
         return -1;
     }
     std::string line;
+    int64_t readed_len = 0;
     int r;
 
     if ((r = simple_quick_cmd(cmd, line)) < 1)
@@ -695,14 +704,16 @@ int pop_client::_get_msg_data(const std::string &cmd, FILE *fp, std::string *dat
                 skip_dot_length = 1;
             }
         }
+        int len = (int)line.size() - skip_dot_length;
         if (fp)
         {
-            fwrite(line.c_str() + skip_dot_length, 1, line.size() - skip_dot_length, fp);
+            fwrite(line.c_str() + skip_dot_length, 1, len, fp);
         }
         if (data)
         {
-            data->append(line.c_str() + skip_dot_length, line.size() - skip_dot_length);
+            data->append(line.c_str() + skip_dot_length, len);
         }
+        readed_len += len;
 
         if (line[ret - 1] == '\n')
         {
@@ -713,6 +724,17 @@ int pop_client::_get_msg_data(const std::string &cmd, FILE *fp, std::string *dat
             last_line_over = false;
         }
     }
+
+    if (debug_protocol_fn_ || debug_protocol_mode_)
+    {
+        line = "(读取信件长度: " + std::to_string(readed_len) + ")";
+        if (debug_protocol_fn_)
+        {
+            debug_protocol_fn_(mail_protocol_server, line.c_str(), (int)line.size());
+        }
+        zcc_pop_client_debug_protocol_read(line);
+    }
+
     return r;
 }
 

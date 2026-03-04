@@ -13,15 +13,15 @@ zcc_general_namespace_begin(charset);
 
 /**
  * @brief 检查 UTF-8 字符串尾部是否完整，并返回完整部分的长度
- * 
+ *
  * 该函数会从字符串尾部开始检查，确保最后一个 UTF-8 字符是完整的。
  * 如果输入的长度为负数，则会自动计算字符串的长度。
- * 
+ *
  * @param ps 指向 UTF-8 字符串的指针
  * @param len 字符串的长度，如果为负数，则会使用 std::strlen 计算长度
  * @return int 完整部分的长度
  */
-int utf8_tail_complete(const char *ps, int len)
+int64_t utf8_tail_complete(const char *ps, int64_t len)
 {
     // 如果传入的长度为负数，则使用 std::strlen 计算字符串的实际长度
     if (len < 0)
@@ -29,7 +29,7 @@ int utf8_tail_complete(const char *ps, int len)
         len = std::strlen(ps);
     }
     // 保存原始的长度
-    int bak_len = len;
+    int64_t bak_len = len;
 
     // 从字符串尾部开始查找 ASCII 字符或者满足 (ch & 0XC0) == 0XC0 的字符
     while (1)
@@ -73,17 +73,37 @@ int utf8_tail_complete(const char *ps, int len)
     return len - 1;
 }
 
+int64_t utf8_tail_complete(const std::string &ps)
+{
+    return utf8_tail_complete(ps.c_str(), (int64_t)ps.size());
+}
+
+int64_t utf8_tail_complete(const std::string &ps, int64_t length)
+{
+    int64_t len = (int64_t)ps.size();
+    if (length < 0)
+    {
+        length = len;
+    }
+    else
+    {
+        length = std::min(len, length);
+    }
+
+    return utf8_tail_complete(ps.c_str(), length);
+}
+
 /**
  * @brief 检查 UTF-8 字符串尾部是否完整，并在完整部分末尾添加字符串结束符
- * 
+ *
  * 该函数会调用 utf8_tail_complete 函数获取完整部分的长度，
  * 然后在该位置添加字符串结束符 '\0'。
- * 
+ *
  * @param ps 指向 UTF-8 字符串的指针
  * @param len 字符串的长度
  * @return char* 指向处理后的字符串的指针
  */
-char *utf8_tail_complete_and_terminate(char *ps, int len)
+char *utf8_tail_complete_and_terminate(char *ps, int64_t len)
 {
     // 调用 utf8_tail_complete 函数获取完整部分的长度
     len = utf8_tail_complete(ps, len);
@@ -94,17 +114,17 @@ char *utf8_tail_complete_and_terminate(char *ps, int len)
 
 /**
  * @brief 检查 std::string 类型的 UTF-8 字符串尾部是否完整，并调整字符串长度
- * 
+ *
  * 该函数会调用 utf8_tail_complete 函数获取完整部分的长度，
  * 然后调整字符串的长度。
- * 
+ *
  * @param s 待处理的 std::string 类型的 UTF-8 字符串
  * @return std::string& 处理后的字符串的引用
  */
 std::string &utf8_tail_complete_and_terminate(std::string &s)
 {
     // 调用 utf8_tail_complete 函数获取完整部分的长度
-    int len = utf8_tail_complete(s.c_str(), s.size());
+    int64_t len = utf8_tail_complete(s.c_str(), (int)s.size());
     // 调整字符串的长度
     s.resize(len);
     return s;
@@ -112,16 +132,16 @@ std::string &utf8_tail_complete_and_terminate(std::string &s)
 
 /**
  * @brief 获取 UTF-8 字符串的简单摘要
- * 
+ *
  * 该函数会根据指定的宽度，从输入的 UTF-8 字符串中提取摘要。
  * 会处理空白字符，将连续的空白字符替换为单个空格。
- * 
+ *
  * @param s 指向 UTF-8 字符串的指针
  * @param len 字符串的长度，如果为负数，则会使用 strlen 计算长度
  * @param need_width 摘要所需的宽度
  * @return std::string 提取的摘要字符串
  */
-std::string utf8_get_simple_digest(const char *s, int len, int need_width)
+std::string utf8_get_simple_digest(const char *s, int64_t len, int64_t need_width)
 {
     // 用于存储提取的摘要字符串
     std::string r;
@@ -135,7 +155,7 @@ std::string utf8_get_simple_digest(const char *s, int len, int need_width)
     // 如果传入的长度为负数，则使用 strlen 计算字符串的实际长度
     if (len < 0)
     {
-        len = strlen(s);
+        len = (int)strlen(s);
     }
     // 遍历字符串
     for (int i = 0; i < len; i++)
@@ -171,7 +191,7 @@ std::string utf8_get_simple_digest(const char *s, int len, int need_width)
             else
             {
                 // 非空白字符，添加到摘要中
-                r.push_back(ch);
+                r.push_back((char)ch);
                 // 宽度加 1
                 width += 1;
                 // 标记上一个字符不是空白字符

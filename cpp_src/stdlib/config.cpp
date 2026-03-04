@@ -59,7 +59,7 @@ config &config::update(const char *key, const char *val, int vlen)
     // 如果未指定值的长度，则自动计算
     if (vlen < 0)
     {
-        vlen = std::strlen(val);
+        vlen = (int)std::strlen(val);
     }
     // 将配置项添加或更新到配置对象中
     (*this)[key] = std::string(val, vlen);
@@ -73,7 +73,7 @@ config &config::update(const std::string &key, const char *val, int vlen)
     // 如果未指定值的长度，则自动计算
     if (vlen < 0)
     {
-        vlen = std::strlen(val);
+        vlen = (int)std::strlen(val);
     }
     // 将配置项添加或更新到配置对象中
     (*this)[key] = std::string(val, vlen);

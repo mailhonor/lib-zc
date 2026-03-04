@@ -46,11 +46,13 @@ int main(int argc, char **argv)
     zcc::imap_client ic;
     ic.set_debug_mode();
     ic.set_verbose_mode();
-    ic.set_debug_protocol_fn([](int rw, const char *con, int len)
+    ic.set_debug_protocol_mode();
+    ic.set_debug_protocol_fn([](zcc::mail_protocol_client_or_server cs, const char *con, int len)
                              {
                                  std::string s;
                                  s.append(con, len);
-                                 zcc_info("debug_protocol, %c: %s", rw, s.c_str());
+                                 zcc::trim_line_end_rn(s);
+                                 zcc_info("debug_protocol by callback, %c: %s", cs, s.c_str());
                                  //
                              });
     ic.set_timeout(zcc::var_main_config.get_second("timeout", 10));

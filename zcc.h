@@ -28,6 +28,7 @@
 #include "./include/zcc/zcc_openssl.h"
 #include "./include/zcc/zcc_stream.h"
 #include "./include/zcc/zcc_http.h"
+#include "./include/zcc/zcc_mail.h"
 #include "./include/zcc/zcc_pop.h"
 #include "./include/zcc/zcc_imap.h"
 #include "./include/zcc/zcc_smtp.h"

@@ -70,7 +70,7 @@ int send_fd(int fd, int sendfd)
     do
     {
         // 调用sendmsg函数发送消息
-        sendmsg_ret = ::sendmsg(fd, &msg, 0);
+        sendmsg_ret = (int)::sendmsg(fd, &msg, 0);
     } while ((sendmsg_ret < 0) && (errno == EINTR));
     if (sendmsg_ret >= 0)
     {
@@ -117,7 +117,7 @@ int recv_fd(int fd)
     do
     {
         // 调用recvmsg函数接收消息
-        recvmsg_ret = ::recvmsg(fd, &msg, 0);
+        recvmsg_ret = (int)::recvmsg(fd, &msg, 0);
     } while ((recvmsg_ret < 0) && (errno == EINTR));
     if (recvmsg_ret < 0)
     {

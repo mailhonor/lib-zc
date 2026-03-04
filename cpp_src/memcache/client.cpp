@@ -102,7 +102,7 @@ int memcache_engine::cmd_get(const char *key, int &flag, std::string &value)
     while (1)
     {
         str.clear();
-        if ((linelen = fp_.gets(linebuf, 1024)) < 1)
+        if ((linelen = (int)fp_.gets(linebuf, 1024)) < 1)
         {
             protocol_error = 1;
             break;
@@ -367,6 +367,23 @@ void memcache::disconnect(bool close_fd_or_release_ssl)
     }                               \
     return ret;
 
+#define try_reconnect_do_sth_long(sth) \
+    int64_t ret = -2;                  \
+    int times = 1;                     \
+    if (engine_->auto_reconnect_)      \
+    {                                  \
+        times = 3;                     \
+    }                                  \
+    for (int i = 0; i < times; i++)    \
+    {                                  \
+        ret = sth;                     \
+        if (ret == -1)                 \
+        {                              \
+            continue;                  \
+        }                              \
+    }                                  \
+    return ret;
+
 int memcache::cmd_get(const char *key, int &flag, std::string &value)
 {
     try_reconnect_do_sth(engine_->cmd_get(key, flag, value));
@@ -399,12 +416,12 @@ int memcache::cmd_prepend(const char *key, int flag, int64_t timeout, const void
 
 int64_t memcache::cmd_incr(const char *key, uint64_t n)
 {
-    try_reconnect_do_sth(engine_->cmd_incr_decr("incr", key, n));
+    try_reconnect_do_sth_long(engine_->cmd_incr_decr("incr", key, n));
 }
 
 int64_t memcache::cmd_decr(const char *key, uint64_t n)
 {
-    try_reconnect_do_sth(engine_->cmd_incr_decr("decr", key, n));
+    try_reconnect_do_sth_long(engine_->cmd_incr_decr("decr", key, n));
 }
 
 int memcache::cmd_del(const char *key)

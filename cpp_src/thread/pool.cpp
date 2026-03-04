@@ -97,7 +97,7 @@ void thread_pool::set_debug(bool tf)
 
 int thread_pool::get_thread_count()
 {
-    return engine_->pool_node_list.size();
+    return (int)engine_->pool_node_list.size();
 }
 
 int thread_pool::get_task_queue_length()

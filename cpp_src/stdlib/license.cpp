@@ -12,7 +12,7 @@ zcc_namespace_begin;
 
 /**
  * @brief 根据给定的盐值和MAC地址生成许可证字符串
- * 
+ *
  * @param salt 用于生成许可证的盐值字符串
  * @param mac 设备的MAC地址字符串
  * @return std::string 生成的许可证字符串
@@ -26,7 +26,7 @@ std::string license_build(const char *salt, const char *mac)
     // 遍历MAC地址字符串，将每个字符转换为小写并添加到临时字符串中
     for (auto *p = mac; *p; p++)
     {
-        tmpstr.push_back(tolower(*p));
+        tmpstr.push_back((char)tolower(*p));
     }
 
     // 计算临时字符串的64位CRC校验值
@@ -40,7 +40,7 @@ std::string license_build(const char *salt, const char *mac)
 
 /**
  * @brief 检查给定的许可证是否有效
- * 
+ *
  * @param salt 用于验证许可证的盐值字符串
  * @param license 待验证的许可证字符串
  * @return int 验证结果，1表示有效，0表示无效，小于0表示获取MAC地址失败

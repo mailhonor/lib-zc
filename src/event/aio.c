@@ -6,6 +6,12 @@
  * ================================
  */
 
+#if defined(__GNUC__)
+#if __GNUC__ > 7
+#pragma GCC diagnostic ignored "-Wpacked-not-aligned"
+#endif
+#endif
+
 #ifdef __linux__
 #include <openssl/ssl.h>
 #include "zc.h"
@@ -17,8 +23,6 @@
 #include <sys/time.h>
 #include <sys/un.h>
 #include <errno.h>
-
-#pragma GCC diagnostic ignored "-Wpacked-not-aligned"
 
 #pragma pack(push, 4)
 

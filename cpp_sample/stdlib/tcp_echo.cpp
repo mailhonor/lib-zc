@@ -31,7 +31,7 @@ static bool do_accept()
     while (1)
     {
         std::string r;
-        int ret = fp.gets(r, 10240);
+        int ret = (int)fp.gets(r, 10240);
         if (ret < 1)
         {
             break;

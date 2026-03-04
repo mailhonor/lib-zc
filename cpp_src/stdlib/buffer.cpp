@@ -108,7 +108,7 @@ buffer &buffer::strcpy(const char *src, int64_t len)
 {
     if (len < 0)
     {
-        len = std::strlen(src);
+        len = (int)std::strlen(src);
     }
     reset();
     int i = 0;
@@ -130,7 +130,7 @@ buffer &buffer::strcat(const char *src, int64_t len)
 {
     if (len < 0)
     {
-        len = std::strlen(src);
+        len = (int)std::strlen(src);
     }
     int i = 0;
     while (*src)
@@ -155,7 +155,7 @@ buffer &buffer::memcpy(const void *src, int64_t len)
         return *this;
     }
 
-    int left = need_space(len + 1);
+    int64_t left = need_space(len + 1);
     if (left < len)
     {
         len = left;
@@ -173,7 +173,7 @@ buffer &buffer::memcat(const void *src, int64_t len)
         return *this;
     }
 
-    int left = need_space(len + 1);
+    int64_t left = need_space(len + 1);
     if (left < len)
     {
         len = left;
@@ -244,7 +244,7 @@ int buffer::putc_do(int ch)
             return -1;
         }
     }
-    ((unsigned char *)data_)[len_++] = ch;
+    ((unsigned char *)data_)[len_++] = (unsigned char)ch;
     terminate();
     return ch;
 }

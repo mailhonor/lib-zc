@@ -113,13 +113,13 @@ void sleep_millisecond(int64_t delay)
     // 在Windows 64位系统下，使用标准库的sleep_for函数进行休眠
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 #else  // _WIN64
-    int left = delay;
+    int64_t left = delay;
     // 计算休眠结束的时间戳
     int64_t end = millisecond() + left + 1;
     while (left > 0)
     {
         // 使用poll函数进行等待
-        poll(0, 0, left);
+        poll(0, 0, (int)left);
         // 计算剩余的休眠时间
         left = end - millisecond();
     }

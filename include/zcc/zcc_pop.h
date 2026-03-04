@@ -14,12 +14,13 @@
 #include <functional>
 #include "./zcc_stdlib.h"
 #include "./zcc_stream.h"
+#include "./zcc_mail.h"
 
 #ifdef __cplusplus
 #pragma pack(push, 4)
 zcc_namespace_begin;
 
-class pop_client
+class ZCC_LIB_API pop_client
 {
 public:
     pop_client();
@@ -27,7 +28,8 @@ public:
     virtual ~pop_client();
     inline void set_debug_mode(bool tf = true) { debug_mode_ = tf; }
     inline void set_verbose_mode(bool tf = true) { verbose_mode_ = tf; }
-    inline void set_debug_protocol_fn(std::function<void(int /* S/C */, const char *, int)> fn)
+    inline void set_debug_protocol_mode(bool tf = true) { debug_protocol_mode_ = tf; }
+    inline void set_debug_protocol_fn(std::function<void(mail_protocol_client_or_server, const char *, int)> fn)
     {
         debug_protocol_fn_ = fn;
     }
@@ -67,6 +69,10 @@ public:
     int cmd_quit();
     const std::string &get_capability(const char *key_lowercase);
     const std::vector<std::string> &get_capability();
+    inline const std::string &get_last_response_line()
+    {
+        return last_response_line_;
+    }
 
 public:
     int simple_quick_cmd(const std::string &cmd);
@@ -89,12 +95,14 @@ protected:
     bool ssl_mode_{false};
     bool tls_mode_{false};
     bool try_tls_mode_{false};
-    std::function<void(int, const char *, int)> debug_protocol_fn_{0};
+    std::function<void(mail_protocol_client_or_server, const char *, int)> debug_protocol_fn_{0};
+    std::string last_response_line_;
 
 protected:
     int _get_msg_data(const std::string &cmd, FILE *fp, std::string *data);
     bool debug_mode_{false};
     bool verbose_mode_{false};
+    bool debug_protocol_mode_{false};
     bool need_close_connection_{false};
     bool connected_{false};
     bool opened_{false};

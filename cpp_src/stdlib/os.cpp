@@ -12,6 +12,7 @@
 #ifdef _WIN64
 #include <processthreadsapi.h>
 #include <tlhelp32.h>
+#include <direct.h>
 #else // _WIN64
 #ifdef __linux__
 #include <syscall.h>
@@ -317,7 +318,7 @@ bool set_cgroup_name(const char *name)
  */
 int64_t get_MemAvailable()
 {
-    int v = -1;
+    int64_t v = -1;
     char linebuf[1024 + 1];
     // 打开 /proc/meminfo 文件
     FILE *fp = ::fopen("/proc/meminfo", "r");
@@ -389,6 +390,63 @@ bool isatty()
 #else
     return false;
 #endif // _WIN64
+}
+
+const std::string &get_home_directory()
+{
+    static bool _dealed = false;
+    static std::string home_dir;
+    if (_dealed)
+    {
+        return home_dir;
+    }
+    //
+    const char *hdir = nullptr;
+#if defined(__linux__) || defined(__APPLE__)
+    hdir = std::getenv("HOME");
+#elif defined(_WIN32) || defined(_WIN64)
+    hdir = std::getenv("USERPROFILE");
+#else
+#warning "get_home_directory(), Unsupported platform"
+    hdir = std::getenv("HOME");
+    if (!hdir)
+    {
+        hdir = "/tmp/"
+    }
+#endif
+
+    if (empty(hdir))
+    {
+        zcc_fatal("get_home_directory(), %m");
+    }
+
+    //
+    global_low_level_mutex_lock();
+    if (_dealed)
+    {
+        global_low_level_mutex_unlock();
+        return home_dir;
+    }
+
+    //
+    home_dir = hdir;
+    _dealed = true;
+    global_low_level_mutex_unlock();
+    return home_dir;
+}
+
+bool chdir(const std::string &dir)
+{
+#ifdef _WIN64
+    wchar_t pathnamew[Z_MAX_PATH + 1];
+    if (Utf8ToWideChar(dir, pathnamew, Z_MAX_PATH) < 1)
+    {
+        return false;
+    }
+    return ::_wchdir(pathnamew) == 0;
+#else
+    return ::chdir(dir.c_str()) == 0;
+#endif
 }
 
 zcc_namespace_end;

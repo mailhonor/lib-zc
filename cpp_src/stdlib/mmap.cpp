@@ -20,10 +20,6 @@
 #include <sys/mman.h>
 #endif // _WIN64
 
-#ifndef Z_MAX_PATH
-#define Z_MAX_PATH 4096
-#endif // Z_MAX_PATH
-
 zcc_namespace_begin;
 
 /**

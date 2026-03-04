@@ -14,7 +14,7 @@ unsigned int crc32(const void *data, int size, unsigned int init_value)
 {
     if (size < 0)
     {
-        size = std::strlen((const char *)(void *)data);
+        size = (int)std::strlen((const char *)(void *)data);
     }
     char *p = (char *)data;
     int len = size;

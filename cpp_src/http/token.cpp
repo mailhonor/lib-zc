@@ -16,7 +16,7 @@ void http_token_decode(const void *src, int src_size, std::string &result)
     char *p = (char *)src;
     if (src_size < 0)
     {
-        src_size = std::strlen((const char *)src);
+        src_size = (int)std::strlen((const char *)src);
     }
     for (int i = 0; i < src_size; i++)
     {
@@ -30,7 +30,7 @@ void http_token_decode(const void *src, int src_size, std::string &result)
             r = var_char_xdigitval_vector[(int)(p[i + 2])];
             if ((l != -1) && (r != -1))
             {
-                result.push_back((l << 4) + (r));
+                result.push_back((char)((l << 4) + (int)(r)));
             }
             i += 2;
         }
@@ -54,7 +54,7 @@ void http_token_encode(const void *src, int src_size, std::string &result, bool 
     const char *ps = (const char *)src;
     if (src_size < 0)
     {
-        src_size = std::strlen((const char *)src);
+        src_size = (int)std::strlen((const char *)src);
     }
     for (int i = 0; i < src_size; i++)
     {
@@ -66,7 +66,7 @@ void http_token_encode(const void *src, int src_size, std::string &result, bool 
         }
         if (isalnum(ch))
         {
-            result.push_back(ch);
+            result.push_back((char)ch);
             continue;
         }
         if (strict_flag)
@@ -78,12 +78,12 @@ void http_token_encode(const void *src, int src_size, std::string &result, bool 
         }
         if (ch > 127)
         {
-            result.push_back(ch);
+            result.push_back((char)ch);
             continue;
         }
         if (std::strchr("._-", ch))
         {
-            result.push_back(ch);
+            result.push_back((char)ch);
             continue;
         }
         result.push_back('%');
