@@ -553,8 +553,9 @@ const std::string &get_last_connected_destination()
  * @return 成功返回 0，失败返回 -1。
  */
 // connect
-static int sane_connect(int sock, struct sockaddr *sa, int len)
+static int sane_connect(int sock, struct sockaddr *sa, int len, int *is_immediate)
 {
+    *is_immediate = -1;
     if (sa->sa_family == AF_INET)
     {
         // 对于 IPv4 地址，设置 keep-alive 选项
@@ -567,6 +568,7 @@ static int sane_connect(int sock, struct sockaddr *sa, int len)
         if (::connect(sock, sa, len) == 0)
         {
             // 连接成功
+            *is_immediate = 1;
             break;
         }
         // 获取错误码
@@ -579,6 +581,7 @@ static int sane_connect(int sock, struct sockaddr *sa, int len)
         if ((ec == ZCC_EINPROGRESS) || (ec == ZCC_EWOULDBLOCK))
         {
             // 连接正在进行中，认为成功
+            *is_immediate = 0;
             break;
         }
         // 连接失败
@@ -600,11 +603,19 @@ static int sane_connect(int sock, struct sockaddr *sa, int len)
 static int connect_and_wait_ok(int sock, struct sockaddr *sa, int len, int timeout)
 {
     // 调用安全的 connect 函数
-    int ret = sane_connect(sock, sa, len);
+    int is_immediate;
+    int ret = sane_connect(sock, sa, len, &is_immediate);
     if (ret < 0)
     {
         // 连接失败
         return ret;
+    }
+    if (is_immediate == 1)
+    {
+        int err = 0;
+        socklen_t err_len = sizeof(err);
+        getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &err_len);
+        return (err == 0) ? 0 : -1;
     }
 
     int readable = 0, writeable = 0;
@@ -619,6 +630,14 @@ static int connect_and_wait_ok(int sock, struct sockaddr *sa, int len, int timeo
     {
         // 不可写，连接失败
         return -1;
+    }
+    {
+        int err = 0;
+        socklen_t err_len = sizeof(err);
+        if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &err_len) != 0 || err != 0)
+        {
+            return -1; // 连接实际失败（比如对方拒绝）
+        }
     }
     if (readable == 0)
     {
@@ -718,7 +737,8 @@ int unix_connect(const char *addr, int timeout)
     }
     else
     {
-        if (sane_connect(sock, (struct sockaddr *)&sun, sizeof(sun)) < 0)
+        int is_immediate;
+        if (sane_connect(sock, (struct sockaddr *)&sun, sizeof(sun), &is_immediate) < 0)
         {
             // 连接失败，保存错误码并关闭套接字
             errno2 = get_errno();
@@ -789,7 +809,8 @@ int inet_connect(const char *dip, int port, int timeout)
     }
     else
     {
-        if (sane_connect(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+        int is_immediate;
+        if (sane_connect(sock, (struct sockaddr *)&addr, sizeof(addr), &is_immediate) < 0)
         {
             // 连接失败，保存错误码并关闭套接字
             errno2 = get_errno();

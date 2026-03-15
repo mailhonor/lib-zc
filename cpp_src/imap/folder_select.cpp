@@ -69,6 +69,7 @@ int imap_client::cmd_select(select_result &ser, const char *folder_name_imap)
     ser.reset();
     std::string linebuf;
     response_tokens response_tokens;
+    auto mayHave = maybeHaveNewMessage_;
 
     linebuf.clear();
     linebuf.append("S SELECT ").append(escape_string(folder_name_imap));
@@ -118,12 +119,15 @@ int imap_client::cmd_select(select_result &ser, const char *folder_name_imap)
             int r;
             if ((r = parse_imap_result('S', response_tokens)) < 1)
             {
+                maybeHaveNewMessage_ = mayHave;
                 return r;
             }
             last_selected_ = folder_name_imap;
+            maybeHaveNewMessage_ = mayHave;
             return r;
         }
     }
+    maybeHaveNewMessage_ = mayHave;
     return -1;
 }
 

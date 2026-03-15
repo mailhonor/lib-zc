@@ -115,13 +115,13 @@ public:
         ~mail_flags();
         void reset();
         std::string to_string();
-        bool answered_;
-        bool seen_;
-        bool draft_;
-        bool flagged_;
-        bool deleted_;
-        bool recent_;
-        bool forwarded_;
+        bool answered_{false};
+        bool seen_{false};
+        bool draft_{false};
+        bool flagged_{false};
+        bool deleted_{false};
+        bool recent_{false};
+        bool forwarded_{false};
     };
 
     typedef std::map<int, mail_flags> mail_list_result;
@@ -177,6 +177,7 @@ public:
     //
     void set_simple_line_length_limit(int limit);
     void set_timeout(int timeout);
+    int get_timeout();
     void set_ssl_mode(SSL_CTX *ssl_ctx);
     void set_tls_mode(SSL_CTX *ssl_ctx);
     void set_try_tls_mode(SSL_CTX *ssl_ctx);
@@ -255,12 +256,13 @@ public:
     inline int get_capability_uidplus() { return get_capability_cached("uidplus", &capability_move_); }
     inline int get_capability_idle() { return get_capability_cached("idle", &capability_idle_); }
     std::string &get_capability() { return capability_; }
-    // -1: error, 0: no new message, 1: new message, >1 other untagged response
+    // -1: error, 0: no new message, 1: new message
     int check_new_message_by_noop();
     int check_new_message_by_noop(const std::string &folder_name);
-    // -1: error, 0: no new message, 1: new message, >1 other untagged response
+    // -1: error, 0: no new message, 1: new message
     int check_new_message_by_idle(int wait_second = 1200);
-    int check_new_message_by_idle(const std::string &folder_name, int wait_second = 1200);
+    // -1: error, >0: normal
+    int run_idle_listener(std::function<void()> callback);
     inline const std::string &get_last_response_line()
     {
         return last_response_line_;
@@ -288,8 +290,7 @@ public:
 
 protected:
     int idle_begin();
-    int idle_begin(const std::string &folder_name);
-    // -1: error, 0: no new message, 1: new message, >1 other untagged response
+    // -1: error, 0: no new message, 1: new message
     int idle_check_new_message(int wait_second = 1200);
     int idle_end();
     //

@@ -47,6 +47,11 @@ void imap_client::set_timeout(int timeout)
     fp_->set_timeout(timeout);
 }
 
+int imap_client::get_timeout()
+{
+    return fp_->get_timeout();
+}
+
 int imap_client::do_startTLS()
 {
     if (ssl_flag_)

@@ -191,9 +191,13 @@ int imap_client::read_response_tokens(response_tokens &response_tokens)
     }
     if (token_vector.size() > 2)
     {
-        if ((token_vector[2] == "EXISTS") || (token_vector[2] == "RECENT"))
+        auto &t = token_vector[2];
+        if (t.size() == 6)
         {
-            maybeHaveNewMessage_ = true;
+            if ((t == "EXISTS") || (t == "RECENT") || (t == "exists") || (t == "recent"))
+            {
+                maybeHaveNewMessage_ = true;
+            }
         }
     }
     return r;

@@ -72,6 +72,7 @@ int imap_client::idle_begin()
     {
         return -1;
     }
+    unsetMaybeHaveNewMessage();
 
     int r = 0;
     std::string linebuf, name;
@@ -85,7 +86,11 @@ int imap_client::idle_begin()
     while (1)
     {
         zcc_imap_client_read_token_vecotr_one_loop();
-        if (response_tokens.token_vector_[0] == "+")
+        if (response_tokens.token_vector_[0] == "*")
+        {
+            continue;
+        }
+        else if (response_tokens.token_vector_[0] == "+")
         {
             r = 1;
             break;
@@ -107,22 +112,13 @@ int imap_client::idle_begin()
     return r;
 }
 
-int imap_client::idle_begin(const std::string &folder_name)
-{
-    if (check_is_need_close())
-    {
-        return -1;
-    }
-    if (cmd_select(folder_name) < 0)
-    {
-        return -1;
-    }
-    return idle_begin();
-}
-
 int imap_client::idle_check_new_message(int wait_second)
 {
-    bool other = 0;
+    if (maybeHaveNewMessage())
+    {
+        unsetMaybeHaveNewMessage();
+        return 1;
+    }
     int r = 0;
     int ret;
     std::string line;
@@ -153,10 +149,6 @@ int imap_client::idle_check_new_message(int wait_second)
             {
                 r = 1;
             }
-            else
-            {
-                other = true;
-            }
         }
         if ((ret = fp_->timed_read_wait(0)) < 0)
         {
@@ -171,14 +163,6 @@ int imap_client::idle_check_new_message(int wait_second)
     if (need_close_connection_)
     {
         return -1;
-    }
-    if (r > 0)
-    {
-        return r;
-    }
-    if (other)
-    {
-        return 2;
     }
     return r;
 }
@@ -220,26 +204,87 @@ int imap_client::idle_end()
 
 int imap_client::check_new_message_by_idle(int wait_second)
 {
+    int expired = zcc::second() + wait_second + 1;
     if (idle_begin() < 0)
     {
         return -1;
     }
-    int r = idle_check_new_message(wait_second);
+    int r = 0;
+    while (1)
+    {
+        int wait = expired - zcc::second();
+        if (wait < 1)
+        {
+            break;
+        }
+        r = idle_check_new_message(wait + 1);
+        if (r != 0)
+        {
+            break;
+        }
+        if (zcc::second() > expired)
+        {
+            break;
+        }
+    }
     idle_end();
     return r;
 }
 
-int imap_client::check_new_message_by_idle(const std::string &folder_name, int new_message_count)
+int imap_client::run_idle_listener(std::function<void()> callback)
 {
     if (check_is_need_close())
     {
         return -1;
     }
-    if (cmd_select(folder_name) < 0)
+    unsetMaybeHaveNewMessage();
+
+    int timeout = get_timeout();
+    set_timeout(1200);
+    int r = 0;
+    std::string linebuf, name;
+    response_tokens response_tokens;
+
+    linebuf.clear();
+    linebuf.append("I idle");
+    fp_append(linebuf).fp_append("\r\n");
+    zcc_imap_client_debug_protocol_write(linebuf);
+
+    while (1)
     {
-        return -1;
+        unsetMaybeHaveNewMessage();
+        zcc_imap_client_read_token_vecotr_one_loop();
+        if (response_tokens.token_vector_[0] == "*")
+        {
+            if (maybeHaveNewMessage())
+            {
+                if (callback)
+                {
+                    callback();
+                }
+            }
+            continue;
+        }
+        else if (response_tokens.token_vector_[0] == "+")
+        {
+            continue;
+        }
+        else
+        {
+            if (parse_imap_result('I', response_tokens) < 0)
+            {
+                r = -1;
+                goto over;
+            }
+            r = 0;
+            goto over;
+        }
     }
-    return check_new_message_by_idle(new_message_count);
+    //
+
+over:
+    set_timeout(timeout);
+    return r;
 }
 
 zcc_namespace_end;

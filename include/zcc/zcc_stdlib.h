@@ -1428,6 +1428,19 @@ inline const std::string &convert_file_category_to_string(int fc)
 ZCC_LIB_API void file_category_register(const std::string &suffix, file_category_t fc);
 ZCC_LIB_API const std::string get_suffix_from_filename(const std::string &filename);
 
+//
+template <typename T, typename Container = std::list<T *>>
+bool popup(Container &C, T *&r)
+{
+    if (C.empty())
+    {
+        return false;
+    }
+    r = C.back();
+    C.pop_back();
+    return true;
+}
+
 // 生成序列号, mac: mac地址
 ZCC_LIB_API std::string license_build(const char *salt, const char *mac);
 // 验证序列号, -1: 错误, 0: 不匹配, 1: 匹配
@@ -2772,6 +2785,23 @@ ZCC_LIB_API int host_connect(const char *host, int port, int timeout);
  * @return int 成功时返回连接的套接字描述符，失败时返回-1。
  */
 ZCC_LIB_API int netpath_connect(const char *netpath, int timeout);
+
+//
+struct server_connection_info
+{
+    inline bool operator==(const server_connection_info &other) const
+    {
+        return destination == other.destination && username == other.username && password == other.password && ssl_info == other.ssl_info;
+    }
+    inline bool operator!=(const server_connection_info &other) const
+    {
+        return !(*this == other);
+    }
+    std::string destination;
+    std::string username;
+    std::string password;
+    std::string ssl_info;
+};
 
 /**
  * @brief 获取与指定套接字连接的对端地址和端口。

@@ -40,7 +40,7 @@ void exit(int status)
  * @brief 获取当前进程的进程 ID。
  * @return 当前进程的进程 ID，在不同操作系统下有不同的实现方式。
  */
-int get_process_id()
+static int get_process_id_do()
 {
 #ifdef _WIN64
     // 在 Windows 系统下，调用 GetCurrentProcessId 函数获取当前进程的 ID
@@ -51,11 +51,17 @@ int get_process_id()
 #endif // _WIN64
 }
 
+int get_process_id()
+{
+    static int process_id = get_process_id_do();
+    return process_id;
+}
+
 /**
  * @brief 获取当前进程的父进程 ID。
  * @return 当前进程的父进程 ID，如果获取失败则返回 -1。
  */
-int get_parent_process_id()
+static int get_parent_process_id_do()
 {
 #ifdef _WIN64
     int parent_pid = -1;
@@ -96,11 +102,17 @@ int get_parent_process_id()
 #endif // _WIN64
 }
 
+int get_parent_process_id()
+{
+    static int parent_process_id = get_parent_process_id_do();
+    return parent_process_id;
+}
+
 /**
  * @brief 获取当前线程的线程 ID。
  * @return 当前线程的线程 ID，如果获取失败则返回 -1。
  */
-int get_thread_id()
+static int get_thread_id_do()
 {
 #ifdef _WIN64
     // 在 Windows 系统下，调用 GetCurrentThreadId 函数获取当前线程的 ID
@@ -122,6 +134,12 @@ int get_thread_id()
     return -1;
 #endif
 #endif // _WIN64
+}
+
+int get_thread_id()
+{
+    static thread_local int thread_id = get_thread_id_do();
+    return thread_id;
 }
 
 /**
