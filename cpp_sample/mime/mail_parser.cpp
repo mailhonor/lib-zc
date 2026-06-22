@@ -8,7 +8,6 @@
 
 #include "zcc/zcc_mime.h"
 
-
 static bool enable_att = 0;
 static const char *name_prefix = "";
 
@@ -23,6 +22,10 @@ static int save_att(zcc::mail_parser *parser, zcc::mail_parser::mime_node *mime)
     if (zcc::empty(sname))
     {
         std::sprintf(tmpname, "%s%d_unknown.dat", name_prefix, idx);
+        if (mime->get_content_type() == "text/calendar")
+        {
+            std::sprintf(tmpname, "%s%d_calendar.ics", name_prefix, idx);
+        }
     }
     else
     {

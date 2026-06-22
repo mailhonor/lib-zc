@@ -543,6 +543,13 @@ std::vector<std::string> split(const char *s, int len, const char *delims, bool 
     {
         len = (int)std::strlen(s);
     }
+    if (len == 0)
+    {
+        if (ignore_empty_token)
+        {
+            return r;
+        }
+    }
 
     if (empty(delims))
     {
@@ -592,6 +599,13 @@ std::vector<std::string> split(const char *s, int len, int delim, bool ignore_em
     if (len < 0)
     {
         len = (int)std::strlen(s);
+    }
+    if (len == 0)
+    {
+        if (ignore_empty_token)
+        {
+            return r;
+        }
     }
 
     int ch;
@@ -665,42 +679,30 @@ std::string str_replace(const std::string &input, const std::string &from, const
     return result;
 }
 
-std::string join(const std::vector<std::string> &strs, const std::string &delimiter)
+bool starts_with(const std::string &str, const std::string &prefix)
 {
-    std::string result;
-    bool first_str = true;
-    for (size_t i = 0; i < strs.size(); ++i)
+    if (prefix.empty())
     {
-        if (!first_str)
-        {
-            result += delimiter;
-        }
-        else
-        {
-            first_str = false;
-        }
-        result += strs[i];
+        return true;
     }
-    return result;
+    if (str.length() < prefix.length())
+    {
+        return false;
+    }
+    return str.substr(0, prefix.length()) == prefix;
 }
 
-std::string join(const std::list<std::string> &strs, const std::string &delimiter)
+bool starts_case_with(const std::string &str, const std::string &prefix)
 {
-    std::string result;
-    bool first_str = true;
-    for (auto &s : strs)
+    if (prefix.empty())
     {
-        if (!first_str)
-        {
-            result += delimiter;
-        }
-        else
-        {
-            first_str = false;
-        }
-        result += s;
+        return true;
     }
-    return result;
+    if (str.length() < prefix.length())
+    {
+        return false;
+    }
+    return strncasecmp(str.c_str(), prefix.c_str(), prefix.length()) == 0;
 }
 
 bool ends_with(const std::string &str, const std::string &suffix)

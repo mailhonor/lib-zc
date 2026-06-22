@@ -187,6 +187,8 @@ public:
     inline int connect(const std::string &destination, int times = 1) { return connect(destination.c_str(), times); }
     void disconnect();
     int do_auth(const char *user, const char *password);
+    int do_auth_login(const char *user, const char *password);
+    int do_auth_scram_sha256(const char *user, const char *password);
     inline int do_auth(const std::string &user, const std::string &password) { return do_auth(user.c_str(), password.c_str()); }
     int cmd_logout();
     inline int cmd_quit() { return cmd_logout(); }

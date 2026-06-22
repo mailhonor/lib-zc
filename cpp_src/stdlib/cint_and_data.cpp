@@ -8,6 +8,7 @@
 
 #include "zcc/zcc_stdlib.h"
 #include "zcc/zcc_buffer.h"
+#include <cinttypes>
 
 zcc_namespace_begin;
 
@@ -114,7 +115,7 @@ void cint_data_escape_long(std::string &bf, int64_t i)
 {
     char buf[64];
     int len;
-    len = std::sprintf(buf, "%zd", i);
+    len = std::sprintf(buf, "%" PRId64, i);
     cint_data_escape(bf, buf, len);
 }
 

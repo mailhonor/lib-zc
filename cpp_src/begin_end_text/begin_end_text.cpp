@@ -11,6 +11,22 @@
 
 zcc_namespace_begin;
 
+std::string begin_end_text_node::get_mailto_value(const std::string &value)
+{
+    std::string mailto_value;
+    auto pos = value.find(':');
+    if (pos != std::string::npos)
+    {
+        mailto_value = value.substr(pos + 1);
+    }
+    else
+    {
+        mailto_value = value;
+    }
+    zcc::tolower(mailto_value);
+    return mailto_value;
+}
+
 class begin_end_text_parser
 {
 public:

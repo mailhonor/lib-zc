@@ -770,34 +770,9 @@ int chmod(const char *pathname, int mode)
 int fchmod(int fd, int mode)
 {
 #ifdef _WIN64
-    HANDLE hFile = (HANDLE)_get_osfhandle(fd);
-    if (hFile == INVALID_HANDLE_VALUE)
-    {
-        return -1;
-    }
-
-    DWORD attrs = GetFileAttributesW(reinterpret_cast<LPCWSTR>(hFile));
-    if (attrs == INVALID_FILE_ATTRIBUTES)
-    {
-        return -1;
-    }
-
-    if (mode & _S_IWRITE)
-    {
-        attrs &= ~FILE_ATTRIBUTE_READONLY;
-    }
-    else
-    {
-        attrs |= FILE_ATTRIBUTE_READONLY;
-    }
-
-    if (!SetFileAttributesW(reinterpret_cast<LPCWSTR>(hFile), attrs))
-    {
-        return -1;
-    }
-    return 0;
+    return ::_fchmod(fd, mode);
 #else  // _WIN64
-    return fchmod(fd, mode);
+    return ::fchmod(fd, mode);
 #endif // _WIN64
 }
 
@@ -1044,6 +1019,19 @@ int rename(const char *oldpath, const char *newpath)
     // 调用 Windows 宽字符版本的重命名函数
     if (!MoveFileExW(oldpathw, newpathw, MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED))
     {
+        DWORD attrs = GetFileAttributesW(newpathw);
+        if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_READONLY))
+        {
+            attrs &= ~FILE_ATTRIBUTE_READONLY;
+            if (SetFileAttributesW(newpathw, attrs))
+            {
+                if (MoveFileExW(oldpathw, newpathw, MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED))
+                {
+                    // SetFileAttributesW(newpathw, attrs | FILE_ATTRIBUTE_READONLY);
+                    return 0;
+                }
+            }
+        }
         return -1;
     }
     return 1;
@@ -1624,6 +1612,7 @@ std::vector<std::string> find_file_sample(const char **dir_or_file, int item_cou
         if (!fp)
         {
             zcc_debug("popen error: find \"%s\" -type f", pathname);
+            continue;
         }
         while (fgets(buf, 4096, fp))
         {

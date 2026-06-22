@@ -10,13 +10,13 @@
 
 zcc_namespace_begin;
 
-void xml_unescape_string(const char *data, int len, std::string &content)
+void xml_unescape_string(const char *data, int64_t len, std::string &content)
 {
     if (len < 0)
     {
-        len = (int)std::strlen(data);
+        len = (int64_t)std::strlen(data);
     }
-    char *ps = (char *)data, *end = ps + len;
+    char *ps = (char *)(void *)data, *end = ps + len;
     for (; ps < end;)
     {
         int ch = ps[0];
@@ -95,7 +95,7 @@ void xml_unescape_string(const char *data, int len, std::string &content)
     }
 }
 
-std::string xml_unescape_string(const char *data, int len)
+std::string xml_unescape_string(const char *data, int64_t len)
 {
     std::string content;
     xml_unescape_string(data, len, content);

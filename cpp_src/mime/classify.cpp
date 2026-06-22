@@ -15,10 +15,42 @@ zcc_namespace_begin;
 #define _ZPMT_PLAIN 3
 #define _ZPMT_HTML 4
 
-char mail_parser::classify_mime_identify_type(mime_node *mime)
+static bool ___is_attachment(mail_parser::mime_node *mime)
+{
+    const char *disposition = mime->get_disposition().c_str();
+    if (std::strstr(disposition, "inline"))
+    {
+        const char *content_id = mime->get_content_id().c_str();
+        if (!empty(content_id))
+        {
+            return true;
+        }
+    }
+    //
+    const char *name = mime->get_filename().c_str();
+    if (!empty(name))
+    {
+        return true;
+    }
+    //
+    const char *charset = mime->get_charset().c_str();
+    if (empty(charset))
+    {
+        const char *encoding = mime->get_encoding().c_str();
+        if (*encoding == 'b' || *encoding == 'q')
+        {
+            return true;
+        }
+    }
+    //
+    return false;
+}
+
+char mail_parser::classify_mime_identify_type(mime_node *mime, int html_count, int plain_count)
 {
     const char *type = mime->get_content_type().c_str();
     const char *disposition = mime->get_disposition().c_str();
+    int offset = mime->header_offset_;
 
     if (empty(type))
     {
@@ -60,10 +92,24 @@ char mail_parser::classify_mime_identify_type(mime_node *mime)
         }
         if (!std::strcmp(type + 5, "html"))
         {
+            if (html_count > 0)
+            {
+                if (___is_attachment(mime))
+                {
+                    return _ZPMT_ATTACHMENT;
+                }
+            }
             return _ZPMT_HTML;
         }
         if (!std::strcmp(type + 5, "plain"))
         {
+            if (html_count + plain_count > 0)
+            {
+                if (___is_attachment(mime))
+                {
+                    return _ZPMT_ATTACHMENT;
+                }
+            }
             return _ZPMT_PLAIN;
         }
         if (!std::strcmp(type + 5, "calendar"))
@@ -157,12 +203,22 @@ void mail_parser::classify()
     }
     classify_flag_ = true;
 
+    int html_count = 0;
+    int plain_count = 0;
     for (auto it = all_mimes_.begin(); it != all_mimes_.end(); it++)
     {
         auto m = *it;
-        m->mime_type_ = classify_mime_identify_type(m);
+        m->mime_type_ = classify_mime_identify_type(m, html_count, plain_count);
         if ((m->mime_type_ == _ZPMT_PLAIN) || (m->mime_type_ == _ZPMT_HTML))
         {
+            if (m->mime_type_ == _ZPMT_PLAIN)
+            {
+                plain_count++;
+            }
+            else if (m->mime_type_ == _ZPMT_HTML)
+            {
+                html_count++;
+            }
             text_mimes_.push_back(m);
         }
         else if (m->mime_type_ == _ZPMT_ATTACHMENT)

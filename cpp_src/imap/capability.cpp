@@ -34,9 +34,11 @@ int imap_client::cmd_capability(bool force)
         zcc_imap_client_read_token_vecotr_one_loop();
         if (response_tokens.token_vector_[0] == "*")
         {
-            if (!response_tokens.first_line_.compare(0, 13, "* CAPABILITY "))
+            auto first_line = response_tokens.first_line_;
+            tolower(first_line);
+            if (!first_line.compare(0, 13, "* capability "))
             {
-                capability_ = response_tokens.first_line_.c_str() + 12;
+                capability_ = first_line.c_str() + 12;
                 capability_clear_flag_ = false;
             }
         }

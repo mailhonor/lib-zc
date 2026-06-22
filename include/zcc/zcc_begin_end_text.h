@@ -33,10 +33,13 @@ public:
     {
         return parse(text.c_str(), (int)text.size());
     }
+    static std::string get_mailto_value(const std::string &value);
 
 public:
     begin_end_text_node();
     ~begin_end_text_node();
+    begin_end_text_node(const begin_end_text_node &node) = delete;
+    begin_end_text_node &operator=(const begin_end_text_node &node) = delete;
     std::string debug_info();
     std::string get_decoded_value();
     std::string get_decoded_value_utf8(const std::string &default_charset = var_blank_string);

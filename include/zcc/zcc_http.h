@@ -56,38 +56,50 @@ public:
 };
 
 // token
-ZCC_LIB_API void http_token_encode(const void *src, int src_size, std::string &result, bool strict_flag = false);
+inline void http_token_encode(const void *src, int src_size, std::string &result, bool strict_flag = false)
+{
+    url_token_encode(src, src_size, result, strict_flag);
+}
 inline void http_token_encode(const void *src, std::string &result, bool strict_flag = false)
 {
-    http_token_encode(src, -1, result, strict_flag);
+    url_token_encode(src, -1, result, strict_flag);
 }
 inline void http_token_encode(const std::string &src, std::string &result, bool strict_flag = false)
 {
-    http_token_encode(src.c_str(), (int)src.size(), result, strict_flag);
+    url_token_encode(src.c_str(), (int)src.size(), result, strict_flag);
 }
-ZCC_LIB_API std::string http_token_encode(const void *src, int src_size, bool strict_flag = false);
+inline std::string http_token_encode(const void *src, int src_size, bool strict_flag = false)
+{
+    return url_token_encode(src, src_size, strict_flag);
+}
 inline std::string http_token_encode(const void *src, bool strict_flag = false)
 {
-    return http_token_encode(src, -1, strict_flag);
+    return url_token_encode(src, -1, strict_flag);
 }
 inline std::string http_token_encode(const std::string &src, bool strict_flag = false)
 {
-    return http_token_encode(src.c_str(), (int)src.size(), strict_flag);
+    return url_token_encode(src.c_str(), (int)src.size(), strict_flag);
 }
-
-ZCC_LIB_API void http_token_decode(const void *src, int src_size, std::string &result);
+//
+inline void http_token_decode(const void *src, int src_size, std::string &result)
+{
+    url_token_decode(src, src_size, result);
+}
 inline void http_token_decode(const void *src, std::string &result)
 {
-    http_token_decode(src, -1, result);
+    url_token_decode(src, -1, result);
 }
 inline void http_token_decode(const std::string &src, std::string &result)
 {
-    http_token_decode(src.c_str(), (int)src.size(), result);
+    url_token_decode(src.c_str(), (int)src.size(), result);
 }
-ZCC_LIB_API std::string http_token_decode(const void *src, int src_size = -1);
+inline std::string http_token_decode(const void *src, int src_size = -1)
+{
+    return url_token_decode(src, src_size);
+}
 inline std::string http_token_decode(const std::string &src)
 {
-    return http_token_decode(src.c_str(), (int)src.size());
+    return url_token_decode(src.c_str(), (int)src.size());
 }
 
 // cookie
@@ -101,6 +113,10 @@ ZCC_LIB_API std::string http_cookie_build_item(const char *name, const char *val
 inline std::string http_cookie_build_item(const std::string &name, const std::string &value, int64_t expires, std::string &path, std::string &domain, bool secure, bool httponly)
 {
     return http_cookie_build_item(name.c_str(), value.c_str(), expires, path.c_str(), domain.c_str(), secure, httponly);
+}
+inline std::string http_cookie_build_item(const std::string &name, const std::string &value)
+{
+    return http_cookie_build_item(name.c_str(), value.c_str());
 }
 
 // httpd uploaded file
@@ -569,6 +585,103 @@ protected:
     unsigned char masking_key_[4];
     int64_t payload_len_;
     int64_t readed_len_;
+};
+
+class ZCC_LIB_API http_simple_client
+{
+public:
+    http_simple_client();
+    ~http_simple_client();
+    inline void set_debug_mode(bool tf = true) { debug_mode_ = tf; }
+    inline void set_verbose_mode(bool tf = true) { verbose_mode_ = tf; }
+    inline void set_debug_protocol_mode(bool tf = true) { debug_protocol_mode_ = tf; }
+    void set_timeout(int timeout);
+    inline void set_reconnect_count(int count) { reconnect_count_ = (count < 1) ? 1 : count; }
+    inline void set_ssl_ctx(SSL_CTX *ssl_ctx) { ssl_ctx_ = ssl_ctx; }
+    inline void set_keep_alive(bool keep_alive = true) { keep_alive_ = keep_alive; }
+    inline bool is_error() { return error_; }
+    //
+    void add_request_header(const std::string &name, const std::string &value);
+    void add_request_cookie(const std::string &name, const std::string &value);
+    void set_request_basic_authorization(const std::string &username, const std::string &password);
+    void set_request_content_type(const std::string &content_type);
+    void set_request_content_type_application_x_www_form_urlencoded();
+    void set_request_content_type_multipart_form_data();
+    void set_request_content_length(int64_t content_length);
+    void set_request_range(int64_t start, int64_t end);
+    void set_request_referer(const std::string &referer);
+    void set_request_method(const std::string &method);
+    inline void set_request_accept_encoding_gzip() { accept_encoding_gzip_ = true; }
+    inline void set_request_accept_encoding_deflate() { accept_encoding_deflate_ = true; }
+    void set_request_url(const std::string &url);
+    bool send_request_headers();
+    bool send_request_data(const void *data, int64_t len);
+    bool send_request_flush();
+    //
+    bool recv_response_headers();
+    int get_response_status_code();
+    const std::string &get_response_content_type();
+    int64_t get_response_content_length();
+    const std::string &get_response_location();
+    bool get_response_is_transfer_encoding_chunked();
+    bool get_response_is_keep_alive();
+    bool get_response_is_gzip();
+    bool get_response_is_deflate();
+    const std::map<std::string, std::string> &get_response_cookies();
+    const std::string &get_response_filename();
+    const std::vector<std::string> &get_response_headers();
+    bool recv_response_all_data(std::string &data_buf, int64_t max_len = -1);
+    bool recv_response_all_data(FILE *fp, int64_t max_len = -1);
+
+protected:
+    void reset_ctx();
+    void set_connection_error();
+    bool prepare_connection();
+    bool parse_response_first_header_line(const std::string &line);
+    bool parse_response_headers_data(const std::string &headers_data);
+    bool recv_response_all_data(std::string *data_buf, FILE *data_fp, int64_t max_len);
+    void deal_response_content_encoding();
+
+protected:
+    std::vector<std::string> request_headers_;
+    std::map<std::string, std::string> request_cookies_;
+    std::string request_basic_authorization_;
+    std::string request_content_type_;
+    std::string request_range_;
+    std::string request_referer_;
+    int64_t request_content_length_{-1};
+    std::string request_method_;
+    std::string request_url_;
+    std::string request_path_;
+    std::vector<std::string> response_headers_;
+    std::map<std::string, std::string> response_cookies_;
+    std::string response_content_type_;
+    std::string response_location_{"none"};
+    int64_t response_content_length_{-1};
+    std::string response_header_data_;
+    mail_parser *response_header_parser_{nullptr};
+    iostream *fp_{nullptr};
+    SSL_CTX *ssl_ctx_{nullptr};
+    std::string request_scheme_;
+    std::string request_host_;
+    int timeout_{-1};
+    int reconnect_count_{1};
+    int request_port_{-1};
+    int response_is_gzip_{0};
+    int response_is_deflate_{0};
+    int response_is_keep_alive_{0};
+    int response_is_transfer_encoding_chunked_{0};
+    int response_status_code_{-1};
+    bool request_is_ssl_{false};
+    bool error_{false};
+    bool cookie_dealed_{false};
+    bool keep_alive_{false};
+    bool accept_encoding_gzip_{false};
+    bool accept_encoding_deflate_{false};
+    bool need_close_{false};
+    bool debug_mode_{false};
+    bool verbose_mode_{false};
+    bool debug_protocol_mode_{false};
 };
 
 zcc_namespace_end;

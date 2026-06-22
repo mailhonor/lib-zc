@@ -12,6 +12,7 @@
 
 #include "zcc/zcc_json.h"
 #include <cstdarg>
+#include <cinttypes>
 
 zcc_namespace_begin;
 
@@ -325,7 +326,7 @@ std::string &json::get_string_value(const char *def)
         }
         else if (type_ == json_type_long)
         {
-            std::sprintf(buf, "%zd", val_.l);
+            std::sprintf(buf, "%" PRId64, val_.l);
             v = buf;
         }
         else if (type_ == json_type_double)
@@ -1047,6 +1048,10 @@ bool json::load_from_file(const char *pathname)
 #else  // ZCC_JSON_FOPEN_FUNCTION
     FILE *fp = fopen(pathname, "rb");
 #endif // ZCC_JSON_FOPEN_FUNCTION
+    if (!fp)
+    {
+        return false;
+    }
 
     while ((ch = fgetc(fp)) != EOF)
     {
@@ -1565,7 +1570,7 @@ json *json::serialize(std::string &result, int flags)
         }
         else if (type == json_type_long)
         {
-            _sprintf_1024(result, "%zd", current_json->get_long_value());
+            _sprintf_1024(result, "%" PRId64, current_json->get_long_value());
         }
         else if (type == json_type_double)
         {

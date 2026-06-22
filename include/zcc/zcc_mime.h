@@ -439,7 +439,7 @@ public:
     const std::vector<mail_address> &get_bcc_utf8();
 
     // 顶级 MIME 节点
-    inline const mime_node *get_top_mime()
+    inline mime_node *get_top_mime()
     {
         return top_mime_;
     }
@@ -488,7 +488,7 @@ public:
     //
 private:
     void classify();
-    char classify_mime_identify_type(mime_node *mime);
+    char classify_mime_identify_type(mime_node *mime, int html_count, int plain_count);
     void classify_mime_identify_view_part(mime_node *mime, void *view_list, int64_t *view_len);
     void imap_section();
 
@@ -669,11 +669,14 @@ public:
     {
         inline attachment() {}
         inline ~attachment() {}
-        std::string filename;      // 附件文件名
-        std::string content_data;  // 附件内容数据
-        std::string content_type;  // 附件内容类型
-        std::string content_id;    // 附件内容ID
-        bool inline_image_{false}; // 是否为内联图片
+        std::string filename;                               // 附件文件名
+        std::string content_data;                           // 附件内容数据
+        std::string content_type;                           // 附件内容类型
+        std::string content_id;                             // 附件内容ID
+        std::vector<std::string> extra_headers;             // 额外的邮件头列表
+        std::vector<std::string> content_type_extra_params; // 附件内容类型额外参数，如 method="REQUEST"
+        bool inline_image_{false};                          // 是否为内联图片
+        bool inline_{false};                                // 是否为内联附件
     };
 
     /**
@@ -700,6 +703,7 @@ public:
         inline ~mail_address() {}
         std::string mime_encode();
         std::string &getDisplayName();
+        std::string to_debug_line();
         json *toJson();
         //
         std::string name_; // 名称

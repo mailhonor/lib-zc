@@ -7,6 +7,7 @@
  */
 
 #include "./mime.h"
+#include <algorithm>
 
 zcc_namespace_begin;
 
@@ -34,6 +35,7 @@ public:
     ~mail_parser_running_context();
     void run();
     void sortNode(zcc::mail_parser::mime_node *node);
+    void sortAllMimeNode();
     void decode_mime_get_all_boundary();
     void decode_mime_prepare_node();
     int64_t read_header_logic_line(mail_parser_running_node *cnode, char **ptr);
@@ -416,10 +418,16 @@ void mail_parser_running_context::run()
         const char *boundary = parser_.mail_data_ + bls2->offset + 2;
         if (len - 2 >= (int64_t)cmime->boundary_.size())
         {
-            if ((boundary[len - 2] == '-') && (boundary[len - 1] == '-'))
+            len = (int64_t)cmime->boundary_.size();
+            if (boundary[len] == '-' && boundary[len + 1] == '-')
             {
                 continue;
             }
+            // len -= 2;
+            // if ((boundary[len - 2] == '-') && (boundary[len - 1] == '-'))
+            // {
+            //     continue;
+            // }
         }
 
 #if 1
@@ -486,11 +494,18 @@ void mail_parser_running_context::sortNode(zcc::mail_parser::mime_node *node)
     }
 }
 
+void mail_parser_running_context::sortAllMimeNode()
+{
+    std::sort(parser_.all_mimes_.begin(), parser_.all_mimes_.end(), [](zcc::mail_parser::mime_node *a, zcc::mail_parser::mime_node *b)
+              { return a->body_offset_ < b->body_offset_; });
+}
+
 void mail_parser_decode_mime_inner(mail_parser &parser)
 {
     mail_parser_running_context ctx(parser);
     ctx.run();
     ctx.sortNode(0);
+    ctx.sortAllMimeNode();
 }
 
 zcc_namespace_end;

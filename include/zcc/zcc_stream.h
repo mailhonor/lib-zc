@@ -37,6 +37,8 @@ public:
     };
     stream();
     virtual ~stream();
+    stream(const stream &node) = delete;
+    stream &operator=(const stream &node) = delete;
     stream &reset();
 
 public:
@@ -47,9 +49,9 @@ public:
         return connect(destination.c_str());
     }
     // openssl, 连接
-    virtual int tls_connect(void *ctx) { return -1; }
+    virtual int tls_connect(SSL_CTX *ctx) { return -1; }
     // openssl, 接受连接
-    virtual int tls_accept(void *ctx) { return -1; }
+    virtual int tls_accept(SSL_CTX *ctx) { return -1; }
     // socket
     virtual inline int get_socket() { return -1; }
     // 超时

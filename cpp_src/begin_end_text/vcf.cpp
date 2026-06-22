@@ -18,7 +18,6 @@ vcf_contact::vcf_contact()
 
 vcf_contact::~vcf_contact()
 {
-    delete top_node_;
 }
 
 static void simple_check_is_home_work_pref(std::vector<begin_end_text_node_param> &params, bool &is_home, bool &is_work, bool &pref)
@@ -152,12 +151,11 @@ static vcf_contact_email simple_parse_email(begin_end_text_node &node)
 
 void vcf_contact::parse(const char *text, int text_len)
 {
-    auto charset = charset::detect_cjk(text, text_len);
-    top_node_ = begin_end_text_node::parse(text, text_len);
+    auto top_node = begin_end_text_node::parse(text, text_len);
     std::string type;
     bool is_home, is_work, pref;
 
-    for (auto &node : top_node_->children_)
+    for (auto &node : top_node->children_)
     {
         auto &key = node->key_;
         if (key == "version")
@@ -248,7 +246,7 @@ void vcf_contact::parse(const char *text, int text_len)
         }
         else if (key == "bday")
         {
-            birthday_ = iso8601_2004_time_from_date(node->value_, true);
+            birthday_ = iso8601_2004_time_from_datetime(node->value_, tz_);
         }
         else if (key == "org")
         {
@@ -296,6 +294,7 @@ void vcf_contact::parse(const char *text, int text_len)
             sound_ = node->get_decoded_value();
         }
     }
+    delete top_node;
 }
 
 std::string vcf_contact::debug_info()

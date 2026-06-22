@@ -11,6 +11,12 @@
 #include <ctime>
 #include <mutex>
 #include <chrono>
+#include <iomanip>
+#include <sstream>
+#include <random>
+#include <string>
+#include <array>
+#include <chrono>
 
 zcc_namespace_begin;
 
@@ -61,4 +67,37 @@ std::string build_unique_id()
     return r;
 }
 
+std::string generate_uuid()
+{
+    static std::random_device rd;
+    static std::mt19937_64 gen(rd());
+
+    // 生成16字节随机数据
+    std::array<uint8_t, 16> bytes;
+    for (auto &byte : bytes)
+    {
+        byte = static_cast<uint8_t>(gen() & 0xFF);
+    }
+
+    // 设置UUID版本号 (v4)
+    bytes[6] = (bytes[6] & 0x0F) | 0x40;
+
+    // 设置UUID变体
+    bytes[8] = (bytes[8] & 0x3F) | 0x80;
+
+    // 格式化为标准UUID字符串
+    std::string uuid;
+    uuid.reserve(36);
+    const char *hexDigits = "0123456789abcdef";
+    for (size_t i = 0; i < 16; ++i)
+    {
+        if (i == 4 || i == 6 || i == 8 || i == 10)
+        {
+            uuid += '-';
+        }
+        uuid += hexDigits[(bytes[i] & 0xF0) >> 4];
+        uuid += hexDigits[bytes[i] & 0x0F];
+    }
+    return uuid;
+}
 zcc_namespace_end;

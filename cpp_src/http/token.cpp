@@ -10,7 +10,7 @@
 
 zcc_namespace_begin;
 
-void http_token_decode(const void *src, int src_size, std::string &result)
+void url_token_decode(const void *src, int src_size, std::string &result)
 {
     int l, r;
     char *p = (char *)src;
@@ -41,14 +41,14 @@ void http_token_decode(const void *src, int src_size, std::string &result)
     }
 }
 
-std::string http_token_decode(const void *src, int src_size)
+std::string url_token_decode(const void *src, int src_size)
 {
     std::string result;
-    http_token_decode(src, src_size, result);
+    url_token_decode(src, src_size, result);
     return result;
 }
 
-void http_token_encode(const void *src, int src_size, std::string &result, bool strict_flag)
+void url_token_encode(const void *src, int src_size, std::string &result, bool strict_flag)
 {
     unsigned char dec2hex[18] = "0123456789ABCDEF";
     const char *ps = (const char *)src;
@@ -92,10 +92,10 @@ void http_token_encode(const void *src, int src_size, std::string &result, bool 
     }
 }
 
-std::string http_token_encode(const void *src, int src_size, bool strict_flag)
+std::string url_token_encode(const void *src, int src_size, bool strict_flag)
 {
     std::string result;
-    http_token_encode(src, src_size, result, strict_flag);
+    url_token_encode(src, src_size, result, strict_flag);
     return result;
 }
 

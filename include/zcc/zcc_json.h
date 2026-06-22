@@ -86,12 +86,14 @@ public:
     json(bool val);
     json(const unsigned char type);
     ~json();
+    json &operator=(const json &node) = delete;
 
     /* 深度递归复制 */
     json *deep_copy();
 
     /* 首先重置本json为 null, 然后从文件加载json */
     bool load_from_file(const char *pathname);
+    inline bool load_from_file(const std::string &pathname) { return load_from_file(pathname.c_str()); }
 
     /* 首先重置本json为 null, 然后从jstr反序列化为json */
     bool unserialize(const char *jstr, int jsize = -1);

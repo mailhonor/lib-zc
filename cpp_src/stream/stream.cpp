@@ -8,13 +8,14 @@
 
 #include <cstdarg>
 #include "zcc/zcc_stream.h"
+#include <cinttypes>
 
 zcc_namespace_begin;
 
 stream::stream()
 {
     engine_ = (stream_engine *)zcc::malloc(sizeof(stream_engine) + 1);
-    std::memset(engine_, 0, 32);
+    reset();
     engine_->wait_timeout = -1;
 }
 
@@ -508,7 +509,7 @@ int stream::write_cint_and_long(int64_t i)
 {
     char buf[64];
     int len;
-    len = std::sprintf(buf, "%zd", i);
+    len = std::sprintf(buf, "%" PRId64, i);
     write_cint_and_data(buf, len);
     return len;
 }

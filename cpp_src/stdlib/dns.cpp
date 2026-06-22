@@ -43,7 +43,8 @@ int get_hostaddr(const char *host, std::vector<std::string> &addrs)
     int ret_count = 0;
 
     // 检查输入的是否为有效的 IPv4 地址
-    if (INADDR_NONE != inet_addr(host))
+    struct in_addr inaddr;
+    if (inet_pton(AF_INET, host, &inaddr) == 1)
     {
         // 如果是有效 IP 地址，直接添加到向量中
         addrs.push_back(host);
@@ -161,7 +162,8 @@ int get_hostaddr(const char *host, std::vector<std::string> &addrs)
     }
 
     // 检查输入的是否为有效的 IPv4 地址
-    if (INADDR_NONE != inet_addr(host))
+    struct in_addr inaddr;
+    if (inet_pton(AF_INET, host, &inaddr) == 1)
     {
         // 如果是有效 IP 地址，直接添加到向量中
         addrs.push_back(host);

@@ -185,7 +185,7 @@ protected:
     bool tls_mode_{false};
     bool try_tls_mode_{false};
     SSL_CTX *ssl_ctx_{NULL};
-    int timeout_{10};
+    int timeout_{180};
     int connect_times_{3};
     std::function<void(smtp_client_stage tage, int process_percentage_value)> process_callback_{nullptr};
     std::string destination_;

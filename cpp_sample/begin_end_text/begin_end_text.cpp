@@ -8,7 +8,7 @@
 
 #include "zcc/zcc_begin_end_text.h"
 #include "zcc/zcc_vcf.h"
-#include "zcc/zcc_ics.h"
+#include "zcc/zcc_calendar.h"
 
 int main(int argc, char **argv)
 {
@@ -31,6 +31,9 @@ int main(int argc, char **argv)
     }
     else if (type == "ics")
     {
+        zcc::ics_calendar calendar;
+        calendar.parse(data);
+        zcc_info("%s", calendar.debug_info().c_str());
     }
     else
     {

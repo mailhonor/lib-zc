@@ -7,6 +7,8 @@
  * ================================
  */
 
+#include <cinttypes>
+
 #ifdef __GNUC__
 #pragma GCC diagnostic ignored "-Wformat-zero-length"
 #endif // __GNUC__
@@ -59,11 +61,11 @@ void mail_parser::debug_show()
     int i = 0;
 
     std::fprintf(stderr, fmt, "Date", get_date().c_str());
-    std::fprintf(stderr, "%15s: %zd\n", "", (size_t)get_date_unix());
+    std::fprintf(stderr, "%15s: %" PRId64 "\n", "", get_date_unix());
     if (1)
     {
         int64_t t = get_date_unix_by_received();
-        std::fprintf(stderr, "%15s: %zd\n", "Received Date", t);
+        std::fprintf(stderr, "%15s: %" PRId64 "\n", "Received Date", t);
         std::string r = zcc::rfc822_time(t);
         std::fprintf(stderr, "%15s: %s\n", "Received Date", r.c_str());
     }

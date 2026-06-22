@@ -104,11 +104,6 @@ public:
     std::string sound_;
     // categrory
     std::vector<std::string> category_;
-
-public:
-    begin_end_text_node *top_node_{nullptr};
-
-private:
 };
 
 zcc_namespace_end;

@@ -185,7 +185,7 @@ static int sane_accept(int sock, struct sockaddr *sa, socklen_t *len)
             {
                 if (errno2 == err)
                 {
-                    // 设置重试错误码
+                    // 设置重试错误t_update(码
                     set_errno(ZCC_EAGAIN);
                     break;
                 }
@@ -614,16 +614,22 @@ static int connect_and_wait_ok(int sock, struct sockaddr *sa, int len, int timeo
     {
         int err = 0;
         socklen_t err_len = sizeof(err);
-        getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &err_len);
+        getsockopt(sock, SOL_SOCKET, SO_ERROR, (char *)&err, &err_len);
         return (err == 0) ? 0 : -1;
     }
 
     int readable = 0, writeable = 0;
     // 等待套接字可读或可写
     ret = timed_read_write_wait(sock, timeout, &readable, &writeable);
-    if (ret < 1)
+    if (ret < 0)
     {
-        // 等待超时或出错
+        // 等待出错，直接返回错误
+        return -1;
+    }
+    if (ret == 0)
+    {
+        // 等待超时
+        set_errno(ZCC_ETIMEDOUT);
         return -1;
     }
     if (writeable == 0)
@@ -634,7 +640,7 @@ static int connect_and_wait_ok(int sock, struct sockaddr *sa, int len, int timeo
     {
         int err = 0;
         socklen_t err_len = sizeof(err);
-        if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &err_len) != 0 || err != 0)
+        if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (char *)&err, &err_len) != 0 || err != 0)
         {
             return -1; // 连接实际失败（比如对方拒绝）
         }
@@ -789,8 +795,13 @@ int inet_connect(const char *dip, int port, int timeout)
     addr.sin_family = AF_INET;
     // 转换端口号为网络字节序
     addr.sin_port = htons((uint16_t)port);
-    // 设置目标 IP 地址
-    addr.sin_addr.s_addr = inet_addr(dip);
+    // 验证并设置目标 IP 地址
+    if (inet_pton(AF_INET, dip, &addr.sin_addr) != 1)
+    {
+        set_errno(ZCC_EINVAL);
+        close_socket(sock);
+        return (-1);
+    }
 
     if (timeout > 0)
     {
@@ -897,7 +908,16 @@ int netpath_connect(const char *netpath, int timeout)
         {
             // 分割主机名和端口号
             std::string host = path.substr(0, pos);
-            int port = std::atoi(path.c_str() + pos + 1);
+            std::string port_str = path.substr(pos + 1);
+            if (port_str.empty())
+            {
+                continue;
+            }
+            int port = std::atoi(port_str.c_str());
+            if (port <= 0 || port > 65535)
+            {
+                continue;
+            }
             // 连接到网络套接字
             sock = host_connect(host.c_str(), port, timeout);
         }

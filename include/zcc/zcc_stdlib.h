@@ -223,6 +223,7 @@ class aio_base;
 class thread_pool;
 class httpd;
 class httpd_uploaded_file;
+class http_simple_client;
 class mail_account_checker;
 class smtp_account_checker;
 class imap_account_checker;
@@ -881,6 +882,23 @@ ZCC_LIB_API int strcasecmp(const char *a, const char *b);
  * @return int 比较结果：0 表示相等，小于 0 表示 a 小于 b，大于 0 表示 a 大于 b。
  */
 inline int strncasecmp(const char *a, const char *b, size_t c);
+
+template <typename S>
+inline std::string &append(std::string &str, const S &s)
+{
+    str.append(std::to_string(s));
+    return str;
+}
+inline std::string &append(std::string &str, const std::string &s)
+{
+    str.append(s);
+    return str;
+}
+inline std::string &append(std::string &str, const char *s)
+{
+    str.append(s);
+    return str;
+}
 /**
  * @brief 使用可变参数列表格式化字符串到 std::string 中，最多支持 1024 个字符。
  *
@@ -1055,6 +1073,8 @@ inline std::vector<std::string> split_and_ignore_empty_token(const std::string &
 }
 
 //
+ZCC_LIB_API bool starts_with(const std::string &str, const std::string &prefix);
+ZCC_LIB_API bool starts_case_with(const std::string &str, const std::string &prefix);
 ZCC_LIB_API bool ends_with(const std::string &str, const std::string &suffix);
 ZCC_LIB_API bool ends_case_with(const std::string &str, const std::string &suffix);
 
@@ -1150,8 +1170,46 @@ inline char *strcasestr(const char *haystack, const char *needle)
 
 ZCC_LIB_API std::string str_replace(const std::string &input, const std::string &from, const std::string &to);
 
-ZCC_LIB_API std::string join(const std::vector<std::string> &strs, const std::string &delimiter);
-ZCC_LIB_API std::string join(const std::list<std::string> &strs, const std::string &delimiter);
+// join
+template <typename Container>
+std::string join(const Container &C, const std::string &delimiter)
+{
+    std::string result;
+    bool first_str = true;
+    for (auto &s : C)
+    {
+        if (!first_str)
+        {
+            result += delimiter;
+        }
+        else
+        {
+            first_str = false;
+        }
+        append(result, s);
+    }
+    return result;
+}
+
+template <typename Container>
+std::string join(const Container &C, const char *delimiter)
+{
+    std::string result;
+    bool first_str = true;
+    for (auto &s : C)
+    {
+        if (!first_str)
+        {
+            result += delimiter;
+        }
+        else
+        {
+            first_str = false;
+        }
+        append(result, s);
+    }
+    return result;
+}
 
 /**
  * @brief 显示词典的调试信息。
@@ -1338,6 +1396,13 @@ ZCC_LIB_API int64_t get_size(const dict &dt, const std::string &key, int64_t def
  * @return std::string 生成的唯一 ID。
  */
 ZCC_LIB_API std::string build_unique_id();
+ZCC_LIB_API inline std::string generate_unique_id()
+{
+    return build_unique_id();
+}
+
+// uuid v4
+ZCC_LIB_API std::string generate_uuid();
 
 /**
  * @brief 将字节大小转换为人类可读的字符串格式。
@@ -1440,6 +1505,18 @@ bool popup(Container &C, T *&r)
     C.pop_back();
     return true;
 }
+//
+template <typename T, typename V, typename Container = std::map<T, V>>
+bool find(const Container &C, const T &k, V &r)
+{
+    auto it = C.find(k);
+    if (it == C.end())
+    {
+        return false;
+    }
+    r = it->second;
+    return true;
+}
 
 // 生成序列号, mac: mac地址
 ZCC_LIB_API std::string license_build(const char *salt, const char *mac);
@@ -1538,6 +1615,40 @@ ZCC_LIB_API std::string hex_decode(const void *src, int64_t src_size);
 inline std::string hex_decode(const std::string &src)
 {
     return hex_decode(src.c_str(), (int64_t)src.size());
+}
+// url token encode
+ZCC_LIB_API void url_token_encode(const void *src, int src_size, std::string &result, bool strict_flag = false);
+inline void url_token_encode(const void *src, std::string &result, bool strict_flag = false)
+{
+    return url_token_encode(src, -1, result, strict_flag);
+}
+inline void url_token_encode(const std::string &src, std::string &result, bool strict_flag = false)
+{
+    url_token_encode(src.c_str(), (int)src.size(), result, strict_flag);
+}
+ZCC_LIB_API std::string url_token_encode(const void *src, int src_size, bool strict_flag = false);
+inline std::string url_token_encode(const void *src, bool strict_flag = false)
+{
+    return url_token_encode(src, -1, strict_flag);
+}
+inline std::string url_token_encode(const std::string &src, bool strict_flag = false)
+{
+    return url_token_encode(src.c_str(), (int)src.size(), strict_flag);
+}
+// url token encode
+ZCC_LIB_API void url_token_decode(const void *src, int src_size, std::string &result);
+inline void url_token_decode(const void *src, std::string &result)
+{
+    url_token_decode(src, -1, result);
+}
+inline void url_token_decode(const std::string &src, std::string &result)
+{
+    url_token_decode(src.c_str(), (int)src.size(), result);
+}
+ZCC_LIB_API std::string url_token_decode(const void *src, int src_size = -1);
+inline std::string url_token_decode(const std::string &src)
+{
+    return url_token_decode(src.c_str(), (int)src.size());
 }
 // xml
 ZCC_LIB_API void xml_unescape_string(const char *data, int64_t len, std::string &content);
@@ -2885,9 +2996,16 @@ ZCC_LIB_API int64_t microsecond();
 // 获取 week day 的简称, 从 0 开始
 // {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 ZCC_LIB_API const char *get_day_abbr_of_week(int day);
-// 获 月份的简称, 从 0 开始
+// 周日, ...
+ZCC_LIB_API const char *get_day_name_of_week(int day);
+// 获取月份的简称, 从 0 开始
 // const char *months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 ZCC_LIB_API const char *get_month_abbr(int month);
+// 获取月份的名称, 从 0 开始
+// const char *months[] = {"一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"};
+ZCC_LIB_API const char *get_month_name(int month);
+// 获取两个星期几之间的间隔
+ZCC_LIB_API int get_weekday_between(int day1 /* 0 - 6 */, int day2);
 
 // http time
 ZCC_LIB_API std::string rfc7231_time(int64_t t);
@@ -2897,7 +3015,8 @@ inline std::string rfc7231_time()
 }
 ZCC_DEPRECATED inline std::string rfc1123_time(int64_t t) { return rfc7231_time(t); }
 ZCC_DEPRECATED inline std::string rfc1123_time() { return rfc7231_time(); }
-inline std::string http_time(int64_t t = 0) { return rfc7231_time(t); }
+inline std::string http_time(int64_t t) { return rfc7231_time(t); }
+inline std::string http_time() { return rfc7231_time(); }
 
 // mime time
 ZCC_LIB_API std::string rfc822_time(int64_t t);
@@ -2905,16 +3024,40 @@ inline std::string rfc822_time() { return rfc822_time(var_use_current_time); }
 inline std::string mail_time(int64_t t) { return rfc822_time(t); }
 inline std::string mail_time() { return rfc822_time(); }
 
+ZCC_LIB_API std::string get_hh_mm(int64_t t);
+inline std::string get_hh_mm() { return get_hh_mm(var_use_current_time); }
+
+// 形如 yyyymmdd
+ZCC_LIB_API int get_yyyyymmdd(int64_t t);
+inline int get_yyyyymmdd() { return get_yyyyymmdd(var_use_current_time); }
+
+// 形如 xxxx-xx-xx
+ZCC_LIB_API std::string get_simple_date(int64_t t);
+inline std::string get_simple_date() { return get_simple_date(var_use_current_time); }
+
 // 形如 xxxx-xx-xx xx:xx
 ZCC_LIB_API std::string simple_date_time(int64_t t);
 inline std::string simple_date_time() { return simple_date_time(var_use_current_time); }
+inline std::string get_simple_date_time() { return simple_date_time(var_use_current_time); }
+inline std::string get_simple_date_time(int64_t t) { return simple_date_time(t); }
 
 // 形如 xxxx-xx-xx xx:xx:xx
 ZCC_LIB_API std::string simple_date_time_with_second(int64_t t);
 inline std::string simple_date_time_with_second() { return simple_date_time_with_second(var_use_current_time); }
+inline std::string get_simple_date_time_with_second() { return simple_date_time_with_second(var_use_current_time); }
+inline std::string get_simple_date_time_with_second(int64_t t) { return simple_date_time_with_second(t); }
+
+//
+ZCC_LIB_API int64_t day_to_unix(int year, int month, int mday, const std::string &tzid = "");
+ZCC_LIB_API int64_t day_to_unix(int64_t yyyymmdd, const std::string &tzid = "");
 
 // 类似GCC标准C库的 time_t timegm(struct tm *tm); windows平台没有
 ZCC_LIB_API int64_t timegm(struct tm *tm);
+// 类似GCC标准C库的 time_t timelocal(struct tm *tm); windows平台没有
+ZCC_LIB_API int64_t timelocal(struct tm *tm);
+// 线程安全的 localtime 和 gmtime 函数
+ZCC_LIB_API struct tm *localtime(const int64_t unix_second);
+ZCC_LIB_API struct tm *gmtime(const int64_t unix_second);
 
 /**
  * 解析符合ISO 8601:2004标准的时间字符串
@@ -2928,7 +3071,7 @@ ZCC_LIB_API int64_t timegm(struct tm *tm);
 //  --00
 //  102200Z
 //  102200-0800
-ZCC_LIB_API int64_t iso8601_2004_time_from_time(const std::string &s);
+ZCC_LIB_API int64_t iso8601_2004_time_from_time(const std::string &s, const std::string &default_tzid = "");
 
 /**
  * 解析符合ISO 8601:2004标准的日期时间字符串
@@ -2948,7 +3091,7 @@ ZCC_LIB_API int64_t iso8601_2004_time_from_time(const std::string &s);
 //  ---22T14
 //  19850412
 //  1985-04
-//  1935          ### 如果day_is_preferred==true, 这个就应该解析为年
+//  1935          ### 单独出现, 应该解析为年, 而不是日期或时间
 //  --0412
 //  ---12
 //  T102200
@@ -2958,7 +3101,67 @@ ZCC_LIB_API int64_t iso8601_2004_time_from_time(const std::string &s);
 //  T--00
 //  T102200Z
 //  T102200-0800
-ZCC_LIB_API int64_t iso8601_2004_time_from_date(const std::string &s, bool day_is_preferred);
+ZCC_LIB_API int64_t iso8601_2004_time_from_datetime(const std::string &s, const std::string &default_tzid = "");
+//
+ZCC_LIB_API std::string unix_to_iso8601_utc(int64_t timestamp);
+
+// 时区文件数据, tzdata 格式
+struct timezone_info
+{
+    int32_t gmtoff;
+    uint8_t isdst;
+    uint8_t abbrind;
+
+    inline timezone_info() : gmtoff(0), isdst(0), abbrind(0) {}
+    inline timezone_info(int32_t gmtoff_, uint8_t isdst_, uint8_t abbrind_) : gmtoff(gmtoff_), isdst(isdst_), abbrind(abbrind_) {}
+};
+
+struct timezone_filedata
+{
+    std::vector<int64_t> transitions;
+    std::vector<uint8_t> types;
+    std::vector<timezone_info> ttinfos;
+    bool error;
+    bool nonexistent;
+    bool file_magic_not_match;
+
+    inline timezone_filedata() : error(false), nonexistent(false), file_magic_not_match(false) {}
+    inline timezone_filedata(std::vector<int64_t> transitions_, std::vector<uint8_t> types_, std::vector<timezone_info> ttinfos_, bool error_, bool nonexistent_, bool file_magic_not_match_) : transitions(std::move(transitions_)), types(std::move(types_)), ttinfos(std::move(ttinfos_)), error(error_), nonexistent(nonexistent_), file_magic_not_match(file_magic_not_match_) {}
+    inline timezone_filedata(std::vector<int64_t> transitions_, std::vector<uint8_t> types_, std::vector<timezone_info> ttinfos_) : transitions(std::move(transitions_)), types(std::move(types_)), ttinfos(std::move(ttinfos_)), error(false), nonexistent(false), file_magic_not_match(false) {}
+};
+
+ZCC_LIB_API std::string get_current_timezone(const std::string &default_tzid = "");
+ZCC_LIB_API timezone_filedata parse_tzfile(const std::string &path);
+ZCC_LIB_API const timezone_filedata &get_timezone_filedata(const std::string &timezone);
+ZCC_LIB_API const timezone_info &get_timezone_info(const timezone_filedata &data, int64_t unix_second);
+ZCC_LIB_API const timezone_info &get_timezone_info(const std::string &timezone, int64_t unix_second);
+// 从时间戳和时区ID转换为时间结构体
+ZCC_LIB_API bool gmtime_with_timezone(int64_t unix_second, const std::string &tzid, struct tm *tm);
+ZCC_LIB_API struct tm *gmtime_with_timezone(int64_t unix_second, const std::string &tzid);
+//
+ZCC_LIB_API int timezone_0800_offset(const std::string &timezone_0800);
+
+// lunar
+// 0-11, 返回 一月,...,冬月,腊月
+ZCC_LIB_API const char *get_lunar_month_name(int month /* 0-11 */);
+// 0-29, 返回 初一,...,廿九,三十
+ZCC_LIB_API const char *get_lunar_day_name(int day /* 0-29 */);
+
+struct lunar_date
+{
+    int month{-1};             // 1-12
+    int day{-1};               // 1-30
+    std::string month_name;    // 一月, 二月, ..., 冬月, 腊月
+    std::string day_name;      // 初一, 初十, 二六, ...
+    std::string festival_name; // 春节, 端午, ...
+    std::string year_tiangan;  // 甲, 乙, ...
+    std::string year_dizhi;    // 子, 丑, ...
+    std::string zodiac_name;   // 鼠, 牛, ...
+    bool is_leap_month{false}; // 是否闰月
+    bool is_error{false};      // 是否错误
+};
+// 获取农历日期, 出错时 is_error 为 true
+ZCC_LIB_API lunar_date get_lunar_date(int yyyymmdd);
 
 /* zcc end ######################################################### */
 zcc_namespace_end;

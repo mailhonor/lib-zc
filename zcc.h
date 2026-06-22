@@ -24,7 +24,7 @@
 #include "./include/zcc/zcc_charset.h"
 #include "./include/zcc/zcc_json.h"
 #include "./include/zcc/zcc_vcf.h"
-#include "./include/zcc/zcc_ics.h"
+#include "./include/zcc/zcc_calendar.h"
 #include "./include/zcc/zcc_openssl.h"
 #include "./include/zcc/zcc_stream.h"
 #include "./include/zcc/zcc_http.h"

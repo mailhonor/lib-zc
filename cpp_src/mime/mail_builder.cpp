@@ -142,6 +142,18 @@ std::string mail_builder::mail_address::mime_encode()
     return r;
 }
 
+std::string mail_builder::mail_address::to_debug_line()
+{
+    std::string r;
+    r.append(name_);
+    if (!r.empty())
+    {
+        r.append(" ");
+    }
+    r.append("<").append(mail_).append(">");
+    return r;
+}
+
 mail_builder::mail_builder()
 {
 }
@@ -597,10 +609,17 @@ void mail_builder::build_body_att_one(attachment &info)
         append_data(info.content_type);
     }
     append_data(";\r\n");
-    append_data("\tname=\"").append_data(encode_header_line(info.filename)).append_data("\"\r\n");
+    for (auto &param : info.content_type_extra_params)
+    {
+        append_data("\t").append_data(param).append_data(";\r\n");
+    }
+    if (!info.filename.empty() || (!info.inline_image_ && !info.inline_))
+    {
+        append_data("\tname=\"").append_data(encode_header_line(info.filename)).append_data("\"\r\n");
+    }
     //
     append_data("Content-Transfer-Encoding: base64\r\n");
-    if (info.inline_image_)
+    if (info.inline_image_ || info.inline_)
     {
         append_data("Content-Disposition: inline;\r\n");
     }
@@ -608,11 +627,20 @@ void mail_builder::build_body_att_one(attachment &info)
     {
         append_data("Content-Disposition: attachment;\r\n");
     }
-    append_data("\tfilename=\"").append_data(encode_header_line(info.filename)).append_data("\"\r\n");
+
+    if (!info.filename.empty() || (!info.inline_image_ && !info.inline_))
+    {
+        append_data("\tfilename=\"").append_data(encode_header_line(info.filename)).append_data("\"\r\n");
+    }
     //
     if (!info.content_id.empty())
     {
         append_data("Content-ID: <").append_data(info.content_id).append_data(">\r\n");
+    }
+    //
+    for (auto &h : info.extra_headers)
+    {
+        append_data(h).append_data("\r\n");
     }
     //
     append_data("\r\n");

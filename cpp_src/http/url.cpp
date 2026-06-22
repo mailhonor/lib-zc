@@ -86,7 +86,7 @@ http_url::http_url()
 }
 http_url::http_url(const char *url, int len)
 {
-    parse_url(url, len);
+        (url, len);
 }
 
 http_url::http_url(const std::string &url)
