@@ -208,7 +208,7 @@ bool quick_setrlimit(int cmd, unsigned long cur_val)
 {
     struct rlimit rlim;
     // 获取当前的资源限制
-    if (getrlimit(RLIMIT_CORE, &rlim) == 0)
+    if (getrlimit(cmd, &rlim) == 0)
     {
         if (rlim.rlim_cur != cur_val)
         {
@@ -267,7 +267,7 @@ bool set_max_mem(int megabyte)
 #else
 #ifdef RLIMIT_RSS
     // 设置常驻集大小限制
-    ret = ret && _quick_setrlimit(RLIMIT_RSS, l);
+    ret = ret && quick_setrlimit(RLIMIT_RSS, l);
 #endif
 #endif
 
@@ -312,16 +312,18 @@ bool set_cgroup_name(const char *name)
     while (1)
     {
         // 将进程 ID 写入 cgroup.procs 文件
-        if (write(fd, pbuf, strlen(pbuf)) != -1)
+        ssize_t n = write(fd, pbuf, strlen(pbuf));
+        if (n != -1)
         {
-            if (get_errno() == ZCC_EINTR)
-            {
-                // 写入被信号中断，继续尝试
-                continue;
-            }
+            r = (n == (ssize_t)strlen(pbuf));
             break;
         }
-        r = true;
+        if (get_errno() == ZCC_EINTR)
+        {
+            // 写入被信号中断，继续尝试
+            continue;
+        }
+        r = false;
         break;
     }
     // 关闭文件描述符
@@ -429,7 +431,7 @@ const std::string &get_home_directory()
     hdir = std::getenv("HOME");
     if (!hdir)
     {
-        hdir = "/tmp/"
+        hdir = "/tmp/";
     }
 #endif
 

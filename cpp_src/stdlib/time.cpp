@@ -410,8 +410,8 @@ struct tm *localtime(const int64_t unix_second)
 struct tm *gmtime(const int64_t unix_second)
 {
 #ifdef _WIN64
-    ::gmtime_s(&gmtime_buf, (time_t *)&unix_second);
-    return &gmtime_buf;
+    ::gmtime_s(&gmtime_static_buf, (time_t *)&unix_second);
+    return &gmtime_static_buf;
 #else
     return ::gmtime_r((time_t *)&unix_second, &gmtime_static_buf);
 #endif

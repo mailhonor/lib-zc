@@ -46,9 +46,9 @@ int mmap_reader::open(const char *pathname)
 {
 #ifdef _WIN64
     // Windows 系统下的实现
-    HANDLE fd, fm;  // 文件句柄和文件映射对象句柄
-    int64_t size;   // 文件大小
-    void *data;     // 内存映射的数据指针
+    HANDLE fd, fm; // 文件句柄和文件映射对象句柄
+    int64_t size;  // 文件大小
+    void *data;    // 内存映射的数据指针
 
     // 初始化成员变量
     fd_ = INVALID_HANDLE_VALUE;
@@ -65,10 +65,10 @@ int mmap_reader::open(const char *pathname)
 
     // 打开文件
     fd = CreateFileW(pathnamew,
-                     GENERIC_READ,       // 以只读模式打开
-                     FILE_SHARE_READ,    // 允许其他进程以只读模式共享
+                     GENERIC_READ,    // 以只读模式打开
+                     FILE_SHARE_READ, // 允许其他进程以只读模式共享
                      NULL,
-                     OPEN_EXISTING,      // 打开已存在的文件
+                     OPEN_EXISTING, // 打开已存在的文件
                      FILE_ATTRIBUTE_NORMAL,
                      NULL);
     if (fd == INVALID_HANDLE_VALUE)
@@ -93,7 +93,7 @@ int mmap_reader::open(const char *pathname)
     fm = CreateFileMapping(
         fd,
         NULL,
-        PAGE_READONLY,  // 只读映射
+        PAGE_READONLY, // 只读映射
         0,
         0,
         NULL);
@@ -108,7 +108,7 @@ int mmap_reader::open(const char *pathname)
     // 映射文件视图
     data = MapViewOfFile(
         fm,
-        FILE_MAP_READ,  // 只读映射
+        FILE_MAP_READ, // 只读映射
         0,
         0,
         0);
@@ -137,11 +137,11 @@ int mmap_reader::open(const char *pathname)
     return 1;
 #else  // _WIN64
     // Linux 等非 Windows 系统下的实现
-    int fd;          // 文件描述符
-    int64_t size;    // 文件大小
-    void *data;      // 内存映射的数据指针
-    struct stat st;  // 文件状态结构体
-    int errno2;      // 保存错误码
+    int fd;         // 文件描述符
+    int64_t size;   // 文件大小
+    void *data;     // 内存映射的数据指针
+    struct stat st; // 文件状态结构体
+    int errno2;     // 保存错误码
 
     // 尝试打开文件，处理被信号中断的情况
     while (((fd = ::open(pathname, O_RDONLY)) == -1) && (get_errno() == ZCC_EINTR))
@@ -166,7 +166,7 @@ int mmap_reader::open(const char *pathname)
     size = st.st_size;
 
     // 进行内存映射
-    data = mmap(NULL, size + 1, PROT_READ, MAP_PRIVATE, fd, 0);
+    data = ::mmap(NULL, size + 1, PROT_READ, MAP_PRIVATE, fd, 0);
     if (data == MAP_FAILED)
     {
         errno2 = get_errno();
@@ -214,7 +214,7 @@ int mmap_reader::close()
         return 1;
     }
     // 取消内存映射
-    munmap((void *)data_, size_ + 1);
+    ::munmap((void *)data_, size_ + 1);
     // 关闭文件描述符
     ::close(fd_);
     fd_ = -1;

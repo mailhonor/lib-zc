@@ -8,6 +8,7 @@
 
 #include "zcc/zcc_stdlib.h"
 #include "zcc/zcc_openssl.h"
+#include "zcc/zcc_errno.h"
 #include <thread>
 #include <mutex>
 #include <openssl/ssl.h>
@@ -384,7 +385,8 @@ int SSL_get_fd(SSL *ssl)
         {                                                                                    \
             if (timed_write_wait(_fd, wait_timeout) == 0)                                    \
             {                                                                                \
-                ret = -1;                                                                    \
+                    set_errno(ZCC_ETIMEDOUT);                                                  \
+                    ret = -1;                                                                    \
                 break;                                                                       \
             }                                                                                \
         }                                                                                    \
@@ -392,7 +394,8 @@ int SSL_get_fd(SSL *ssl)
         {                                                                                    \
             if (timed_read_wait(_fd, wait_timeout) == 0)                                     \
             {                                                                                \
-                ret = -1;                                                                    \
+                    set_errno(ZCC_ETIMEDOUT);                                                  \
+                    ret = -1;                                                                    \
                 break;                                                                       \
             }                                                                                \
         }                                                                                    \

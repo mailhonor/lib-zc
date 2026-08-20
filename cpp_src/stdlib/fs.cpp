@@ -247,7 +247,7 @@ std::string realpath(const char *pathname)
  * @param statbuf 指向存储状态信息的结构体指针
  * @return 如果成功，返回 1；否则返回 -1
  */
-int stat(const char *pathname, struct _stat64i32 *statbuf)
+int stat(const char *pathname, zcc_stat *statbuf)
 {
     // 用于存储宽字符版本的文件路径
     wchar_t pathnamew[Z_MAX_PATH + 1];
@@ -257,7 +257,7 @@ int stat(const char *pathname, struct _stat64i32 *statbuf)
         return -1;
     }
     // 调用 Windows 宽字符版本的 stat 函数
-    return ::_wstat(pathnamew, statbuf);
+    return ::_wstat64(pathnamew, statbuf);
 }
 #else  // _WIN64
 /**
@@ -266,7 +266,7 @@ int stat(const char *pathname, struct _stat64i32 *statbuf)
  * @param statbuf 指向存储状态信息的结构体指针
  * @return 如果成功，返回 0；否则返回 -1
  */
-int stat(const char *pathname, struct stat *statbuf)
+int stat(const char *pathname, zcc_stat *statbuf)
 {
     // 调用标准的 stat 函数
     return ::stat(pathname, statbuf);
@@ -280,13 +280,7 @@ int stat(const char *pathname, struct stat *statbuf)
  */
 int64_t file_get_size(const char *pathname)
 {
-#ifdef _WIN64
-    // 用于存储文件状态信息的结构体
-    struct _stat64i32 st;
-#else  // _WIN64
-    // 用于存储文件状态信息的结构体
-    struct stat st;
-#endif // _WIN64
+    zcc_stat st;
     // 调用 stat 函数获取文件状态信息
     if (zcc::stat(pathname, &st) == -1)
     {
@@ -308,13 +302,7 @@ int64_t file_get_size(const char *pathname)
  */
 int file_exists(const char *pathname)
 {
-#ifdef _WIN64
-    // 用于存储文件状态信息的结构体
-    struct _stat64i32 st;
-#else  // _WIN64
-    // 用于存储文件状态信息的结构体
-    struct stat st;
-#endif // _WIN64
+    zcc_stat st;
     // 调用 stat 函数获取文件状态信息
     if (zcc::stat(pathname, &st) == -1)
     {
@@ -770,7 +758,45 @@ int chmod(const char *pathname, int mode)
 int fchmod(int fd, int mode)
 {
 #ifdef _WIN64
-    return ::_fchmod(fd, mode);
+    HANDLE hFile = (HANDLE)_get_osfhandle(fd);
+    if (hFile == INVALID_HANDLE_VALUE)
+    {
+        set_errno(ZCC_EBADF);
+        return -1;
+    }
+
+    FILE_BASIC_INFO fbi{};
+    BOOL ok = GetFileInformationByHandleEx(
+        hFile,
+        FileBasicInfo,
+        &fbi,
+        sizeof(fbi));
+    if (!ok)
+    {
+        return -1;
+    }
+
+    // 和 chmod 保持相同只读逻辑
+    if (mode & _S_IWRITE)
+    {
+        fbi.FileAttributes &= ~FILE_ATTRIBUTE_READONLY;
+    }
+    else
+    {
+        fbi.FileAttributes |= FILE_ATTRIBUTE_READONLY;
+    }
+
+    ok = SetFileInformationByHandle(
+        hFile,
+        FileBasicInfo,
+        &fbi,
+        sizeof(fbi));
+    if (!ok)
+    {
+        return -1;
+    }
+
+    return 0;
 #else  // _WIN64
     return ::fchmod(fd, mode);
 #endif // _WIN64
@@ -809,13 +835,7 @@ int mkdir(const char *pathname, int mode)
 int mkdir(std::vector<std::string> paths, int mode)
 {
     int r = -1, ret;
-#ifdef _WIN64
-    // 用于存储文件状态信息的结构体
-    struct _stat64i32 st;
-#else  // _WIN64
-    // 用于存储文件状态信息的结构体
-    struct stat st;
-#endif // _WIN64
+    zcc_stat st;
     std::string tmppath;
     char pathbuf[10240 + 1];
     char *path;
@@ -1634,7 +1654,7 @@ std::vector<std::string> find_file_sample(const char **dir_or_file, int item_cou
             }
         }
         // 关闭文件指针
-        fclose(fp);
+        pclose(fp);
     }
     return r;
 #endif // _WIN64

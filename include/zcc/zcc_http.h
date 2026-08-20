@@ -604,6 +604,7 @@ public:
     void add_request_header(const std::string &name, const std::string &value);
     void add_request_cookie(const std::string &name, const std::string &value);
     void set_request_basic_authorization(const std::string &username, const std::string &password);
+    void set_request_user_agent(const std::string &user_agent);
     void set_request_content_type(const std::string &content_type);
     void set_request_content_type_application_x_www_form_urlencoded();
     void set_request_content_type_multipart_form_data();
@@ -616,6 +617,7 @@ public:
     void set_request_url(const std::string &url);
     bool send_request_headers();
     bool send_request_data(const void *data, int64_t len);
+    inline bool send_request_data(const std::string &data) { return send_request_data((const void *)data.c_str(), (int)data.size()); }
     bool send_request_flush();
     //
     bool recv_response_headers();
@@ -646,6 +648,7 @@ protected:
     std::vector<std::string> request_headers_;
     std::map<std::string, std::string> request_cookies_;
     std::string request_basic_authorization_;
+    std::string user_agent_;
     std::string request_content_type_;
     std::string request_range_;
     std::string request_referer_;

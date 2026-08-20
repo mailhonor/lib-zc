@@ -362,8 +362,13 @@ int timed_read(int fd, void *buf, int size, int wait_timeout)
     for (;;)
     {
         // 等待可读
-        if ((ret = timed_read_wait_millisecond(fd, 1000 * wait_timeout)) == 0)
+        ret = timed_read_wait_millisecond(fd, 1000 * wait_timeout);
+        if (ret <= 0)
         {
+            if (ret == 0)
+            {
+                set_errno(ZCC_ETIMEDOUT);
+            }
             return -1;
         }
         ret = -1;
@@ -468,8 +473,13 @@ int timed_write(int fd, const void *buf, int size, int wait_timeout)
     for (;;)
     {
         // 等待可写
-        if (timed_write_wait_millisecond(fd, 1000 * wait_timeout) == 0)
+        ret = timed_write_wait_millisecond(fd, 1000 * wait_timeout);
+        if (ret <= 0)
         {
+            if (ret == 0)
+            {
+                set_errno(ZCC_ETIMEDOUT);
+            }
             return -1;
         }
 #ifdef _WIN64
@@ -705,8 +715,9 @@ int close_on_exec(int fd, bool tf)
     {
         // 获取Windows句柄
         HANDLE h = (HANDLE)_get_osfhandle(fd);
-        // (HANDLE)(SOCKET)fd
-        if (!SetHandleInformation(h, HANDLE_FLAG_INHERIT, 0))
+        // 设置继承标志
+        DWORD inherit = tf ? HANDLE_FLAG_INHERIT : 0;
+        if (!SetHandleInformation(h, HANDLE_FLAG_INHERIT, inherit))
         {
             return -1;
         }

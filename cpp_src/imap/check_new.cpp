@@ -25,6 +25,10 @@ int imap_client::check_new_message_by_noop()
     linebuf.append("N noop");
     fp_append(linebuf).fp_append("\r\n");
     zcc_imap_client_debug_protocol_write(linebuf);
+    if (fp_->flush() < 0)
+    {
+        return -1;
+    }
 
     while (1)
     {
@@ -82,6 +86,10 @@ int imap_client::idle_begin()
     linebuf.append("I idle");
     fp_append(linebuf).fp_append("\r\n");
     zcc_imap_client_debug_protocol_write(linebuf);
+    if (fp_->flush() < 0)
+    {
+        return -1;
+    }
 
     while (1)
     {

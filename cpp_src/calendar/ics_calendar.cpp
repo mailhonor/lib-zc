@@ -15,7 +15,7 @@
 
 zcc_namespace_begin;
 
-void ics_calendar_timezone::serialize_to_json(json &js)
+void ics_calendar_timezone::serialize_to_json(json &js) const
 {
     js["tzid"] = tzid;
     auto nodesjs = js.object_update("nodes", new json(json_type_array), true);
@@ -384,7 +384,7 @@ std::string ics_calendar_event_rrule::get_freq_string(freq_type freq)
     return freq_str;
 }
 
-std::string ics_calendar_event_rrule::get_digest()
+std::string ics_calendar_event_rrule::get_digest() const
 {
     std::string digest;
     if (freq == freq_type::none)
@@ -499,7 +499,7 @@ std::string ics_calendar_event_rrule::get_digest()
     return digest;
 }
 
-void ics_calendar_event_alarm::serialize_to_json(json &js)
+void ics_calendar_event_alarm::serialize_to_json(json &js) const
 {
 #define ALARM_FIELD(field)      \
     {                           \
@@ -567,7 +567,7 @@ void ics_calendar_event_alarm::unserialize_from_json(json &js)
     repeat = (int)js.object_get_long_value("repeat");
 }
 
-std::string ics_calendar_event_alarm::get_digest()
+std::string ics_calendar_event_alarm::get_digest() const
 {
     std::string digest;
     if (trigger.isTimePoint)
@@ -615,7 +615,7 @@ std::string ics_calendar_event_alarm::get_digest()
 }
 
 //
-void ics_calendar_event_attendee::serialize_to_json(json &js)
+void ics_calendar_event_attendee::serialize_to_json(json &js) const
 {
     js.used_for_object();
 #define ATTENDEE_FIELD(field)   \
@@ -652,7 +652,7 @@ void ics_calendar_event_attendee::unserialize_from_json(json &js)
 }
 
 //
-void ics_calendar_event::serialize_to_json(json &js)
+void ics_calendar_event::serialize_to_json(json &js) const
 {
     json *tmpjs;
     js.used_for_object();
@@ -1440,7 +1440,7 @@ void ics_calendar::parse_attendee(begin_end_text_node *node, ics_calendar_event 
     attendee.sent_by = node->get_param_value("sent-by");
 }
 
-std::string ics_calendar::debug_info()
+std::string ics_calendar::debug_info() const
 {
     std::string info;
     info += "version: " + version_ + "\n";
@@ -1670,7 +1670,7 @@ static std::string serialize_to_ics_string_escape_description(std::string s, boo
     return r;
 }
 
-std::string ics_calendar::serialize_to_ics_string()
+std::string ics_calendar::serialize_to_ics_string() const
 {
     std::string result;
 

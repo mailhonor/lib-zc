@@ -518,17 +518,29 @@ std::string &trim_line_end_rn(std::string &s)
 
 std::string trim(const std::string &str)
 {
+    if (str.empty())
+    {
+        return "";
+    }
+
     auto start = str.begin();
-    while (start != str.end() && std::isspace(static_cast<unsigned char>(*start)))
+    auto end = str.end();
+
+    while (start != end && std::isspace(static_cast<unsigned char>(*start)))
     {
         ++start;
     }
 
-    auto end = str.end();
-    do
+    if (start == end)
+    {
+        return "";
+    }
+
+    --end;
+    while (std::distance(start, end) > 0 && std::isspace(static_cast<unsigned char>(*end)))
     {
         --end;
-    } while (std::distance(start, end) > 0 && std::isspace(static_cast<unsigned char>(*end)));
+    }
 
     return std::string(start, end + 1);
 }
@@ -667,6 +679,11 @@ char *strcasestr(const char *haystack, const char *needle)
 
 std::string str_replace(const std::string &input, const std::string &from, const std::string &to)
 {
+    if (from.empty())
+    {
+        return input;
+    }
+
     std::string result = input;
     size_t pos = 0;
 
@@ -747,6 +764,25 @@ bool ends_case_with(const std::string &str, const std::string &suffix)
         }
     }
     return true;
+}
+
+bool contains(const std::string &str, const std::string &needle)
+{
+    return needle.empty() || (str.find(needle) != std::string::npos);
+}
+
+bool contains_case_with(const std::string &str, const std::string &needle)
+{
+    if (needle.empty())
+    {
+        return true;
+    }
+    return strcasestr(str.c_str(), needle.c_str()) != nullptr;
+}
+
+std::string replace_all(const std::string &input, const std::string &from, const std::string &to)
+{
+    return str_replace(input, from, to);
 }
 
 zcc_namespace_end;

@@ -550,12 +550,42 @@ int64_t mail_parser::get_date_unix()
 
 int64_t mail_parser::get_date_unix_by_received()
 {
+    return _get_date_unix_by_received(false);
+}
+
+int64_t mail_parser::get_arrival_date_unix()
+{
+    return _get_date_unix_by_received(true);
+}
+
+int64_t mail_parser::_get_date_unix_by_received(bool startOrEnd)
+{
     int64_t t = -1;
     char buf[64];
     auto &raw_header_lines = top_mime_->raw_header_lines_;
-    for (auto it = raw_header_lines.rbegin(); it != raw_header_lines.rend(); it++)
+    size_data *sd;
+    auto itS = raw_header_lines.begin();
+    auto itE = raw_header_lines.rbegin();
+    while (1)
     {
-        size_data *sd = &(*it);
+        if (startOrEnd)
+        {
+            if (itS == raw_header_lines.end())
+            {
+                break;
+            }
+            sd = &(*itS);
+            itS++;
+        }
+        else
+        {
+            if (itE == raw_header_lines.rend())
+            {
+                break;
+            }
+            sd = &(*itE);
+            itE++;
+        }
         const unsigned char *data = (const unsigned char *)(sd->data);
         int64_t len = sd->size;
         if (len < 64)

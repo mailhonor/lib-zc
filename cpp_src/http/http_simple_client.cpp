@@ -94,9 +94,13 @@ void http_simple_client::add_request_cookie(const std::string &name, const std::
 void http_simple_client::set_request_basic_authorization(const std::string &username, const std::string &password)
 {
     std::string auth = username + ":" + password;
-    std::string encoded;
-    http_token_encode(auth.c_str(), auth.size(), encoded);
+    std::string encoded = base64_encode(auth);
     request_basic_authorization_ = "Basic " + encoded;
+}
+
+void http_simple_client::set_request_user_agent(const std::string &user_agent)
+{
+    user_agent_ = user_agent;
 }
 
 void http_simple_client::set_request_content_type(const std::string &content_type)
@@ -158,8 +162,7 @@ void http_simple_client::set_request_url(const std::string &url)
     }
     if (request_scheme_ != schema || request_host_ != host || request_port_ != port || request_is_ssl_ != is_ssl)
     {
-        delete fp_;
-        fp_ = nullptr;
+        need_close_ = true;
         reset_ctx();
     }
     //
@@ -182,6 +185,12 @@ void http_simple_client::set_request_url(const std::string &url)
 
 bool http_simple_client::prepare_connection()
 {
+    if (error_ || need_close_)
+    {
+        delete fp_;
+        fp_ = nullptr;
+    }
+    need_close_ = false;
     if (fp_)
     {
         return true;
@@ -249,6 +258,14 @@ bool http_simple_client::send_request_headers()
     if (!request_basic_authorization_.empty())
     {
         headers.append("Authorization: ").append(request_basic_authorization_).append("\r\n");
+    }
+    if (!user_agent_.empty())
+    {
+        headers.append("User-Agent: ").append(user_agent_).append("\r\n");
+    }
+    else
+    {
+        headers.append("User-Agent: zccSimpleClient/1.0\r\n");
     }
     if (accept_encoding_gzip_ && accept_encoding_deflate_)
     {
@@ -541,8 +558,37 @@ const std::map<std::string, std::string> &http_simple_client::get_response_cooki
         return response_cookies_;
     }
     cookie_dealed_ = true;
-    auto cookie_str = response_header_parser_->get_header_line_value("Set-Cookie");
-    response_cookies_ = http_cookie_parse(cookie_str);
+    auto &vs = response_header_parser_->get_raw_header_line_vector();
+    for (auto &line : vs)
+    {
+        if (line.size < 10)
+        {
+            continue;
+        }
+        const char *data = line.data;
+        if ((data[0] != 'S' && data[0] != 's') || (data[3] != '-'))
+        {
+            continue;
+        }
+        if (zcc::strncasecmp(data, "Set-Cookie", 10) != 0)
+        {
+            continue;
+        }
+
+        auto cookie_str = mail_parser::header_line_unescape(line.data + 11, line.size - 11);
+        auto cs = http_cookie_parse(cookie_str);
+        if (response_cookies_.empty())
+        {
+            response_cookies_ = cs;
+        }
+        else
+        {
+            for (auto &c : cs)
+            {
+                response_cookies_[c.first] = c.second;
+            }
+        }
+    }
     return response_cookies_;
 }
 
@@ -668,7 +714,7 @@ bool http_simple_client::recv_response_all_data(std::string *data_buf, FILE *dat
             }
         }
     }
-    else if (response_content_length_ > 0)
+    else if (response_content_length_ >= 0)
     {
         readed_len += response_content_length_;
         if (max_len > 0 && readed_len > max_len)

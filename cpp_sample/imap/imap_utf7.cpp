@@ -56,7 +56,7 @@ int main(int argc, char **argv)
         do_one(decode_mode, token);
         return 0;
     }
-    FILE *fp = fopen(token, "r");
+    FILE *fp = zcc::fopen(token, "r");
     if (fp == NULL)
     {
         zcc_fatal("file open error: %s", token);

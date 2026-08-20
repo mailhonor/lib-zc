@@ -292,7 +292,10 @@ int64_t stream::read_delimiter(void *mem, int delimiter, int64_t max_len)
         }
     }
 
-    *ps = 0;
+    if (ps)
+    {
+        *ps = 0;
+    }
     if (max_len > left_len)
     {
         return max_len - left_len;

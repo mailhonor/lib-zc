@@ -410,6 +410,9 @@ public:
     // 通过 Received 字段计算信件的时间戳(只是估计, 用于没有Date字段的情况)
     int64_t get_date_unix_by_received();
 
+    // 到达时间的unix时间戳, 最上面的Received字段
+    int64_t get_arrival_date_unix();
+
     // 发件人
     const mail_address &get_from();
     const mail_address &get_from_utf8();
@@ -491,6 +494,7 @@ private:
     char classify_mime_identify_type(mime_node *mime, int html_count, int plain_count);
     void classify_mime_identify_view_part(mime_node *mime, void *view_list, int64_t *view_len);
     void imap_section();
+    int64_t _get_date_unix_by_received(bool startOrEnd);
 
 private:
     const char *mail_data_{nullptr};

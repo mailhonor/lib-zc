@@ -36,9 +36,9 @@ struct ics_calendar_event_rrule
     static ics_calendar_event_rrule parse(const std::string &rrule_rawata, int64_t dtstart, const std::string &tzid);
     static std::string build(const ics_calendar_event_rrule &rrule);
     static std::string get_freq_string(freq_type freq);
-    inline bool is_valid() { return freq != freq_type::none; }
-    inline std::string build() { return build(*this); }
-    std::string get_digest();
+    inline bool is_valid() const { return freq != freq_type::none; }
+    inline std::string build() const { return build(*this); }
+    std::string get_digest() const;
     freq_type freq{none};
     int interval{1};
     int count{-1};
@@ -64,7 +64,7 @@ struct ics_calendar_timezone_node
 
 struct ics_calendar_timezone
 {
-    void serialize_to_json(json &js);
+    void serialize_to_json(json &js) const;
     void unserialize_from_json(json &js);
     std::string tzid;
     std::vector<ics_calendar_timezone_node> nodes;
@@ -72,9 +72,9 @@ struct ics_calendar_timezone
 
 struct ics_calendar_event_alarm
 {
-    void serialize_to_json(json &js);
+    void serialize_to_json(json &js) const;
     void unserialize_from_json(json &js);
-    std::string get_digest();
+    std::string get_digest() const;
     struct
     {
         int64_t stamp{-1};
@@ -93,7 +93,7 @@ struct ics_calendar_event_alarm
 
 struct ics_calendar_event_attendee
 {
-    void serialize_to_json(json &js);
+    void serialize_to_json(json &js) const;
     void unserialize_from_json(json &js);
     std::string email;
     std::string partstat;
@@ -108,7 +108,7 @@ struct ics_calendar_event_attendee
 
 struct ics_calendar_event
 {
-    void serialize_to_json(json &js);
+    void serialize_to_json(json &js) const;
     void unserialize_from_json(json &js);
     std::string serialize_to_json_string();
     void unserialize_from_json_string(const std::string &json_string);
@@ -172,8 +172,8 @@ public:
     {
         parse(text.c_str(), (int)text.size());
     }
-    std::string debug_info();
-    std::string serialize_to_ics_string();
+    std::string debug_info() const;
+    std::string serialize_to_ics_string() const;
 
 public:
     std::string prodid_;

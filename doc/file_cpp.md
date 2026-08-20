@@ -65,8 +65,8 @@ inline std::string realpath(const std::string &pathname)
     return realpath(pathname.c_str());
 }
 #ifdef _WIN64
-#define zcc_stat struct _stat64i32
-int stat(const char *pathname, struct _stat64i32 *statbuf);
+#define zcc_stat struct _stat64
+int stat(const char *pathname, struct _stat64 *statbuf);
 #else // _WIN64
 #define zcc_stat struct stat
 int stat(const char *pathname, struct stat *statbuf);

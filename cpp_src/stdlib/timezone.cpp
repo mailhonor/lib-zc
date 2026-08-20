@@ -371,7 +371,7 @@ struct tm *gmtime_with_timezone(int64_t unix_second, const std::string &tzid)
     int64_t local_time = unix_second + tzinfo.gmtoff;
     time_t lt = local_time;
 #ifdef _WIN64
-    ::gmtime_s(tm, &lt);
+    ::gmtime_s(&gmtime_static_buf, &lt);
 #else
     if (!::gmtime_r(&lt, &gmtime_static_buf))
     {
@@ -426,6 +426,87 @@ int timezone_0800_offset(const std::string &timezone_0800)
         r = -r;
     }
     return r;
+}
+
+// EAS Bias：分钟，本地时间 = UTC + Bias
+// 已去重，每个Bias仅保留全球最常用时区
+static const std::map<int, std::string> bias_tz_map = {
+    {-720, "Etc/GMT+12"},
+    {-660, "Etc/GMT+11"},
+    {-600, "Pacific/Honolulu"},
+    {-540, "America/Anchorage"},
+    {-480, "America/Los_Angeles"},
+    {-420, "America/Denver"},
+    {-360, "America/Chicago"},
+    {-300, "America/New_York"},
+    {-240, "America/Halifax"},
+    {-210, "America/St_Johns"},
+    {-180, "America/Sao_Paulo"},
+    {-120, "Etc/GMT+2"},
+    {-60, "Atlantic/Azores"},
+    {0, "Europe/London"},
+    {60, "Europe/Berlin"},
+    {120, "Africa/Cairo"},
+    {180, "Europe/Moscow"},
+    {210, "Asia/Tehran"},
+    {240, "Asia/Dubai"},
+    {270, "Asia/Kabul"},
+    {300, "Asia/Karachi"},
+    {330, "Asia/Calcutta"},
+    {345, "Asia/Katmandu"},
+    {360, "Asia/Dhaka"},
+    {390, "Asia/Rangoon"},
+    {420, "Asia/Bangkok"},
+    {480, "Asia/Shanghai"},
+    {540, "Asia/Tokyo"},
+    {570, "Australia/Adelaide"},
+    {600, "Australia/Sydney"},
+    {660, "Pacific/Guadalcanal"},
+    {720, "Pacific/Auckland"},
+    {780, "Pacific/Tongatapu"},
+    {840, "Pacific/Kiritimati"}};
+
+std::string bias_to_tzid(int bias_minutes)
+{
+    // 1. 精准匹配
+    auto exact = bias_tz_map.find(bias_minutes);
+    if (exact != bias_tz_map.end())
+    {
+        return exact->second;
+    }
+
+    // 2. 利用std::map有序，lower_bound找邻近两个候选
+    auto it_right = bias_tz_map.lower_bound(bias_minutes);
+    auto it_left = it_right;
+    if (it_left != bias_tz_map.begin())
+    {
+        --it_left;
+    }
+
+    int diff_left = INT_MAX;
+    int diff_right = INT_MAX;
+    std::string tz_left, tz_right;
+
+    if (it_left != it_right)
+    {
+        diff_left = std::abs(it_left->first - bias_minutes);
+        tz_left = it_left->second;
+    }
+    if (it_right != bias_tz_map.end())
+    {
+        diff_right = std::abs(it_right->first - bias_minutes);
+        tz_right = it_right->second;
+    }
+
+    // 选差值更小的；相等取左侧
+    if (diff_left <= diff_right)
+    {
+        return tz_left;
+    }
+    else
+    {
+        return tz_right;
+    }
 }
 
 zcc_namespace_end;

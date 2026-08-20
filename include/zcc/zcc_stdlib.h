@@ -164,7 +164,7 @@
 
 zcc_namespace_c_begin;
 struct stat;
-struct _stat64i32;
+struct _stat64;
 struct tm;
 zcc_namespace_c_end;
 
@@ -1169,6 +1169,9 @@ inline char *strcasestr(const char *haystack, const char *needle)
 #endif // _WIN64
 
 ZCC_LIB_API std::string str_replace(const std::string &input, const std::string &from, const std::string &to);
+ZCC_LIB_API bool contains(const std::string &str, const std::string &needle);
+ZCC_LIB_API bool contains_case_with(const std::string &str, const std::string &needle);
+ZCC_LIB_API std::string replace_all(const std::string &input, const std::string &from, const std::string &to);
 
 // join
 template <typename Container>
@@ -2065,19 +2068,10 @@ inline std::string realpath(const std::string &pathname)
 }
 
 #ifdef _WIN64
-// Windows 平台下使用 _stat64i32 结构体进行文件状态查询
-#define zcc_stat struct _stat64i32
-/**
- * @brief 获取指定文件的状态信息。
- *
- * @param pathname 文件的路径名。
- * @param statbuf 指向存储文件状态信息的结构体指针。
- * @return int 操作结果，成功返回 1，失败返回 -1。
- */
-ZCC_LIB_API int stat(const char *pathname, struct _stat64i32 *statbuf);
+#define zcc_stat struct _stat64
 #else // _WIN64
-// 非 Windows 平台下使用 stat 结构体进行文件状态查询
 #define zcc_stat struct stat
+#endif // _WIN64
 /**
  * @brief 获取指定文件的状态信息。
  *
@@ -2085,8 +2079,7 @@ ZCC_LIB_API int stat(const char *pathname, struct _stat64i32 *statbuf);
  * @param statbuf 指向存储文件状态信息的结构体指针。
  * @return int 操作结果，成功返回 0，失败返回 -1。
  */
-ZCC_LIB_API int stat(const char *pathname, struct stat *statbuf);
-#endif // _WIN64
+ZCC_LIB_API int stat(const char *pathname, zcc_stat *statbuf);
 
 /**
  * @brief 获取指定文件的大小。
@@ -3140,6 +3133,9 @@ ZCC_LIB_API bool gmtime_with_timezone(int64_t unix_second, const std::string &tz
 ZCC_LIB_API struct tm *gmtime_with_timezone(int64_t unix_second, const std::string &tzid);
 //
 ZCC_LIB_API int timezone_0800_offset(const std::string &timezone_0800);
+
+// 从Bias分钟数转换为常见时区(tzid)
+ZCC_LIB_API std::string bias_to_tzid(int bias_minutes);
 
 // lunar
 // 0-11, 返回 一月,...,冬月,腊月
